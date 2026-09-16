@@ -1,0 +1,51 @@
+---
+id: TASK-25
+title: Selektive Annahme und sichere Ausführung ermöglichen (P07.02)
+status: To Do
+assignee: []
+created_date: '2026-09-16 20:12'
+updated_date: '2026-09-16 20:12'
+labels:
+  - p07
+  - r2
+milestone: m-2
+dependencies:
+  - TASK-24
+  - TASK-8
+references:
+  - .docs/dispatch-end-to-end-implementation-plan.md
+priority: high
+ordinal: 25000
+---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+Planreferenz: .docs/dispatch-end-to-end-implementation-plan.md, P07.02.
+Phase: P07 – Kalenderbewusste Planung aus beiden Quellen.
+
+**Abhängigkeit:** P07.01, P02.02. **Dateien:** `convex/planning/accept.ts`, `src/features/agent/plan-preview.tsx`, `src/features/calendar/proposed-items.tsx`; Test `tests/e2e/agent-planning.spec.ts`.
+
+- Entwürfe prüfen, separat bearbeiten, freigeben und ausgewählte Slots annehmen lassen.
+- Konflikte und Quellenfrische bei Annahme erneut prüfen.
+- Angenommene Vorschläge deterministisch in geplante Posts überführen; übrige Vorschläge erhalten.
+- Eine ausdrücklich beschriftete kombinierte Aktion „Version freigeben und planen“ erlauben, ohne eine implizite Freigabe aus bloßer Planansicht abzuleiten.
+
+Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Beginn freigegeben sein. Diese Aufgabe dokumentiert geplante Arbeit; ihre Erstellung ist keine Implementierungsfreigabe.
+
+Entscheidungen (Empfehlungen sind noch keine Freigaben):
+- D08: Quellenfrische vor Planung und Versand beachten.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 J06 funktioniert.
+- [ ] #2 zwei angenommene von drei Vorschlägen ergeben genau zwei Termine.
+- [ ] #3 Parallel geänderte Kalenderdaten werden erkannt und bestehende Einträge bleiben erhalten.
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
+- [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
+<!-- DOD:END -->

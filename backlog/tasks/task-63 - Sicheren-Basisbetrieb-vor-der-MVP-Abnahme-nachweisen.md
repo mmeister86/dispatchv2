@@ -1,0 +1,49 @@
+---
+id: TASK-63
+title: Sicheren Basisbetrieb vor der MVP-Abnahme nachweisen
+status: To Do
+assignee: []
+created_date: '2026-09-16 20:12'
+updated_date: '2026-09-16 20:12'
+labels:
+  - p09
+  - r2
+  - gate
+milestone: m-2
+dependencies:
+  - TASK-4
+  - TASK-5
+  - TASK-9
+  - TASK-13
+  - TASK-19
+  - TASK-23
+  - TASK-25
+references:
+  - .docs/dispatch-end-to-end-implementation-plan.md
+priority: high
+ordinal: 63000
+---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+Frühe P09-Maßnahmen aus §10/P09-Einleitung als eigenständige Voraussetzung von P07.03 liefern. Die spätere P09-Konsolidierung bleibt in R3. Betreute Löschung einschließlich Jobs, Credentials, Convex-Daten, R2-Objekten und eingeführten Agent-Komponentendaten implementieren und dokumentieren; kein Warten auf das spätere Self-Service-UI.
+
+Quelle: .docs/dispatch-end-to-end-implementation-plan.md. Geplante Arbeit; Abnahme/Done erst nach ausdrücklicher Nutzerbestätigung.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Secrets sind serverseitig geschützt; Frontend-Bundle und allgemeine Logs enthalten keine Credentials.
+- [ ] #2 Tenant-/Account-Negativtests decken die bis R2 eingeführten Queries, Mutations, Actions und Agent-Werkzeuge ab.
+- [ ] #3 Agent-Läufe besitzen wirksame Budget-, Schritt- und Zeitlimits sowie Abbruchkontrollen.
+- [ ] #4 Publishing-Fehler, Teilthreads und unklare Ausgänge sind mit nächsten Schritten sichtbar.
+- [ ] #5 Entwicklungs-, Test- und Produktionszugänge einschließlich R2 sind getrennt.
+- [ ] #6 Eine dokumentierte betreute Workspace-Löschung stoppt neue Arbeit und kann nach Unterbrechung ohne Datenreaktivierung fortgesetzt werden.
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
+- [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
+<!-- DOD:END -->

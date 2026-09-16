@@ -1,0 +1,50 @@
+---
+id: TASK-11
+title: Scheduler und Freigabeprüfung bauen (P03.02)
+status: To Do
+assignee: []
+created_date: '2026-09-16 20:12'
+updated_date: '2026-09-16 20:12'
+labels:
+  - p03
+  - r1
+milestone: m-1
+dependencies:
+  - TASK-8
+  - TASK-10
+references:
+  - .docs/dispatch-end-to-end-implementation-plan.md
+priority: high
+ordinal: 11000
+---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+Planreferenz: .docs/dispatch-end-to-end-implementation-plan.md, P03.02.
+Phase: P03 – X-Verbindung, zuverlässiges Publishing und Kalender.
+
+**Abhängigkeit:** P02.02, P03.01. **Dateien:** `convex/publishing/schedules.ts`, `convex/publishing/state.ts`; Test `convex/publishing/schedules.test.ts`.
+
+- Planen, Verschieben und Abbrechen mit Versions- und Accountprüfung implementieren.
+- Zeitpunkte als UTC-Instant speichern, Zeitzone für Absicht und Darstellung erhalten.
+- Jobgeneration und atomaren Claim einführen; alte oder doppelte Aufrufe wirkungslos machen.
+- Termineintrag und Scheduler-Auftrag in derselben Mutation anlegen; die Transaktionsgarantie des Schedulers nicht auf spätere externe API-Aufrufe übertragen.
+- Vergangene Termine, Sommerzeitlücken und doppelte lokale Stunden mit expliziter Nutzerentscheidung behandeln.
+
+Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Beginn freigegeben sein. Diese Aufgabe dokumentiert geplante Arbeit; ihre Erstellung ist keine Implementierungsfreigabe.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Doppelter Scheduler-Aufruf erzeugt nur einen Claim.
+- [ ] #2 Rescheduling neutralisiert den alten Job.
+- [ ] #3 Storno und Claim besitzen ein definiertes Rennen.
+- [ ] #4 Sommer-/Winterzeitfälle werden reproduzierbar getestet.
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
+- [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
+<!-- DOD:END -->

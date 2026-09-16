@@ -1,0 +1,55 @@
+---
+id: TASK-9
+title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
+status: To Do
+assignee: []
+created_date: '2026-09-16 20:12'
+updated_date: '2026-09-16 20:12'
+labels:
+  - p02
+  - r1
+milestone: m-1
+dependencies:
+  - TASK-7
+  - TASK-1
+references:
+  - .docs/dispatch-end-to-end-implementation-plan.md
+priority: high
+ordinal: 9000
+---
+
+## Description
+
+<!-- SECTION:DESCRIPTION:BEGIN -->
+Planreferenz: .docs/dispatch-end-to-end-implementation-plan.md, P02.03.
+Phase: P02 – Entwürfe, Versionen, Freigaben und Medien.
+
+**Abhängigkeit:** P02.01, R2-Durchstich aus P00.01. **Dateien:** `convex/media/assets.ts`, `convex/media/r2.ts`, `convex/media/uploads.ts`, `convex/media/validation.ts`, `convex/media/cleanup.ts`, `src/features/drafts/media-uploader.tsx`; Tests `convex/media/assets.test.ts`, `convex/media/uploads.test.ts`.
+
+- Convex-Domain-ID und R2-Objektverweis trennen; den Medienvertrag aus Abschnitt 5.7 implementieren. Die Convex-R2-Komponente als Integrationshilfe auf diese Anforderungen prüfen.
+- Nach Workspace- und Kontingentprüfung begrenzte Uploadberechtigungen ausgeben; Medienbytes direkt in den temporären R2-Bereich übertragen und den final übernommenen Inhalt serverseitig prüfen.
+- Den Metadatenabgleich an die serverseitig angelegte Uploadsession binden; ein clientseitiger Abschluss oder Komponenten-Callback darf nicht unmittelbar `ready` setzen. CORS, tatsächliche Uploadgrößenbegrenzung und gegebenenfalls Multipart-Abbruch getrennt nachweisen.
+- Dateityp, Dateigröße, tatsächlichen Medientyp, Dimensionen, Inhaltsprüfsumme und Alt-Text validieren; Abschluss und Wiederholung dürfen keinen doppelten oder nachträglich veränderbaren finalen Inhalt erzeugen.
+- Bilder, GIFs und unterstützte Videos gemäß tatsächlicher X-Fähigkeiten verarbeiten; asynchrone Provider-Verarbeitung einplanen.
+- Medienreferenzen in Versionen fixieren, Austausch als neue Version behandeln.
+- Autorisierte Vorschauen direkt aus R2 ausliefern; abgelaufene Lese-URLs bei Bedarf erneuern, statt sie dauerhaft im Draft zu speichern.
+- Nicht abgeschlossene Uploads und verwaiste R2-Objekte bereinigen; referenzierte Assets und während Finalisierung/Löschung laufende Vorgänge durch Status-/Referenzprüfungen schützen.
+
+Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Beginn freigegeben sein. Diese Aufgabe dokumentiert geplante Arbeit; ihre Erstellung ist keine Implementierungsfreigabe.
+<!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 Fremde Asset-IDs und clientseitig untergeschobene Objektschlüssel werden abgelehnt.
+- [ ] #2 Eine weiterhin gültige Upload-URL kann keinen finalisierten Inhalt überschreiben.
+- [ ] #3 Nur geprüfte `ready`-Assets sind freigabefähig.
+- [ ] #4 ein ersetztes Asset ändert keine geplante Version.
+- [ ] #5 Unterbrechung zwischen R2-Operation und Convex-Update ist wiederaufnehmbar.
+- [ ] #6 große Uploads besitzen Fortschritt und Abbruch.
+<!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
+- [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
+<!-- DOD:END -->
