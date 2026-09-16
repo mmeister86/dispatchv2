@@ -163,6 +163,10 @@ Agent-Läufe bekommen IDs, Prompt-/Modellversion, Tenant-Kontext, Budget, maxima
 
 Vor jedem kostenpflichtigen Schritt werden Mittel reserviert; danach werden Verbrauch und Reservation abgeglichen. Wiederholungen desselben Schritts dürfen nicht erneut unbemerkt das Budget verbrauchen. Globale Provider-Limits, Workspace-Kontingente und Account-Limits sind getrennte Grenzen.
 
+Ein Abbruch sperrt weitere Schritte und Domain-Schreibzugriffe über einen dauerhaft gespeicherten Run-/Workspace-Status. Bereits laufende Actions können trotzdem fertig werden; deren Ergebnisse und Kosten werden abgeglichen. Vor jedem weiteren Tool- oder Provider-Aufruf wird der Status erneut geprüft. Bereits abgesendete externe Schreibaufrufe lassen sich dadurch nicht zurückholen.
+
+Ein Provider-Versuch besitzt eine eigene Kennung: Seine Verbrauchsbuchung wird dedupliziert, ein tatsächlich erneut ausgeführter Modell- oder Suchaufruf kann jedoch erneut Geld kosten und benötigt Budget. SDK-Retries, Workflow-Retries und eigene Wiederholungen erhalten eine gemeinsame Obergrenze. Ein kompletter Agent-Lauf wird nicht pauschal wiederholt; Prompt-/Nachrichtenreferenzen und Domain-Operationen bleiben bei Wiederaufnahme stabil.
+
 ### 4.5 Geplante Modulstruktur
 
 | Pfad | Verantwortung |
@@ -274,13 +278,15 @@ Direkte Uploads schreiben ausschließlich in einen temporären Bereich. Die Fina
 
 R2 und Convex bilden keine gemeinsame Transaktion. Upload-Abschluss, Metadatenspeicherung und Löschung benötigen wiederholbare Schritte, einen gespeicherten Fortschritt und Aufräum-/Abgleichjobs. Während `deleting` sind neue Referenzen und Publishing-Claims gesperrt. Normale Asset-Löschung respektiert bestehende Referenzen; eine ausdrücklich autorisierte Workspace-Löschung beendet zunächst die betroffenen Abläufe und sperrt neue Finalisierungen. Löschmarkierungen bleiben bis zur Nachbereinigung nach Ablauf bereits erteilter Uploadberechtigungen erhalten, damit erneut hochgeladene temporäre Objekte nicht zurückbleiben.
 
+Die R2-Komponente ersetzt diesen Domain-Vertrag nicht: `onUpload` beziehungsweise `syncMetadata` sind kein Nachweis einer Inhaltsprüfung. Öffentliche Endpunkte prüfen Workspace und Uploadsession auch bei Metadatenabgleich, Lese-URL-Ausgabe und Löschung. Private Vorschauen verwenden signierte S3-URLs; daraus folgt weder eine öffentliche Medien-Domain noch automatisches CDN-Caching.
+
 ## 6. Recherche, Trendqualität und Kalenderplanung
 
 ### 6.1 Research Profile pro Account
 
 Ein Profil definiert Themen, Projektbezug, Zielgruppe, Sprachen, Regionen soweit unterstützt, bevorzugte Quellen, Ausschlüsse, Aktualitätsfenster, Frequenz, Themenanzahl und Kostenlimit. Vorschlag für die private Alpha: ein ausdrücklich aktivierter täglicher Lauf plus manuelle Läufe; Frequenz und Budget sind konfigurierbar, nicht als versteckte Daueraktivität voreingestellt.
 
-Profiländerungen gelten für neue Läufe. Ein laufender Auftrag behält seine Profilversion, kann aber durch den Nutzer abgebrochen werden. Entfernte Zugänge oder ein gesperrter Workspace stoppen weitere Aufrufe sofort.
+Profiländerungen gelten für neue Läufe. Ein laufender Auftrag behält seine Profilversion, kann aber durch den Nutzer abgebrochen werden. Entfernte Zugänge oder ein gesperrter Workspace sperren weitere Aufrufe gemäß Abschnitt 4.4; bereits laufende externe Anfragen benötigen einen Ergebnis- und Kostenabgleich.
 
 ### 6.2 Trend statt bloßer Suchtreffer
 
@@ -357,7 +363,7 @@ Modelländerungen laufen zunächst im Schattenbetrieb gegen die bisherige Heuris
 | R4 – kommerzielles X-Produkt | P10 und GA-Gate | Abrechnung, Grenzen, Support und produktive Freigabe |
 | R5 – lernendes Produkt | P11–P12 | Performance-Feedback, persönliche Stimme und bessere Planung |
 | R6 – Teamprodukt | P13.01–P13.02 | Zusammenarbeit, Rollen und Freigaberegeln; Kundenräume optional |
-| R7 – kanalübergreifendes Produkt | P14 | Gemeinsame Ideen mit eigenständigen Plattformvarianten |
+| R7 – kanalübergreifendes Produkt | P14.01–P14.03; P14.04 optional | Gemeinsame Ideen mit eigenständigen Plattformvarianten |
 | R8 – ausgebautes Endprodukt | Ausgewählte P15-Pakete und Endprodukt-Gate | Priorisierte zusätzliche Arbeitsquellen, Wiederverwertung und Medien |
 | R9 – optionale kontrollierte Autonomie | P16 | Eng begrenzte, ausdrücklich aktivierte Automatisierung |
 
@@ -376,9 +382,11 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 **Abhängigkeit:** keine. **Dateien:** `.docs/decisions/provider-capabilities.md`, `.docs/decisions/unit-economics.md`.
 
 - [ ] Für X Auth, eigene Posts, Medien, Suche, Trends, Token-Erneuerung und verfügbare Metriken mit dem tatsächlichen App-Zugang prüfen.
+- [ ] Vor der ersten Modellverarbeitung erlaubte Datenkategorien, Inferenz, Speicherung, Embeddings und Weitergabe an Gateway/Modellprovider dokumentieren. Für gespeicherte X-Quellen einen mit dem App-Zugang verfügbaren Entfernungs-/Sperrungsabgleich samt Fristen und Kosten nachweisen; Training später separat freigeben.
 - [ ] GitHub-App-Berechtigungen auf ausgewählte Repositories und notwendige Events begrenzen.
 - [ ] Requesty-Modellzugang, strukturierte Ausgaben, Tool Calls, Embeddings und Websuche getrennt prüfen; bei fehlender nativer Suche einen austauschbaren Suchadapter festlegen.
 - [ ] Convex-Komponenten, Better-Auth-Integration, Ausführungsgrenzen und Cloudflare-Deployment anhand aktueller Dokumentation validieren.
+- [ ] Eine gemeinsam kompatible Versionsmatrix für Convex, Better Auth samt Convex-Komponente, Agent, Workflow, R2, AI SDK und Requesty-Adapter festlegen; veröffentlichte Paket-Metadaten und Peer Dependencies prüfen, nicht unabhängig alle Pakete auf `latest` setzen. Konkrete Runtime-, Dokument-, Argument- und Mediengrenzen dokumentieren.
 - [ ] Cloudflare-R2-Zugänge, private Buckets je Umgebung, direkte autorisierte Uploads, Finalisierung und Abruf durch den X-Publisher nachweisen; Medienverkehr und R2-Operationen in die Kostenmessung aufnehmen.
 - [ ] Kosten pro aktivem Workspace für wenig, typische und hohe Nutzung mit gemessenen Einheiten modellieren; fehlende Tarife als Prüfpunkt markieren.
 
@@ -413,8 +421,9 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 
 **Abhängigkeit:** P00.02. **Dateien:** `package.json`, Lockfile, `vite.config.ts`, `vitest.config.ts`, `src/main.tsx`, `src/router.tsx`, `src/routes/__root.tsx`, `convex/schema.ts`, `.env.example`, `README.md`.
 
-- [ ] Git initialisieren, Konfiguration und geheime lokale Werte sauber trennen.
+- [ ] Vorhandenen Git-Stand prüfen, nur falls nötig initialisieren; Konfiguration und geheime lokale Werte sauber trennen.
 - [ ] Frontend und Convex mit den geprüften Versionen verbinden; Routing, Styling und wiederverwendbare UI-Basis einrichten.
+- [ ] Benötigte Convex-Komponenten in `convex/convex.config.ts` registrieren und generierte Typen als Voraussetzung der Integrationen bereitstellen. Für das statische Cloudflare-Frontend SPA-Fallback und direkte Navigation auf Auth-/Workspace-Routen konfigurieren.
 - [ ] Lokale Entwicklung, Test/Staging und Produktion logisch und hinsichtlich Provider-Zugängen trennen.
 - [ ] Lint, Typecheck, Domain-Tests und Build als dokumentierte Skripte und CI-Prüfungen anlegen.
 
@@ -422,14 +431,16 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 
 #### P01.02 – Authentifizierung und Workspace-Isolation umsetzen
 
-**Abhängigkeit:** P01.01. **Dateien:** `convex/auth.ts`, `convex/users.ts`, `convex/workspaces.ts`, `convex/lib/authz.ts`, `src/features/auth/client.ts`, Auth-Routen; Tests `convex/workspaces.test.ts`, `tests/e2e/auth.spec.ts`.
+**Abhängigkeit:** P01.01. **Dateien:** `convex/auth.ts`, `convex/auth.config.ts`, `convex/convex.config.ts`, `convex/http.ts`, `convex/users.ts`, `convex/workspaces.ts`, `convex/lib/authz.ts`, `src/features/auth/client.ts`, Auth-Routen; Tests `convex/workspaces.test.ts`, `tests/e2e/auth.spec.ts`.
 
 - [ ] E-Mail/Passwort, Verifikation, Reset und GitHub-Login einrichten; Google bleibt optionaler zusätzlicher Login.
+- [ ] Die Convex-Better-Auth-Integration für React/Vite verwenden: kompatible Better-Auth-Version, Component-Adapter, Auth-Konfiguration, `crossDomain`/`crossDomainClient`, `convexClient`, `ConvexBetterAuthProvider`, erlaubte Origins und HTTP-Routen mit CORS. Convex-Client-URL und Auth-/HTTP-Site-URL unterscheiden; Social-Login-Callbacks auf der Auth-Site registrieren.
+- [ ] Den E-Mail-Versand für Verifikation und Reset bereits hier als funktionierende Grundlage bereitstellen; P09.02 ergänzt später Zustellüberwachung und Präferenzen. Die unverifizierte Beispielkonfiguration des Quickstarts ist keine Produktvorgabe.
 - [ ] Domain-User und Default-Workspace idempotent anlegen, Owner-Mitgliedschaft atomar erstellen.
 - [ ] Zentrale Prüfungen für User, Workspace-Rolle und workspacegleiche Referenzen implementieren.
 - [ ] Logout, Session-Ablauf, Rückkehr zur angefragten Route und verständliche Fehlerzustände gestalten.
 
-**Abnahme/Test:** Wiederholte erste Requests erzeugen keine doppelten Workspaces; ein zweiter Nutzer kann IDs fremder Entwürfe, Medien, Runs und Accounts weder lesen noch verändern. GitHub-Login gewährt keinen Repository-Zugriff.
+**Abnahme/Test:** Wiederholte erste Requests erzeugen keine doppelten Workspaces; ein zweiter Nutzer kann IDs fremder Entwürfe, Medien, Runs und Accounts weder lesen noch verändern. GitHub-Login gewährt keinen Repository-Zugriff. Login, Reload, Logout, Verifikation und Reset funktionieren über die tatsächlichen Frontend-/Auth-Domains einschließlich verweigerter fremder Origins.
 
 #### P01.03 – Onboarding, Profile und Navigation bauen
 
@@ -472,6 +483,7 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 
 - [ ] Convex-Domain-ID und R2-Objektverweis trennen; den Medienvertrag aus Abschnitt 5.7 implementieren. Die Convex-R2-Komponente als Integrationshilfe auf diese Anforderungen prüfen.
 - [ ] Nach Workspace- und Kontingentprüfung begrenzte Uploadberechtigungen ausgeben; Medienbytes direkt in den temporären R2-Bereich übertragen und den final übernommenen Inhalt serverseitig prüfen.
+- [ ] Den Metadatenabgleich an die serverseitig angelegte Uploadsession binden; ein clientseitiger Abschluss oder Komponenten-Callback darf nicht unmittelbar `ready` setzen. CORS, tatsächliche Uploadgrößenbegrenzung und gegebenenfalls Multipart-Abbruch getrennt nachweisen.
 - [ ] Dateityp, Dateigröße, tatsächlichen Medientyp, Dimensionen, Inhaltsprüfsumme und Alt-Text validieren; Abschluss und Wiederholung dürfen keinen doppelten oder nachträglich veränderbaren finalen Inhalt erzeugen.
 - [ ] Bilder, GIFs und unterstützte Videos gemäß tatsächlicher X-Fähigkeiten verarbeiten; asynchrone Provider-Verarbeitung einplanen.
 - [ ] Medienreferenzen in Versionen fixieren, Austausch als neue Version behandeln.
@@ -500,6 +512,7 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 - [ ] Planen, Verschieben und Abbrechen mit Versions- und Accountprüfung implementieren.
 - [ ] Zeitpunkte als UTC-Instant speichern, Zeitzone für Absicht und Darstellung erhalten.
 - [ ] Jobgeneration und atomaren Claim einführen; alte oder doppelte Aufrufe wirkungslos machen.
+- [ ] Termineintrag und Scheduler-Auftrag in derselben Mutation anlegen; die Transaktionsgarantie des Schedulers nicht auf spätere externe API-Aufrufe übertragen.
 - [ ] Vergangene Termine, Sommerzeitlücken und doppelte lokale Stunden mit expliziter Nutzerentscheidung behandeln.
 
 **Abnahme/Test:** Doppelter Scheduler-Aufruf erzeugt nur einen Claim; Rescheduling neutralisiert den alten Job; Storno und Claim besitzen ein definiertes Rennen; Sommer-/Winterzeitfälle werden reproduzierbar getestet.
@@ -512,6 +525,7 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 - [ ] Finalisierte R2-Assets unmittelbar vor dem X-Upload autorisiert abrufen; Objektidentität und erwarteten Inhalt prüfen. Kurzlebige Abruf-URLs bei Wiederaufnahme neu erzeugen. Notwendiger Transfer über eine Convex Action bleibt in der Kostenrechnung enthalten und wird nicht als durch R2 automatisch kostenlos behandelt.
 - [ ] Jeden Thread-Beitrag als eigene nachvollziehbare Operation veröffentlichen und die externe ID unmittelbar persistieren.
 - [ ] Wiederholbare, permanente und unklare Fehler trennen; begrenzte Backoffs mit Provider-Hinweisen verwenden.
+- [ ] Für nicht idempotente Veröffentlichungs-Actions automatische Workflow-/SDK-Retries explizit deaktivieren; Wiederaufnahme nur über Versuchsstatus und Abgleich. Medien-Verarbeitungswartezeiten als dauerhafte Schritte modellieren. Große Medien block-/streamweise übertragen; gewählte Runtime und Speicherbedarf im P00-Durchstich messen.
 - [ ] Sichtbare Wiederaufnahme für Teilthreads sowie einen Abgleichpfad für unklare Schreibausgänge implementieren.
 
 **Abnahme/Test:** Prozessabbruch nach Beitrag 2 eines Threads wiederholt Beitrag 1 und 2 nicht. Timeout nach möglichem Provider-Erfolg löst keinen automatischen Blind-Retry aus. Endergebnis enthält Inhaltssnapshot und externe Links.
@@ -546,10 +560,11 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 
 - [ ] Signatur am unveränderten Request-Body prüfen und Eventgröße begrenzen.
 - [ ] Zustellung zuerst nachvollziehbar erfassen, anschließend Workspace-spezifische Signale verarbeiten.
+- [ ] Nach dauerhafter Erfassung innerhalb von zehn Sekunden antworten; Anreicherung asynchron ausführen. Fehlgeschlagene GitHub-Zustellungen selbst erkennen und über einen dokumentierten Redelivery-/Abgleichpfad nachholen; automatische Wiederzustellung wird nicht vorausgesetzt.
 - [ ] Push und Release unterstützen; mehrere erlaubte Workspaces dürfen denselben externen Anlass getrennt verarbeiten.
 - [ ] Doppelte Zustellung und Wiederaufnahme atomar deduplizieren.
 
-**Abnahme/Test:** Ein Event erzeugt höchstens ein Signal je berechtigtem Workspace und Ereignis. Eine globale External-ID-Prüfung unterdrückt nicht versehentlich andere Mandanten. Ungültige Signaturen erzeugen keine Domain-Daten.
+**Abnahme/Test:** Ein Event erzeugt höchstens ein Signal je berechtigtem Workspace und Ereignis. Eine globale External-ID-Prüfung unterdrückt nicht versehentlich andere Mandanten. Ungültige Signaturen erzeugen keine Domain-Daten. Ein während des Empfängerausfalls gesendeter Push/Release kann nachträglich ohne doppelte Signale verarbeitet werden.
 
 #### P04.03 – Signale anreichern und verständlich darstellen
 
@@ -571,9 +586,10 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 - [ ] Modellzwecke für Zusammenfassung, Recherche, Entwurf, Planung, Bewertung und Embeddings zentral konfigurieren.
 - [ ] Strukturierte Outputs validieren; unbekannte Felder, ungültige IDs und unvollständige Antworten zurückweisen.
 - [ ] Pro Lauf Tool-Schritte, Zeit, Tokens und Kosten begrenzen; Abbruch und Budgetreservierung umsetzen.
+- [ ] Modell-/Netzwerkaufrufe in begrenzte Actions legen; Workflow-Schritte führen überwiegend IDs und kleine Ergebnisse statt Medienbytes, vollständiger Webseiten oder wiederholter Chatverläufe. SDK- und Workflow-Wiederholungen sowie Agent-Promptreferenzen nach Abschnitt 4.4 koordinieren.
 - [ ] Externe Texte als Daten behandeln; URL-Zugriffe auf zulässige Protokolle beschränken und private Netzwerkziele blockieren.
 
-**Abnahme/Test:** Prompt Injection aus Repository oder Webseite kann keine Secrets auslesen oder fremde Entitäten verändern. Ein Endlos-Tool-Loop stoppt am Budget. Verbindungsfehler führen nicht zu unkontrollierten Modellwechseln oder Mehrfachkosten.
+**Abnahme/Test:** Prompt Injection aus Repository oder Webseite kann keine Secrets auslesen oder fremde Entitäten verändern. Ein Endlos-Tool-Loop stoppt am Budget. Verbindungsfehler führen nicht zu unkontrollierten Modellwechseln oder Mehrfachkosten. Jeder tatsächliche Provider-Versuch wird höchstens einmal verbucht; zusätzliche Versuche benötigen neue Budgetdeckung.
 
 #### P05.02 – Ideen und Content Agent aufbauen
 
@@ -595,7 +611,7 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 - [ ] Tool-Ergebnisse als verlinkte Produktobjekte präsentieren; Vorschläge und ausgeführte Aktionen klar unterscheiden.
 - [ ] Tokenverbrauch, Kosten, Modell-/Promptversion und Fehler im Run erfassen, ohne vertrauliche Inhalte in allgemeine Logs zu kopieren.
 
-**Abnahme/Test:** Reload erhält Gespräch und erzeugte Objekte; abgebrochene Runs lösen keine nachgelagerten Schreibschritte mehr aus; ein Nutzer kann einen anderen Component-Thread nicht über erratene IDs lesen.
+**Abnahme/Test:** Reload erhält Gespräch und erzeugte Objekte; auch eine nach Abbruch fertig werdende Action darf keine neuen Content-/Planungsobjekte anlegen. Ergebnis-, Fehler- und Verbrauchsabgleich bleiben zulässig. Ein Nutzer kann einen anderen Component-Thread nicht über erratene IDs lesen.
 
 ### P06 – Eigenständiger proaktiver Recherche-Agent
 
@@ -618,6 +634,7 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 - [ ] Websuche mit Quellenrückgabe integrieren; Suchanfrage, Sprache und Zeitpunkt protokollieren.
 - [ ] Ergebnismengen, Pagination, Kosten und Antwortgrößen begrenzen; identische zulässige Abfragen kurzzeitig cachen.
 - [ ] Partielle Ergebnisse bei Ausfall einer Quelle erhalten; private oder personalisierte Daten nicht zwischen Workspaces cachen.
+- [ ] Den in P00 geprüften Provider-Lifecycle bereits für gespeicherte X-Recherche anwenden: entfernte/gesperrte Quellen und Löschanfragen nachvollziehbar an Evidenz, Caches, Embeddings und Agent-Kontext weitergeben. Betroffene Inhalte bereinigen, Evidenz ungültig markieren und davon abhängige Vorschläge erneut prüfen; P09.03 konsolidiert diesen Pfad.
 
 **Abnahme/Test:** X-Ausfall blockiert weder Webrecherche noch Publishing; fehlende Trendberechtigung wird sichtbar und niemals als vorhandene Live-Trendfunktion ausgegeben; Cache und Budgetgrenzen werden nachweislich eingehalten.
 
@@ -746,7 +763,7 @@ Die Basismaßnahmen dieses Abschnitts beginnen in den vorausgehenden Phasen. Vor
 **Abhängigkeit:** P01.02, P03.04. **Dateien:** `convex/email/resend.ts`, `convex/operations/notifications.ts`, `src/features/settings/notifications.tsx`; Test `convex/operations/notifications.test.ts`.
 
 - [ ] Verifikation, Reset, Reauth und fehlgeschlagenes Publishing über einen nachvollziehbaren Versandprozess behandeln.
-- [ ] E-Mail und In-App-Hinweise deduplizieren; Häufungen zusammenfassen und Zustellfehler erneut versuchen.
+- [ ] E-Mail und In-App-Hinweise dauerhaft in Dispatch deduplizieren und Häufungen zusammenfassen. Transiente API-/Transportfehler begrenzt wiederholen; permanente Bounces, Beschwerden und gesperrte Empfänger gesondert behandeln. Provider-Annahme, Versand und tatsächliche Zustellung unterscheiden.
 - [ ] Freiwillige Wochenzusammenfassung, Research-Zusammenfassung und Ruhezeiten ergänzen.
 - [ ] Kontorelevante Nachrichten von optionalen Zusammenfassungen und Marketing trennen.
 
@@ -759,7 +776,9 @@ Die Basismaßnahmen dieses Abschnitts beginnen in den vorausgehenden Phasen. Vor
 - [ ] Dateninventar mit Zweck, Besitzer, Provider-Weitergabe, Aufbewahrung und Löschweg erstellen.
 - [ ] Account-/Workspace-Export mit Inhalten, Quellenbezügen, Planungen und relevanten Präferenzen bereitstellen.
 - [ ] Wiederaufnehmbare Löschung bauen: Workspace sperren, Jobs stoppen, Tokens entfernen, Storage, Agent-Memory, Embeddings und abgeleitete Modelle bereinigen.
+- [ ] Abgeschlossene Workflow-Journale und Agent-Komponentendaten ausdrücklich in Retention, Export und Löschung aufnehmen; nicht automatisch verschwindende Komponenten-Daten nach dem Diagnose-/Abgleichfenster bereinigen. Benötigte Publishing-Nachweise zuvor in der Domain sichern.
 - [ ] Temporäre Uploads und finale R2-Objekte mit dem Convex-Löschfortschritt abgleichen; Metadaten nicht vor gesichertem Objektverweis/Löschauftrag entfernen. Bereits fehlende Objekte als idempotenten Erfolg behandeln und verwaiste Dateien nach Unterbrechungen bereinigen.
+- [ ] Provider-seitige Entfernungen und Sperrungen aus P06 ebenso wie Nutzerlöschungen bis in gespeicherte Quellenkopien, Caches und Agent-Kontexte verfolgen; veraltete Evidenz nicht erneut aus Backups oder Wiederholungen aktivieren.
 - [ ] Bei Account-Löschung persönliche Mitgliedschaften und Identität entfernen; gemeinsame Workspaces nicht ohne deren eigene Berechtigung löschen. Für alleinige Eigentümer zuvor Übergabe oder bewusste Workspace-Löschung anbieten.
 - [ ] Provider-seitige Datenkopien, Backups und gegebenenfalls rechtlich aufzubewahrende Abrechnungsdaten getrennt behandeln und verständlich erklären.
 - [ ] Das Entfernen einer Integration von der Löschung bereits öffentlicher Posts unterscheiden.
@@ -815,7 +834,7 @@ Die Basismaßnahmen dieses Abschnitts beginnen in den vorausgehenden Phasen. Vor
 
 **Vorgeschlagene Produktregel:** Neue kostenpflichtige Research-/AI-Läufe stoppen bei fehlender Berechtigung. Bereits freigegebene Termine werden während einer klar kommunizierten Kulanzfrist weiter bedient; danach pausieren sie sichtbar. Umfang und Dauer werden vor GA entschieden, nicht im Code versteckt.
 
-**Abnahme/Test:** Gleichzeitige Agent-Läufe überschreiten das vereinbarte Budget nicht unbemerkt; Retry-Verbrauch wird nicht doppelt belastet; ein Downgrade löscht keine Nutzerinhalte.
+**Abnahme/Test:** Gleichzeitige Agent-Läufe überschreiten das vereinbarte Budget nicht unbemerkt; derselbe Verbrauchsbeleg wird nicht doppelt gebucht, tatsächlich neue Provider-Versuche bleiben als Kosten sichtbar. Eine mögliche Kulanz gegenüber Kunden ist eine gesonderte Billing-Regel; ein Downgrade löscht keine Nutzerinhalte.
 
 #### P10.02 – Stripe und Zahlungslebenszyklus integrieren
 
@@ -824,13 +843,14 @@ Die Basismaßnahmen dieses Abschnitts beginnen in den vorausgehenden Phasen. Vor
 - [ ] Stripe Managed Payments auf tatsächliche Eignung, Länder-/Produktverfügbarkeit und Abrechnungsanforderungen prüfen; das Domainmodell bleibt unabhängig.
 - [ ] Checkout, Vertragsverwaltung und Kündigung integrieren.
 - [ ] Signierte, doppelte und in anderer Reihenfolge eintreffende Webhooks korrekt verarbeiten; regelmäßig Provider-Zustand abgleichen.
+- [ ] Auch außerhalb von Dispatch ausgelöste Kündigungen, Erstattungen und gegebenenfalls Kundendatenlöschungen des gewählten Stripe-Angebots in die Vertragstests aufnehmen.
 - [ ] Zahlungsbelege und Benachrichtigungen über den jeweils zuständigen Provider bereitstellen; Aufgaben für Steuer-/Rechtsprüfung dokumentieren.
 
 **Abnahme/Test:** Doppelte oder verspätete Events stellen keinen alten Tarif wieder her; verfehlte Webhooks sind abgleichbar; eine Kündigung hat den erklärten Effekt auf Rechte und geplante Termine.
 
 #### P10.03 – Marketing, Hilfe und Support produktfähig machen
 
-**Abhängigkeit:** P09.05, P10.01. **Dateien:** öffentliche Seiten unter `src/routes/`, `src/features/help/`, `.docs/runbooks/support.md`.
+**Abhängigkeit:** P09.05, P10.01; vollständige Abnahme zusätzlich nach P10.02. **Dateien:** öffentliche Seiten unter `src/routes/`, `src/features/help/`, `.docs/runbooks/support.md`.
 
 - [ ] Produktseite, Nutzenbeispiele, Preise, Onboarding-Hilfe und häufige Fehlerfälle erstellen.
 - [ ] Rechercheumfang, Freigabekontrolle und heuristische Scores realistisch beschreiben.
@@ -889,7 +909,7 @@ Die Basismaßnahmen dieses Abschnitts beginnen in den vorausgehenden Phasen. Vor
 
 #### P11.04 – Algorithmuswissen kontrolliert aktualisieren
 
-**Abhängigkeit:** P08.01, P11.03. **Dateien:** `convex/intelligence/profileUpdates.ts`, interne Review-Oberfläche, `.docs/runbooks/algorithm-updates.md`.
+**Abhängigkeit:** P08.01–P08.02 für Quellen-/Profilpflege; P11.03 zusätzlich nur bei Änderungen bereits kalibrierter Modelle. **Dateien:** `convex/intelligence/profileUpdates.ts`, interne Review-Oberfläche, `.docs/runbooks/algorithm-updates.md`.
 
 - [ ] Änderungen öffentlich verwendeter Quellen erkennen und als internen Review-Vorschlag erfassen.
 - [ ] Quelländerung, Interpretation und mögliche Auswirkung auf Dispatch-Regeln nebeneinanderstellen.
@@ -1268,6 +1288,7 @@ Die bestätigte Speicheraufteilung reduziert den Convex-Anteil bei Medienablage 
 | OAuth-State und PKCE | Minutenbasierte TTL, nach Verwendung unmittelbar ungültig |
 | Roh-Diffs und vollständige Rechercheantworten | Möglichst nur während Verarbeitung; Diagnoseausnahmen eng begrenzen |
 | Temporäre Agent-Diagnoseartefakte | Beispielsweise sieben Tage, geschützt und konfigurierbar |
+| Workflow-Journale und Komponenten-Metadaten | Explizite Bereinigung nach Diagnose-/Abgleichfenster; dauerhafte Domain-Nachweise zuvor sichern |
 | Bereinigte technische Ereignisse | Beispielsweise 30 Tage; längere Speicherung nur begründet |
 | Nutzerinhalte und ausdrücklich gespeicherte Quellenbezüge | Solange erforderlich und vom Nutzer nicht gelöscht; Provider-Regeln beachten |
 | Agent-Memory, Embeddings und Account-Modelle | Gleicher Lifecycle wie zugrunde liegende private Inhalte |
@@ -1291,7 +1312,7 @@ Diese Werte sind konfigurierbare Produktvorschläge, keine Aussage über gesetzl
 
 Modellinferenz, Speicherung von Plattformdaten, semantische Embeddings, statistische Account-Auswertung und tatsächliches Modelltraining werden als unterschiedliche Verarbeitungsschritte dokumentiert. Eine Erlaubnis für einen Schritt wird nicht für alle anderen unterstellt.
 
-Vor P08/P11 wird insbesondere geprüft, welche X-Daten an welche Modellanbieter gehen dürfen und ob das geplante Kalibrierungs-/Trainingsverfahren mit dem tatsächlichen Vertrag vereinbar ist. Bei Einschränkungen bleibt das Produkt mit zulässiger Inferenz, redaktionellem Nutzerfeedback und erlaubter beschreibender Statistik nutzbar. [X Developer Guidelines](https://docs.x.com/developer-guidelines)
+P00 legt vor der ersten Modellverarbeitung in P05/P06 fest, welche Quelldaten an welche Gateway-/Modellanbieter gehen dürfen und wie Speicherung, Embeddings und Quellenlöschung behandelt werden. P08/P11 prüfen zusätzlich den konkreten Analyse-, Kalibrierungs- oder Trainingszweck. Einschränkungen für Training werden nicht pauschal auf jede Inferenz übertragen; bei Einschränkungen bleiben zulässige Inferenz, redaktionelles Nutzerfeedback und erlaubte beschreibende Statistik nutzbar. [X Developer Guidelines](https://docs.x.com/developer-guidelines)
 
 ## 16. Entscheidungsregister und Risiken
 
@@ -1361,9 +1382,9 @@ Offene Entscheidungen sind keine Ausrede für undefinierte Implementierung: Das 
 
 ### 18.1 Prüfstatus
 
-Am 16. September 2026 wurden offizielle X-Dokumentationen sowie Convex-Agent-/Workflow-Dokumentation recherchiert. Die Bibliotheksrecherche erfolgte über Context7. Es wurden keine authentifizierten Provider-Tests, kostenpflichtigen Testveröffentlichungen oder Backend-Deployments durchgeführt. Dokumentierte Fähigkeiten sind daher noch kein Nachweis für den späteren Dispatch-App-Vertrag.
+Am 16. September 2026 wurde der Gesamtplan abschließend über Context7 und ergänzende offizielle Primärquellen gegengeprüft. Für diesen Abgleich wurden genau drei Context7-CLI-Aufrufe verwendet: Bibliotheksauflösung für Convex sowie Dokumentationsabfragen für `/websites/convex_dev` und `/get-convex/r2`. Die gelieferten Ausschnitte deckten nicht jede Integration vollständig ab; Better Auth, Workflow-Lifecycle, Runtime-Grenzen, Agent-Kompatibilität und externe Provider wurden deshalb zusätzlich anhand ihrer offiziellen Dokumentation geprüft. Vorgehen, Befunde und verbleibende Nachweise stehen im [Prüfbericht](reviews/2026-09-16-context7-plan-review.md).
 
-Better Auth, Requesty, Cloudflare, Stripe, Resend, Rybbit und die späteren Plattformen sind in diesem Plan Architekturentscheidungen beziehungsweise Integrationskandidaten aus den Projektunterlagen. Deren konkrete Versionen, APIs, Verträge und Zugangsvoraussetzungen werden in den zugehörigen Paketen aktuell geprüft.
+Es wurden keine authentifizierten Provider-Tests, Installationen der Produktpakete, kostenpflichtigen Testveröffentlichungen oder Backend-Deployments durchgeführt. Die Grundarchitektur hat im Dokumentationsabgleich keinen widersprechenden Befund ergeben; konkrete Paketkombinationen, App-Berechtigungen, Medienpfade und Kosten benötigen weiterhin die Nachweise aus P00. Rybbit und spätere Plattformadapter wurden nicht vollständig geprüft und bleiben Kandidaten mit eigenen Integrationsprüfungen.
 
 ### 18.2 Für die Planung bestätigte X-Details
 
@@ -1378,16 +1399,36 @@ Better Auth, Requesty, Cloudflare, Stripe, Resend, Rybbit und die späteren Plat
 
 ### 18.3 Für die Planung bestätigte Convex-Details
 
-Convex Agent unterstützt persistente Threads und die Einbindung von Agent-Arbeit in Workflow-Schritte. Die Zuordnung dieser Threads zu Dispatch-Workspaces und Account-Kontext bleibt eine eigene Domain-Verantwortung. [Agent Getting Started](https://github.com/get-convex/agent/blob/main/docs/getting-started.mdx), [Agent Workflows](https://github.com/get-convex/agent/blob/main/docs/workflows.mdx)
+Convex Agent unterstützt persistente Threads und die Einbindung von Agent-Arbeit in Workflow-Schritte. Die Zuordnung dieser Threads zu Dispatch-Workspaces und Account-Kontext bleibt eine eigene Domain-Verantwortung. Nachrichtenreferenzen werden bei Wiederaufnahme stabil gehalten; große Schrittargumente und Ergebnisse werden durch Referenzen ersetzt. Die Versionsmatrix muss Agent, AI SDK und Modellprovider gemeinsam berücksichtigen. [Agent Getting Started](https://docs.convex.dev/agents/getting-started), [Agent Workflows](https://docs.convex.dev/agents/workflows), [Agent-Paketmetadaten, Entwicklungszweig](https://github.com/get-convex/agent/blob/main/package.json)
 
 Convex Workflow unterstützt dauerhafte Schritte, Ereignisse und kontrollierte Wiederholungen. Externe Aufrufe gehören in Actions; der Workflow-Handler muss deterministisch bleiben. Die geprüfte Dokumentation weist auf standardmäßig deaktivierte Action-Retries sowie die Bedeutung kompatibler Workflow-Änderungen hin. Der Plan definiert Wiederholungsregeln deshalb pro Operation und behandelt Workflow-Deployments ausdrücklich. [Workflow-Dokumentation](https://github.com/get-convex/workflow/blob/main/README.md)
+
+Workflow-Abbruch beendet bereits laufende Actions nicht. Abgeschlossene Workflow-Daten werden nicht automatisch aufgeräumt. Daraus folgen die Domain-Sperren in Abschnitt 4.4 und die explizite Komponenten-Retention in P09.03. [Workflow-Lifecycle](https://github.com/get-convex/workflow#canceling-a-workflow)
+
+Die aktuelle Limitübersicht unterscheidet Convex-Runtime-Actions mit 30 Minuten und 64 MiB von Node-Actions mit zehn Minuten und 512 MiB; einzelne Dokumente sind auf 1 MiB begrenzt. Dies sind datierte Prüfwerte, keine dauerhaft festgeschriebenen Produktlimits. P00 prüft die gewählte Runtime insbesondere für Medienvalidierung, Streaming und Upload zu X. [Convex Limits](https://docs.convex.dev/production/state/limits)
 
 ### 18.4 Bestätigte Speicheraufteilung und technische Referenzen
 
 Der Produktinhaber hat Convex für Produktdaten und Abläufe sowie Cloudflare R2 für Medien bestätigt. Die vorhandene Convex-R2-Komponente bietet signierte Uploads und Medienmetadaten in Convex als Integrationsbasis. Versionsbindung, Berechtigungen, Finalisierung und Löschfortschritt bleiben Dispatch-Verantwortung. [Convex R2 Component](https://github.com/get-convex/r2)
 
+Der `onUpload`-Hook wird im vom Client ausgelösten Metadatenabgleich ausgeführt; sein Aufruf bestätigt keine Inhaltsvalidierung. Signierte R2-URLs sind bis zum Ablauf wiederverwendbar und gelten für die S3-Domain, nicht für beliebige Custom Domains. Deshalb bleiben temporäre und finale Objekte getrennt; öffentliche CDN-Auslieferung ist keine Voraussetzung für private Vorschauen. [R2-Komponente](https://github.com/get-convex/r2#uploading-files), [R2 Presigned URLs](https://developers.cloudflare.com/r2/api/s3/presigned-urls/)
+
 R2 Standard berechnet Speicher und Objektoperationen mit eigenen Freikontingenten und ohne R2-Egress-Gebühren. Diese Aussage ersetzt keine Gesamtkostenmessung des Publishing-Pfads über Convex. [R2 Pricing](https://developers.cloudflare.com/r2/pricing/)
 
-### 18.5 Vor Beginn der Umsetzung
+### 18.5 Authentifizierung und Frontend
+
+Der offizielle React/Vite-Leitfaden für Convex + Better Auth dokumentiert eine gepinnte Better-Auth-Version, die Convex-Komponente, Cross-Domain-Plugins auf beiden Seiten, CORS und einen passenden React-Provider. OAuth-Callbacks verwenden die Auth-/Convex-Site-Domain. Diese Schritte sind jetzt Bestandteil von P01.02. [React/Vite-Integration](https://labs.convex.dev/better-auth/framework-guides/react)
+
+Cloudflare dokumentiert einen SPA-Modus für statische Assets. Der gewählte Hosting-Pfad muss Deep Links und Auth-Rückkehr unterstützen; P01.01 prüft dies über die späteren Domains. [Cloudflare SPA-Routing](https://developers.cloudflare.com/workers/static-assets/routing/single-page-application/)
+
+### 18.6 Ergänzende Provider-Prüfung
+
+GitHub bestätigt fehlende automatische Wiederzustellung und ein zehnsekündiges Antwortfenster; P04.02 ergänzt deshalb dauerhafte schnelle Annahme und eigene Recovery. [Fehlgeschlagene Zustellungen](https://docs.github.com/en/webhooks/using-webhooks/handling-failed-webhook-deliveries), [Webhook-Empfehlungen](https://docs.github.com/en/webhooks/using-webhooks/best-practices-for-using-webhooks)
+
+Requesty dokumentiert einen AI-SDK-Provider, Embeddings und Websuche, garantiert aber keine Kompatibilität jedes Katalogmodells. P00 prüft die konkrete Kombination einschließlich Quellenmetadaten. [AI SDK](https://docs.requesty.ai/frameworks/vercel-ai-sdk), [Embeddings](https://docs.requesty.ai/api-reference/endpoint/embeddings-create), [Websuche](https://docs.requesty.ai/features/web-search)
+
+Resend unterscheidet Annahme, Zustellung und permanente Fehler; Provider-Idempotenz ist zeitlich begrenzt. P09.02 hält daher eigene Versandnachweise und wiederholt nur geeignete Fehler. Stripe Managed Payments bleibt zugangsabhängig; Änderungen außerhalb von Dispatch werden in P10.02 berücksichtigt. [Resend-Ereignisse](https://resend.com/docs/webhooks/event-types), [Resend-Idempotenz](https://resend.com/docs/dashboard/emails/idempotency-keys), [Stripe-Lebenszyklus](https://docs.stripe.com/payments/managed-payments/how-it-works)
+
+### 18.7 Vor Beginn der Umsetzung
 
 Die erste Umsetzungsentscheidung ist die Freigabe von P00 und des hier beschriebenen Release-Zuschnitts. Danach werden die ersten Backlog-Tickets angelegt und Provider-Zugänge geprüft. Es wird nicht direkt der gesamte Plan parallel implementiert. Jede spätere Release-Stufe erhält eine konkrete, überprüfbare Abnahme anhand ihrer Nutzerabläufe und Betriebsanforderungen.
