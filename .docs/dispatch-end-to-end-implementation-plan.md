@@ -4,12 +4,14 @@
 
 **Ziel:** Dispatch als verlässliches Content-System entwickeln, das eigene Arbeit und aktuelle Themen erkennt, daraus persönliche Inhalte und Kalenderpläne erstellt, nach menschlicher Freigabe veröffentlicht und aus den Ergebnissen des jeweiligen Accounts lernt.
 
-**Architektur:** Eine React-Webanwendung auf Cloudflare, Convex als zentrales Backend und Zustandsspeicher. Ein Content Agent und ein eigenständiger Recherche-Agent arbeiten über begrenzte Werkzeuge und gemeinsame Domain-APIs; dauerhafte Workflows übernehmen Integrationen, Zeitsteuerung und externe Schreiboperationen.
+**Architektur:** Eine React-Webanwendung auf Cloudflare, Convex als zentrales Backend für Produktdaten und Abläufe sowie Cloudflare R2 für binäre Medien. Medienmetadaten, Berechtigungen und Inhaltsreferenzen bleiben in Convex. Ein Content Agent und ein eigenständiger Recherche-Agent arbeiten über begrenzte Werkzeuge und gemeinsame Domain-APIs; dauerhafte Workflows übernehmen Integrationen, Zeitsteuerung und externe Schreiboperationen.
 
-**Geplanter Stack:** Vite, React, TypeScript, TanStack Router, Tailwind CSS, shadcn/ui, Convex Cloud, Better Auth, Convex Agent und Workflows, Vercel AI SDK, Requesty, GitHub App, X API, Resend, Rybbit, Stripe; weitere Plattformen und Quellen folgen über Adapter.
+**Geplanter Stack:** Vite, React, TypeScript, TanStack Router, Tailwind CSS, shadcn/ui, Convex Cloud, Cloudflare R2, Better Auth, Convex Agent und Workflows, Vercel AI SDK, Requesty, GitHub App, X API, Resend, Rybbit, Stripe; weitere Plattformen und Quellen folgen über Adapter.
 
 **Stand:** 16. September 2026  
 **Status:** Planungsentwurf zur gemeinsamen Freigabe; keine Implementierung beauftragt oder begonnen  
+**Bestätigte Speicherentscheidung:** Convex für Produktdaten und Abläufe, Cloudflare R2 für Medien; siehe [ADR-001](decisions/001-convex-domain-r2-media.md)
+
 **Planungshorizont:** Technische Grundlage → Dispatch-MVP → private Beta → kommerzielle Version → lernendes, teamfähiges und kanalübergreifendes Endprodukt  
 **Sprache:** Deutsche Produktplanung; technische Bezeichner auf Englisch
 
@@ -24,6 +26,7 @@
 3. [Domain-Schema](schema.ts): Entwurf der ursprünglichen V1-Entitäten.
 4. [X Algorithm Intelligence](Dispatch_X_Algorithm_Intelligence.md): erklärbare Entwurfsbewertung, Performance-Feedback und Account Intelligence.
 5. Präzisierung des Produktinhabers: Ein eigenständiger Recherche-Agent erkennt über X-API und Websuche proaktiv Trends und plant daraus zusätzliche Posts für den persönlichen Account. Diese Quelle ist gleichrangiger Teil des Produktkerns neben den Signalen aus eigener Arbeit.
+6. Bestätigte Architekturentscheidung des Produktinhabers: Convex für Produktdaten und Abläufe, Cloudflare R2 für Medien. [ADR-001](decisions/001-convex-domain-r2-media.md) ersetzt die ursprünglichen Convex-Storage-Vorgaben für Medien in PRD §11.12, V1-Plan Ticket 3.1 und dem Schema-Entwurf. Die Originaldateien bleiben historische Grundlagen; insbesondere darf deren `mediaAssets.storageId` nicht unverändert in die Implementierung übernommen werden.
 
 Dieser Plan führt die Unterlagen zusammen. Er ersetzt nach Freigabe den bisherigen V1-Plan als übergreifende Reihenfolge; die Originaldateien bleiben als Spezifikationsquellen erhalten. Widersprüche werden hier ausdrücklich aufgelöst. Neue Entscheidungen sind Planungsvorschläge und keine stillschweigend bestätigten Produktwünsche.
 
@@ -46,6 +49,7 @@ Es werden keine bestehenden Komponenten, Tests, Deployments oder Provider-Zugän
 | Vollautonomie | Freiwillige, eingeschränkte Endprodukt-Funktion mit eigener Freigabe | Standard bleibt menschliche Inhaltsfreigabe |
 | Teams und Plattformen | Strukturell vorbereitet, nach bewährtem Einzelanwenderprodukt ausgebaut | Kein umfangreicher Team- oder Plattformapparat vor dem Kernnutzen |
 | Billing | Nach nutzbarem Kernloop, vor kommerzieller Veröffentlichung | Private Alpha benötigt keine echte Zahlungsabwicklung |
+| Medienspeicher | Vom Produktinhaber bestätigt: Cloudflare R2 für Bilder, GIFs und Videos; Metadaten in Convex | Kein zweites Business-Backend; gezielte Anpassung von Upload, Asset-Modell, Publishing und Löschung |
 
 ### 1.4 Arbeitsweise und Backlog
 
@@ -130,7 +134,8 @@ Bildgenerierung, Video, weitere Quellen und zusätzliche soziale Plattformen bek
 
 ### 4.1 Grundentscheidungen
 
-- **Convex ist die einzige Quelle des Business-Zustands.** Cloudflare hostet die Oberfläche und gegebenenfalls eine klar begrenzte technische Integrationsbrücke, sofern ein dokumentierter Provider-Zwang dies verlangt.
+- **Convex ist die einzige Quelle des Business-Zustands.** Cloudflare hostet die Oberfläche und über R2 die binären Medien. Berechtigungen, Asset-Status, Agenten und Workflows bleiben in Convex; eine zusätzliche Worker-Brücke wird nur bei einem konkret nachgewiesenen Bedarf eingeführt.
+- **Medienbytes und Medienmetadaten sind getrennt.** Autorisierte Browser-Uploads und Vorschauabrufe laufen möglichst direkt über Cloudflare R2. Convex speichert stabile Objektverweise und erteilt begrenzte Zugriffe; signierte URLs sind kurzlebige Transportmittel und keine dauerhaften Inhaltsreferenzen.
 - **Workspaces sind Mandanten.** Authentifizierung wird serverseitig in einen Domain-User übersetzt; Rollen und jede referenzierte Entität werden im Workspace geprüft.
 - **Agenten entscheiden innerhalb begrenzter Aufgaben.** Sie erhalten keine frei wählbare `workspaceId` als Autorität und keine allgemeinen Datenbank-Schreibwerkzeuge.
 - **Workflows führen aus.** Zeitplanung, Wiederaufnahme, Deduplizierung, Fehlerbehandlung und externe Schreiboperationen werden deterministisch gesteuert.
@@ -181,7 +186,7 @@ Vor jedem kostenpflichtigen Schritt werden Mittel reserviert; danach werden Verb
 | `convex/planning/` | Kalenderkontext, Vorschläge, Konflikte und Annahme |
 | `convex/intelligence/`, `convex/performance/` | Profile, Predictions, Snapshots und Kalibrierung |
 | `convex/billing/`, `convex/operations/` | Entitlements, Usage, Ereignisse, Export und Löschung |
-| `convex/team/`, `convex/media/`, `convex/email/` | Zusammenarbeit, Storage und Benachrichtigungen |
+| `convex/team/`, `convex/media/`, `convex/email/` | Zusammenarbeit, R2-Anbindung/Asset-Metadaten und Benachrichtigungen |
 | `tests/e2e/`, `tests/fixtures/`, `tests/evals/` | Nutzerflüsse, bereinigte Provider-Beispiele und AI-Referenzfälle |
 | `.docs/decisions/`, `.docs/runbooks/` | Entscheidungen, Betriebsanleitungen und Nachweise |
 
@@ -202,6 +207,7 @@ Sie werden fachlich validiert und ergänzt. Insbesondere reicht ein Index allein
 | Persönlicher Kontext | `workspacePreferences`, `accountProfiles`, `projectContexts` | Sprache, Zeitzone, Zielgruppe, Ziele, Ton, Themen, Ausschlüsse; P01 |
 | Integration | `oauthSessions`, `webhookDeliveries`, `accountCapabilities` | State/PKCE-Lebensdauer, Zustellung und Verarbeitung getrennt, erlaubte Provider-Funktionen; P01–P04 |
 | Inhaltsfreigabe | `draftApprovals` | Workspace, Draft, Version, Account, Person, Zeitpunkt, Widerruf; P02 |
+| Medien | Erweiterte `mediaAssets`, `mediaUploadSessions` | R2-Bucket-/Objektverweis statt `_storage`-ID, validierter Inhalt, Upload-/Löschstatus und Workspace-Zuordnung; P02 |
 | Publishing | `publishAttempts`, `publishedPostItems` | Versuch-ID, Operation-ID, Einzelelement, externe ID, Ergebnis und Abgleich; P03 |
 | Agent-Kontext | `agentConversations`, erweiterte `agentRuns` | Zuordnung von Component-Thread zu Workspace, Agent, Budget und Version; P05 |
 | Redaktionelles Feedback | `contentFeedback` | Annahme, Ablehnung, begründete Korrektur, Versionsbezug; P05 |
@@ -257,6 +263,16 @@ Plan: `proposed → partially_accepted | accepted | rejected | expired`. Jedes P
 Große GitHub-Diffs, vollständige fremde Webseiten und rohe Provider-Antworten gehören nicht dauerhaft in gewöhnliche Domain-Dokumente. Gespeichert werden zweckgebundene Zusammenfassungen, Quellenkennungen, Zeitstempel und begrenzte Evidenz. Benötigte Diagnoseartefakte erhalten begrenzten Zugriff und kurze Aufbewahrung.
 
 Private Repository-Inhalte, Prompts und Post-Texte dürfen nicht an Produktanalytics oder Session-Replay gelangen. Externe Inhalte sind untrusted input: Sie dürfen keine Agent-Berechtigung, Systemanweisung oder Workspace-Grenze verändern.
+
+### 5.7 Medienvertrag für Convex und Cloudflare R2
+
+`mediaAssets` bleibt eine Convex-Domain-Entität. Anstelle von `storageId: Id<"_storage">` sind `storageProvider = "r2"`, ein serverseitig aufgelöster Bucket-Verweis und ein unverwechselbarer finaler Objektschlüssel vorgesehen. Dazu kommen Workspace, validierter MIME-Typ, Größe, Dimensionen, geprüfte Inhaltsprüfsumme und Lifecycle-Status. Der finale Objektverweis kann vor Upload-Abschluss fehlen; nur ein Asset im Status `ready` darf freigegeben oder veröffentlicht werden.
+
+Geplanter Lifecycle: `uploading → validating → ready | failed`; Löschung erfolgt über `deleting → deleted`. `mediaUploadSessions` binden die temporäre Uploadfläche, zulässige Grenzen, Ablaufzeit und den idempotenten Abschluss an den berechtigten Workspace.
+
+Direkte Uploads schreiben ausschließlich in einen temporären Bereich. Die Finalisierung erstellt ein neues finales Objekt, für das keine Browser-Schreibberechtigung existiert, und prüft die tatsächlich dort gespeicherten Bytes. Erst nach dieser Prüfung darf das Asset `ready` werden. Parallele Abschlussversuche dürfen nicht mehrere sichtbare Assets erzeugen. Ein noch gültiger Upload-Link darf keinen bereits freigegebenen Inhalt überschreiben. Reguläre Produktfunktionen überschreiben finale Objekte nicht; Änderungen erzeugen ein neues Asset und eine neue Entwurfsversion. ETag und Inhaltsprüfsumme werden nicht ungeprüft gleichgesetzt.
+
+R2 und Convex bilden keine gemeinsame Transaktion. Upload-Abschluss, Metadatenspeicherung und Löschung benötigen wiederholbare Schritte, einen gespeicherten Fortschritt und Aufräum-/Abgleichjobs. Während `deleting` sind neue Referenzen und Publishing-Claims gesperrt. Normale Asset-Löschung respektiert bestehende Referenzen; eine ausdrücklich autorisierte Workspace-Löschung beendet zunächst die betroffenen Abläufe und sperrt neue Finalisierungen. Löschmarkierungen bleiben bis zur Nachbereinigung nach Ablauf bereits erteilter Uploadberechtigungen erhalten, damit erneut hochgeladene temporäre Objekte nicht zurückbleiben.
 
 ## 6. Recherche, Trendqualität und Kalenderplanung
 
@@ -363,6 +379,7 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 - [ ] GitHub-App-Berechtigungen auf ausgewählte Repositories und notwendige Events begrenzen.
 - [ ] Requesty-Modellzugang, strukturierte Ausgaben, Tool Calls, Embeddings und Websuche getrennt prüfen; bei fehlender nativer Suche einen austauschbaren Suchadapter festlegen.
 - [ ] Convex-Komponenten, Better-Auth-Integration, Ausführungsgrenzen und Cloudflare-Deployment anhand aktueller Dokumentation validieren.
+- [ ] Cloudflare-R2-Zugänge, private Buckets je Umgebung, direkte autorisierte Uploads, Finalisierung und Abruf durch den X-Publisher nachweisen; Medienverkehr und R2-Operationen in die Kostenmessung aufnehmen.
 - [ ] Kosten pro aktivem Workspace für wenig, typische und hohe Nutzung mit gemessenen Einheiten modellieren; fehlende Tarife als Prüfpunkt markieren.
 
 **Abnahme:** Eine datierte Capability-Matrix unterscheidet technisch dokumentiert, im eigenen Zugang getestet und nicht verfügbar. Jede Pflichtfunktion hat einen nutzbaren Pfad oder einen ausdrücklich beschlossenen reduzierten Umfang. Keine Veröffentlichung eines Recherche-Versprechens ohne passenden Zugang.
@@ -449,16 +466,19 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 
 **Abnahme/Test:** Eine freigegebene Version V1 erlaubt nicht das Senden von V2. Accountwechsel und Medienänderung erfordern neue Freigabe. Widerruf vor Publishing-Claim verhindert die Ausführung.
 
-#### P02.03 – Medienverwaltung mit Inhaltsbindung umsetzen
+#### P02.03 – R2-Medienverwaltung mit Inhaltsbindung umsetzen
 
-**Abhängigkeit:** P02.01. **Dateien:** `convex/media/assets.ts`, `convex/media/validation.ts`, `src/features/drafts/media-uploader.tsx`; Test `convex/media/assets.test.ts`.
+**Abhängigkeit:** P02.01, R2-Durchstich aus P00.01. **Dateien:** `convex/media/assets.ts`, `convex/media/r2.ts`, `convex/media/uploads.ts`, `convex/media/validation.ts`, `convex/media/cleanup.ts`, `src/features/drafts/media-uploader.tsx`; Tests `convex/media/assets.test.ts`, `convex/media/uploads.test.ts`.
 
-- [ ] Berechtigte Uploads, Dateityp, Dateigröße, tatsächlichen Medientyp, Dimensionen und Alt-Text prüfen.
+- [ ] Convex-Domain-ID und R2-Objektverweis trennen; den Medienvertrag aus Abschnitt 5.7 implementieren. Die Convex-R2-Komponente als Integrationshilfe auf diese Anforderungen prüfen.
+- [ ] Nach Workspace- und Kontingentprüfung begrenzte Uploadberechtigungen ausgeben; Medienbytes direkt in den temporären R2-Bereich übertragen und den final übernommenen Inhalt serverseitig prüfen.
+- [ ] Dateityp, Dateigröße, tatsächlichen Medientyp, Dimensionen, Inhaltsprüfsumme und Alt-Text validieren; Abschluss und Wiederholung dürfen keinen doppelten oder nachträglich veränderbaren finalen Inhalt erzeugen.
 - [ ] Bilder, GIFs und unterstützte Videos gemäß tatsächlicher X-Fähigkeiten verarbeiten; asynchrone Provider-Verarbeitung einplanen.
 - [ ] Medienreferenzen in Versionen fixieren, Austausch als neue Version behandeln.
-- [ ] Nicht referenzierte Uploads bereinigen und referenzierte Assets vor versehentlichem Löschen schützen.
+- [ ] Autorisierte Vorschauen direkt aus R2 ausliefern; abgelaufene Lese-URLs bei Bedarf erneuern, statt sie dauerhaft im Draft zu speichern.
+- [ ] Nicht abgeschlossene Uploads und verwaiste R2-Objekte bereinigen; referenzierte Assets und während Finalisierung/Löschung laufende Vorgänge durch Status-/Referenzprüfungen schützen.
 
-**Abnahme/Test:** Fremde Storage-IDs werden abgelehnt; ein ersetztes Asset ändert keine geplante Version; unzulässige Formate scheitern vor der Planung; große Uploads besitzen Fortschritt und Abbruch.
+**Abnahme/Test:** Fremde Asset-IDs und clientseitig untergeschobene Objektschlüssel werden abgelehnt. Eine weiterhin gültige Upload-URL kann keinen finalisierten Inhalt überschreiben. Nur geprüfte `ready`-Assets sind freigabefähig; ein ersetztes Asset ändert keine geplante Version. Unterbrechung zwischen R2-Operation und Convex-Update ist wiederaufnehmbar; große Uploads besitzen Fortschritt und Abbruch.
 
 ### P03 – X-Verbindung, zuverlässiges Publishing und Kalender
 
@@ -489,6 +509,7 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 **Abhängigkeit:** P03.02, P02.03. **Dateien:** `convex/publishing/workflows.ts`, `convex/publishing/attempts.ts`, `convex/publishing/reconcile.ts`, `convex/integrations/x/publish.ts`; Test `convex/publishing/workflows.test.ts`.
 
 - [ ] Medien vorbereiten, Verarbeitung abwarten, exakte Version laden und Account unmittelbar vor Versand validieren.
+- [ ] Finalisierte R2-Assets unmittelbar vor dem X-Upload autorisiert abrufen; Objektidentität und erwarteten Inhalt prüfen. Kurzlebige Abruf-URLs bei Wiederaufnahme neu erzeugen. Notwendiger Transfer über eine Convex Action bleibt in der Kostenrechnung enthalten und wird nicht als durch R2 automatisch kostenlos behandelt.
 - [ ] Jeden Thread-Beitrag als eigene nachvollziehbare Operation veröffentlichen und die externe ID unmittelbar persistieren.
 - [ ] Wiederholbare, permanente und unklare Fehler trennen; begrenzte Backoffs mit Provider-Hinweisen verwenden.
 - [ ] Sichtbare Wiederaufnahme für Teilthreads sowie einen Abgleichpfad für unklare Schreibausgänge implementieren.
@@ -738,6 +759,7 @@ Die Basismaßnahmen dieses Abschnitts beginnen in den vorausgehenden Phasen. Vor
 - [ ] Dateninventar mit Zweck, Besitzer, Provider-Weitergabe, Aufbewahrung und Löschweg erstellen.
 - [ ] Account-/Workspace-Export mit Inhalten, Quellenbezügen, Planungen und relevanten Präferenzen bereitstellen.
 - [ ] Wiederaufnehmbare Löschung bauen: Workspace sperren, Jobs stoppen, Tokens entfernen, Storage, Agent-Memory, Embeddings und abgeleitete Modelle bereinigen.
+- [ ] Temporäre Uploads und finale R2-Objekte mit dem Convex-Löschfortschritt abgleichen; Metadaten nicht vor gesichertem Objektverweis/Löschauftrag entfernen. Bereits fehlende Objekte als idempotenten Erfolg behandeln und verwaiste Dateien nach Unterbrechungen bereinigen.
 - [ ] Bei Account-Löschung persönliche Mitgliedschaften und Identität entfernen; gemeinsame Workspaces nicht ohne deren eigene Berechtigung löschen. Für alleinige Eigentümer zuvor Übergabe oder bewusste Workspace-Löschung anbieten.
 - [ ] Provider-seitige Datenkopien, Backups und gegebenenfalls rechtlich aufzubewahrende Abrechnungsdaten getrennt behandeln und verständlich erklären.
 - [ ] Das Entfernen einer Integration von der Löschung bereits öffentlicher Posts unterscheiden.
@@ -772,6 +794,7 @@ Die Basismaßnahmen dieses Abschnitts beginnen in den vorausgehenden Phasen. Vor
 **Abhängigkeit:** P01.01 und alle produktiven Module. **Dateien:** Cloudflare-Konfiguration, CI-Konfiguration, `.docs/runbooks/deployment.md`, `.docs/runbooks/recovery.md`, `tests/e2e/release-smoke.spec.ts`.
 
 - [ ] Staging und Produktion mit getrennten Secrets, Domains, OAuth-Callbacks und Webhook-Zielen ausrollen.
+- [ ] R2-Buckets, Zugangsdaten, CORS-Regeln und Lifecycle-Konfiguration je Umgebung trennen. Restore muss Convex-Asset-Referenzen mit vorhandenen R2-Objekten abgleichen; ein Datenbank-Backup enthält nicht automatisch die Medienbytes.
 - [ ] Additive Schemaänderungen, wiederaufnehmbare Backfills und spätere Entfernung alter Felder als Migrationsmuster festlegen.
 - [ ] Laufende Workflow-Versionen bei Deployments berücksichtigen: alte Läufe kontrolliert auslaufen lassen oder nachvollziehbar migrieren.
 - [ ] Backup-/Exportfähigkeit, Restore und anschließenden Abgleich externer Veröffentlichungen praktisch prüfen.
@@ -1236,6 +1259,8 @@ Provider-Limits für Publishing, Recherche, GitHub und Modelle bleiben getrennt.
 
 Websuche, X-Reads, Medien und Modelle werden mit realen Kostenannahmen gemessen; Retry, Cache, Refresh und fehlgeschlagene Versuche gehören in die Kalkulation. Preise werden nicht als unveränderliche Konstanten in Domain-Code eingebaut.
 
+Die bestätigte Speicheraufteilung reduziert den Convex-Anteil bei Medienablage und direkter Auslieferung. R2-Speicher und Objektoperationen sowie notwendige Convex-Ausführung beziehungsweise ausgehender Transfer beim Publishing bleiben gesonderte Kostenpositionen. Es gibt keine vollständige zweite Ablage aller Medien in Convex Storage.
+
 ### 15.2 Datenaufbewahrung als vorgeschlagene Anfangspolitik
 
 | Datenklasse | Vorgeschlagene Regel; vor öffentlichem Betrieb fachlich prüfen |
@@ -1290,6 +1315,7 @@ Vor P08/P11 wird insbesondere geprüft, welche X-Daten an welche Modellanbieter 
 | D14 | Endprodukt-Portfolio | Mindestens ein zusätzlicher Kanal; weitere Quellen/Medien anhand tatsächlicher Nachfrage | Vor P14/P15 |
 | D15 | Betriebsziele, RPO/RTO und Retention | Nach Pilot-/Restore-Messung verbindlich festlegen | Vor GA |
 | D16 | Quote-Posts und spezielle X-Fähigkeiten | Nicht Teil des normalen Publishing-Versprechens, solange realer Zugang nicht bestätigt | P00.01/P03 |
+| D17 | Hosting von Produktdaten und Medien | **Bestätigt:** Convex für Produktdaten, Metadaten und Abläufe; Cloudflare R2 für Medienbytes. [ADR-001](decisions/001-convex-domain-r2-media.md) | Vom Produktinhaber entschieden; Umsetzung P02.03/P03.03/P09 |
 
 Offene Entscheidungen sind keine Ausrede für undefinierte Implementierung: Das jeweilige Paket darf seinen betroffenen Teil erst nach einer dokumentierten Entscheidung beginnen. Unabhängige Arbeit läuft weiter.
 
@@ -1328,7 +1354,7 @@ Offene Entscheidungen sind keine Ausrede für undefinierte Implementierung: Das 
 | X Intelligence 1–6: Profile, Teil-Scores und Optimierung | Abschnitt 7, P08.01–P08.03 |
 | X Intelligence 7–10: Snapshots, Modelle, Kalibrierung und weitere Plattformen | P08.04, P11–P12, P14 |
 | X Intelligence 11–12: Transparenz, keine Garantie, Profile-Review und Akzeptanz | P08, P11.04, Abschnitt 12 |
-| Ursprüngliches Schema | Entitäten bleiben Ausgangsbasis; fehlende Modelle und Invarianten in Abschnitt 5 |
+| Ursprüngliches Schema | Entitäten bleiben Ausgangsbasis; fehlende Modelle und Invarianten in Abschnitt 5; `_storage`-Bindung der Medien wird gemäß bestätigter R2-Entscheidung ersetzt |
 | Ursprünglicher V1-Plan | Manuelles Publishing zuerst bleibt; Research, Freigabe, Recovery, Lifecycle und Endprodukt-Ausbau werden ergänzt |
 
 ## 18. Aktueller Dokumentationsabgleich und Quellen
@@ -1356,6 +1382,12 @@ Convex Agent unterstützt persistente Threads und die Einbindung von Agent-Arbei
 
 Convex Workflow unterstützt dauerhafte Schritte, Ereignisse und kontrollierte Wiederholungen. Externe Aufrufe gehören in Actions; der Workflow-Handler muss deterministisch bleiben. Die geprüfte Dokumentation weist auf standardmäßig deaktivierte Action-Retries sowie die Bedeutung kompatibler Workflow-Änderungen hin. Der Plan definiert Wiederholungsregeln deshalb pro Operation und behandelt Workflow-Deployments ausdrücklich. [Workflow-Dokumentation](https://github.com/get-convex/workflow/blob/main/README.md)
 
-### 18.4 Vor Beginn der Umsetzung
+### 18.4 Bestätigte Speicheraufteilung und technische Referenzen
+
+Der Produktinhaber hat Convex für Produktdaten und Abläufe sowie Cloudflare R2 für Medien bestätigt. Die vorhandene Convex-R2-Komponente bietet signierte Uploads und Medienmetadaten in Convex als Integrationsbasis. Versionsbindung, Berechtigungen, Finalisierung und Löschfortschritt bleiben Dispatch-Verantwortung. [Convex R2 Component](https://github.com/get-convex/r2)
+
+R2 Standard berechnet Speicher und Objektoperationen mit eigenen Freikontingenten und ohne R2-Egress-Gebühren. Diese Aussage ersetzt keine Gesamtkostenmessung des Publishing-Pfads über Convex. [R2 Pricing](https://developers.cloudflare.com/r2/pricing/)
+
+### 18.5 Vor Beginn der Umsetzung
 
 Die erste Umsetzungsentscheidung ist die Freigabe von P00 und des hier beschriebenen Release-Zuschnitts. Danach werden die ersten Backlog-Tickets angelegt und Provider-Zugänge geprüft. Es wird nicht direkt der gesamte Plan parallel implementiert. Jede spätere Release-Stufe erhält eine konkrete, überprüfbare Abnahme anhand ihrer Nutzerabläufe und Betriebsanforderungen.
