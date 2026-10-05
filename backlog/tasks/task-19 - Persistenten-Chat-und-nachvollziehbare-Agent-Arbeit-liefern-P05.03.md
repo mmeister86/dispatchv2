@@ -4,7 +4,7 @@ title: Persistenten Chat und nachvollziehbare Agent-Arbeit liefern (P05.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 17:51'
+updated_date: '2026-10-05 18:06'
 labels:
   - p05
   - r2
@@ -71,4 +71,6 @@ Prerequisite16 now independently reviewed5ae8da3:re-SPEC66 registered+11 own and
 Backend intermediate29558d340a892c9754616638125a5d86c8c608ba committed onmaster, sourcebaseline7f015fe (sameproduction asauthorizedd74a262; interveningrootdocs only). Exact11 source/contract/generated files scoped;360 fullUnit/25files including20actualChat cases and splitexistingToolboundary, Typecheck/Prettier/diff PASS. Nativeactualcomponent histories/cursor membership, stop/lateusage/stableprompt continuation, heldunknownstepbarrier and source/hash/actor/proof/credential withdrawal projections verified; malformedToolJSON rejected beforeSDKparser/logger. Contract labels UI/finalchecks/SPEC/QUALITY pending. Sourcecommitwindowclosed/indexempty, only UI/package/browserWIP remains. Implementer reports actualChatbrowser PASS; finalIdeasobjectroute/fullchecks/Dev/freeze and freshindependent reviews still pending. NoAC/Done/live/provideractivation accepted fromintermediate.
 
 Finalproductionfreeze f6cb20e64c380c9c90d199b0f189d1b5df2a4f1a onmaster, backend29558d3/sourceBASE7f015fe; rootmetadata-onlya2f2e6d withinrange. Full361/25 Unit at19:49:20 including21chat, typecheck/lint/build/bundle/diff, officialcodegen and actualChat+Ideas(olderexactobjectroute)browser PASS; existingEUDev ready19:49:50/4.39s afterfinalcorrection. Native0.6.4 sameorder successfultoolresponses are included; actualcorrectedgap is domainreceipt committedbeforeSDKstores Toolresponse/stop. PhysicalSSEresume test verifies realexistingIdea receipt inprompt, CreateTool absent, one savedinput/oneIdea. Source/indexclean/windowclosed, currentuser5173listenerPID48521 preserved (changedexternally from62707). FreshindependentSPEC now reviewingactualfullunit; QUALITY onlyafterPASS. Actualtwo stores conversations/chatOperations +optionalrunrefs/executionFinishedAt/nativeactive streamdeltas; newchatpurpose notimplicitdraftgrant. NoAC/Done/manual/live/paid/private/provideractivation fromfreeze.
+
+Fresh independent SPEC PASS for complete 7f015fe..f6cb20e unit, no actionable finding. Executed361 registered/25 files,24 own actual-component/physical-transport cases,8 actual installed-native-hook browser checks using captured native deltas, both affected Agent/Ideas browser fixtures, typecheck and diff check. /tmp/dispatch-chat-spec-receipt.md separates actual evidence, harness-only corrections and synthetic/manual limits. No production fixes were required. Fresh separate QUALITY now running; AC remains unchecked until both reviews pass. No grant/policy activation, live paid/private effect, deployment by reviewer or Done transition.
 <!-- SECTION:NOTES:END -->

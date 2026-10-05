@@ -4,7 +4,7 @@ title: 'Research-Profile, Zeitsteuerung und Aufträge bauen (P06.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 17:29'
+updated_date: '2026-10-05 18:00'
 labels:
   - p06
   - r2
@@ -50,6 +50,17 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Read the actual reviewed TASK16/17/18/19 contracts, Research UI/native code map and formal D02 recurrence rules.
+2. Implement durable real profiles and immutable versions, bounded unified orders and native schedule generation/idempotence; keep downstream research unavailable until TASK21/22.
+3. Wire real profile/history controls with awaited commands, preserved error/CAS buffers and explicit Demo separation; expose actual configuration and status.
+4. Verify current lifecycle/source/budget boundaries, concurrent admission, snapshot independence and saved-IANA DST recurrence with meaningful actual-component/UI checks.
+5. Run full checks and scoped master commits, synchronize existing EU Dev, freeze source for fresh SPEC then separate QUALITY.
+6. Record code evidence and check only proven criteria; keep integrated research and human/live acceptance separate and status In Progress.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
