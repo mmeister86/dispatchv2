@@ -1,3 +1,4 @@
+import { conversationAuthority } from "./conversationAccess";
 import { currentContext } from "../integrations/github/contextAccess";
 import { ConvexError, v } from "convex/values";
 import { createThread, saveMessage } from "@convex-dev/agent";
@@ -134,6 +135,7 @@ export async function active(
   )
     throw new ConvexError("MODEL_RUN_INACTIVE");
   await authority(ctx, r);
+  if (r.conversationId) await conversationAuthority(ctx, r);
   const contentRequest = await ctx.db
     .query("contentRequests")
     .withIndex("by_runId", (q) => q.eq("runId", runId))
@@ -200,6 +202,9 @@ export async function createRun(
     prompt: string;
     promptVersion: string;
     sources: Doc<"agentRuns">["sources"];
+    conversationId?: Id<"conversations">;
+    chatOperationId?: Id<"chatOperations">;
+    existingPrompt?: { threadId: string; messageId: string };
   },
 ) {
   const p = await policy(ctx);
@@ -247,15 +252,19 @@ export async function createRun(
       throw new ConvexError("MODEL_BUDGET_CONFIGURATION_REQUIRED");
     budgetIds.push(b._id);
   }
-  const threadId = await createThread(ctx, components.agent, {
-    userId: a.actorId,
-  });
-  const saved = await saveMessage(ctx, components.agent, {
-    threadId,
-    userId: a.actorId,
-    message: { role: "user", content: a.prompt },
-  });
-  const { prompt, ...rest } = a;
+  const threadId =
+    a.existingPrompt?.threadId ??
+    (await createThread(ctx, components.agent, {
+      userId: a.actorId,
+    }));
+  const saved = a.existingPrompt
+    ? { messageId: a.existingPrompt.messageId }
+    : await saveMessage(ctx, components.agent, {
+        threadId,
+        userId: a.actorId,
+        message: { role: "user", content: a.prompt },
+      });
+  const { prompt, existingPrompt, ...rest } = a;
   const runId = await ctx.db.insert("agentRuns", {
     ...rest,
     accountConnectionSequence,
@@ -273,7 +282,7 @@ export async function createRun(
     createdAt: Date.now(),
     errorCode: null,
   });
-  await active(ctx, runId);
+  if (!a.conversationId) await active(ctx, runId);
   return runId;
 }
 export const create = internalMutation({
@@ -589,6 +598,8 @@ export const finish = internalMutation({
   returns: v.null(),
   handler: async (ctx, a) => {
     const r = await ctx.db.get(a.runId);
+    if (r?.executionKey === a.executionKey)
+      await ctx.db.patch(r._id, { executionFinishedAt: Date.now() });
     if (
       !r ||
       r.generation !== a.generation ||
@@ -596,10 +607,17 @@ export const finish = internalMutation({
       r.state !== "running"
     )
       return null;
-    if (!a.failed) await active(ctx, a.runId, a.generation, a.executionKey);
+    let failed = a.failed;
+    if (!failed) {
+      try {
+        await active(ctx, a.runId, a.generation, a.executionKey);
+      } catch {
+        failed = true;
+      }
+    }
     await ctx.db.patch(r._id, {
-      state: a.failed ? "failed" : "completed",
-      errorCode: a.failed ? "MODEL_RUN_FAILED" : null,
+      state: failed ? "failed" : "completed",
+      errorCode: failed ? "MODEL_RUN_FAILED" : null,
     });
     return null;
   },
@@ -695,5 +713,21 @@ export const recent = query({
         };
       }),
     );
+  },
+});
+
+export const rejectUnclaimed = internalMutation({
+  args: { runId: v.id("agentRuns") },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const r = await ctx.db.get(a.runId);
+    if (r?.state === "ready" && !r.executionKey)
+      await ctx.db.patch(r._id, {
+        state: "failed",
+        generation: r.generation + 1,
+        errorCode: "MODEL_RUN_UNAVAILABLE",
+        executionFinishedAt: Date.now(),
+      });
+    return null;
   },
 });

@@ -710,34 +710,37 @@ test("actual human stop after send settles usage but cannot store model output o
   );
   expect(JSON.stringify(messages)).not.toContain("Synthetic valid answer");
 });
-test("endless actual Agent tools stop at independent tool/attempt ceilings and strict foreign fields cannot execute", async () => {
-  const f = await claimed();
-  let calls = 0;
-  const model = new MockLanguageModelV3({
-    doGenerate: async () => {
-      calls++;
-      return {
-        ...response(),
-        content: [
-          {
-            type: "tool-call",
-            toolCallId: `call-${calls}`,
-            toolName: "read_context",
-            input:
-              calls === 1
-                ? '{"workspaceId":"foreign","operation":"publish","env":"SECRET"}'
-                : "{}",
-          },
-        ],
-        finishReason: { unified: "tool-calls", raw: "tool_calls" },
-      };
-    },
-  });
-  await expect(
-    f.t.action((ctx) => generateForRun(ctx, f.runId, f.executionKey, model)),
-  ).rejects.toThrow();
-  expect(calls).toBe(3);
-  const run = await f.t.run((ctx) => ctx.db.get(f.runId));
-  expect(run!.toolSteps).toBe(2);
-  expect(run!.attempts).toBe(3);
-});
+test.each([true, false])(
+  "actual Agent tool bounds and pre-SDK foreign-field rejection (malformed=%s)",
+  async (malformed) => {
+    const f = await claimed();
+    let calls = 0;
+    const model = new MockLanguageModelV3({
+      doGenerate: async () => {
+        calls++;
+        return {
+          ...response(),
+          content: [
+            {
+              type: "tool-call",
+              toolCallId: `call-${calls}`,
+              toolName: "read_context",
+              input:
+                calls === 1 && malformed
+                  ? '{"workspaceId":"foreign","operation":"publish","env":"SECRET"}'
+                  : "{}",
+            },
+          ],
+          finishReason: { unified: "tool-calls", raw: "tool_calls" },
+        };
+      },
+    });
+    await expect(
+      f.t.action((ctx) => generateForRun(ctx, f.runId, f.executionKey, model)),
+    ).rejects.toThrow();
+    expect(calls).toBe(malformed ? 1 : 3);
+    const run = await f.t.run((ctx) => ctx.db.get(f.runId));
+    expect(run!.toolSteps).toBe(malformed ? 0 : 2);
+    expect(run!.attempts).toBe(malformed ? 1 : 3);
+  },
+);

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 export const generationPurpose = v.union(
-  ...(["summary", "research", "draft", "plan"] as const).map(v.literal),
+  ...(["summary", "research", "draft", "plan", "chat"] as const).map(v.literal),
 );
 export const source = v.object({
   contextId: v.optional(v.id("githubContexts")),
@@ -44,6 +44,9 @@ export const budgetFields = {
   spentMicros: v.number(),
 };
 export const runFields = {
+  executionFinishedAt: v.optional(v.number()),
+  conversationId: v.optional(v.id("conversations")),
+  chatOperationId: v.optional(v.id("chatOperations")),
   workspaceId: v.id("workspaces"),
   accountId: v.id("socialAccounts"),
   actorId: v.id("users"),

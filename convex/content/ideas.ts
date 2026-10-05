@@ -215,6 +215,17 @@ export const create = workspaceMutation({
     );
   },
 });
+export const get = workspaceQuery({
+  args: { ideaId: v.string() },
+  returns: v.union(bundle, v.null()),
+  handler: async (ctx, a) => {
+    const id = ctx.db.normalizeId("ideas", a.ideaId);
+    if (!id) return null;
+    const idea = await ctx.db.get(id);
+    if (!idea || idea.workspaceId !== ctx.workspace._id) return null;
+    return current(ctx, ctx.workspace._id, id);
+  },
+});
 export const list = workspaceQuery({
   args: { paginationOpts: paginationOptsValidator },
   returns: v.object({

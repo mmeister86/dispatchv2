@@ -57,6 +57,63 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  conversations: defineTable({
+    workspaceId: v.id("workspaces"),
+    accountId: v.id("socialAccounts"),
+    actorId: v.id("users"),
+    operationKey: v.string(),
+    threadId: v.string(),
+    title: v.string(),
+    revision: v.number(),
+    sources: v.array(
+      v.object({
+        repositoryId: v.id("githubRepositories"),
+        generation: v.number(),
+        contextId: v.optional(v.id("githubContexts")),
+      }),
+    ),
+    ideaVersionIds: v.array(v.id("ideaVersions")),
+    turns: v.number(),
+    activeRunId: v.union(v.id("agentRuns"), v.null()),
+    updatedAt: v.number(),
+    state: v.union(
+      v.literal("active"),
+      v.literal("deleting"),
+      v.literal("deleted"),
+    ),
+    cleanupAfter: v.number(),
+  })
+    .index("by_workspaceId_and_accountId_and_actorId_and_updatedAt", [
+      "workspaceId",
+      "accountId",
+      "actorId",
+      "updatedAt",
+    ])
+    .index("by_workspaceId_and_actorId_and_operationKey", [
+      "workspaceId",
+      "actorId",
+      "operationKey",
+    ]),
+  chatOperations: defineTable({
+    workspaceId: v.id("workspaces"),
+    accountId: v.id("socialAccounts"),
+    actorId: v.id("users"),
+    conversationId: v.id("conversations"),
+    operationKey: v.string(),
+    fingerprint: v.string(),
+    allowIdeaCreation: v.boolean(),
+    promptMessageId: v.string(),
+    runIds: v.array(v.id("agentRuns")),
+    inputVersionId: v.union(v.id("ideaVersions"), v.null()),
+    resultIdeaId: v.union(v.id("ideas"), v.null()),
+    resultFingerprint: v.union(v.string(), v.null()),
+    createdAt: v.number(),
+  })
+    .index("by_conversationId_and_operationKey", [
+      "conversationId",
+      "operationKey",
+    ])
+    .index("by_conversationId_and_createdAt", ["conversationId", "createdAt"]),
   ideas: defineTable(ideaFields)
     .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"])
     .index("by_workspaceId_and_actorId_and_operationKey", [

@@ -8,6 +8,8 @@
  * @module
  */
 
+import type * as ai_conversationAccess from "../ai/conversationAccess.js";
+import type * as ai_conversations from "../ai/conversations.js";
 import type * as ai_fields from "../ai/fields.js";
 import type * as ai_provider from "../ai/provider.js";
 import type * as ai_runs from "../ai/runs.js";
@@ -64,6 +66,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "ai/conversationAccess": typeof ai_conversationAccess;
+  "ai/conversations": typeof ai_conversations;
   "ai/fields": typeof ai_fields;
   "ai/provider": typeof ai_provider;
   "ai/runs": typeof ai_runs;
