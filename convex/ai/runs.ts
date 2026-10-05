@@ -322,6 +322,12 @@ export const context = internalQuery({
   },
   returns: v.object({
     run: v.object({ _id: v.id("agentRuns"), ...runFields }),
+    chat: v.optional(
+      v.object({
+        allowIdeaCreation: v.boolean(),
+        resultIdeaId: v.union(v.id("ideas"), v.null()),
+      }),
+    ),
     policy: v.object({
       _id: v.id("aiPolicies"),
       _creationTime: v.number(),
@@ -331,7 +337,19 @@ export const context = internalQuery({
   handler: async (ctx, a) => {
     const { r, p } = await active(ctx, a.runId, a.generation, a.executionKey);
     const { _creationTime, ...run } = r;
-    return { run, policy: p };
+    const op = r.chatOperationId ? await ctx.db.get(r.chatOperationId) : null;
+    return {
+      run,
+      policy: p,
+      ...(op
+        ? {
+            chat: {
+              allowIdeaCreation: op.allowIdeaCreation,
+              resultIdeaId: op.resultIdeaId,
+            },
+          }
+        : {}),
+    };
   },
 });
 export const fund = internalMutation({

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { useStore } from "@/lib/store";
@@ -50,6 +50,12 @@ export function RealIdeas() {
 function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
   const { state } = useStore(),
     nav = useNavigate();
+  const [params] = useSearchParams();
+  const linkedId = params.get("idea");
+  const linked = useQuery(
+    api.content.ideas.get,
+    linkedId ? { workspaceId, ideaId: linkedId } : "skip",
+  );
   const [clarified, setClarified] = useState(false);
   const [historyCursor, setHistoryCursor] = useState<string | null>(null);
   const [cursor, setCursor] = useState<string | null>(null),
@@ -156,14 +162,17 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     setError("");
     operation.current = crypto.randomUUID();
   }
-  const rows =
-    list?.page.filter(
-      (r) =>
-        (filter === "all" || r.idea.status === filter) &&
-        `${r.version.title} ${r.version.perspective} ${r.version.note}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
-    ) ?? [];
+  const rows = linkedId
+    ? linked
+      ? [linked]
+      : []
+    : (list?.page.filter(
+        (r) =>
+          (filter === "all" || r.idea.status === filter) &&
+          `${r.version.title} ${r.version.perspective} ${r.version.note}`
+            .toLowerCase()
+            .includes(query.toLowerCase()),
+      ) ?? []);
   return (
     <div className="fade-in stack">
       <PageHeader
@@ -215,7 +224,13 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
           ? "Generation prüft bei jeder Anfrage die konkreten Freigaben und Budgets."
           : "Generation wartet auf EU-Verarbeitung, Preise und gültige Budgets."}
       </p>
-      {!list ? (
+      {linkedId && linked === null && (
+        <p role="status">
+          Die verlinkte Idee ist in diesem Workspace nicht verfügbar.{" "}
+          <Link to="/ideas">Ideenbibliothek öffnen</Link>
+        </p>
+      )}
+      {!list || (linkedId && linked === undefined) ? (
         <p role="status">Ideen werden geladen …</p>
       ) : !rows.length ? (
         <EmptyState

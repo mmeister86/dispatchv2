@@ -863,3 +863,91 @@ test("malformed private tool arguments never enter SDK logs or native messages/d
     expect(JSON.stringify(result)).not.toContain("PRIVATE_MALFORMED_ARGUMENT");
   }
 });
+test("actual continuation receives completed idea receipt and cannot offer create tool again", async () => {
+  const f = await fixture(),
+    original = await f.send({ allowIdeaCreation: true }),
+    first = await claim(f, original);
+  const ideaId = await f.t.mutation(internal.ai.conversations.createIdea, {
+    ...first,
+    title: "Completed idea",
+    perspective: "Unverified",
+    rationale: "Unverified",
+    questions: ["What?"],
+  });
+  await f.signed.mutation(api.ai.conversations.stop, f.target);
+  const op = (await f.t.run((ctx) => ctx.db.query("chatOperations").first()))!;
+  const resumed = await f.signed.mutation(api.ai.conversations.resume, {
+    ...f.target,
+    operationId: op._id,
+    expectedRunId: original,
+  });
+  vi.stubEnv("REQUESTY_API_KEY", "synthetic-key-only");
+  let calls = 0;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    calls++;
+    expect(String(input)).toBe(
+      "https://router.eu.requesty.ai/v1/chat/completions",
+    );
+    const body = JSON.parse(String(init?.body));
+    expect(JSON.stringify(body.messages)).toContain(ideaId);
+    expect(JSON.stringify(body.messages)).toContain(
+      "completed creation receipt",
+    );
+    expect(
+      body.tools?.some(
+        (t: { function: { name: string } }) =>
+          t.function.name === "create_idea",
+      ),
+    ).toBe(false);
+    const base = {
+      id: "synthetic-continuation",
+      object: "chat.completion.chunk",
+      created: 1791210000,
+      model: "synthetic/model",
+    };
+    const data = [
+      {
+        ...base,
+        choices: [
+          {
+            index: 0,
+            delta: {
+              role: "assistant",
+              content: "Die vorherige Idee wartet auf menschliche Prüfung.",
+            },
+            finish_reason: null,
+          },
+        ],
+      },
+      { ...base, choices: [{ index: 0, delta: {}, finish_reason: "stop" }] },
+      {
+        ...base,
+        choices: [],
+        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+      },
+    ];
+    return new Response(
+      data.map((d) => `data: ${JSON.stringify(d)}\n\n`).join("") +
+        "data: [DONE]\n\n",
+      { headers: { "content-type": "text/event-stream" } },
+    );
+  });
+  await f.t.action(internal.ai.provider.execute, { runId: resumed });
+  expect(calls).toBe(1);
+  const status = await f.signed.query(api.ai.conversations.status, f.target);
+  expect(status[0]).toMatchObject({
+    state: "completed",
+    resultIdeaId: ideaId,
+    usagePending: false,
+  });
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toHaveLength(
+    1,
+  );
+  const page = await f.signed.query(api.ai.conversations.messages, {
+    ...f.scope,
+    threadId: f.conversationId,
+    paginationOpts: { numItems: 50, cursor: null },
+  });
+  expect(page.page.filter((m) => m.role === "user")).toHaveLength(1);
+  expect(page.page.some((m) => m.text.includes("vorherige Idee"))).toBe(true);
+});

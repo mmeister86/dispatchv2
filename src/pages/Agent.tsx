@@ -24,7 +24,7 @@ import {
 import { useStore, useWorkspaceLocalState } from "@/lib/store";
 import { canEdit, uid, now } from "@/lib/model";
 import { demoMode } from "@/lib/auth-client";
-import { ModelConfiguration } from "@/features/settings/models";
+import { RealAgentChat } from "@/features/agent/chat";
 type Message = {
   id: string;
   role: "user" | "assistant";
@@ -45,18 +45,7 @@ type Conversation = {
 const answer =
   "Ich sehe einen guten Ansatz: Erzähle von einer kleinen Produktentscheidung, die euren Nutzern Zeit spart.\n\nBeginne mit der konkreten Beobachtung. Zeige anschließend, was du geändert hast und welches Learning du mitnimmst. Eine persönliche Perspektive ist glaubwürdiger als ein allgemeines Versprechen.\n\nMein Vorschlag bleibt ein Entwurf. Prüfe Fakten, Ton und Quellen vor einer Freigabe.";
 export function AgentPage() {
-  return demoMode ? (
-    <DemoAgentPage />
-  ) : (
-    <div className="fade-in">
-      <PageHeader
-        eyebrow="Dein kreativer Sparringspartner"
-        title="Agent"
-        description="Der Chat wird mit dem persistenten Agent verbunden."
-      />
-      <ModelConfiguration />
-    </div>
-  );
+  return demoMode ? <DemoAgentPage /> : <RealAgentChat />;
 }
 function DemoAgentPage() {
   const { state, createDraft } = useStore();

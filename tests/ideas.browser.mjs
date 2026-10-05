@@ -4,11 +4,11 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='content/ideas:list')return window.list;if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};if(name==='content/ideas:generationStatus')return window.runs;return {page:[],isDone:true,continueCursor:''};};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
+  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='content/ideas:list')return window.list;if(name==='content/ideas:get')return window.linked??null;if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};if(name==='content/ideas:generationStatus')return window.runs;return {page:[],isDone:true,continueCursor:''};};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
   "@/lib/auth-client": `export const demoMode=false;`,
   "@/lib/store": `import {useState} from "react"; export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:'account-one',workspaceId:window.workspace,name:'Synthetic',channel:'X'}]}});`,
 };
-const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter,useLocation} from 'react-router-dom';import {IdeasPage} from '/src/pages/Ideas.tsx';import {SignalIdeaHandoff} from '/src/features/ideas/signal-handoff.tsx';function Route(){return React.createElement('p',{'data-testid':'route','data-account':window.account},useLocation().pathname);}window.workspace='workspace-one';window.account='';window.role='Owner';window.queries=[];window.commands=[];window.list=undefined;window.runs=[];window.allowed=true;const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,{key:window.workspace},React.createElement(Route),new URLSearchParams(location.search).has('signal')?React.createElement(SignalIdeaHandoff,{key:window.workspace,workspaceId:window.workspace,signalId:'actual-signal',title:'Actual signed event',allowed:window.allowed}):React.createElement(IdeasPage))));window.render();`;
+const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter,useLocation} from 'react-router-dom';import {IdeasPage} from '/src/pages/Ideas.tsx';import {SignalIdeaHandoff} from '/src/features/ideas/signal-handoff.tsx';function Route(){return React.createElement('p',{'data-testid':'route','data-account':window.account},useLocation().pathname);}window.workspace='workspace-one';window.account='';window.role='Owner';window.queries=[];window.commands=[];window.list=undefined;window.runs=[];window.allowed=true;const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,{key:window.workspace,initialEntries:[new URLSearchParams(location.search).has('idea')?'/ideas'+location.search:'/']},React.createElement(Route),new URLSearchParams(location.search).has('signal')?React.createElement(SignalIdeaHandoff,{key:window.workspace,workspaceId:window.workspace,signalId:'actual-signal',title:'Actual signed event',allowed:window.allowed}):React.createElement(IdeasPage))));window.render();`;
 const server = await createServer({
   root,
   configFile: `${root}/vite.config.ts`,
@@ -353,6 +353,37 @@ try {
   await expect(
     page.getByRole("button", { name: "Als belegte Idee übernehmen" }),
   ).toBeDisabled();
+  await page.goto(
+    "http://127.0.0.1:5174/idea-fixture?idea=actual-linked-old-idea",
+  );
+  await page.evaluate(() => {
+    window.list = { page: [], isDone: true, continueCursor: "" };
+    window.linked = {
+      idea: {
+        _id: "actual-linked-old-idea",
+        workspaceId: window.workspace,
+        revision: 1,
+        status: "new",
+        currentVersionId: "old-version",
+      },
+      version: {
+        _id: "old-version",
+        title: "Linked older actual idea",
+        note: "Unverified human note",
+        perspective: "Saved perspective",
+        priority: "normal",
+        number: 1,
+        source: { kind: "note" },
+        originals: [],
+        questions: [],
+        rationale: "",
+      },
+    };
+    window.render();
+  });
+  await expect(
+    page.getByText("Linked older actual idea", { exact: true }),
+  ).toBeVisible();
   expect(errors).toEqual([]);
   console.log(
     "Actual real Ideas + signal handoff: loading/manual ack/idempotent key/pending/CAS buffer/draft-ID navigation/config failure/model clarification/account/stop/workspace/Viewer/withdrawal PASS; no provider call.",
