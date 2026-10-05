@@ -43,9 +43,10 @@ pnpm build
 pnpm test:bundle
 pnpm audit --prod
 pnpm test:e2e
+pnpm test:e2e:auth
 ```
 
-Foundation-Tests prüfen atomare/idempotente Initialisierung, persistente Profile, fremde Workspaces/Referenzen, Viewer-Rechte, widerrufene Mitgliedschaften, unbestätigte/abgelaufene Sitzungen und die realen Auth-HTTP-Handler einschließlich Verifikation und Passwort-Reset. Der E-Mail-Transport wird nur in diesen isolierten Tests gemockt. Der Bundle-Check schützt vor Importen von serverseitiger Secret-Konfiguration. Browserregressionen starten explizit mit `VITE_DEMO_MODE=true` auf Port 5174; sie sind keine Abnahme des realen Providers. Die GitHub-Actions-CI installiert mit gefrorenem Lockfile und prüft Formatierung, beide TypeScript-Projekte, Tests, Build und Secret-Bundle ohne Deployment-Credentials. Production-Hosting muss für direkte Unterrouten auf `index.html` zurückfallen; Vite dev/preview tun dies bereits.
+Foundation-Tests prüfen atomare/idempotente Initialisierung, persistente Profile, fremde Workspaces/Referenzen, Viewer-Rechte, widerrufene Mitgliedschaften, unbestätigte/abgelaufene Sitzungen und die realen Auth-HTTP-Handler einschließlich Verifikation und Passwort-Reset. Der E-Mail-Transport wird in diesen isolierten Tests gemockt. Der Bundle-Check schützt vor Importen von serverseitiger Secret-Konfiguration. Die allgemeinen Browserregressionen starten explizit mit `VITE_DEMO_MODE=true` auf Port 5174; sie sind keine Abnahme des realen Providers. `test:e2e:auth` prüft die Auth-Formularübergänge im realen UI-Modus auf Port 5175 mit gemockten Schreibanfragen, ohne E-Mail-Versand; dafür muss `.env.local` eine konfigurierte Convex-URL enthalten. Die GitHub-Actions-CI installiert mit gefrorenem Lockfile und prüft Formatierung, beide TypeScript-Projekte, Tests, Build und Secret-Bundle ohne Deployment-Credentials. Production-Hosting muss für direkte Unterrouten auf `index.html` zurückfallen; Vite dev/preview tun dies bereits.
 
 ## Isolierte UI-Demo
 

@@ -289,6 +289,11 @@ const authTitles: Record<AuthMode, string> = {
 };
 export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
   const [params] = useSearchParams();
+  return <AuthForm key={`${mode}:${params.get("token") ?? ""}`} mode={mode} />;
+}
+
+function AuthForm({ mode }: { mode: AuthMode }) {
+  const [params] = useSearchParams();
   const token = params.get("token");
   const newPassword = mode === "reset" && !!token;
   const destination = returnPath(params.get("returnTo"));
