@@ -4,7 +4,7 @@ title: 'Onboarding, Profile und Navigation bauen (P01.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 08:41'
+updated_date: '2026-10-05 09:29'
 labels:
   - p01
   - r0
@@ -39,9 +39,9 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Ein Nutzer kann ohne GitHub starten.
-- [ ] #2 fehlender Kontext wird ehrlich angezeigt.
-- [ ] #3 Zeitzone kommt aus Nutzereinstellung und nicht aus der Serverlokalität.
+- [x] #1 Ein Nutzer kann ohne GitHub starten.
+- [x] #2 fehlender Kontext wird ehrlich angezeigt.
+- [x] #3 Zeitzone kommt aus Nutzereinstellung und nicht aus der Serverlokalität.
 - [ ] #4 Onboarding ist mit Tastatur bedienbar.
 <!-- AC:END -->
 
@@ -63,4 +63,6 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /onboarding, /overview, /settings/profile. Four-step onboarding, skip/later paths, project, language, timezone, audience, tone/topics, optional GitHub/research and mock social activation. Grenze: Context is browser-local. No data transfer or real activation. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Profil/Projekt/Timezone dauerhaft in Convex; ohne GitHub startbar, fehlende Verbindungen ehrlich angezeigt. Aufschieben hält onboardingDone=false und Schritte bleiben über Einstellungen erreichbar. Spec- und Quality-Reviews bestanden; Tastatur- und vollständige Aktivierungsabnahme folgt mit Domain-Anbindung.
 <!-- SECTION:NOTES:END -->

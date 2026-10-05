@@ -4,7 +4,7 @@ title: 'Repository, App-Shell und Entwicklungsumgebungen anlegen (P01.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 08:42'
+updated_date: '2026-10-05 09:29'
 labels:
   - p01
   - r0
@@ -36,10 +36,10 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Leere App startet.
-- [ ] #2 Build und Typecheck bestehen.
-- [ ] #3 öffentliche Bundle-Konfiguration enthält keine Server-Secrets.
-- [ ] #4 eine direkte Navigation auf eine Unterroute funktioniert.
+- [x] #1 Leere App startet.
+- [x] #2 Build und Typecheck bestehen.
+- [x] #3 öffentliche Bundle-Konfiguration enthält keine Server-Secrets.
+- [x] #4 eine direkte Navigation auf eine Unterroute funktioniert.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -63,4 +63,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: / and all application routes. React 19 / TypeScript / Vite 8 app shell, shadcn/ui primitives, reusable components and direct client routing. Grenze: No Convex registration, cloud deployment, production domains or secret-bearing backend. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Nutzerkorrektur vom 05.10.2026: direkt auf master arbeiten und regelmäßig committen; die vorläufig angelegte main-Branch wird nicht verwendet.
+
+Foundation auf master bereitgestellt (f5ff93f, dd9eed9); Dev-Push, leere echte App, direkte Unterroute, Build/Typecheck und Secret-Bundle-Check verifiziert. Unabhängige Spec- und Quality-Reviews bestanden nach 9519217/136a7f0. Hosted CI und separate Staging-/Production-Deployments noch nicht ausgeführt.
 <!-- SECTION:NOTES:END -->
