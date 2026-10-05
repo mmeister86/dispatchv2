@@ -1,6 +1,6 @@
 # TASK22.2 — Research workflow validation
 
-Status: source milestone, independent reviews pending. Backlog remains In Progress; no manual/live acceptance or paid activation.
+Status: final source frozen, fresh independent SPEC active; QUALITY pending SPEC PASS. Backlog remains In Progress; no manual/live acceptance or paid activation.
 
 Accepted prerequisite baseline: `d06234639086f9514c686007f549ceb37c856710` (evidence source `3e079cef`, SPEC/QUALITY PASS). Implementer: fresh `research_pipeline`, Backend Architect, gpt-6.1-sol/medium. Source milestone: `2670f50c5a5ad5138d83cce346bb89bbe2be0819`, exact34 paths, clean staged diff and working tree. ROOT metadata commits do not change the source baseline.
 
@@ -18,7 +18,9 @@ Intermediate515/517/518 full-suite passes are preserved, not the final milestone
 
 Actual registered Workflow+Agent tests include all-ten-step empty and funded paths, intercepted physical provider calls, first-send/unknown barriers, combined cap, current authorities before/during I/O, stop/late accounting, old schedules, secondary source withdrawal, actual native/Workflow cleanup, crash-pending cleanup, X-outage/Web success, duplicate/concurrent cluster-stage replay and captured confirmed history withdrawal. Actual React browser uses synthetic reactive backend data and checks Real/Demo separation, dirty buffers, exact failed commands, actual Review projection, partial/null usage, withdrawal and idle expiry. No live provider output or semantic quality claim.
 
-Final postcommit type/lint/build/bundle/browser/codegen/postgeneration type/ existing EU Dev receipts are pending. Fresh independent SPEC starts only after final frozen-source confirmation, followed by fresh QUALITY after SPEC PASS. Reproductions and failures remain separate from final green results.
+Final frozen source remains `2670f50c5a5ad5138d83cce346bb89bbe2be0819`. Postcommit type/lint/new-fixture formatting/build/bundle/actual Research browser PASS: `/tmp/task22.2-frozen-{typecheck,lint,fixture-prettier,build,bundle,browser}.log`. Official codegen and postgeneration type PASS: `/tmp/task22.2-frozen-{codegen,post-codegen-typecheck}.log`; no generated source diff. Existing EU Dev `--once` exited0, functions ready2026-10-06 00:29:23 local /2026-10-05 22:29:23 UTC, Workflow/Workpool/batchWorker mounted: `/tmp/task22.2-frozen-eu-dev-once.log`. This is a runtime Dev update, distinct from earlier analysis/bindings-only codegen. No provider/grant activation. Own browser5174 closed, user5173 PID48521 preserved.
+
+Fresh independent SPEC `research_pipeline_spec`, gpt-6-astra/medium, is active on the complete frozen delta after final receipts. It owns only `/tmp` independent checks/receipt, not source. Fresh QUALITY follows only SPEC PASS. Reproductions and failures remain separate from final green results.
 
 ## Open acceptance
 
