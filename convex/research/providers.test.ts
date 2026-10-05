@@ -1640,3 +1640,211 @@ test.each(["generation", "operation"] as const)(
       expect((await f.t.run((ctx) => ctx.db.get(id)))!.heldMicros).toBe(100);
   },
 );
+
+test.each([":", "id:", "event:"])(
+  "oversized complete %s SSE line retains unknown finance at the physical boundary",
+  async (prefix) => {
+    const f = await fixture(["web-search"]),
+      id = await f.start();
+    const body =
+      prefix + "x".repeat(70000) + "\r\n\r\n" + (await streamResponse().text());
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      const attempt = (await f.t.run((ctx) =>
+        ctx.db.query("aiAttempts").first(),
+      ))!;
+      expect(attempt).toMatchObject({ state: "sent", heldMicros: 100 });
+      expect((await f.t.run((ctx) => ctx.db.get(id)))!.state).toBe("running");
+      for (const bid of attempt.budgetIds)
+        expect(await f.t.run((ctx) => ctx.db.get(bid))).toMatchObject({
+          heldMicros: 100,
+          spentMicros: 0,
+        });
+      return new Response(body, {
+        headers: { "content-type": "text/event-stream" },
+      });
+    });
+    const rows = await execute(f, id);
+    expect(rows[0]).toMatchObject({
+      state: "unknown",
+      usagePending: true,
+      estimatedMicros: null,
+    });
+    const attempt = (await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").first(),
+    ))!;
+    expect(attempt).toMatchObject({
+      state: "unknown",
+      heldMicros: 100,
+      estimatedMicros: null,
+    });
+    for (const bid of attempt.budgetIds)
+      expect(await f.t.run((ctx) => ctx.db.get(bid))).toMatchObject({
+        heldMicros: 100,
+        spentMicros: 0,
+      });
+  },
+);
+
+test.each([false, true])(
+  "SSE byte overflow after a delivered source retains partial output and all three holds with unfinished multibyte tail=%s",
+  async (unfinished) => {
+    const f = await fixture(["web-search"]),
+      id = await f.start();
+    const valid = await streamResponse().text(),
+      end = valid.indexOf("\r\n\r\n") + 4;
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        valid.slice(0, end) +
+          (unfinished
+            ? ":" + "ö".repeat(40000)
+            : ":" + "x".repeat(65536) + "\r\n\r\n" + valid.slice(end)),
+        { headers: { "content-type": "text/event-stream" } },
+      ),
+    );
+    const rows = await execute(f, id),
+      attempt = (await f.t.run((ctx) => ctx.db.query("aiAttempts").first()))!;
+    expect(rows[0]).toMatchObject({
+      state: "partial",
+      usagePending: true,
+      estimatedMicros: null,
+    });
+    expect(rows[0].reason).toBe("RESEARCH_STREAM_LIMIT");
+    expect(rows[0].sources).toHaveLength(1);
+    expect(rows[0].sources[0].url).toBe("https://example.test/news");
+    expect(attempt).toMatchObject({
+      state: "unknown",
+      heldMicros: 100,
+      estimatedMicros: null,
+    });
+    for (const bid of attempt.budgetIds)
+      expect(await f.t.run((ctx) => ctx.db.get(bid))).toMatchObject({
+        heldMicros: 100,
+        spentMicros: 0,
+      });
+  },
+);
+
+test.each([
+  ["unfinished multibyte line", ":" + "ö".repeat(40000)],
+  [
+    "pending multibyte joined event",
+    'data: {"ignored":"' +
+      "ö".repeat(20000) +
+      '",\n' +
+      'data: "other":"' +
+      "ö".repeat(20000) +
+      '"}\n',
+  ],
+])("SSE %s respects UTF8 byte ceilings", async (_name, wire) => {
+  const result = await parseSearch(
+    new Response(wire, { headers: { "content-type": "text/event-stream" } }),
+  );
+  expect(result.reason).toBe("RESEARCH_STREAM_LIMIT");
+});
+
+test("SSE oversized identical wire bytes have the same result across chunk partitions", async () => {
+  const line = ":" + "x".repeat(70000),
+    tail = "\r\n\r\n" + (await streamResponse().text()),
+    headers = { "content-type": "text/event-stream" };
+  const whole = await parseSearch(new Response(line + tail, { headers }));
+  const split = await parseSearch(
+    new Response(
+      new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode(line));
+          c.enqueue(new TextEncoder().encode(tail));
+          c.close();
+        },
+      }),
+      { headers },
+    ),
+  );
+  expect(whole.reason).toBe("RESEARCH_STREAM_LIMIT");
+  expect(split).toEqual(whole);
+});
+
+test.each([false, true])(
+  "SSE exact 65536 byte line passes with CRLF split=%s",
+  async (split) => {
+    const line = ":" + "x".repeat(65535) + "\r",
+      tail = "\n\r\n" + (await streamResponse().text()),
+      headers = { "content-type": "text/event-stream" };
+    const response = split
+      ? new Response(
+          new ReadableStream({
+            start(c) {
+              c.enqueue(new TextEncoder().encode(line));
+              c.enqueue(new TextEncoder().encode(tail));
+              c.close();
+            },
+          }),
+          { headers },
+        )
+      : new Response(line + tail, { headers });
+    expect((await parseSearch(response)).state).toBe("completed");
+  },
+);
+
+test("SSE decoder-held raw UTF8 byte counts toward unfinished line ceiling", async () => {
+  const ascii = new TextEncoder().encode(":" + "x".repeat(65535)),
+    raw = new Uint8Array(ascii.length + 1);
+  raw.set(ascii);
+  raw[ascii.length] = 0xc3;
+  const cancel = vi.fn();
+  const result = await parseSearch(
+    new Response(
+      new ReadableStream(
+        {
+          start(c) {
+            c.enqueue(raw);
+          },
+          pull(c) {
+            c.close();
+          },
+          cancel,
+        },
+        { highWaterMark: 0 },
+      ),
+      { headers: { "content-type": "text/event-stream" } },
+    ),
+  );
+  expect(result.reason).toBe("RESEARCH_STREAM_LIMIT");
+  expect(cancel).toHaveBeenCalledOnce();
+});
+
+test("SSE possible framing CR followed by ordinary content remains payload and overflows", async () => {
+  const result = await parseSearch(
+    new Response(
+      new ReadableStream({
+        start(c) {
+          c.enqueue(new TextEncoder().encode(":" + "x".repeat(65535) + "\r"));
+          c.enqueue(new TextEncoder().encode("x\n"));
+          c.close();
+        },
+      }),
+      { headers: { "content-type": "text/event-stream" } },
+    ),
+  );
+  expect(result.reason).toBe("RESEARCH_STREAM_LIMIT");
+});
+
+test("SSE exact 65536 byte joined multiline JSON event remains valid", async () => {
+  const first = '{"ignored":"' + "x".repeat(65500) + '",',
+    second = ' "choices":[]}';
+  const padding = " ".repeat(
+    65536 - new TextEncoder().encode(first + "\n" + second).length,
+  );
+  const result = await parseSearch(
+    new Response(
+      "data: " +
+        first +
+        "\r\ndata: " +
+        second +
+        padding +
+        "\r\n\r\n" +
+        (await streamResponse().text()),
+      { headers: { "content-type": "text/event-stream" } },
+    ),
+  );
+  expect(result.state).toBe("completed");
+});

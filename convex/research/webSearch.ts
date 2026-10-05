@@ -19,11 +19,15 @@ export async function parseSearch(response: Response): Promise<SearchResult> {
     return result;
   }
   const reader = response.body.getReader(),
-    decoder = new TextDecoder("utf-8", { fatal: true });
+    decoder = new TextDecoder("utf-8", { fatal: true }),
+    encoder = new TextEncoder();
   let buffer = "",
     data: string[] = [],
     event = "",
     bytes = 0,
+    lineBytes = 0,
+    trailingCR = false,
+    dataBytes = 0,
     events = 0,
     textBytes = 0,
     done = false,
@@ -36,12 +40,9 @@ export async function parseSearch(response: Response): Promise<SearchResult> {
     }
     const payload = data.join("\n");
     data = [];
+    dataBytes = 0;
     events++;
-    if (
-      events > 512 ||
-      new TextEncoder().encode(payload).length > 65536 ||
-      done
-    )
+    if (events > 512 || encoder.encode(payload).length > 65536 || done)
       throw new SearchError("RESEARCH_STREAM_LIMIT");
     if (payload === "[DONE]") {
       if (!finish || usage === null)
@@ -86,7 +87,7 @@ export async function parseSearch(response: Response): Promise<SearchResult> {
       ) {
         if (typeof choice.delta.content !== "string")
           throw new SearchError("RESEARCH_STREAM_INVALID");
-        textBytes += new TextEncoder().encode(choice.delta.content).length;
+        textBytes += encoder.encode(choice.delta.content).length;
         if (textBytes > 16384) throw new SearchError("RESEARCH_STREAM_LIMIT");
       }
       const sources = choice.delta?.web_search?.content;
@@ -169,20 +170,24 @@ export async function parseSearch(response: Response): Promise<SearchResult> {
       let line = buffer.slice(0, index);
       buffer = buffer.slice(index + 1);
       if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (encoder.encode(line).length > 65536)
+        throw new SearchError("RESEARCH_STREAM_LIMIT");
       if (line === "") consume();
-      else if (line.startsWith("data:"))
-        data.push(line.slice(5).replace(/^ /, ""));
-      else if (line.startsWith("event:")) event = line.slice(6).trim();
+      else if (line.startsWith("data:")) {
+        const fragment = line.slice(5).replace(/^ /, "");
+        dataBytes += encoder.encode(fragment).length + Number(data.length > 0);
+        if (dataBytes > 65536) throw new SearchError("RESEARCH_STREAM_LIMIT");
+        data.push(fragment);
+      } else if (line.startsWith("event:")) event = line.slice(6).trim();
       else if (
         !line.startsWith(":") &&
         !line.startsWith("id:") &&
         !line.startsWith("retry:")
       )
         throw new SearchError("RESEARCH_STREAM_INVALID");
-      if (data.join("\n").length > 65536)
-        throw new SearchError("RESEARCH_STREAM_LIMIT");
     }
-    if (buffer.length > 65536) throw new SearchError("RESEARCH_STREAM_LIMIT");
+    if (lineBytes - Number(trailingCR) > 65536)
+      throw new SearchError("RESEARCH_STREAM_LIMIT");
   };
   try {
     while (true) {
@@ -190,6 +195,14 @@ export async function parseSearch(response: Response): Promise<SearchResult> {
       if (chunk.done) break;
       bytes += chunk.value.byteLength;
       if (bytes > 1048576) throw new SearchError("RESEARCH_STREAM_LIMIT");
+      // Count raw residual octets too: the decoder may retain an unfinished UTF-8 sequence.
+      const lastLF = chunk.value.lastIndexOf(10);
+      lineBytes =
+        lastLF < 0
+          ? lineBytes + chunk.value.byteLength
+          : chunk.value.byteLength - lastLF - 1;
+      if (chunk.value.byteLength)
+        trailingCR = chunk.value[chunk.value.byteLength - 1] === 13;
       buffer += decoder.decode(chunk.value, { stream: true });
       lines();
     }
