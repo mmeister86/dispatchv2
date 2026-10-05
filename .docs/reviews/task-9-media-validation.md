@@ -61,6 +61,12 @@ Independent evidence:22 targeted checks and the actual lifecycle browser check p
 
 The narrow follow-up confirmed that the same binding root also affects Cloudflare account drift with an unchanged bucket name. Frozen `configuration()` changes the endpoint, while finish/preview/cleanup compare only names; cleanup could record a receipt in the wrong physical namespace. The scoped correction must persist normalized non-secret account ID plus bucket on session and asset and compare both across every storage path. EU jurisdiction is fixed by this adapter. Missing legacy bindings fail closed pending explicit reconciliation; access-key rotation within the same namespace remains valid. This was confirmed with synthetic configuration execution, without provider calls.
 
+## Corrections frozen at fe3af37 — final reviews pending
+
+Small negative regressions were committed before production changes (`20ca2d4`, `c9f8154`). `f67946b` enforces whole-file MP4 allocation/table/track budgets before library parsing, a strict own MIME lookup, complete Account-ID+Bucket namespace checks and stable native-file selection with current-buffer-safe success clearing. `fe3af37` refreshes generated Convex types. Namespace metadata and explicit legacy reconciliation are recorded in the media contract and later inventory; same-namespace credential rotation remains supported.
+
+Implementer reports70 unit checks across11 files, the original independent three-check counterexample suite, typecheck, formatting, build, bundle checks and both actual lifecycle/upload browser scripts passing. The upload script verifies visible filename/error preservation, success clearing and new selection surviving an older completion. Configured Dev updated at13:20:22 without R2 object operations; isolated5174 closed and user5173 untouched. Independent SPEC re-review is running; independent full QUALITY follows its PASS. These reported checks do not close live/manual acceptance.
+
 ## Actual acceptance still open
 
 An approved existing private bucket with actual EU jurisdiction and restricted S3 access, browser-origin CORS, live signature/size enforcement, conditional-write/runtime/race probes, late-PUT cleanup and authenticated manual upload/abort/preview-refresh/replacement evidence remain open. No bucket, public post or test email was created. An EU location hint or a passing synthetic test does not satisfy those checks.

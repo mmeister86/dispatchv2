@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:09'
+updated_date: '2026-10-05 11:21'
 labels:
   - p02
   - r1
@@ -92,4 +92,6 @@ Independent renewed SPEC PASSa51f9ed:22 targeted unit checks and actual MediaLib
 Fresh complete QUALITY NEEDS WORKa51f9ed: MP4 aggregate allocation/track/table limits must run before library parsing; inherited MIME lookup admitted unsupported type; prepare replay signs old bucket after configuration drift; native file input remount clears selected visible filename. Small safe counterexamples and actual browser checks reproduced. Prior corrections/core backend flows hold;22 targeted/lifecycle and additional async upload/preview checks pass. Worker assigned four root corrections; narrow physical account namespace follow-up pending. No live/provider acceptance claim or Done.
 
 Storage-binding follow-up confirmed same root includes Cloudflare account drift at unchanged bucket name: old keys can reach a different physical endpoint and cleanup receipt can refer to the wrong namespace. Shared scoped fix persists normalized nonsecret accountId+bucket on session/asset and checks all Prepare/Finish/Preview/Cleanup paths; legacy unknown binding fails closed, same-namespace key rotation stays valid. Synthetic frozen-config evidence only, no provider calls. Worker incorporates this into current correction and updates inventory after freeze.
+
+Scoped corrections frozen fe3af37 after tests-first20ca2d4/c9f8154 and productionf67946b: pre-parser whole-file MP4 allocation/track/table budgets, strict own MIME lookup, Account-ID+Bucket on session/asset across signing/finalization/preview/cleanup/receipt, explicit legacy reconciliation and same-namespace credential rotation, stable native filename/current-buffer-safe success clear. Worker reports70 unit checks/11files plus original reviewer3checks, type/lint/build/bundle and actual lifecycle/upload browser scripts PASS; configured Dev updated13:20:22 without R2 object effects. Independent SPEC then full QUALITY pending. Metadata inventory updated; real EU-R2/CORS/runtime/manual gates remain open. Status In Progress, no automatic Done.
 <!-- SECTION:NOTES:END -->
