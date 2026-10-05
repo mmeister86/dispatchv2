@@ -4,7 +4,7 @@ title: GitHub-App und Repository-Auswahl anbinden (P04.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 12:59'
+updated_date: '2026-10-05 14:08'
 labels:
   - p04
   - r2
@@ -53,11 +53,12 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Reuse current verified session/workspace authorization and separate GitHub login from App-source access.
-2. Implement least-privilege App JWT/installation token and installation/repository synchronization; missing App private key remains visibly unconfigured.
-3. Apply chosen D05: explicit per-workspace repository selection, separate access/monitoring/content settings, limited communicable context, private file/diff model use separately consented and region-gated.
-4. Handle repository access removal and installation deletion with immediate source barriers, preserving historical provenance without new work.
-5. Wire genuine settings/source state and independently review requirements and quality; actual configured repository/manual proof stays explicit and no automatic Done.
+1. Begin after TASK12.3 final7734008 independent SPEC/QUALITY PASS; read current App-user OAuth/JWT proof contracts and existing authorization/crypto/UI callers.
+2. Implement separate verified human App-source OAuth with one-use PKCE and tenant/role/lifecycle fences, bounded human/App installation-repository intersection and encrypted credentials; missing configuration remains visible.
+3. Persist explicit per-workspace authorized repository selection with independent access/monitoring/content purposes, bounded communicable private context and source-generation revocation barriers.
+4. Reuse settings/onboarding/callback patterns with awaited commands and StrictMode-safe cleanup; GitHub login stays independent. Guard real Signals against unconditional demo seed/handoff until TASK15 factual ingestion.
+5. Test spoofed installation/foreign authority/intersection/stale sync/disconnect/refresh/purpose barriers and actual affected UI; full checks, existing EU Dev, inventory/contract and scoped freeze commits.
+6. Fresh independent SPEC then QUALITY, fix and re-review; document live/manual gates and no automatic Done.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -72,4 +73,6 @@ Readonly current official GitHub docs confirm setup installation_id can be spoof
 Read-only future implementation prep after TASK-10 settles: separate source GitHub-App USER authorization must prove accessible installation/repository intersection; global AppID/installation env cannot authorize tenant. Exact current docs /tmp/dispatch-github-authorization-docs.md and scoped brief prepared. UI tracing found real /signals currently renders unconditional mock signalSeed and unavailable local handoff; TASK-14 source guidance must guard that real path empty/config until genuine TASK-15 ingestion, preserving explicit demo. No code/provider effects from prep; actual scope remains separate access/monitoring/content/private purpose D05.
 
 Additional read-only current App OAuth/JWT prep: Context7 library-first official /github/docs plus2docs (3commands, no quota error), independently verified primary App-user-token/JWT/refresh guides. App-user flow supports S256 PKCE; fine-grained app/user intersection has empty traditional scope; clientID differsAppID. Expiring access8h/refresh6months and refresh invalidates old pair require lease/CAS/unknown-safe reauth. Current examples API header2026-03-10; native RS256 JWT iat-60s/exp<=600s/clientIDpreferred. Receipt /tmp/dispatch-github-oauth-jwt-current-docs.md. No implementation/provider/private-repo call; TASK12.3 still active, TASK14 awaits publishing reviews.
+
+Fresh SDD TASK14 implementation starts on master after finalTASK12.3 source7734008 independent SPEC/QUALITY PASS, ROOT metadata4744ad8. Scoped complete brief /tmp/dispatch-github-app-implementation-brief.md; current official receipts /tmp/dispatch-github-authorization-docs.md and /tmp/dispatch-github-oauth-jwt-current-docs.md. Global AppID/installationID never tenant proof; separate human App OAuth intersection/purposes required. Real Signals seed leak belongs this unit; genuine event ingestion follows TASK15, AI after17/18. Missing privatekey/sourceOAuthconfiguration remains visible guidance per user instruction. No actual provider/private-repository/model call or manual acceptance claimed.
 <!-- SECTION:NOTES:END -->
