@@ -4,7 +4,7 @@ title: Scheduler und Freigabeprüfung bauen (P03.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 08:44'
 labels:
   - p03
   - r1
@@ -48,6 +48,14 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Termine als UTC-Instant samt Nutzerzone und Ausführungsgeneration speichern.
+2. Transaktionale Freigabe-/Slotprüfung und generationgebundene Scheduler-Aufrufe implementieren.
+3. Verschieben, Stornieren und ausdrücklichen Snapshot-Wechsel an Serveroperationen anbinden.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

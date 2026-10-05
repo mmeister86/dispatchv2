@@ -4,7 +4,7 @@ title: Kalender und erste betriebliche Rückmeldung liefern (P03.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 08:44'
 labels:
   - p03
   - r1
@@ -47,6 +47,14 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Reaktive Kalenderansichten auf Convex-Termine umstellen.
+2. Echte gespeicherte Betriebszustände darstellen; simulierte Publishing-Ergebnisse im realen Modus entfernen.
+3. Snapshot-/Zeitzonen- und Navigationsprüfungen durchführen.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

@@ -4,7 +4,7 @@ title: Selektive Annahme und sichere Ausführung ermöglichen (P07.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 08:44'
 labels:
   - p07
   - r2
@@ -49,6 +49,14 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Ausgewählte Vorschläge transaktional und idempotent mit erneut geprüfter Freigabe/Frische annehmen.
+2. Genau einen Termin je angenommenem Element erstellen; keine Freigabe implizit erzeugen.
+3. Doppelklick, Parallelannahme, Teilmenge und Slotkonflikt prüfen.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

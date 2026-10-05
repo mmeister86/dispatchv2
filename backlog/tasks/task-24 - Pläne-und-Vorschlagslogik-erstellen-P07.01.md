@@ -4,7 +4,7 @@ title: Pläne und Vorschlagslogik erstellen (P07.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 08:44'
 labels:
   - p07
   - r2
@@ -46,6 +46,14 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Persistente Vorschläge aus tatsächlichen vorhandenen ungeplanten Inhalten erzeugen, statt feste Beispieltexte zu erstellen.
+2. Slots, Account, Themen und Zeitzone berücksichtigen; Status pro Vorschlag speichern.
+3. Fehlenden Kontext und knappe Inhaltsbasis ehrlich anzeigen.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

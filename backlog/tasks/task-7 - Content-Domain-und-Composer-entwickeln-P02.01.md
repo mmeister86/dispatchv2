@@ -4,7 +4,7 @@ title: Content-Domain und Composer entwickeln (P02.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 08:44'
 labels:
   - p02
   - r1
@@ -45,6 +45,14 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Normalisierte Entwürfe und unveränderliche Versionen mit erwarteter Versionsnummer in Convex speichern.
+2. Composer, Erstellung, Kommentare, Zuweisung und Varianten auf explizite asynchrone Mutations umstellen.
+3. Rechte, Fremdreferenzen, konkurrierende Bearbeitung und Snapshot-Erhalt testen.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

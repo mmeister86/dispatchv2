@@ -4,7 +4,7 @@ title: 'Kommentare, Zuweisungen und Freigaberegeln ergänzen (P13.02)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 08:44'
 labels:
   - p13
   - r6
@@ -48,6 +48,14 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Kommentare, Zuweisungen und erforderliche Review-Stufen serverseitig autorisieren und versionieren.
+2. Team-UI auf tatsächliche Mitglieder und Reviews umstellen.
+3. Version/Accountwechsel entwertet alte Reviews; Support-/Gastzugriff nur mit sicherem Vertrag.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

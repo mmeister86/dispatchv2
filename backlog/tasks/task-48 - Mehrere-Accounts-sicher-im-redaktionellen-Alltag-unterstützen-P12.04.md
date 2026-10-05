@@ -4,7 +4,7 @@ title: Mehrere Accounts sicher im redaktionellen Alltag unterstützen (P12.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 08:44'
 labels:
   - p12
   - r5
@@ -49,6 +49,14 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Workspacegebundene Account-Auswahl aus serverseitiger Snapshot-Abfrage nutzen.
+2. Varianten, Freigaben und Termine streng an ihren Zielaccount binden.
+3. Accountwechsel und fremde Account-IDs testen.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
