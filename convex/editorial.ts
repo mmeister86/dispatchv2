@@ -561,7 +561,7 @@ export const approve = workspaceMutation({
     return id;
   },
 });
-async function firstWriteContent(
+export async function firstWriteContent(
   ctx: QueryCtx,
   workspaceId: Id<"workspaces">,
   ver: Doc<"draftVersions">,

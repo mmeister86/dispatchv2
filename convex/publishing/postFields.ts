@@ -6,6 +6,13 @@ export const outcome = v.union(
   v.literal("unknown"),
 );
 export const attemptFields = {
+  reconcileSequence: v.optional(v.number()),
+  reconcileReads: v.optional(v.number()),
+  reconcileLeaseUntil: v.optional(v.number()),
+  reconcileDeadline: v.optional(v.number()),
+  reconcileNotBefore: v.optional(v.number()),
+  reconciledAt: v.optional(v.number()),
+  reconciledBy: v.optional(v.id("users")),
   workspaceId: v.id("workspaces"),
   ...job,
   versionId: v.id("draftVersions"),

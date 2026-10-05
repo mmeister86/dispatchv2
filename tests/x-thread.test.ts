@@ -1158,3 +1158,706 @@ test("persisted abort fences all send paths and repeated abort still checks owne
     "ROLE_ACCESS_DENIED",
   );
 });
+
+const lookup = (id = "101", text = "First", parent?: string) =>
+  Response.json({
+    data: {
+      id,
+      text,
+      author_id: "123",
+      created_at: new Date(Date.now()).toISOString(),
+      referenced_posts: parent ? [{ type: "replied_to", id: parent }] : [],
+      edit_history_post_ids: [id],
+      attachments: { media_keys: [] },
+    },
+  });
+test("positive read reconciliation confirms evidence without sending or proving write access", async () => {
+  const f = await fixture(true);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  fetch.mockClear().mockResolvedValue(lookup());
+  const args = {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+    position: 0,
+    candidateId: "101",
+  };
+  expect(await f.signed.action(api.publishing.reconcile.lookup, args)).toBe(
+    "confirmed",
+  );
+  expect(await f.signed.action(api.publishing.reconcile.lookup, args)).toBe(
+    "confirmed",
+  );
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(fetch.mock.calls[0][1]?.method).toBe("GET");
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.accountId)))!.capability.publish,
+  ).toBe(false);
+  const s = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+  expect(s).toMatchObject({ state: "partially_published", publishedCount: 1 });
+  expect(s.externalPosts?.[0].url).toBe("https://x.com/i/web/status/101");
+});
+test.each([
+  "404",
+  "empty",
+  "author",
+  "text",
+  "parent",
+  "media",
+  "time",
+  "id",
+  "edited",
+  "missing",
+  "timeout",
+])("%s lookup never proves unknown write absent", async (change) => {
+  const f = await fixture();
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  let value = await lookup().json();
+  if (change === "author") value.data.author_id = "999";
+  if (change === "text") value.data.text = "Different";
+  if (change === "parent")
+    value.data.referenced_posts = [{ type: "replied_to", id: "999" }];
+  if (change === "media") value.data.attachments.media_keys = ["3_other"];
+  if (change === "time") value.data.created_at = "2000-01-01T00:00:00Z";
+  if (change === "id") value.data.id = "102";
+  if (change === "edited") value.data.edit_history_post_ids = ["99", "101"];
+  if (change === "missing") delete value.data.author_id;
+  fetch
+    .mockClear()
+    .mockResolvedValue(
+      change === "404"
+        ? new Response("{}", { status: 404 })
+        : Response.json(change === "empty" ? { data: [] } : value),
+    );
+  if (change === "timeout") fetch.mockRejectedValue(new Error("timeout"));
+  expect(
+    await f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+      position: 0,
+      candidateId: "101",
+    }),
+  ).toBe("unknown");
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.state).toBe(
+    "reconciliation_required",
+  );
+  await expect(
+    f.signed.mutation(api.publishing.reconcile.continueThread, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    }),
+  ).rejects.toThrow("X_RECONCILIATION_REQUIRED");
+});
+test("explicit continuation preserves confirmed 1/2 across generation and sends only 3", async () => {
+  const f = await fixture();
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(response("101"))
+    .mockResolvedValueOnce(response("102"))
+    .mockResolvedValueOnce(new Response("{}", { status: 429 }));
+  for (let i = 0; i < 3; i++)
+    await f.t.action(internal.publishing.workflows.step, f.job);
+  const args = {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+  };
+  await f.signed.mutation(api.publishing.reconcile.continueThread, args);
+  await expect(
+    f.signed.mutation(api.publishing.reconcile.continueThread, args),
+  ).rejects.toThrow("SCHEDULE_CONFLICT");
+  fetch.mockClear().mockResolvedValue(response("103"));
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(60000));
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({
+    text: "Third",
+    reply: { in_reply_to_tweet_id: "102" },
+  });
+  const s = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+  expect(s).toMatchObject({
+    state: "published",
+    publishedCount: 3,
+    generation: 2,
+    versionId: f.versionId,
+  });
+  expect(s.externalPosts?.map((p) => p.externalId)).toEqual([
+    "101",
+    "102",
+    "103",
+  ]);
+});
+test("aborted unknown can be reconciled to retained evidence but never resumed or enabled", async () => {
+  const f = await fixture(true);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+  });
+  fetch.mockClear().mockResolvedValue(lookup());
+  expect(
+    await f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 2,
+      position: 0,
+      candidateId: "101",
+    }),
+  ).toBe("confirmed");
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!).toMatchObject({
+    state: "cancelled",
+    abortRequestedBy: f.actorId,
+    publishedCount: 1,
+  });
+  await expect(
+    f.signed.mutation(api.publishing.reconcile.continueThread, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 2,
+    }),
+  ).rejects.toThrow("SCHEDULE_ABORT_REQUESTED");
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.accountId)))!.capability.publish,
+  ).toBe(false);
+});
+
+test("POST Retry-After and permanent rejection restrict explicit continuation", async () => {
+  for (const status of [429, 400]) {
+    const f = await fixture();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response("{}", { status, headers: { "Retry-After": "60" } }),
+    );
+    await f.t.action(internal.publishing.workflows.step, f.job);
+    await expect(
+      f.signed.mutation(api.publishing.reconcile.continueThread, {
+        workspaceId: f.workspaceId,
+        scheduleId: f.scheduleId,
+        expectedGeneration: 1,
+      }),
+    ).rejects.toThrow(
+      status === 429 ? "X_POST_RATE_LIMITED" : "X_POST_PERMANENT_REJECTION",
+    );
+    vi.restoreAllMocks();
+  }
+});
+test("NFC and exact returned URL entities reconcile without guessing index units", async () => {
+  const f = await fixture();
+  const text = " cafe\u0301 https://example.com/a \n";
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.versionId, { content: { ...f.content, text: [text] } }),
+  );
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  const value = await lookup("101", " café https://t.co/AbC \n").json();
+  value.data.entities = {
+    urls: [
+      {
+        url: "https://t.co/AbC",
+        expanded_url: "https://example.com/a",
+        start: 999,
+        end: 1000,
+      },
+    ],
+  };
+  fetch.mockClear().mockResolvedValue(Response.json(value));
+  expect(
+    await f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+      position: 0,
+      candidateId: "https://x.com/fixture/status/101",
+    }),
+  ).toBe("confirmed");
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.state).toBe(
+    "published",
+  );
+});
+test("ambiguous repeated URL transform and missing upload media-key evidence stay unknown", async () => {
+  for (const kind of ["url", "media"]) {
+    const f = await fixture();
+    if (kind === "url")
+      await f.t.run((ctx) =>
+        ctx.db.patch(f.versionId, {
+          content: {
+            ...f.content,
+            text: ["https://example.com/a https://example.com/a"],
+          },
+        }),
+      );
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("timeout"));
+    await f.t.action(internal.publishing.workflows.step, f.job);
+    const attempt = (await f.t.run((ctx) =>
+      ctx.db
+        .query("xPostAttempts")
+        .withIndex("by_scheduleId_and_generation_and_position", (q) =>
+          q.eq("scheduleId", f.scheduleId),
+        )
+        .first(),
+    ))!;
+    if (kind === "media")
+      await f.t.run((ctx) =>
+        ctx.db.patch(attempt._id, { mediaIds: ["456"], mediaKeys: [null] }),
+      );
+    const value = await lookup(
+      "101",
+      kind === "url" ? "https://t.co/AbC https://t.co/AbC" : "First",
+    ).json();
+    if (kind === "url")
+      value.data.entities = {
+        urls: [
+          { url: "https://t.co/AbC", expanded_url: "https://example.com/a" },
+        ],
+      };
+    else value.data.attachments.media_keys = ["3_456"];
+    fetch.mockClear().mockResolvedValue(Response.json(value));
+    expect(
+      await f.signed.action(api.publishing.reconcile.lookup, {
+        workspaceId: f.workspaceId,
+        scheduleId: f.scheduleId,
+        expectedGeneration: 1,
+        position: 0,
+        candidateId: "101",
+      }),
+    ).toBe("unknown");
+    vi.restoreAllMocks();
+  }
+});
+test("reconnect requires separate same-snapshot reauthorization after positive lookup", async () => {
+  const f = await fixture(true);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  await f.t.run(async (ctx) => {
+    const a = (await ctx.db.get(f.accountId))!;
+    await ctx.db.patch(a._id, {
+      xEvidence: { ...a.xEvidence!, connectionSequence: 8 },
+    });
+  });
+  fetch.mockClear().mockResolvedValue(lookup());
+  await f.signed.action(api.publishing.reconcile.lookup, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+    position: 0,
+    candidateId: "101",
+  });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  await f.signed.mutation(api.publishing.reconcile.continueThread, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+  });
+  fetch
+    .mockClear()
+    .mockResolvedValueOnce(response("102"))
+    .mockResolvedValueOnce(response("103"));
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(60000));
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(
+    JSON.parse(fetch.mock.calls[0][1]!.body as string).reply
+      .in_reply_to_tweet_id,
+  ).toBe("101");
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.accountId)))!.capability.publish,
+  ).toBe(true);
+});
+test.each(["role", "lifecycle", "scope", "binding", "identity"])(
+  "%s drift during GET prevents committing client/cross-context evidence",
+  async (kind) => {
+    const f = await fixture(true);
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("timeout"));
+    await f.t.action(internal.publishing.workflows.step, f.job);
+    fetch.mockImplementation(async () => {
+      await f.t.run(async (ctx) => {
+        if (kind === "role") {
+          const m = await ctx.db
+            .query("memberships")
+            .withIndex("by_userId_and_workspaceId", (q) =>
+              q.eq("userId", f.actorId).eq("workspaceId", f.workspaceId),
+            )
+            .unique();
+          await ctx.db.patch(m!._id, { role: "Editor" });
+        }
+        if (kind === "lifecycle")
+          await ctx.db.patch(f.workspaceId, { lifecycle: "deleting" });
+        if (kind === "scope")
+          await ctx.db.patch(f.credentialId, { scopes: [] });
+        if (kind === "binding") {
+          const b = await ctx.db
+            .query("xBindings")
+            .withIndex("by_providerIdentity", (q) =>
+              q.eq("providerIdentity", "123"),
+            )
+            .unique();
+          await ctx.db.patch(b!._id, { accountId: undefined });
+        }
+        if (kind === "identity")
+          await ctx.db.patch(f.accountId, { providerIdentity: "999" });
+      });
+      return lookup();
+    });
+    await expect(
+      f.signed.action(api.publishing.reconcile.lookup, {
+        workspaceId: f.workspaceId,
+        scheduleId: f.scheduleId,
+        expectedGeneration: 1,
+        position: 0,
+        candidateId: "101",
+      }),
+    ).rejects.toThrow();
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.publishedCount,
+    ).toBe(0);
+  },
+);
+
+test("confirmed late POST can finalize persisted abort through authorized reconciliation without another send", async () => {
+  const f = await fixture(true),
+    c = (await f.t.mutation(internal.publishing.attempts.claim, f.job))!;
+  await f.t.mutation(internal.publishing.attempts.beforeSend, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    credentialGeneration: 1,
+    mediaIds: [],
+  });
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+  });
+  await f.t.mutation(internal.publishing.attempts.receipt, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    outcome: "confirmed",
+    externalId: "101",
+    httpStatus: 201,
+    durationMs: 1,
+  });
+  const fetch = vi.spyOn(globalThis, "fetch");
+  await f.signed.action(api.publishing.reconcile.lookup, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 2,
+    position: 0,
+    candidateId: "101",
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!).toMatchObject({
+    state: "cancelled",
+    abortRequestedBy: f.actorId,
+    publishedCount: 1,
+  });
+  expect(fetch).not.toHaveBeenCalled();
+});
+test("concurrent reads cannot replace a confirmed ID or enable capability", async () => {
+  const f = await fixture(true),
+    fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  let release!: () => void;
+  const wait = new Promise<void>((r) => (release = r));
+  fetch.mockImplementation(async () => {
+    await wait;
+    return lookup();
+  });
+  const args = {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+    position: 0,
+    candidateId: "101",
+  };
+  const first = f.signed.action(api.publishing.reconcile.lookup, args);
+  await vi.waitFor(() => expect(fetch).toHaveBeenCalledTimes(2));
+  await expect(
+    f.signed.action(api.publishing.reconcile.lookup, {
+      ...args,
+      candidateId: "102",
+    }),
+  ).rejects.toThrow("X_RECONCILIATION_IN_PROGRESS");
+  release();
+  expect(await first).toBe("confirmed");
+  await expect(
+    f.signed.action(api.publishing.reconcile.lookup, {
+      ...args,
+      candidateId: "102",
+    }),
+  ).rejects.toThrow("X_POST_CHECKPOINT_CONFLICT");
+});
+test("provider read backoff is persisted and a new click never bypasses it", async () => {
+  const f = await fixture(),
+    fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  fetch
+    .mockClear()
+    .mockResolvedValue(
+      new Response("{}", { status: 429, headers: { "retry-after": "90" } }),
+    );
+  const args = {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+    position: 0,
+    candidateId: "101",
+  };
+  expect(await f.signed.action(api.publishing.reconcile.lookup, args)).toBe(
+    "unknown",
+  );
+  await expect(
+    f.signed.action(api.publishing.reconcile.lookup, args),
+  ).rejects.toThrow("X_RECONCILIATION_BACKOFF");
+  expect(fetch).toHaveBeenCalledTimes(1);
+  vi.setSystemTime(Date.now() + 90000);
+  fetch.mockResolvedValue(lookup());
+  // Candidate creation is outside the captured request window; waiting never fabricates proof.
+  expect(await f.signed.action(api.publishing.reconcile.lookup, args)).toBe(
+    "unknown",
+  );
+});
+
+test("ordinary partial thread can reverify current connection through exact fresh continuation without resending prefix", async () => {
+  const f = await fixture();
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(response("101"))
+    .mockResolvedValueOnce(response("102"))
+    .mockResolvedValueOnce(new Response("{}", { status: 429 }));
+  for (let i = 0; i < 3; i++)
+    await f.t.action(internal.publishing.workflows.step, f.job);
+  await f.t.run(async (ctx) => {
+    const a = (await ctx.db.get(f.accountId))!;
+    await ctx.db.patch(a._id, {
+      capability: { ...a.capability, publish: false },
+      xEvidence: {
+        ...a.xEvidence!,
+        connectionSequence: 8,
+        liveWrite: "unverified",
+      },
+    });
+  });
+  await f.signed.mutation(api.publishing.reconcile.continueThread, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!).toMatchObject({
+    purpose: "first_write_verification",
+    versionId: f.versionId,
+    accountConnectionSequence: 8,
+    publishedCount: 2,
+  });
+  fetch.mockClear().mockResolvedValue(response("103"));
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(60000));
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(JSON.parse(fetch.mock.calls[0][1]!.body as string)).toMatchObject({
+    text: "Third",
+    reply: { in_reply_to_tweet_id: "102" },
+  });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.accountId)))!.capability.publish,
+  ).toBe(true);
+});
+
+test("fresh explicit read authorization after the bounded window can reconcile without a lifetime three-read dead end", async () => {
+  const f = await fixture(),
+    fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  const original = await lookup().json(),
+    args = {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+      position: 0,
+      candidateId: "101",
+    };
+  fetch.mockClear().mockResolvedValue(new Response("{}", { status: 404 }));
+  for (let i = 0; i < 3; i++)
+    await f.signed.action(api.publishing.reconcile.lookup, args);
+  await expect(
+    f.signed.action(api.publishing.reconcile.lookup, args),
+  ).rejects.toThrow("X_RECONCILIATION_BUDGET_EXHAUSTED");
+  expect(fetch).toHaveBeenCalledTimes(3);
+  vi.setSystemTime(Date.now() + 15 * 60000 + 1);
+  fetch.mockResolvedValue(Response.json(original));
+  expect(await f.signed.action(api.publishing.reconcile.lookup, args)).toBe(
+    "confirmed",
+  );
+  expect(fetch).toHaveBeenCalledTimes(4);
+});
+
+test("positive media reconciliation uses captured real upload keys and confirmed reply parent", async () => {
+  const f = await fixture();
+  await attachMedia(f);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  const value = await lookup().json();
+  value.data.attachments.media_keys = ["3_456"];
+  fetch.mockClear().mockResolvedValue(Response.json(value));
+  await f.signed.action(api.publishing.reconcile.lookup, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+    position: 0,
+    candidateId: "101",
+  });
+  await f.signed.mutation(api.publishing.reconcile.continueThread, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+  });
+  fetch.mockClear().mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, {
+    scheduleId: f.scheduleId,
+    generation: 2,
+  });
+  fetch.mockClear().mockResolvedValue(lookup("102", "Second", "101"));
+  expect(
+    await f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 2,
+      position: 1,
+      candidateId: "102",
+    }),
+  ).toBe("confirmed");
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.externalPosts?.map(
+      (p) => p.externalId,
+    ),
+  ).toEqual(["101", "102"]);
+});
+test("changed source and expired old intent require same-snapshot human checks before continuation", async () => {
+  for (const kind of ["source", "expiry"]) {
+    const f = await fixture(true);
+    const media = await attachMedia(f);
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(response("101"))
+      .mockResolvedValueOnce(new Response("{}", { status: 429 }));
+    await f.t.action(internal.publishing.workflows.step, f.job);
+    await f.t.action(internal.publishing.workflows.step, f.job);
+    if (kind === "source")
+      await f.t.run((ctx) =>
+        ctx.db.patch(media.assetId, { checksum: "c".repeat(64) }),
+      );
+    else vi.setSystemTime(Date.now() + 46 * 60000);
+    const command = f.signed.mutation(api.publishing.reconcile.continueThread, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    });
+    if (kind === "source")
+      await expect(command).rejects.toThrow("MEDIA_SNAPSHOT_CHANGED");
+    else await expect(command).resolves.toBeNull();
+    expect(fetch).toHaveBeenCalledTimes(2);
+    vi.restoreAllMocks();
+  }
+});
+
+test("human abort finalization uses definitive late rejection and never discards an unknown effect", async () => {
+  for (const outcome of ["rejected", "unknown"] as const) {
+    const f = await fixture(true),
+      c = (await f.t.mutation(internal.publishing.attempts.claim, f.job))!;
+    await f.t.mutation(internal.publishing.attempts.beforeSend, {
+      attemptId: c._id,
+      claimSequence: c.claimSequence,
+      credentialGeneration: 1,
+      mediaIds: [],
+    });
+    await f.signed.mutation(api.editorial.cancel, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    });
+    await f.t.mutation(internal.publishing.attempts.receipt, {
+      attemptId: c._id,
+      claimSequence: c.claimSequence,
+      outcome,
+      errorCode:
+        outcome === "unknown" ? "X_POST_OUTCOME_UNKNOWN" : "X_POST_REJECTED",
+      httpStatus: outcome === "unknown" ? 500 : 400,
+      durationMs: 1,
+    });
+    const command = f.signed.mutation(api.publishing.reconcile.finalizeAbort, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 2,
+    });
+    if (outcome === "unknown")
+      await expect(command).rejects.toThrow("X_RECONCILIATION_REQUIRED");
+    else {
+      await expect(command).resolves.toBeNull();
+      expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.state).toBe(
+        "cancelled",
+      );
+    }
+  }
+});
+
+test.each(["role", "lifecycle", "generation"])(
+  "idempotent known abort finalization rechecks current %s authority",
+  async (kind) => {
+    const f = await fixture(true, false);
+    await f.signed.mutation(api.editorial.cancel, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    });
+    const args = {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 2,
+    };
+    await f.signed.mutation(api.publishing.reconcile.finalizeAbort, args);
+    await f.t.run(async (ctx) => {
+      if (kind === "role") {
+        const m = await ctx.db
+          .query("memberships")
+          .withIndex("by_userId_and_workspaceId", (q) =>
+            q.eq("userId", f.actorId).eq("workspaceId", f.workspaceId),
+          )
+          .unique();
+        await ctx.db.patch(m!._id, { role: "Viewer" });
+      } else if (kind === "lifecycle")
+        await ctx.db.patch(f.workspaceId, { lifecycle: "deleting" });
+      else await ctx.db.patch(f.scheduleId, { generation: 3 });
+    });
+    await expect(
+      f.signed.mutation(api.publishing.reconcile.finalizeAbort, args),
+    ).rejects.toThrow(
+      kind === "role"
+        ? "ROLE_ACCESS_DENIED"
+        : kind === "generation"
+          ? "SCHEDULE_CONFLICT"
+          : "WORKSPACE_INACTIVE",
+    );
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.abortRequestedAt,
+    ).toBeDefined();
+  },
+);

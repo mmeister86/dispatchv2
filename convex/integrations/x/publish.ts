@@ -474,6 +474,14 @@ export async function postRequest(
     httpStatus = response.status;
     const reset = response.headers.get("x-rate-limit-reset");
     if (reset && /^\d{1,12}$/.test(reset)) rateResetAt = Number(reset) * 1000;
+    const retry = response.headers.get("retry-after");
+    if (retry) {
+      const retryAt = /^\d{1,7}$/.test(retry)
+        ? Date.now() + Number(retry) * 1000
+        : Date.parse(retry);
+      if (Number.isFinite(retryAt))
+        rateResetAt = Math.max(rateResetAt ?? 0, retryAt);
+    }
     // These statuses prove a rejected request. Server errors and other statuses may have executed it.
     if ([400, 401, 403, 422, 429].includes(response.status)) {
       await response.body?.cancel();

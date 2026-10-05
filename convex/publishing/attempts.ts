@@ -46,19 +46,45 @@ export const claim = internalMutation({
       s.abortRequestedAt !== undefined
     )
       return null;
-    const rows = await ctx.db
+    const history = await ctx.db
       .query("xPostAttempts")
       .withIndex("by_scheduleId_and_generation_and_position", (q) =>
-        q.eq("scheduleId", s._id).eq("generation", s.generation),
+        q.eq("scheduleId", s._id),
       )
       .take(101);
-    if (rows.length > 100) {
-      await failure(ctx, s, "X_POST_ATTEMPT_LIMIT");
+    if (
+      history.length > 100 ||
+      history.some(
+        (c) =>
+          c.generation !== s.generation &&
+          ["unknown", "sending"].includes(c.stage),
+      )
+    ) {
+      await failure(ctx, s, "X_RECONCILIATION_REQUIRED");
+      await ctx.db.patch(s._id, { state: "reconciliation_required" });
       return null;
     }
-    let position = 0;
-    while (rows.some((c) => c.position === position && c.stage === "confirmed"))
-      position++;
+    const rows = history.filter((c) => c.generation === s.generation);
+    const posts = s.externalPosts ?? [];
+    if (
+      posts.some(
+        (p, i) =>
+          p.position !== i ||
+          !history.some(
+            (c) =>
+              c._id === p.attemptId &&
+              c.position === p.position &&
+              c.stage === "confirmed" &&
+              c.externalId === p.externalId &&
+              c.versionId === s.versionId &&
+              c.accountId === s.accountId,
+          ),
+      )
+    ) {
+      await failure(ctx, s, "X_POST_CHECKPOINT_CONFLICT");
+      return null;
+    }
+    const position = posts.length;
     let c = rows.find((c) => c.position === position);
     if (c && ["unknown", "rejected"].includes(c.stage)) return null;
     if (c?.leaseUntil && c.leaseUntil > Date.now()) return null;
@@ -76,6 +102,16 @@ export const claim = internalMutation({
     try {
       const ver = await preflight(ctx, s),
         account = await ctx.db.get(s.accountId);
+      if (
+        history.some(
+          (c) =>
+            c.workspaceId !== s.workspaceId ||
+            c.versionId !== s.versionId ||
+            c.accountId !== s.accountId ||
+            c.providerIdentity !== account?.providerIdentity,
+        )
+      )
+        throw new ConvexError("ACCOUNT_CONNECTION_CHANGED");
       if (!account || account.provider !== "X")
         throw new ConvexError("PUBLISHER_NOT_CONFIGURED");
       if (position >= ver.content.text.length) {
@@ -86,9 +122,7 @@ export const claim = internalMutation({
         throw new ConvexError("X_POST_BUDGET_EXHAUSTED");
       if (!c) {
         const parent = position
-          ? rows.find(
-              (r) => r.position === position - 1 && r.stage === "confirmed",
-            )?.externalId
+          ? posts.find((p) => p.position === position - 1)?.externalId
           : undefined;
         if (position && !parent)
           throw new ConvexError("X_REPLY_PARENT_REQUIRED");

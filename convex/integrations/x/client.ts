@@ -407,3 +407,56 @@ export const credentialForSchedule = internalAction({
     };
   },
 });
+
+// Concrete paused read access; ordinary publishing credentials keep their existing write guards.
+export const credentialForReconciliation = internalAction({
+  args: {
+    workspaceId: v.id("workspaces"),
+    scheduleId: v.id("schedules"),
+    expectedGeneration: v.number(),
+    position: v.number(),
+    candidateId: v.string(),
+    reconcileSequence: v.number(),
+  },
+  returns: v.object({
+    accessToken: v.string(),
+    credentialGeneration: v.number(),
+    connectionSequence: v.number(),
+  }),
+  handler: async (
+    ctx,
+    args,
+  ): Promise<{
+    accessToken: string;
+    credentialGeneration: number;
+    connectionSequence: number;
+  }> => {
+    const { reconcileSequence, ...a } = args;
+    const src = await ctx.runQuery(internal.publishing.reconcile.source, a);
+    if (
+      src.attempt.stage !== "unknown" ||
+      src.attempt.reconcileSequence !== reconcileSequence ||
+      (src.attempt.reconcileLeaseUntil ?? 0) <= Date.now()
+    )
+      throw new ConvexError("X_RECONCILIATION_CHANGED");
+    const value = await open<Tokens>(
+      src.credential.envelope!,
+      association(a.workspaceId, src.attempt.accountId),
+    );
+    const current = await ctx.runQuery(internal.publishing.reconcile.source, a);
+    if (
+      current.credential.generation !== src.credential.generation ||
+      current.connectionSequence !== src.connectionSequence ||
+      current.attempt._id !== src.attempt._id ||
+      current.attempt.stage !== "unknown" ||
+      current.attempt.reconcileSequence !== reconcileSequence ||
+      (current.attempt.reconcileLeaseUntil ?? 0) <= Date.now()
+    )
+      throw new ConvexError("X_RECONCILIATION_CHANGED");
+    return {
+      accessToken: value.accessToken,
+      credentialGeneration: src.credential.generation,
+      connectionSequence: src.connectionSequence,
+    };
+  },
+});

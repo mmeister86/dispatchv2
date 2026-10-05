@@ -33,6 +33,7 @@ import type * as publishing_attempts from "../publishing/attempts.js";
 import type * as publishing_media from "../publishing/media.js";
 import type * as publishing_mediaFields from "../publishing/mediaFields.js";
 import type * as publishing_postFields from "../publishing/postFields.js";
+import type * as publishing_reconcile from "../publishing/reconcile.js";
 import type * as publishing_workflows from "../publishing/workflows.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
@@ -69,6 +70,7 @@ declare const fullApi: ApiFromModules<{
   "publishing/media": typeof publishing_media;
   "publishing/mediaFields": typeof publishing_mediaFields;
   "publishing/postFields": typeof publishing_postFields;
+  "publishing/reconcile": typeof publishing_reconcile;
   "publishing/workflows": typeof publishing_workflows;
   users: typeof users;
   workspaces: typeof workspaces;
