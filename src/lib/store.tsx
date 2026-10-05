@@ -74,6 +74,8 @@ const Context = createContext<{
   assignDraft: (draft: Draft, userId: string) => Promise<boolean>;
   saveDraft: (input: SaveDraftInput) => Promise<boolean>;
   approveVersion: (draft: Draft) => Promise<boolean>;
+  approveFirstWrite: (draft: Draft) => Promise<string | null>;
+  confirmFirstWrite: (draft: Draft, approvalId: string) => Promise<boolean>;
   revokeApproval: (draft: Draft) => Promise<boolean>;
   replaceSchedule: (
     draft: Draft,
@@ -286,6 +288,8 @@ function DemoStoreProvider({ children }: { children: ReactNode }) {
             ),
           ),
         approveVersion: async (d) => mutate((s) => approveDraft(s, d.id)),
+        approveFirstWrite: async () => null,
+        confirmFirstWrite: async () => false,
         revokeApproval: async (d) =>
           mutate((s) => revokeDraftApproval(s, d.id)),
         replaceSchedule: async (_, x) =>
@@ -395,6 +399,8 @@ const emptyContext = {
   assignDraft: async () => unavailable(),
   saveDraft: async () => unavailable(),
   approveVersion: async () => unavailable(),
+  approveFirstWrite: async () => null,
+  confirmFirstWrite: async () => unavailable(),
   revokeApproval: async () => unavailable(),
   replaceSchedule: async () => unavailable(),
   planVersion: async () => unavailable(),
@@ -440,6 +446,8 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
   const createContent = useMutation(api.editorial.create);
   const saveContent = useMutation(api.editorial.save);
   const approveContent = useMutation(api.editorial.approve);
+  const approveProof = useMutation(api.editorial.approveFirstWrite);
+  const confirmProof = useMutation(api.editorial.confirmFirstWrite);
   const revokeContent = useMutation(api.editorial.revoke);
   const scheduleContent = useMutation(api.editorial.schedule);
   const moveContent = useMutation(api.editorial.reschedule);
@@ -702,6 +710,25 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
             approveContent({
               workspaceId: snapshot.activeWorkspaceId,
               ...target(d),
+            }),
+          ),
+        approveFirstWrite: async (d) => {
+          try {
+            return await approveProof({
+              workspaceId: snapshot.activeWorkspaceId,
+              ...target(d),
+            });
+          } catch (e) {
+            toast.error(editorialActionError(e));
+            return null;
+          }
+        },
+        confirmFirstWrite: (d, id) =>
+          command(() =>
+            confirmProof({
+              workspaceId: snapshot.activeWorkspaceId,
+              ...target(d),
+              approvalId: id as Id<"approvals">,
             }),
           ),
         revokeApproval: (d) =>

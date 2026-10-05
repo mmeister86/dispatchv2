@@ -487,6 +487,27 @@ function CalendarContent({
                     <p className="mb-0 whitespace-pre-wrap text-xs leading-relaxed">
                       {t}
                     </p>
+                    {currentDetail.externalPosts?.find(
+                      (p) => p.position === i,
+                    ) && (
+                      <a
+                        className="mt-2 block text-xs underline"
+                        href={
+                          currentDetail.externalPosts.find(
+                            (p) => p.position === i,
+                          )!.url
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        X-Beitrag{" "}
+                        {
+                          currentDetail.externalPosts.find(
+                            (p) => p.position === i,
+                          )!.externalId
+                        }
+                      </a>
+                    )}
                     {i < currentDetail.publishedCount && (
                       <span className="mt-2 block text-[10px] muted">
                         {demoMode
@@ -497,6 +518,15 @@ function CalendarContent({
                   </div>
                 ))}
               </div>
+              {!demoMode &&
+                ["uncertain", "partial", "failed"].includes(
+                  currentDetail.status,
+                ) && (
+                  <p className="text-xs muted">
+                    Externer Abgleich und explizite Fortsetzung sind noch nicht
+                    verfügbar. Bestätigte Beiträge werden nicht wiederholt.
+                  </p>
+                )}
               <DialogFooter className="flex-wrap gap-2">
                 {currentDetail.status === "scheduled" && (
                   <Button

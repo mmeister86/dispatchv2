@@ -1,3 +1,4 @@
+import { textWithinLimit } from "../../shared/xText";
 export type Channel = "X" | "LinkedIn" | "Bluesky" | "Mastodon";
 export type Role = "Owner" | "Admin" | "Editor" | "Viewer";
 export type PublishStatus =
@@ -45,6 +46,8 @@ export interface Version {
   reason: string;
 }
 export interface Approval {
+  purpose?: "publishing" | "first_write_verification";
+  expiresAt?: number;
   id?: string;
   versionId?: string;
   version: number;
@@ -88,6 +91,15 @@ export interface Draft {
   }[];
 }
 export interface Schedule {
+  media?: { assetId: string; alt: string }[];
+  purpose?: "publishing" | "first_write_verification";
+  externalPosts?: {
+    position: number;
+    externalId: string;
+    url: string;
+    attemptId: string;
+    confirmedAt: number;
+  }[];
   generation?: number;
   versionId?: string;
   timezone?: string;
@@ -199,7 +211,11 @@ export function draftValid(
     v.text.every(
       (t) =>
         t.trim().length > 0 &&
-        t.length <= (account.capability?.maxText ?? limits[account.channel]),
+        textWithinLimit(
+          t,
+          account.channel,
+          account.capability?.maxText ?? limits[account.channel],
+        ),
     ) &&
     v.mediaIds.every((id) =>
       media.some(
@@ -220,6 +236,7 @@ export function approved(draft: Draft) {
     draft.approval?.version === currentVersion(draft).number &&
     draft.approval?.accountId === draft.accountId &&
     !draft.approval?.revokedAt &&
+    draft.approval?.purpose !== "first_write_verification" &&
     reviewComplete(draft)
   );
 }

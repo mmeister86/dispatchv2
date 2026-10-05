@@ -1,3 +1,8 @@
+import {
+  FirstWriteConfirmation,
+  PublishingResults,
+} from "@/features/drafts/first-write-confirmation";
+import { textCount, textWithinLimit } from "../../shared/xText";
 import { MediaPreview } from "@/features/drafts/media-preview";
 import { useEffect, useState, useRef } from "react";
 import {
@@ -708,7 +713,8 @@ export function ComposerPage() {
                 dirty ||
                 !review ||
                 !draftValid(draft, state.accounts, state.media) ||
-                approved(draft)
+                approved(draft) ||
+                (!demoMode && !account?.capability?.publish)
               }
               onClick={async () => {
                 if (await approveVersion(draft))
@@ -723,6 +729,16 @@ export function ComposerPage() {
           </>
         }
       />
+      <FirstWriteConfirmation
+        key={`${draft.id}:${v.id}:${draft.accountId}`}
+        draft={draft}
+        disabled={dirty || conflict || saving}
+      />
+      {!demoMode && (
+        <PublishingResults
+          schedules={state.schedules.filter((s) => s.draftId === draft.id)}
+        />
+      )}
       {conflict && (
         <div role="alert" className="mb-4 surface p-4 text-sm">
           Eine neuere Version wurde gespeichert. Deine lokalen Änderungen
@@ -1043,14 +1059,19 @@ export function ComposerPage() {
                     </span>
                     <span
                       className={
-                        t.length >
-                        (account?.capability?.maxText ??
-                          (demoMode ? limits[account?.channel ?? "X"] : 25000))
+                        !textWithinLimit(
+                          t,
+                          account?.channel ?? "X",
+                          account?.capability?.maxText ??
+                            (demoMode
+                              ? limits[account?.channel ?? "X"]
+                              : 25000),
+                        )
                           ? "text-destructive font-semibold"
                           : "muted"
                       }
                     >
-                      {t.length} /{" "}
+                      {textCount(t, account?.channel ?? "X").length} /{" "}
                       {account?.capability?.maxText ??
                         (demoMode ? limits[account?.channel ?? "X"] : 25000)}
                     </span>

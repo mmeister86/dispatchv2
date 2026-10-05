@@ -14,6 +14,8 @@ export const approvalView = (
   versions: Doc<"draftVersions">[],
 ): Approval => ({
   id: a._id,
+  purpose: a.purpose,
+  expiresAt: a.expiresAt,
   versionId: a.versionId,
   version: versions.find((v) => v._id === a.versionId)?.number ?? 0,
   accountId: a.accountId,
@@ -39,6 +41,16 @@ export const publishingError = (code: string | null) =>
       "Die planende Person hat keine Admin-Rechte mehr. Ein aktueller Admin muss neu planen.",
     APPROVER_AUTHORITY_CHANGED:
       "Die freigebende Person hat keine Admin-Rechte mehr. Neue Freigabe erforderlich.",
+    X_POST_OUTCOME_UNKNOWN:
+      "Der Ausgang einer X-Anfrage ist ungeklärt. Keine automatische Wiederholung. Account und bestätigte Links prüfen; externer Abgleich ist erforderlich.",
+    X_REAUTH_REQUIRED:
+      "X-Zugang fehlt oder ist abgelaufen. Unter Einstellungen → Verbindungen den Account autorisieren und anschließend den unveränderten Snapshot prüfen.",
+    X_SCOPE_REQUIRED:
+      "Die aktuellen X-Zugangsdaten enthalten nicht alle benötigten Schreib- und Lesescopes. Account erneut autorisieren; diese Anfrage wurde nicht gesendet.",
+    FIRST_WRITE_INTENT_EXPIRED:
+      "Die bestätigte Erstveröffentlichung ist nach 45 Minuten abgelaufen. Ergebnis und vorhandene Beiträge prüfen, bevor du eine neue Veröffentlichung freigibst.",
+    X_POST_RATE_LIMITED:
+      "X hat diese Anfrage wegen eines Limits abgelehnt. Der bestätigte Thread bleibt erhalten. Keine automatische Wiederholung; explizite Fortsetzung ist noch nicht verfügbar.",
     CANCEL_AFTER_CLAIM:
       "Storno nach Ausführungsbeginn. Bereits gesendete Anfragen müssen im Provider abgeglichen werden.",
   })[code ?? ""] ??
@@ -51,6 +63,9 @@ export function scheduleView(
 ): Schedule {
   return {
     id: s._id,
+    purpose: s.purpose,
+    externalPosts: s.externalPosts,
+    media: v.content.media,
     draftId: s.draftId,
     workspaceId: s.workspaceId,
     accountId: s.accountId,
@@ -100,7 +115,10 @@ export function draftView(b: {
     versions: b.versions.map(versionView),
     approvals,
     approval: approvals.find(
-      (a) => a.versionId === b.draft.currentVersionId && !a.revokedAt,
+      (a) =>
+        a.versionId === b.draft.currentVersionId &&
+        !a.revokedAt &&
+        a.purpose !== "first_write_verification",
     ),
     assignee: b.draft.assigneeId,
     comments: (b.comments ?? []).map((c) => ({
@@ -118,6 +136,20 @@ export function draftView(b: {
 export function editorialActionError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   const messages: Record<string, string> = {
+    FIRST_WRITE_ACTIVE_JOB:
+      "Für diesen Account läuft bereits eine Veröffentlichung oder ein Ergebnis benötigt Abgleich. Vorhandenes Ergebnis im Kalender prüfen.",
+    FIRST_WRITE_INTENT_EXPIRED:
+      "Die Freigabe der Erstveröffentlichung ist abgelaufen. Konkrete Version erneut prüfen und freigeben.",
+    APPROVAL_PURPOSE_MISMATCH:
+      "Diese Freigabe ist nur für die ausdrücklich bestätigte Erstveröffentlichung gültig. Account, Version und Freigabe erneut prüfen.",
+    X_FIRST_WRITE_ACCOUNT_REQUIRED:
+      "Verbundenen X-Account und einen vollständigen Beitrag wählen. Die Erstveröffentlichung muss ausdrücklich freigegeben werden.",
+    X_WRITE_ALREADY_VERIFIED:
+      "Der X-Schreibzugang ist bereits belegt. Für neue Beiträge die normale Freigabe und Planung verwenden.",
+    X_REAUTH_REQUIRED:
+      "Der aktuelle X-Zugang ist abgelaufen oder unvollständig. Unter Einstellungen → Verbindungen neu autorisieren.",
+    X_SCOPE_REQUIRED:
+      "Für diesen Beitrag fehlen aktuelle X-Scopes: tweet.write, tweet.read, users.read und bei Medien media.write. Account neu autorisieren.",
     SAVE_CONFLICT:
       "Eine neuere Version wurde gespeichert. Deine lokalen Änderungen bleiben erhalten. Versionen vergleichen oder ausdrücklich neu laden.",
     SCHEDULE_CONFLICT:
