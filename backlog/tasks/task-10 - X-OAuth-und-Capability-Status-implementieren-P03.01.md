@@ -4,7 +4,7 @@ title: X-OAuth und Capability-Status implementieren (P03.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:44'
+updated_date: '2026-10-05 11:45'
 labels:
   - p03
   - r1
@@ -73,4 +73,6 @@ Implementation starts after TASK-9 independentSPEC/QUALITY PASSfe3af37. Fresh un
 CLI clarification verified via current Context7 and installed Convex1.46 primary source: codegen may upload bundles for deployment-side analysis/type generation but does not activate running functions (runCodegen has no finishPush). Initial provisional activation interpretation corrected. Full tests/typecheck then convex dev --once performs actual existing-Dev activation. No credentials/provider effects from this read-only verification; receipt /tmp/dispatch-convex-cli-receipt.md.
 
 Review head49d9402 frozen (production9b31e50, lasttests-only). Worker reportsfull89unit/final19OAuth checks/type/lint/build/seededbundle and actualtest:x-oauth StrictMode/denial/workspace/unmount/config/awaitedcommands PASS. ExistingDev accurate-lion-749 activated13:40:59 afterchecks; no liveOAuth/refresh/providerwrite/revoke/envsecretsread/set. SeparatexOAuthStates/xCredentials/xBindings/xOAuthFence inventory and key-ID/previouspair/manualgates documented in .docs/x-oauth-domain-contract.md. NewOAuthconnectionsequence pins schedules/internalcredentialgate, refreshretainssequence. IndependentSPEC nowrunning, QUALITY afterPASS; rootauthbrowserregression separatelyrunning5175 withemailsintercepted. No Done.
+
+IndependentSPEC PASS49d9402:19/19OAuth tests +actualtest:x-oauth browser passed (sandboxlistenerEPERM retriedescalated,5174closed). Fulltask authorization/state/PKCE/crypto/keyrotation/globalbinding/fencing/refreshCAS/unknownoutcome/connectionsequence/internalcredentialgate/realUI/inventory checked; no findings/edits/provider effects. Rootauth5175regression3/3PASS withemailsintercepted closed. Full independentQUALITY nowrunning; live/manualgates open and statusInProgress.
 <!-- SECTION:NOTES:END -->

@@ -12,7 +12,7 @@ Implementer reports full89 unit checks, final19 targeted OAuth tests, frontend+C
 
 ## Independent reviews
 
-SPEC review is running on frozen production/tests. QUALITY follows only after SPEC PASS. No final code-quality or release claim yet.
+Independent SPEC PASS on frozen49d9402:19/19 targeted OAuth tests and actual `pnpm test:x-oauth` passed. The first sandbox browser attempt hit localhost EPERM; exact command-specific escalated rerun passed and5174 closed. Reviewer verified complete authorization/state/PKCE/crypto/rotation/identity-transfer/refresh/sequence/credential-gate/UI/inventory scope with no required changes, edits or provider effects. Current root-only metadata does not alter production. Independent full QUALITY now running; no final quality or release claim yet.
 
 Root independently ran the existing auth browser regression on isolated5175 with reset/verification endpoints intercepted:3/3 passed in4 seconds; no emails. First sandbox attempt failed binding localhost with EPERM; command-specific escalated rerun passed, not an application correction. Isolated server closed; user5173 untouched.
 
