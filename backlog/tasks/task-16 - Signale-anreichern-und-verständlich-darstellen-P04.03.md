@@ -4,7 +4,7 @@ title: Signale anreichern und verständlich darstellen (P04.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 15:59'
+updated_date: '2026-10-05 16:31'
 labels:
   - p04
   - r2
@@ -66,4 +66,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /signals. Synthetic signal filters/details, original event versus editorial interpretation, relevance/novelty/confidence/private status, maintenance noise and failed enrichment, idea handoff. Grenze: No GitHub retrieval, secret filtering or AI enrichment. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Read-only implementation brief prepared while TASK17 is being completed: /tmp/dispatch-github-enrichment-implementation-brief.md. Start only after independently reviewed17 and18, reusing final14/15 source and factual-signal contracts. This task explicitly needs bounded commit/file/diff context; current metadata-only access and content purpose must not silently grant private file/model transfer. Add the smallest explicit context consent and current-generation approval, update existing purpose writers/native admission order, validate least actual token permissions and current GitHub APIs, and keep unsafe/incomplete context as needs_context. Secret filtering is not claimed perfect; facts, approved context, user claims and interpretation stay separate. No16 code, private context fetch, model activation, paid call or acceptance from this preparation.
+
+Additional read-only current context receipt /tmp/dispatch-github-context-current-docs.md: three library-first Context7 commands plus primary official API2026-03-10 verify compare250default commits/max300files only firstpage, commit JSON file pagination max3000, optional binary patches, renamed previous_filename, exact contents ref/size/symlink/submodule limits and selected repository_ids plus explicit Contents-read App permission. No private fetch/token mint/model call or TASK16 implementation. Existing metadata token/content-purpose does not silently grant private context/model transfer. Reviewed17 available at89e1cfa;18 implementation underway and independent reviews still prerequisite.
 <!-- SECTION:NOTES:END -->
