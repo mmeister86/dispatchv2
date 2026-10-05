@@ -4,7 +4,7 @@ title: Authentifizierung und Workspace-Isolation umsetzen (P01.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 08:41'
 labels:
   - p01
   - r0
@@ -48,6 +48,15 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Better Auth Component mit Email-Verifikation und Reset sowie optionalem GitHub-Login konfigurieren.
+2. User/Owner/Default-Workspace atomar und idempotent anlegen; jede Domainoperation serverseitig autorisieren.
+3. UI-Session-Gate, Rückkehrroute, Login/Logout/Reload umsetzen.
+4. Isolation und Auth über tatsächliche Dev-Domains prüfen; fehlende Providerkonfiguration dokumentieren.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
