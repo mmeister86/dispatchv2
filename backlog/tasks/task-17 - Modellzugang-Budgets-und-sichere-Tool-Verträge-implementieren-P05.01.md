@@ -4,7 +4,7 @@ title: 'Modellzugang, Budgets und sichere Tool-Verträge implementieren (P05.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 15:39'
+updated_date: '2026-10-05 15:49'
 labels:
   - p05
   - r2
@@ -79,4 +79,6 @@ Additional read-only exact paid-call boundary receipt /tmp/dispatch-ai-sdk6-budg
 Pinned officialAgent0.6.4 further read-only source evidence: @convex-dev/agent/test exports register(t,name=agent) for real component schema/modules through current convex-test; future matrix must actually run these through-component tests. Generation-only embeddingModel absent prevents automatic message embeddings; searchOtherThreads defaults false and must remain explicit false unless scoped retrieval authorized. Component userId is not workspace/account authority; sharedhuman crossworkspace context needs concrete mapping checks. Receipt /tmp/dispatch-agent-budget-hooks-current-docs.md updated, no17code/paid/embedding/data call.
 
 Implementation authorized now after final reviewedTASK15 source1706c05 SPEC49/QUALITY40PASS. Brief /tmp/dispatch-model-budget-implementation-brief.md and actual .docs/github-signal-domain-contract.md; historicalSignals readability is not model/content purpose authority. Compatible candidate officialAgent0.6.4/ai6.0.300/openai-compatible2.0.81 must jointly compile and run actual published component tests, generation-only embeddings absent/searchOtherThreads:false. Customer generation/search/semantic remain purpose/pricing/fullprocessing-gated; existingkeypresence does not activate. Each actual attempted call requires durable fresh funding/ownattemptID before SDKdoGenerate/doStream; post-result hooks alone insufficient, no paidSDKretry/fallback. No17code beforethisstart or realpaid/manualproof.
+
+TASK17 implementation progress: exact official Agent0.6.4/AI6.0.300/openai-compatible2.0.81 installed; official component codegen and published @convex-dev/agent/test helper execute real modules. Five targeted through-Agent checks PASS: underlying doGenerate observes committed own attempt and budget holds before call; one stable official prompt/output; transport failure makes one physical call with unknown holds/no blind retry; sensitive errors are sanitized; human stop allows truthful late token-estimate settlement while blocking output; bounded tool loop/foreign or forbidden arguments are checked. Joint Convex TypeScript compile PASS. Streaming/deadline/settlement, UI and final broad checks remain in progress; no paid/provider/customer transfer or independent acceptance is claimed. pnpm core-js build script explicitly denied, not executed. Fresh SPEC then QUALITY follow frozen implementation.
 <!-- SECTION:NOTES:END -->
