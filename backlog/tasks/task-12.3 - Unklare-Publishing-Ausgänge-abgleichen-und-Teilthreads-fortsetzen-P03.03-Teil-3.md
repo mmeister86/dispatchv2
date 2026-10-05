@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 13:23'
+updated_date: '2026-10-05 13:33'
 labels:
   - p03
   - r1
@@ -67,4 +67,8 @@ Delegated root continuation clarification in .docs/decisions/first-write-verific
 Implementer-Zwischenstand: 177 Unit-Checks, Typprüfung und tatsächliche Composer-/Kalender-Fixture bestehen; Fixture-Port 5174 ist wieder frei. Selbstreview ergänzt vor Freeze eine konkrete aktuelle Owner/Admin-finalizeAbort-CAS für bereits eindeutig abgelehnte oder bestätigte Outcomes ohne Kandidaten-ID. Unklare/sending Outcomes einschließlich alter Generationen bleiben gesperrt; Abort-Flag wird niemals gelöscht. Abschließende Gesamttests und unabhängige SPEC/QUALITY stehen noch aus. Keine Live-Provider- oder manuelle Abnahme.
 
 Code-Freeze b00093a (Backend 0b5f7cc, UI/Contract b00093a): 181 Unit-Checks, Typprüfung, Formatierung, Build, Bundle- und Diff-Prüfung bestehen; tatsächlicher Composer-/Kalender-Browsertest umfasst Backoff-Timer, Puffererhalt, explizite Fortsetzung und ID-freien bekannten Abort-Abschluss. Bestehende EU-Dev final um 15:21:29 aktiviert, Codegen-Analyse davon getrennt. Unabhängige SPEC-Prüfung und ROOT-Gesamtbrowserregression laufen; QUALITY folgt erst nach SPEC-PASS. AC/Done bleiben bis verifizierten Reviews bzw. manueller Nutzerbestätigung offen. Keine Live-Provideraktionen.
+
+Unabhängige SPEC initial FAIL auf b00093a: 71 registrierte Checks bestehen, fünf isolierte Negativprüfungen belegen vier Lücken (vollständige URL-Token statt Substring; immutableMedia-/SHA-/Namespace-Prüfung bei READ und Evidence-CAS; erreichbarer bestehender Abbruchbefehl für uncertain; historische Medien/Alt-Texte vor Calendar-Fortsetzung). Originalimplementer behebt alle Befunde und ergänzt permanente Regressionen; QUALITY wartet auf SPEC-Re-review-PASS. ROOT separat: alle 34 Playwright-Regressionsfälle auf b00093a bestehen (2,1 Minuten). Nachweis .docs/reviews/task-12.3-x-reconciliation-validation.md. Keine Live-/manuelle Abnahme, Task bleibt In Progress.
+
+Korrektur-Freeze 59528b2: alle vier initialen SPEC-Befunde laut Implementer korrigiert; 186 Unit-Checks (74 X-Thread), Typprüfung, Formatierung, Build, Bundle, Diff und tatsächliche Composer-/Kalender-Fixture bestehen. Permanente Regressionen prüfen vollständige URL-Token, SHA-/Referenz-/Namespace-Drift vor/während GET, erreichbaren awaited unknown-Abbruch mit Fehler/Puffererhalt und historische Alt-Texte vor Calendar-Fortsetzung. EU-Dev final 15:32:11 aktiviert. Unabhängiges SPEC-Re-review und ROOTs gezielte Browserprüfung laufen; QUALITY/AC-Abhaken bleiben bis Review offen. Kein Done/Live-/manueller Nachweis.
 <!-- SECTION:NOTES:END -->
