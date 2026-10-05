@@ -4,7 +4,7 @@ title: 'Modellzugang, Budgets und sichere Tool-Verträge implementieren (P05.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 14:16'
+updated_date: '2026-10-05 14:48'
 labels:
   - p05
   - r2
@@ -67,4 +67,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 Read-only future UI prep /tmp/dispatch-ai-current-ui-receipt.md supplements boundedAI/provider checklist. Agent route unconditionally presents browser-only conversations/timer answer/progress/cost; real local setters unavailable and prompt clears irrespective acknowledgment. Manual idea form also clears/closes on unavailable real setter. TASK17 core must retain truthful unavailable/config guidance until TASK18 persistent ideas and TASK19 official component chat contracts replace these real paths. Structured source/intent binds exact generated version; free-text source query is not authority. No code/provider calls from prep; use reviewed current editorial revision/immutableversion domain, no parallelcontentstore.
 
 Nur Read-only-Vorbereitung während TASK14, keine AI-Implementierung/Aktivierung: drei aktuelle Context7-Befehle (library-first offizielles /get-convex/agent plus zwei docs, keine Quota) und veröffentlichtes offizielles @convex-dev/agent0.6.4-Paket ohne Installationsskripte nur /tmp geprüft. Tatsächliche usageHandler/rawRequestResponseHandler laufen nach Ergebnis je Step/save, liefern keine Domain-AttemptID und sind kein Pre-request-Budgetgate; Streaming-Save kann erneut versucht werden. Jeder tatsächliche bezahlte Modellaufruf benötigt zuvor eigenen persistierten finanzierten Attempt mit idempotenter Settlement-ID; fehlende Usage bleibt unknown/pending. Exakter gepinnter Hookname rawRequestResponseHandler; aktuelle Main-Beispiele haben abweichenden Alias. Tatsächlicher Streaming-Errorlogger erfordert sanitisierte Adapterfehler ohne private Bodies/Secrets. Receipt /tmp/dispatch-agent-budget-hooks-current-docs.md, Brief /tmp/dispatch-model-budget-implementation-brief.md. Joint-Matrix/Mock-Component-Durchstich folgt Implementer nach14/15; kein Modell-/Embedding-/Paid-/Dev-Call oder manueller Nachweis.
+
+Additional read-only exact paid-call boundary receipt /tmp/dispatch-ai-sdk6-budget-middleware-current-docs.md:3currentContext7commands identify latestV4 docs, exact official ai6.0.300/provider3.0.18 archives prove V3 wrapGenerate/wrapStream awaiting preflight before actual underlying request. Native concrete middleware can fund own durableattemptID before call; Agent post-result usageHandler still insufficient. Candidate matrix metadata compatible declaredAgent0.6.4 AI6, but finaljointcompile/mockedcomponent required. Noinstall/provider/customerdata activation;17notstarted.
 <!-- SECTION:NOTES:END -->
