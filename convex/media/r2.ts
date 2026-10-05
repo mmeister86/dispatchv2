@@ -107,6 +107,7 @@ export async function readBounded(
   bucket: string,
   key: string,
   limit: number,
+  received?: (bytes: number) => void,
 ): Promise<Buffer | null> {
   const abort = new AbortController();
   const timer = setTimeout(() => abort.abort(), 30000);
@@ -127,6 +128,7 @@ export async function readBounded(
     let total = 0;
     for await (const chunk of stream) {
       total += chunk.byteLength;
+      received?.(chunk.byteLength);
       if (total > limit) {
         stream.destroy?.();
         throw new MediaValidationError("MEDIA_VALIDATION_FAILED");

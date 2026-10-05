@@ -15,6 +15,7 @@ import type * as http from "../http.js";
 import type * as integrations_x_client from "../integrations/x/client.js";
 import type * as integrations_x_fields from "../integrations/x/fields.js";
 import type * as integrations_x_oauth from "../integrations/x/oauth.js";
+import type * as integrations_x_publish from "../integrations/x/publish.js";
 import type * as lib_authorization from "../lib/authorization.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_editorialFields from "../lib/editorialFields.js";
@@ -28,6 +29,8 @@ import type * as media_uploads from "../media/uploads.js";
 import type * as media_validation from "../media/validation.js";
 import type * as preferences from "../preferences.js";
 import type * as publishing from "../publishing.js";
+import type * as publishing_media from "../publishing/media.js";
+import type * as publishing_mediaFields from "../publishing/mediaFields.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -45,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   "integrations/x/client": typeof integrations_x_client;
   "integrations/x/fields": typeof integrations_x_fields;
   "integrations/x/oauth": typeof integrations_x_oauth;
+  "integrations/x/publish": typeof integrations_x_publish;
   "lib/authorization": typeof lib_authorization;
   "lib/crypto": typeof lib_crypto;
   "lib/editorialFields": typeof lib_editorialFields;
@@ -58,6 +62,8 @@ declare const fullApi: ApiFromModules<{
   "media/validation": typeof media_validation;
   preferences: typeof preferences;
   publishing: typeof publishing;
+  "publishing/media": typeof publishing_media;
+  "publishing/mediaFields": typeof publishing_mediaFields;
   users: typeof users;
   workspaces: typeof workspaces;
 }>;

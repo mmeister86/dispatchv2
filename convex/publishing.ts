@@ -10,7 +10,7 @@ import { content } from "./lib/editorialFields";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 const job = { scheduleId: v.id("schedules"), generation: v.number() };
-async function preflight(ctx: MutationCtx, s: Doc<"schedules">) {
+export async function preflight(ctx: MutationCtx, s: Doc<"schedules">) {
   const actor = await ctx.db
     .query("memberships")
     .withIndex("by_userId_and_workspaceId", (q) =>

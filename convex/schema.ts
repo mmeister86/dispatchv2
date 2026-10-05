@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { stateFields, credentialFields } from "./integrations/x/fields";
+import { checkpointFields } from "./publishing/mediaFields";
 
 import {
   accountFields,
@@ -32,6 +33,13 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  xMediaCheckpoints: defineTable(checkpointFields)
+    .index("by_scheduleId_and_generation_and_mediaPosition", [
+      "scheduleId",
+      "generation",
+      "mediaPosition",
+    ])
+    .index("by_workspaceId", ["workspaceId"]),
   xOAuthFence: defineTable({ key: v.string(), sequence: v.number() }).index(
     "by_key",
     ["key"],
