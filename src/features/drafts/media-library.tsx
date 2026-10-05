@@ -48,12 +48,12 @@ export function MediaLibrary() {
       origin: "R2",
     }));
   const mounted = useRef(true);
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
       mounted.current = false;
-    },
-    [],
-  );
+    };
+  }, []);
   useEffect(() => {
     let active = true;
     void status({ workspaceId })
@@ -76,7 +76,8 @@ export function MediaLibrary() {
     setError("");
     try {
       await fn();
-      if (mounted.current) toast.success(message);
+      if (!mounted.current) return false;
+      toast.success(message);
       return true;
     } catch (e) {
       if (mounted.current) setError(mediaError(e));

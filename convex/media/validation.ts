@@ -124,6 +124,47 @@ function mp4(bytes: Buffer) {
     "ilst",
     "keys",
   ]);
+  function aacDescriptors(start: number, end: number) {
+    // MP4Box recursively parses tags3/4. Support only the fixed AAC-LC tree:
+    // ES -> DecoderConfig -> DecoderSpecificInfo, followed by SLConfig.
+    function read(tag: number, p: number, limit: number) {
+      ensure(p + 2 <= limit && bytes[p++] === tag);
+      let size = 0;
+      for (let i = 0; i < 4; i++) {
+        ensure(p < limit);
+        const n = bytes[p++];
+        size = size * 128 + (n & 127);
+        if ((n & 128) === 0) {
+          ensure(p + size <= limit);
+          return { start: p, end: p + size };
+        }
+      }
+      throw new MediaValidationError("MEDIA_VALIDATION_FAILED");
+    }
+    const es = read(3, start, end);
+    ensure(
+      es.end === end &&
+        es.start + 3 <= es.end &&
+        (bytes[es.start + 2] & 224) === 0,
+    );
+    const config = read(4, es.start + 3, es.end);
+    ensure(
+      config.start + 13 <= config.end &&
+        bytes[config.start] === 0x40 &&
+        bytes[config.start + 1] === 0x15,
+    );
+    const specific = read(5, config.start + 13, config.end);
+    ensure(
+      specific.end === config.end &&
+        specific.end - specific.start >= 2 &&
+        specific.end - specific.start <= 64 &&
+        bytes[specific.start] >>> 3 === 2,
+    );
+    const sl = read(6, config.end, es.end);
+    ensure(
+      sl.end === es.end && sl.end - sl.start === 1 && bytes[sl.start] === 2,
+    );
+  }
   function scan(start: number, end: number, depth = 0) {
     ensure(depth <= 8);
     let offset = start;
@@ -153,8 +194,13 @@ function mp4(bytes: Buffer) {
       }
       if (containers.has(type)) scan(p, limit, depth + 1);
       if (type === "meta") {
-        ensure(p + 4 <= limit);
+        // Full ISO header only; do not let MP4Box choose a different QT child offset.
+        ensure(p + 4 <= limit && bytes.readUInt32BE(p) === 0);
         scan(p + 4, limit, depth + 1);
+      }
+      if (type === "esds") {
+        ensure(p + 4 <= limit && bytes.readUInt32BE(p) === 0);
+        aacDescriptors(p + 4, limit);
       }
       if (type === "keys") {
         ensure(p + 8 <= limit);
@@ -210,8 +256,16 @@ function mp4(bytes: Buffer) {
               kind = bytes.toString("ascii", entry + 4, entry + 8);
             ensure(kind === "avc1" || kind === "mp4a");
             const fixed = kind === "avc1" ? 86 : 36;
-            ensure(size >= fixed && entry + size <= limit);
-            scan(entry + fixed, entry + size, depth + 1);
+            ensure(
+              size >= fixed &&
+                entry + size <= limit &&
+                depth + 1 <= 8 &&
+                ++boxes <= 10000 &&
+                bytes.readUInt16BE(entry + 14) === 1,
+            );
+            // Version0 audio has the fixed header scanned here; QT extensions are unsupported.
+            if (kind === "mp4a") ensure(bytes.readUInt16BE(entry + 16) === 0);
+            scan(entry + fixed, entry + size, depth + 2);
             entry += size;
           }
           ensure(entry === limit);
@@ -233,7 +287,21 @@ function mp4(bytes: Buffer) {
               total += bytes.readUInt32BE(p + 8 + i * 8);
             ensure(total <= 20000);
           }
-        } else ensure(count <= 4);
+        } else {
+          // dref.parse calls parseOneBox for each entry. A self-contained URL
+          // has no child payload, preventing concealed tables or recursion.
+          const entry = p + 8;
+          ensure(
+            count === 1 &&
+              bytes.readUInt32BE(p) === 0 &&
+              depth < 8 &&
+              ++boxes <= 10000 &&
+              entry + 12 === limit &&
+              bytes.readUInt32BE(entry) === 12 &&
+              bytes.toString("ascii", entry + 4, entry + 8) === "url " &&
+              bytes.readUInt32BE(entry + 8) === 1,
+          );
+        }
       }
       if (type === "stsz") {
         ensure(p + 12 <= limit);
