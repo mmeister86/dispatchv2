@@ -4,7 +4,7 @@ title: GitHub-App und Repository-Auswahl anbinden (P04.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 10:39'
 labels:
   - p04
   - r2
@@ -50,8 +50,20 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Reuse current verified session/workspace authorization and separate GitHub login from App-source access.
+2. Implement least-privilege App JWT/installation token and installation/repository synchronization; missing App private key remains visibly unconfigured.
+3. Apply chosen D05: explicit per-workspace repository selection, separate access/monitoring/content settings, limited communicable context, private file/diff model use separately consented and region-gated.
+4. Handle repository access removal and installation deletion with immediate source barriers, preserving historical provenance without new work.
+5. Wire genuine settings/source state and independently review requirements and quality; actual configured repository/manual proof stays explicit and no automatic Done.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/integrations, /onboarding. GitHub-login and repository-App installation are separate mock controls; repository selection/monitoring, event scope and private-context consent. Grenze: No GitHub App permission synchronization or actual repository data. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+D05 implementation scope chosen by root under the users explicit delegated decision authority on2026-10-05; see domain-contracts.md. This selects bounded opt-in contracts, not actual private-source/model activation or a legal/EU proof. Missing GITHUB_APP_PRIVATE_KEY continues as visible setup guidance per latest user answer.
 <!-- SECTION:NOTES:END -->
