@@ -30,6 +30,8 @@ export function xError(error: unknown) {
       "Dieser Account ist bereits vorhanden. Bitte dessen „Neu verbinden“-Aktion verwenden.",
     X_WORKSPACE_CHANGED:
       "Der aktive Workspace hat sich geändert. Bitte die Autorisierung im gewünschten Workspace neu starten.",
+    ACCOUNT_CONNECTION_CHANGED:
+      "Der Account wurde nach dieser Planung neu verbunden. Bitte die exakte freigegebene Version ausdrücklich neu planen.",
     X_CONNECTION_CHANGED:
       "Die Verbindung hat sich während der Aktion geändert. Bitte den aktuellen Account-Status prüfen.",
     X_ACCOUNT_CAPACITY_REACHED:
@@ -38,6 +40,8 @@ export function xError(error: unknown) {
       "Ein Zugang wird bereits erneuert. Bitte den Account-Status abwarten.",
     X_REFRESH_OUTCOME_UNKNOWN:
       "Der Ausgang der Token-Erneuerung ist unklar. Bitte neu verbinden; der alte Refresh-Token wird nicht erneut verwendet.",
+    X_SCOPE_REQUIRED:
+      "Die erforderliche Schreibberechtigung fehlt. Bitte den Account mit den benötigten X-Scopes neu verbinden.",
     X_REAUTH_REQUIRED:
       "X hat den Zugang abgelehnt oder ein erneuerbarer Zugang fehlt. Bitte neu verbinden.",
     ROLE_ACCESS_DENIED:
@@ -263,11 +267,13 @@ export function SocialAccounts() {
           )}{" "}
           in der X-App registrieren; tweet.read, users.read, tweet.write,
           offline.access und media.write ausdrücklich erlauben.{" "}
-          {configuration === null
-            ? "Konfiguration wird geprüft …"
-            : configuration.configured
-              ? "Konfiguration vorhanden; Provider-Zugang noch separat prüfen."
-              : "X-Konfiguration fehlt oder ist ungültig. Verbinden ist deshalb gesperrt."}
+          {!admin
+            ? "Owner/Admin kann Konfiguration und Verbindung verwalten."
+            : configuration === null
+              ? "Konfiguration wird geprüft …"
+              : configuration.configured
+                ? "Konfiguration vorhanden; Provider-Zugang noch separat prüfen."
+                : "X-Konfiguration fehlt oder ist ungültig. Verbinden ist deshalb gesperrt."}
         </li>
         <li>
           Ein X-Account kann einem aktiven Publishing-Workspace gehören. Für

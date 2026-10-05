@@ -827,7 +827,14 @@ export function App() {
           path="/integrations/x/callback"
           element={
             <ProtectedRoute>
-              <XOAuthCallback />
+              {demoMode ? (
+                <EmptyState
+                  title="OAuth benötigt den echten Workspace"
+                  description="Im Demo-Modus werden keine X-Accounts autorisiert."
+                />
+              ) : (
+                <XOAuthCallback />
+              )}
             </ProtectedRoute>
           }
         />

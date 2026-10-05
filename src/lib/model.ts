@@ -19,6 +19,7 @@ export interface Account {
   xEvidence?: {
     scopes: string[];
     identityVerifiedAt: number;
+    connectionSequence?: number;
     textScopeEligible: boolean;
     mediaScopeEligible: boolean;
     liveWrite: "unverified" | "verified" | "blocked";
