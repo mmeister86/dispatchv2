@@ -140,6 +140,8 @@ Ein Abbruchwunsch während `reconciliation_required` wird gespeichert, beseitigt
 
 **Übernommen:** Ein Auftrag fixiert Account, Profilversion, Anlass, Such-/Ereigniszeitfenster, Sprachen, Quellenarten, Themen, Ausschlüsse, Umfang, Frist und Budget. Profiländerungen gelten für neue Läufe. Gesperrte Workspaces und entzogene Zugänge verhindern weitere Aufrufe auch bei alten Profilversionen.
 
+**Implementierungsentscheidung D02, 2026-10-05, TASK-20:** Neue reale Research-Profile beginnen ohne aktivierten Zeitplan und ohne automatisch erteiltes kostenpflichtiges Budget. Manuelle, geplante und spätere Content-Agent-Aufträge verwenden denselben begrenzten Auftrag mit unveränderlicher Profilversion. Ein täglicher oder anderer periodischer Lauf verlangt eine ausdrückliche aktuelle Aktivierung und erfüllt dieselben Verarbeitungs-, Preis- und Budgetprüfungen wie ein manueller Lauf. Der Nutzer setzt ein endliches Auftragslimit in der tatsächlich freigegebenen Abrechnungswährung; das ersetzt weder Provider-, Workspace- noch Accountdeckung. Es gibt keine stillschweigende EUR-Umrechnung, keine aus Demo-Werten übernommene Quote und keinen als gemessen ausgegebenen Startbetrag. Pro Profil läuft höchstens ein aktiver Auftrag; doppelte Zustellung derselben geplanten Ausführung erzeugt keinen weiteren Auftrag. Diese delegierte Anfangsregel erlaubt die Implementierung, aktiviert aber keinen Provider und behauptet kein gemessenes Betriebsbudget.
+
 Evidenz speichert Quellenkennung/kanonische URL, Veröffentlichungs- und Beobachtungszeit sowie ein gegebenenfalls abweichendes Ereignisdatum. Ergebnis enthält Thema, Zusammenfassung, eigene Interpretation, Quellen, Relevanz, Neuigkeit, Unsicherheit, Verfallszeit und mögliche Perspektiven. Große Rohantworten und vollständige fremde Webseiten werden nicht unbegrenzt in Domain-Dokumenten archiviert. Quellenlöschung und Sperrung müssen auch Ableitungen berücksichtigen; der konkrete zulässige Quellenbetrieb bleibt TASK-1-Gate.
 
 ### 7.1 Laufzustände
@@ -236,7 +238,7 @@ Die Tabellen und Beispiele sind prüfbare Sollverträge, keine ausgeführten Tes
 | D06 Account über mehrere Workspaces, Übernahme/Wechsel | Unter übertragener Entscheidungsfreiheit 2026-10-05 gewählt: ein aktiver Workspace, autorisierter Disconnect vor frischem OAuth; technische Umsetzung TASK-10 |
 | Zeitzonen-/DST-/Reisestrategie | Matthias; TASK-11 vor P03.02 |
 | Slotkonflikte, Gültigkeitsklassen und Nachprüfung D08 | Matthias; TASK-22.1/24/25 vor betroffenen P06.03-/P07-Funktionen |
-| D02 Research-Frequenz und Startbudget | Matthias; TASK-20 vor Aktivierung |
+| D02 Research-Frequenz und Startbudget | Delegierte Anfangsregel: manuell, Zeitplan inaktiv, kein erteiltes Budget; tatsächliche Verarbeitungs-/Preisfreigabe und explizite endliche Limits vor TASK-20-Aktivierung |
 | EU-Datenpfade, tatsächliche Capabilities und getrennte Verarbeitungszwecke | Matthias mit erforderlicher Beratung; TASK-1 und jeweiliger Integrations-Task vor Kundendaten/externen Effekten |
 | Eine Scoreformel und Dimensionsmapping | Matthias; TASK-27 vor TASK-28, Analyzer-Aktivierungsnachweise vor R2-Abnahme |
 | D15 konkrete Retention/Recovery/Betriebsziele | Matthias; sichere Anfangsregeln vor Datennutzung, verbindliche Betriebsziele vor GA |
