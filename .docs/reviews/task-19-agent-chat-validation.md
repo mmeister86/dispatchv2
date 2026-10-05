@@ -1,6 +1,6 @@
 # TASK-19 persistent Agent chat validation
 
-Production source on master: backend `29558d340a892c9754616638125a5d86c8c608ba`, final `f6cb20e64c380c9c90d199b0f189d1b5df2a4f1a`, source baseline `7f015fe`. Root metadata-only commits do not change this frozen source. This records code evidence; actual chat processing/pricing/protocol and human acceptance remain separate.
+Production source on master: backend `29558d340a892c9754616638125a5d86c8c608ba`, initial complete unit `f6cb20e64c380c9c90d199b0f189d1b5df2a4f1a`, shared-stop correction `8e5a6b44bd50ce4bb6104b33b4d3604655ed7524`, source baseline `7f015fe`. Root metadata-only commits do not change this frozen source. This records code evidence; actual chat processing/pricing/protocol and human acceptance remain separate.
 
 ## Concrete result
 
@@ -24,7 +24,7 @@ Fresh SPEC PASS against the whole `7f015fe..f6cb20e` unit, without an actionable
 
 Initial fresh QUALITY: **NEEDS FIXES**, exactly one confirmed P2 authorization bypass in the shared public `ai.runs.stop`. A second authenticated Editor can discover another actor's personal chat run through the workspace run list and stop it, despite denial by the conversation-specific stop endpoint. Root independently reproduced the same actual two-human case; the run changed from ready to stopped. Independent evidence:109 registered tests in five files pass; nine own cases pass and one fails; both affected real-component browser fixtures pass. The initial receipt and frozen red source/log are retained at `/tmp/dispatch-chat-quality-receipt.md` and `/tmp/dispatch-chat-quality-initial-red.test.ts` / `.log`. These browser fixtures use synthetic transport and mock the native hook; the initial QUALITY reviewer makes no own native-hook browser claim.
 
-The whole-unit initial assessment is frozen with no additional actionable finding. The original implementer is making a minimal correction at the common stop boundary before state-based returns, reusing native abort bound to the exact stopped incarnation. Non-chat cancellation and late settlement remain in regression scope. Re-SPEC and QUALITY re-review must pass after correction; no acceptance criterion is marked from this interim record.
+The whole-unit initial assessment is frozen with no additional actionable finding. The original implementer committed the minimal correction at `8e5a6b4`: personal conversation/account/actor and run mapping are checked at the common stop boundary before state-based returns, followed by native abort bound to the exact stopped incarnation. Existing safe financial projection and non-chat cancellation remain unchanged. Seven registered regression cases initially reproduced six failures, then passed; full368 tests in25 files (28 chat), targeted chat/runs38 in two files, typecheck/lint/build/bundle/diff and official codegen pass. Existing EU Dev ready20:16:55 after4.44s; actual stores/indexes/optional run fields and component inventory are unchanged. UI is unchanged, so prior browser receipts remain distinct evidence without a new implementer browser claim. Re-SPEC is running against this frozen correction, followed by QUALITY re-review; no acceptance criterion is marked from this interim record.
 
 ## Open acceptance
 

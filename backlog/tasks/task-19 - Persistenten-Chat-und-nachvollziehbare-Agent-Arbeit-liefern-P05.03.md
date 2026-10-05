@@ -4,7 +4,7 @@ title: Persistenten Chat und nachvollziehbare Agent-Arbeit liefern (P05.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 18:14'
+updated_date: '2026-10-05 18:18'
 labels:
   - p05
   - r2
@@ -77,4 +77,6 @@ Fresh independent SPEC PASS for complete 7f015fe..f6cb20e unit, no actionable fi
 Fresh QUALITY confirmed P2 authorization bypass at convex/ai/runs.ts public stop: second authenticated Editor in same workspace cannot use conversations.stop, but can discover owner chat run via runs.recent and generic runs.stop changes ready to stopped. Root independently reproduced exact own two-human case on frozen f6cb20e. Initial reviewer /tmp/dispatch-chat-quality-own.log records9 PASS/1 RED. Hold QUALITY/AC; minimal common-stop chat authority/native abort correction must preserve legacy nonchat cancellation and late usage, followed by independent re-SPEC then QUALITY re-review. Initial full QUALITY receipt still being finalized; no source mutation or task closure yet.
 
 Initial full QUALITY frozen NEEDS FIXES: exactlyone confirmed P2 common-stop personal actor bypass, no additional actionable finding.109 registered/5files pass, own9PASS/1RED, both affected real-component browser fixtures pass; no own native-hook browser claim. Full /tmp/dispatch-chat-quality-receipt.md preserves red source/log, all-caller tracing and actual clarified human draft handoff after harness API-name correction. Original implementer authorized minimal shared guard plus exact-old-run native abort, before state returns, retaining nonchat behavior and late liability. Newsource will freeze for re-SPEC then QUALITY re-review; no code AC/manual/Done claim.
+
+Minimal correction frozen8e5a6b44bd50ce4bb6104b33b4d3604655ed7524 exact3files: shared runs.stop verifies personal conversation/account/actor plus run mapping before terminal returns, then domainfence+existing nativeabort expectedRunID. Financial recent/nonchat behavior unchanged. Seven registeredcases reproducedsix failures then pass; full368/25(28chat), targeted38/2/type/lint/build/bundle/diff/officialcodegen pass. ExistingEUDev ready20:16:55/4.44s; UI unchanged/prior browser receipts separate, inventory unchanged. Independent re-SPEC nowrunning; QUALITY re-review onlyafterPASS. Originalredreceipts retained/no AC or Done until bothreviews/manualapproval asapplicable.
 <!-- SECTION:NOTES:END -->
