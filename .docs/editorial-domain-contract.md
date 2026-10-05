@@ -30,6 +30,8 @@ The delegated D05 strategy is UTC instant plus retained IANA zone/local input. S
 
 `calendar` accepts at most 93 days, optional workspace-checked account and returns `{ rows: [{ schedule, version }], tooDense }`. Over 100 rows returns `tooDense: true` and no partial rows; the UI asks for week or account filtering. Active schedules remain present in composer despite newer historical rows. Composer shows recent history, while bounded calendar windows retrieve historical scheduled/publishing outcomes by their instant.
 
+New planning is atomically limited to 100 active scheduled/publishing rows per draft. Legacy overflow remains readable with `schedulesLimited`; the composer offers cancellation of a visible planned row, and other rows become reachable as active rows are cancelled. Returned schedules' exact approvals are loaded in addition to the latest 100 approval records, with workspace/draft/version/account validation, preserving revocation of old planned snapshots.
+
 Resources show the first 100 accounts/assets and expose `resourcesLimited`; larger account/media inventories need the later paginated provider UI. Comment display shows latest 100 comments and exposes `commentsLimited`. Current member options are authorized member IDs with preference names and server roles, never demo people.
 
 ## Verification and external limits

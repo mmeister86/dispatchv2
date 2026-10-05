@@ -658,3 +658,111 @@ test("real registered scheduler job executes once and stores unavailable notific
   expect(notifications).toHaveLength(1);
   expect(notifications[0].state).toBe("blocked");
 });
+test("planning stops at the readable active limit and legacy overflow remains recoverable", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-06T12:00:00Z"));
+  const f = await setup();
+  const approvalId = await f.approve();
+  const planAt = (i: number) => {
+    const at = Date.now() + 3600000 + i * 60000;
+    return f.signed.mutation(api.editorial.schedule, {
+      workspaceId: f.workspaceId,
+      versionId: f.versionId,
+      accountId: f.accountId,
+      approvalId,
+      at,
+      timezone: "UTC",
+      localTime: localInput(new Date(at).toISOString(), "UTC"),
+    });
+  };
+  const ids: Awaited<ReturnType<typeof planAt>>[] = [];
+  for (let i = 0; i < 100; i++) ids.push(await planAt(i));
+  await expect(planAt(100)).rejects.toThrow("DRAFT_ACTIVE_SCHEDULE_LIMIT");
+  const normal = await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: f.draftId,
+  });
+  expect(normal!.schedulesLimited).toBe(false);
+  expect(normal!.schedules.filter((s) => s.state === "scheduled")).toHaveLength(
+    100,
+  );
+  await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...fields } = (await ctx.db.get(ids[0]))!;
+    await ctx.db.insert("schedules", {
+      ...fields,
+      at: fields.at + 100 * 60000,
+      localTime: localInput(
+        new Date(fields.at + 100 * 60000).toISOString(),
+        "UTC",
+      ),
+      jobId: null,
+    });
+  });
+  const overflow = await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: f.draftId,
+  });
+  expect(overflow!.schedulesLimited).toBe(true);
+  const list = await f.signed.query(api.editorial.list, {
+    workspaceId: f.workspaceId,
+    paginationOpts: { numItems: 25, cursor: null },
+  });
+  expect(list.page[0].schedulesLimited).toBe(true);
+  const visible = overflow!.schedules.find((s) => s.state === "scheduled")!;
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId: visible._id,
+    expectedGeneration: visible.generation,
+  });
+  const recovered = await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: f.draftId,
+  });
+  expect(recovered!.schedulesLimited).toBe(false);
+  const next = recovered!.schedules.find((s) => s.state === "scheduled")!;
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId: next._id,
+    expectedGeneration: next.generation,
+  });
+  await expect(planAt(101)).resolves.toBeDefined();
+});
+test("planned approval stays available for revocation beyond the latest hundred approvals", async () => {
+  const f = await setup();
+  const scheduleId = await f.plan();
+  const planned = (await f.t.run((ctx) => ctx.db.get(scheduleId)))!;
+  for (let expectedRevision = 1; expectedRevision <= 100; expectedRevision++) {
+    const versionId = await f.signed.mutation(api.editorial.save, {
+      workspaceId: f.workspaceId,
+      draftId: f.draftId,
+      expectedRevision,
+      content: { ...f.content, text: [`Revision ${expectedRevision + 1}`] },
+      reason: "Edit",
+    });
+    await f.signed.mutation(api.editorial.approve, {
+      workspaceId: f.workspaceId,
+      versionId,
+      accountId: f.accountId,
+    });
+  }
+  const bundle = await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: f.draftId,
+  });
+  expect(bundle!.versions.some((v) => v._id === f.versionId)).toBe(true);
+  expect(
+    bundle!.approvals.some(
+      (a) => a._id === planned.approvalId && a.revokedAt === null,
+    ),
+  ).toBe(true);
+  await f.signed.mutation(api.editorial.revoke, {
+    workspaceId: f.workspaceId,
+    approvalId: planned.approvalId,
+  });
+  expect(
+    (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: f.draftId,
+    }))!.approvals.find((a) => a._id === planned.approvalId)!.revokedAt,
+  ).not.toBeNull();
+});

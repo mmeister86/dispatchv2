@@ -50,6 +50,7 @@ const bundle = v.object({
   versions: v.array(versionDoc),
   approvals: v.array(approvalDoc),
   schedules: v.array(scheduleDoc),
+  schedulesLimited: v.boolean(),
   historyLimited: v.boolean(),
   commentsLimited: v.boolean(),
   comments: v.array(
@@ -60,6 +61,21 @@ const bundle = v.object({
     }),
   ),
 });
+const ACTIVE_SCHEDULE_LIMIT = 100;
+async function activeDraftSchedules(ctx: QueryCtx, draftId: Id<"drafts">) {
+  return (
+    await Promise.all(
+      (["scheduled", "publishing"] as const).map((state) =>
+        ctx.db
+          .query("schedules")
+          .withIndex("by_draftId_and_state", (q) =>
+            q.eq("draftId", draftId).eq("state", state),
+          )
+          .take(ACTIVE_SCHEDULE_LIMIT + 1),
+      ),
+    )
+  ).flat();
+}
 export async function draftBundle(
   ctx: QueryCtx,
   draft: Doc<"drafts">,
@@ -77,31 +93,40 @@ export async function draftBundle(
     .withIndex("by_draftId", (q) => q.eq("draftId", draft._id))
     .order("desc")
     .take(20);
-  const activeSchedules = (
-    await Promise.all(
-      ["scheduled", "publishing"].map((state) =>
-        ctx.db
-          .query("schedules")
-          .withIndex("by_draftId_and_state", (q) =>
-            q
-              .eq("draftId", draft._id)
-              .eq("state", state as "scheduled" | "publishing"),
-          )
-          .take(101),
-      ),
-    )
-  ).flat();
-  if (activeSchedules.length > 100)
-    throw new ConvexError("DRAFT_ACTIVE_SCHEDULE_LIMIT");
+  const activeSchedules = await activeDraftSchedules(ctx, draft._id);
+  const schedulesLimited = activeSchedules.length > ACTIVE_SCHEDULE_LIMIT;
   const schedules = [
     ...new Map(
-      [...recentSchedules, ...activeSchedules].map((s) => [s._id, s]),
+      [
+        ...recentSchedules,
+        ...activeSchedules.slice(0, ACTIVE_SCHEDULE_LIMIT),
+      ].map((s) => [s._id, s]),
     ).values(),
   ];
   for (const schedule of summary ? [] : schedules)
     if (!versions.some((v) => v._id === schedule.versionId)) {
       const version = await ctx.db.get(schedule.versionId);
-      if (version) versions.push(version);
+      if (
+        version?.workspaceId === draft.workspaceId &&
+        version.draftId === draft._id
+      )
+        versions.push(version);
+    }
+  const approvals = await ctx.db
+    .query("approvals")
+    .withIndex("by_draftId", (q) => q.eq("draftId", draft._id))
+    .order("desc")
+    .take(100);
+  for (const schedule of schedules)
+    if (!approvals.some((a) => a._id === schedule.approvalId)) {
+      const approval = await ctx.db.get(schedule.approvalId);
+      if (
+        approval?.workspaceId === draft.workspaceId &&
+        approval.draftId === draft._id &&
+        approval.versionId === schedule.versionId &&
+        approval.accountId === schedule.accountId
+      )
+        approvals.push(approval);
     }
   versions.sort((a, b) => a.number - b.number);
   const comments = summary
@@ -119,12 +144,9 @@ export async function draftBundle(
     commentsLimited,
     historyLimited: draft.revision > (summary ? 1 : 20),
     versions,
-    approvals: await ctx.db
-      .query("approvals")
-      .withIndex("by_draftId", (q) => q.eq("draftId", draft._id))
-      .order("desc")
-      .take(100),
+    approvals,
     schedules,
+    schedulesLimited,
   };
 }
 export const list = workspaceQuery({
@@ -584,6 +606,11 @@ export const schedule = workspaceMutation({
     );
     if (await occupied(ctx, ctx.workspace._id, a.accountId, a.at))
       throw new ConvexError("SLOT_OCCUPIED");
+    if (
+      (await activeDraftSchedules(ctx, ver.draftId)).length >=
+      ACTIVE_SCHEDULE_LIMIT
+    )
+      throw new ConvexError("DRAFT_ACTIVE_SCHEDULE_LIMIT");
     const id = await ctx.db.insert("schedules", {
       workspaceId: ctx.workspace._id,
       draftId: ver.draftId,

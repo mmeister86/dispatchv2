@@ -53,6 +53,7 @@ export interface Draft {
   revision?: number;
   historyLimited?: boolean;
   commentsLimited?: boolean;
+  schedulesLimited?: boolean;
   id: string;
   workspaceId: string;
   title: string;

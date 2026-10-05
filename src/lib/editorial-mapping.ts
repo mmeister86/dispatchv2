@@ -80,6 +80,7 @@ export function draftView(b: {
   approvals: Doc<"approvals">[];
   historyLimited?: boolean;
   commentsLimited?: boolean;
+  schedulesLimited?: boolean;
   comments?: Doc<"editorialComments">[];
 }): Draft {
   const c = b.versions.at(-1)!.content;
@@ -89,6 +90,7 @@ export function draftView(b: {
     revision: b.draft.revision,
     historyLimited: b.historyLimited,
     commentsLimited: b.commentsLimited,
+    schedulesLimited: b.schedulesLimited,
     workspaceId: b.draft.workspaceId,
     title: c.title,
     accountId: c.accountId ?? "",
@@ -140,6 +142,8 @@ export function editorialActionError(error: unknown) {
       "Die Medienbytes haben sich verändert. Neue unveränderliche Medien und eine neue Freigabe sind erforderlich.",
     SLOT_OCCUPIED:
       "Dieser Account hat bereits einen aktiven Termin zu dieser Uhrzeit. Andere Uhrzeit wählen.",
+    DRAFT_ACTIVE_SCHEDULE_LIMIT:
+      "Dieser Entwurf hat bereits 100 aktive Termine. Einen bestehenden Termin stornieren, bevor du erneut planst.",
     SCHEDULE_IN_PAST: "Der neue Termin muss in der Zukunft liegen.",
     LOCAL_TIME_REQUIRES_EXPLICIT_INSTANT:
       "Diese lokale Uhrzeit existiert nicht oder wurde nicht eindeutig gewählt. Zeit und UTC-Instanz prüfen.",

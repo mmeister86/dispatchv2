@@ -69,6 +69,53 @@ import {
   replaceScheduledVersion,
   type MediaAsset,
 } from "@/lib/model";
+export function VersionCommentInput({
+  version,
+  canWrite,
+  onSubmit,
+}: {
+  version: number;
+  canWrite: boolean;
+  onSubmit: (text: string) => Promise<boolean>;
+}) {
+  const [comment, setComment] = useState("");
+  const [sending, setSending] = useState(false);
+  const submitting = useRef(false);
+  return (
+    <>
+      <label>
+        <span className="field-label">Kommentar zu Version {version}</span>
+        <Textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          disabled={!canWrite}
+          placeholder="Was sollte vor der Freigabe geprüft werden?"
+        />
+      </label>
+      <Button
+        variant="outline"
+        size="sm"
+        className="mt-3"
+        disabled={!comment.trim() || !canWrite || sending}
+        onClick={async () => {
+          if (submitting.current || !canWrite || !comment.trim()) return;
+          submitting.current = true;
+          setSending(true);
+          const submitted = comment;
+          try {
+            if (await onSubmit(submitted))
+              setComment((current) => (current === submitted ? "" : current));
+          } finally {
+            submitting.current = false;
+            setSending(false);
+          }
+        }}
+      >
+        {sending ? "Kommentar wird gesendet …" : "Kommentar senden"}
+      </Button>
+    </>
+  );
+}
 function MediaPreview({
   asset,
   className,
@@ -210,6 +257,12 @@ export function DraftsPage() {
           Ressourcen benötigen eine paginierte Auswahl.
         </p>
       )}
+      {drafts.some((d) => d.schedulesLimited) && (
+        <p role="alert" className="mb-3 text-sm">
+          Ein Entwurf hat mehr als 100 aktive Termine. Öffne den Entwurf, um
+          sichtbare Termine zu stornieren und weitere Termine nachzuladen.
+        </p>
+      )}
       <div className="surface table-wrap">
         {drafts.length ? (
           <table className="data-table">
@@ -319,6 +372,7 @@ export function ComposerPage() {
     approveVersion,
     revokeApproval,
     replaceSchedule,
+    cancelSchedule,
     loadMoreVersions,
     hasMoreVersions,
     members,
@@ -341,7 +395,6 @@ export function ComposerPage() {
   const [strategy, setStrategy] = useState(draft?.strategy ?? "generic");
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [mediaOpen, setMediaOpen] = useState(false);
-  const [comment, setComment] = useState("");
   const [compare, setCompare] = useState<number>(1);
   const [tab, setTab] = useState("preview");
   const [analysis, setAnalysis] = useState<
@@ -702,6 +755,29 @@ export function ComposerPage() {
           >
             Aktuelle Version laden
           </Button>
+        </div>
+      )}
+      {draft.schedulesLimited && (
+        <div role="alert" className="mb-4 surface p-4 text-sm">
+          Dieser Entwurf hat mehr als 100 aktive Termine. Die Terminansicht ist
+          begrenzt; der Inhalt bleibt bearbeitbar. Storniere sichtbare geplante
+          Termine, damit weitere Termine nachrücken. Neue Planung ist erst unter
+          100 aktiven Terminen möglich.
+          {scheduled[0] && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={!review}
+              onClick={async () => {
+                if (await cancelSchedule(scheduled[0]))
+                  toast.success(
+                    "Termin storniert. Weitere Termine werden geladen.",
+                  );
+              }}
+            >
+              Angezeigten Termin stornieren
+            </Button>
+          )}
         </div>
       )}
       {scheduled.length > 0 && (
@@ -1158,28 +1234,12 @@ export function ComposerPage() {
                 </Button>
               </div>
             ))}
-            <label>
-              <span className="field-label">
-                Kommentar zu Version {v.number}
-              </span>
-              <Textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                disabled={!canWrite}
-                placeholder="Was sollte vor der Freigabe geprüft werden?"
-              />
-            </label>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-3"
-              disabled={!comment.trim() || !canWrite}
-              onClick={async () => {
-                if (await addComment(draft, comment)) setComment("");
-              }}
-            >
-              Kommentar senden
-            </Button>
+            <VersionCommentInput
+              key={draft.id}
+              version={v.number}
+              canWrite={canWrite}
+              onSubmit={(text) => addComment(draft, text)}
+            />
           </Section>
         </div>
         <aside className="stack">
