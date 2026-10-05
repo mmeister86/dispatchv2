@@ -4,7 +4,7 @@ title: 'Research-Evidenz und Gültigkeitsvertrag implementieren (P06.03, Teil 1)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 21:39'
+updated_date: '2026-10-05 21:41'
 labels:
   - p06
   - r2
@@ -29,9 +29,9 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P06.03. Der übergeord
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Gelieferte Quellen, überprüfbare Behauptungen, Interpretation und Datenlücken werden getrennt gespeichert.
-- [ ] #2 Account-Perspektive, Relevanz, Unsicherheit und begründeter Gültigkeitszeitraum sind je Ergebnis vorhanden.
-- [ ] #3 Ungültige oder entfernte Evidenz kann nicht erneut als gültige Quelle übergeben werden.
+- [x] #1 Gelieferte Quellen, überprüfbare Behauptungen, Interpretation und Datenlücken werden getrennt gespeichert.
+- [x] #2 Account-Perspektive, Relevanz, Unsicherheit und begründeter Gültigkeitszeitraum sind je Ergebnis vorhanden.
+- [x] #3 Ungültige oder entfernte Evidenz kann nicht erneut als gültige Quelle übergeben werden.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -73,4 +73,6 @@ FreshSPEC49a9b99 NEEDSFIXES oneconfirmedreviewer-only read visibility defect: se
 Reviewervisibility correctionfrozen3e079cef4d9e9ba0d1a274aa629bebd6816f868b exact3paths/index/treeclean. SharedcurrentReviewercheck nowcontentproof ALLassessments beforecopyprojection; immutableauditrow andauthorizedoriginalannotation preserved. Permanentdistinctreviewer future/null/expired98suite95PASS3RED23:29:43→98PASS23:30:14; originalindependent5GREEN23:30:16 originalREDlogpreserved. Full496/27/type/lint/build/bundle/diff/postgenerationtypePASS; officialcodegen23:32:16 unchangedbindings/existingEUDevReady23:33:03. SameSPECdeltaactive beforefreshQUALITY, ACunchecked. NoUI/ledger/source/retentionchange/paidactivation/manualDone. Detailedreceiptsreviewdoc.
 
 SameindependentSPEC deltaPASS3e079cef: unchangedown5/registered98 +3newown actualrole/membership/userwithdrawal cases future/expired/nullassessments, allcopiedfields hidden/proof0/originalannotation+rawrows+budgets+attempts unchanged. InitialREDlogs retained /tmp/dispatch-research-evidence-spec-delta-receipt.md. FreshQUALITY nowfullbaseline0a5533c..3e079source review; noACchecked/manualDone. UnchangedactualUI/syntheticbrowser proof applies.
+
+ROOT codeacceptance after finalSPEC andfreshQUALITY PASS3e079cef4d9e9ba0d1a274aa629bebd6816f868b. FreshQUALITY whole0a5533c..3e079:registered98+4ownactual publiccap/distinctannotatorrevocation/policywithdrawal/realoverwrite10+2scheduled oldcopycleanup preservingfreshmaterial PASS, no confirmedfindings. /tmp/dispatch-research-evidence-quality-receipt.md. Fullreview .docs/reviews/task-22.1-research-evidence-validation.md preserves initialRED/corrections/harness distinctions; overlappingcounts notsummed. AC1–3 checked codeonly; statusInProgress until explicitusermanualconfirmation. ExistingEUDevReady23:33:03; no paidprovideractivation/full22.2Agent/23Inbox/live/manualacceptance. ROOT releases22.2next, old20callbacks remaininert.
 <!-- SECTION:NOTES:END -->
