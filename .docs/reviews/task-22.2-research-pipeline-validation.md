@@ -1,6 +1,6 @@
 # TASK22.2 — Research workflow validation
 
-Status: final source frozen, fresh independent SPEC active; QUALITY pending SPEC PASS. Backlog remains In Progress; no manual/live acceptance or paid activation.
+Status: initial frozen source SPEC requires three corrections; original implementer active, QUALITY pending SPEC PASS. Backlog remains In Progress; no manual/live acceptance or paid activation.
 
 Accepted prerequisite baseline: `d06234639086f9514c686007f549ceb37c856710` (evidence source `3e079cef`, SPEC/QUALITY PASS). Implementer: fresh `research_pipeline`, Backend Architect, gpt-6.1-sol/medium. Source milestone: `2670f50c5a5ad5138d83cce346bb89bbe2be0819`, exact34 paths, clean staged diff and working tree. ROOT metadata commits do not change the source baseline.
 
@@ -20,7 +20,19 @@ Actual registered Workflow+Agent tests include all-ten-step empty and funded pat
 
 Final frozen source remains `2670f50c5a5ad5138d83cce346bb89bbe2be0819`. Postcommit type/lint/new-fixture formatting/build/bundle/actual Research browser PASS: `/tmp/task22.2-frozen-{typecheck,lint,fixture-prettier,build,bundle,browser}.log`. Official codegen and postgeneration type PASS: `/tmp/task22.2-frozen-{codegen,post-codegen-typecheck}.log`; no generated source diff. Existing EU Dev `--once` exited0, functions ready2026-10-06 00:29:23 local /2026-10-05 22:29:23 UTC, Workflow/Workpool/batchWorker mounted: `/tmp/task22.2-frozen-eu-dev-once.log`. This is a runtime Dev update, distinct from earlier analysis/bindings-only codegen. No provider/grant activation. Own browser5174 closed, user5173 PID48521 preserved.
 
-Fresh independent SPEC `research_pipeline_spec`, gpt-6-astra/medium, is active on the complete frozen delta after final receipts. It owns only `/tmp` independent checks/receipt, not source. Fresh QUALITY follows only SPEC PASS. Reproductions and failures remain separate from final green results.
+Fresh independent SPEC `research_pipeline_spec`, gpt-6-astra/medium, reviewed the complete frozen delta after final receipts. It owns only `/tmp` independent checks/receipt, not source. Fresh QUALITY follows only SPEC PASS. Reproductions and failures remain separate from final green results.
+
+## Independent SPEC — corrections required
+
+Final original-source verdict: **Ready No; three Important, no confirmed Critical/Minor**. Full independent receipt `/tmp/dispatch-research-pipeline-spec-receipt.md`. Published Workflow/Workpool/Agent actual handlers execute with synthetic physical interception; no source edits/browser/deployment/live calls by reviewer.
+
+- Display proof at `pipeline.results` outlives current generation grant expiration. Fresh server read hides results correctly, but cached UI timer trusts a source-retention deadline60400ms later. Display authority horizon must cover all required primary/secondary grant/source dependencies, separately from physical retention.
+- Twenty sources actually delivered by successful X+Web searches select ten without a model/UI coverage gap; outcome completed and historyIncomplete false. Keep the ten-reference ceiling, but propagate actual bounded delivered/selected/omitted coverage and honest completeness.
+- First-order same-topic independent results have no legal shared new-cluster reference; null existing IDs create separate per-item clusters. Add minimum explicit bounded within-output grouping, deterministic one cluster per group, preserving independent evidence and existing CAS/replay.
+
+Initial independent five checks at00:33:17:3RED/2PASS `/tmp/dispatch-spec-boundaries.log`. Final seven at00:34:41:the same3RED plus4PASS `/tmp/dispatch-spec-boundaries-final-red.log`; focused repository pipeline23/23 PASS00:33:47 `/tmp/dispatch-spec-existing-pipeline.log`. Unchanged runnable checks/config `/tmp/dispatch-spec-review/`, hashes `/tmp/dispatch-spec-repro-sha256.txt`. Passing controls prove actual two-call funded completion/50µ aggregate, budget-before-generation, authority withdrawal before native I/O, stop/resume fences and actual physical source/Agent cleanup. These controls are not a full-source PASS.
+
+ROOT handed all three confirmed findings to the same original implementer with original source ownership, no scope expansion/staging window. Permanent regressions plus unchanged independent checks and final source freeze are required. The same SPEC reviewer rechecks the correction delta/reproductions before fresh QUALITY. No acceptance criteria checked.
 
 ## Open acceptance
 

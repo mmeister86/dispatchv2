@@ -4,7 +4,7 @@ title: 'Begrenzten Research-Workflow und Themencluster bauen (P06.03, Teil 2)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 22:31'
+updated_date: '2026-10-05 22:37'
 labels:
   - p06
   - r2
@@ -65,4 +65,6 @@ Implementerresearch_pipeline active BASEd062346. Concreteownership approved actu
 Source milestone2670f50c5a5ad5138d83cce346bb89bbe2be0819 committed onmaster in an exact34-path window; index/workingtree clean aftercommit. Finalprecommit519 tests/28files PASS local2026-10-06 00:27:11 (/tmp/task22.2-final-cluster-tests.log). Includes actual registered Workflow+Agent full/empty/cleanup/crashpending, sourcecluster/history withdrawal, controlled no-time-series dynamics, Xfailure/Websuccess and multi-item existingcluster CAS/concurrentstage replay. Resume is status-aware and preserves durableIDs. Finalpostcommit checks/codegen/existingEUDev and frozen freshSPEC→QUALITY stillpending; no AC checked/manualDone/provideractivation. ROOT receipt .docs/reviews/task-22.2-research-pipeline-validation.md preserves intermediate/RED/harness distinctions.
 
 FINAL sourcefreeze2670f50 confirmed afterpostcommit type/lint/newfixtureformat/build/bundle/actualResearchbrowser/officialcodegen/postgentype PASS (/tmp/task22.2-frozen-*.log), nogenerateddiff. ExistingEUDev --once EXIT0 functionsready localOct6 00:29:23 /UTC22:29:23 (/tmp/task22.2-frozen-eu-dev-once.log); officialWorkflow/Workpool/batchWorker mounted withoutprovider/grantactivation.519/28testreceipt remainscommittedsource00:27:11. Own5174closed/user5173PID48521preserved. FreshindependentSPEC research_pipeline_spec (astra/medium) nowactive fullbaseline d062346..2670f50; QUALITYonlyafterSPEC PASS. No AC/Done/manual/livequalityclaim.
+
+FreshSPEC2670f50 ReadyNo:3Important/0Critical/0Minor. Exactreceipt /tmp/dispatch-research-pipeline-spec-receipt.md; unchangedindependent7 at00:34:41=3RED4PASS /tmp/dispatch-spec-boundaries-final-red.log, existingpipeline23/23GREEN. Confirmed: displayedsource-retentionproof outlivesgeneration-grant expiry by60400ms despitefreshserverhiding;20actualdeliveredX+Web sourcesselect10silently/outcomecompleted/nocoveragegap; first-order same-topic independentitems cannotshare anewsemanticcluster. ROOTacceptedfindings/handofftooriginalresearch_pipeline forminimalrootcausecorrections: sharedcurrentdisplayhorizons/allaffectedprojections, boundedactualselectioncoverage, explicitlocalwithin-outputtopicgrouping preservingindependentevidence/CAS/replay. InitialRED/scriptSHA retained; sameSPECdelta thenfreshQUALITY; noAC/Done/paidactivation.
 <!-- SECTION:NOTES:END -->
