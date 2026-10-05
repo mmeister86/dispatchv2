@@ -4,7 +4,7 @@ title: Signale anreichern und verständlich darstellen (P04.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 10:34'
+updated_date: '2026-10-05 15:59'
 labels:
   - p04
   - r2
@@ -64,4 +64,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /signals. Synthetic signal filters/details, original event versus editorial interpretation, relevance/novelty/confidence/private status, maintenance noise and failed enrichment, idea handoff. Grenze: No GitHub retrieval, secret filtering or AI enrichment. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Read-only implementation brief prepared while TASK17 is being completed: /tmp/dispatch-github-enrichment-implementation-brief.md. Start only after independently reviewed17 and18, reusing final14/15 source and factual-signal contracts. This task explicitly needs bounded commit/file/diff context; current metadata-only access and content purpose must not silently grant private file/model transfer. Add the smallest explicit context consent and current-generation approval, update existing purpose writers/native admission order, validate least actual token permissions and current GitHub APIs, and keep unsafe/incomplete context as needs_context. Secret filtering is not claimed perfect; facts, approved context, user claims and interpretation stay separate. No16 code, private context fetch, model activation, paid call or acceptance from this preparation.
 <!-- SECTION:NOTES:END -->

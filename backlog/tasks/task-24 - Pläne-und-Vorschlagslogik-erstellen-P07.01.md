@@ -4,7 +4,7 @@ title: Pläne und Vorschlagslogik erstellen (P07.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 08:44'
+updated_date: '2026-10-05 15:59'
 labels:
   - p07
   - r2
@@ -59,4 +59,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /plans. Plan-request form for account, count, starting date/time, source mix and pillar; limited fixed proposals with source/rationale, smaller plan if material is insufficient. Grenze: No AI plan generation or live editorial-context analysis. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Read-only future brief /tmp/dispatch-planning-implementation-brief.md covers separate24 and25 units after reviewed12/18/19/23. Reuse actual immutable editorial versions/approvals/schedules, source-bound proposals, chat and Research; no second calendar/content store. Require a concrete ROOT conflict/freshness policy before implementation, preserve established UTC/IANA/DST rules and existing entries, use honest smaller plans and actual source permissions, then selective idempotent acceptance with explicit version/account human approval. No24/25 code, pricing activation, provider call or acceptance in this preparation.
 <!-- SECTION:NOTES:END -->
