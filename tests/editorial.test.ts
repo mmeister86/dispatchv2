@@ -339,6 +339,7 @@ test("dispatcher records real unavailable failure and visibly blocked critical e
   const scheduleId = await f.plan();
   vi.setSystemTime(Math.floor(Date.now() / 60000) * 60000 + 3600000);
   await f.t.action(internal.publishing.dispatch, { scheduleId, generation: 1 });
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(60000));
   const notification = await f.t.run((ctx) =>
     ctx.db
       .query("publishingNotifications")

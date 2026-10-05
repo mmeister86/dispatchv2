@@ -81,6 +81,7 @@ export const claim = internalMutation({
     try {
       const ver = await preflight(ctx, s);
       await ctx.db.patch(s._id, { state: "publishing" });
+      await ctx.scheduler.runAfter(0, internal.publishing.workflows.step, a);
       await event(
         ctx,
         s.workspaceId,
@@ -139,8 +140,7 @@ export const dispatch = internalAction({
   args: job,
   returns: v.null(),
   handler: async (ctx, a) => {
-    const claimed = await ctx.runMutation(internal.publishing.claim, a);
-    if (claimed) await ctx.runAction(internal.publishing.workflows.step, a);
+    await ctx.runMutation(internal.publishing.claim, a);
     return null;
   },
 });

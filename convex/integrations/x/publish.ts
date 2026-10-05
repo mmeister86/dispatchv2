@@ -356,6 +356,9 @@ export const prepare = internalAction({
       } else if (operation === "metadata") phase = "ready";
       else {
         const result = uploadResult(response, mediaId, true);
+        if (mediaKey && result.mediaKey && mediaKey !== result.mediaKey)
+          throw new MediaRequestError("uncertain", "X_MEDIA_KEY_CONFLICT");
+        mediaKey = result.mediaKey ?? mediaKey;
         phase = result.state;
         waitMs = result.waitMs;
         expiresAt = Math.min(expiresAt!, result.expiresAt ?? expiresAt!);

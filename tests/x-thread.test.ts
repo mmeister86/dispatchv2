@@ -837,7 +837,7 @@ test("actual mocked OAuth connection with distinct ordering fence allows separat
         ? Response.json({
             data: { id: "123", name: "Fixture", username: "fixture" },
           })
-        : response("1001"),
+        : response(String(1001 + fetch.mock.calls.length)),
   );
   const url = new URL(
     await f.signed.action(api.integrations.x.client.start, {
@@ -876,6 +876,7 @@ test("actual mocked OAuth connection with distinct ordering fence allows separat
     approvalId,
   });
   await f.t.action(internal.publishing.dispatch, { scheduleId, generation: 1 });
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(60000));
   expect(
     (await f.t.run((ctx) => ctx.db.get(f.accountId)))!.capability.publish,
   ).toBe(true);
@@ -883,5 +884,90 @@ test("actual mocked OAuth connection with distinct ordering fence allows separat
     fetch.mock.calls.filter(
       ([url]) => String(url) === "https://api.x.com/2/tweets",
     ),
-  ).toHaveLength(1);
+  ).toHaveLength(3);
 });
+
+test("committed schedule claim durably continues if dispatch stops before returning", async () => {
+  const f = await fixture(false, false);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async () =>
+      response(String(101 + fetch.mock.calls.length)),
+    );
+  await f.t.mutation(internal.publishing.claim, f.job);
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(60000));
+  expect(await f.t.run((ctx) => ctx.db.get(f.scheduleId))).toMatchObject({
+    state: "published",
+    publishedCount: 3,
+  });
+  expect(fetch).toHaveBeenCalledTimes(3);
+});
+
+test.each(["finalize", "processing"] as const)(
+  "%s retains actual returned media key when initialize omitted it",
+  async (phase) => {
+    const f = await fixture(),
+      m = await attachMedia(f);
+    vi.stubEnv("R2_ACCESS_KEY_ID", "synthetic");
+    vi.stubEnv("R2_SECRET_ACCESS_KEY", "synthetic");
+    await f.t.run((ctx) =>
+      ctx.db.patch(m.checkpointId, { phase, mediaKey: undefined }),
+    );
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        data: {
+          id: "456",
+          media_key: "3_456",
+          expires_after_secs: 3600,
+          processing_info: { state: "succeeded" },
+        },
+      }),
+    );
+    await f.t.action(internal.integrations.x.publish.prepare, {
+      ...f.job,
+      mediaPosition: 0,
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(await f.t.run((ctx) => ctx.db.get(m.checkpointId))).toMatchObject({
+      phase: "metadata",
+      mediaKey: "3_456",
+    });
+  },
+);
+
+test.each(["finalize", "processing"] as const)(
+  "%s conflicting media key stops without replacing acknowledged evidence",
+  async (phase) => {
+    const f = await fixture(),
+      m = await attachMedia(f);
+    vi.stubEnv("R2_ACCESS_KEY_ID", "synthetic");
+    vi.stubEnv("R2_SECRET_ACCESS_KEY", "synthetic");
+    await f.t.run((ctx) => ctx.db.patch(m.checkpointId, { phase }));
+    const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      Response.json({
+        data: {
+          id: "456",
+          media_key: "3_other",
+          expires_after_secs: 3600,
+          processing_info: { state: "succeeded" },
+        },
+      }),
+    );
+    await f.t.action(internal.integrations.x.publish.prepare, {
+      ...f.job,
+      mediaPosition: 0,
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(await f.t.run((ctx) => ctx.db.get(m.checkpointId))).toMatchObject({
+      phase: "uncertain",
+      mediaKey: "3_456",
+      errorCode: "X_MEDIA_KEY_CONFLICT",
+    });
+    expect(
+      await f.t.mutation(internal.publishing.media.ready, {
+        ...f.job,
+        mediaPosition: 0,
+      }),
+    ).toBeNull();
+  },
+);
