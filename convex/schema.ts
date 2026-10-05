@@ -8,6 +8,11 @@ import {
 } from "./integrations/github/fields";
 import { attemptFields } from "./publishing/postFields";
 import { checkpointFields } from "./publishing/mediaFields";
+import {
+  receiptFields,
+  signalFields,
+  recoveryFields,
+} from "./integrations/github/signalFields";
 
 import {
   accountFields,
@@ -39,8 +44,44 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  githubRevocationBarriers: defineTable({
+    key: v.string(),
+    receivedAt: v.number(),
+    receiptId: v.id("githubWebhookReceipts"),
+    sequence: v.number(),
+  }).index("by_key", ["key"]),
+  githubWebhookReceipts: defineTable(receiptFields)
+    .index("by_digest", ["digest"])
+    .index("by_state_and_dueAt", ["state", "dueAt"]),
+  githubDeliveryGuids: defineTable({
+    guid: v.string(),
+    digest: v.string(),
+    receiptId: v.id("githubWebhookReceipts"),
+  }).index("by_guid", ["guid"]),
+  githubSignals: defineTable(signalFields)
+    .index("by_workspaceId_and_eventKey", ["workspaceId", "eventKey"])
+    .index("by_workspaceId_and_receivedAt", ["workspaceId", "receivedAt"]),
+  githubRecoveries: defineTable(recoveryFields)
+    .index("by_workspaceId_and_guid", ["workspaceId", "guid"])
+    .index("by_guid_and_notBefore", ["guid", "notBefore"])
+    .index("by_guid_and_attempts", ["guid", "attempts"])
+    .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"]),
+  githubRecoveryScan: defineTable({
+    key: v.string(),
+    leaseUntil: v.number(),
+    sequence: v.number(),
+    cursor: v.union(v.string(), v.null()),
+    startedAt: v.number(),
+    checkedAt: v.number(),
+    oldestAt: v.union(v.number(), v.null()),
+    limited: v.boolean(),
+    notBefore: v.number(),
+    errorCode: v.union(v.string(), v.null()),
+    pages: v.number(),
+  }).index("by_key", ["key"]),
   githubConnections: defineTable(githubConnectionFields)
     .index("by_workspaceId", ["workspaceId"])
+    .index("by_identity", ["identity"])
     .index("by_leaseUntil", ["leaseUntil"]),
   githubOAuthStates: defineTable(githubStateFields)
     .index("by_digest", ["digest"])
@@ -48,6 +89,12 @@ export default defineSchema({
     .index("by_expiresAt", ["expiresAt"]),
   githubRepositories: defineTable(githubRepoFields)
     .index("by_workspaceId_and_providerId", ["workspaceId", "providerId"])
+    .index("by_providerId_and_installationId_and_selected", [
+      "providerId",
+      "installationId",
+      "selected",
+    ])
+    .index("by_installationId_and_selected", ["installationId", "selected"])
     .index("by_workspaceId_and_selected", ["workspaceId", "selected"]),
   xPostAttempts: defineTable(attemptFields)
     .index("by_scheduleId_and_generation_and_position", [

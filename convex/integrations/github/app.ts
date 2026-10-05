@@ -266,7 +266,9 @@ async function inventory(token: string, installationId: string) {
     throw new ProviderError("GITHUB_PROVIDER_RESPONSE_INVALID");
   return { repositories: rows, complete };
 }
-export function appJwt(config: ReturnType<typeof configuration>) {
+export function appJwt(
+  config: Pick<ReturnType<typeof configuration>, "clientId">,
+) {
   try {
     const pem = process.env.GITHUB_APP_PRIVATE_KEY;
     if (!pem || pem.length > 32768) throw Error();

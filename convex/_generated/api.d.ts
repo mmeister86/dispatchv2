@@ -9,12 +9,19 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as content_signals from "../content/signals.js";
 import type * as crons from "../crons.js";
 import type * as editorial from "../editorial.js";
 import type * as http from "../http.js";
 import type * as integrations_github_app from "../integrations/github/app.js";
+import type * as integrations_github_barriers from "../integrations/github/barriers.js";
+import type * as integrations_github_deliveries from "../integrations/github/deliveries.js";
 import type * as integrations_github_fields from "../integrations/github/fields.js";
+import type * as integrations_github_recovery from "../integrations/github/recovery.js";
+import type * as integrations_github_recoveryState from "../integrations/github/recoveryState.js";
 import type * as integrations_github_repositories from "../integrations/github/repositories.js";
+import type * as integrations_github_signalFields from "../integrations/github/signalFields.js";
+import type * as integrations_github_webhook from "../integrations/github/webhook.js";
 import type * as integrations_x_client from "../integrations/x/client.js";
 import type * as integrations_x_fields from "../integrations/x/fields.js";
 import type * as integrations_x_oauth from "../integrations/x/oauth.js";
@@ -49,12 +56,19 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  "content/signals": typeof content_signals;
   crons: typeof crons;
   editorial: typeof editorial;
   http: typeof http;
   "integrations/github/app": typeof integrations_github_app;
+  "integrations/github/barriers": typeof integrations_github_barriers;
+  "integrations/github/deliveries": typeof integrations_github_deliveries;
   "integrations/github/fields": typeof integrations_github_fields;
+  "integrations/github/recovery": typeof integrations_github_recovery;
+  "integrations/github/recoveryState": typeof integrations_github_recoveryState;
   "integrations/github/repositories": typeof integrations_github_repositories;
+  "integrations/github/signalFields": typeof integrations_github_signalFields;
+  "integrations/github/webhook": typeof integrations_github_webhook;
   "integrations/x/client": typeof integrations_x_client;
   "integrations/x/fields": typeof integrations_x_fields;
   "integrations/x/oauth": typeof integrations_x_oauth;

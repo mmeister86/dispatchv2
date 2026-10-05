@@ -19,4 +19,16 @@ crons.interval(
   internal.integrations.github.repositories.cleanup,
   {},
 );
+crons.interval(
+  "GitHub pending receipt resumption",
+  { minutes: 1 },
+  internal.integrations.github.deliveries.resume,
+  {},
+);
+crons.interval(
+  "GitHub failed delivery detection",
+  { minutes: 15 },
+  internal.integrations.github.recovery.scan,
+  {},
+);
 export default crons;

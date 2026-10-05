@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../../_generated/server";
 import { internalQuery, internalMutation } from "../../_generated/server";
 import type { Id, Doc } from "../../_generated/dataModel";
+import { barrierSequence } from "./barriers";
 import {
   workspaceQuery,
   workspaceMutation,
@@ -41,6 +42,11 @@ async function connected(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
   const c = await connection(ctx, workspaceId);
   if (!c || c.status !== "connected" || !c.envelope)
     throw new ConvexError("GITHUB_REAUTH_REQUIRED");
+  if (
+    (await barrierSequence(ctx, [`user:${c.identity}`])) >
+    (c.authorizedSequence ?? 0)
+  )
+    throw new ConvexError("GITHUB_AUTHORIZATION_REVOKED");
   return c;
 }
 async function selected(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
@@ -109,6 +115,9 @@ async function view(
   const c = await connection(ctx, workspaceId),
     valid = c ? await actorValid(ctx, c) : false;
   const rows = await selected(ctx, workspaceId);
+  const safe = new Set<string>();
+  for (const r of rows)
+    if (c && valid && (await proofCurrent(ctx, r, c))) safe.add(r._id);
   return {
     connection: c
       ? {
@@ -123,7 +132,7 @@ async function view(
         }
       : null,
     repositories: rows
-      .map((r) => projection(r, valid ? c : null))
+      .map((r) => projection(r, safe.has(r._id) ? c : null))
       .filter((r) => settings || r.authorized),
   };
 }
@@ -193,6 +202,7 @@ export const reserve = workspaceInternalMutation({
       redirectUri: a.redirectUri,
       expiresAt: Date.now() + 600000,
       status: "pending",
+      revocationSequence: await barrierSequence(ctx, ["*"]),
     });
     return null;
   },
@@ -256,6 +266,11 @@ export const complete = workspaceInternalMutation({
       c.generation !== s.generation
     )
       throw new ConvexError("GITHUB_CONNECTION_CHANGED");
+    if (
+      (await barrierSequence(ctx, [`user:${a.identity}`])) >
+      (s.revocationSequence ?? 0)
+    )
+      throw new ConvexError("GITHUB_AUTHORIZATION_REVOKED");
     await ctx.db.patch(c._id, {
       identity: a.identity,
       login: a.login,
@@ -265,6 +280,7 @@ export const complete = workspaceInternalMutation({
       expiresAt: a.expiresAt,
       refreshExpiresAt: a.refreshExpiresAt,
       status: "connected",
+      authorizedSequence: s.revocationSequence ?? 0,
       credentialGeneration: c.credentialGeneration + 1,
       errorCode: undefined,
       updatedAt: Date.now(),
@@ -338,7 +354,10 @@ export const beginDiscovery = workspaceInternalMutation({
       if (old && !rows.some((r) => r._id === old._id)) rows.push(old);
     }
     const syncSequence = c.syncSequence + 1;
-    await ctx.db.patch(c._id, { syncSequence });
+    await ctx.db.patch(c._id, {
+      syncSequence,
+      discoverySequence: await barrierSequence(ctx, ["*"]),
+    });
     return {
       syncSequence,
       observed: rows.map((r) => ({ id: r._id, generation: r.generation })),
@@ -371,6 +390,11 @@ export const verify = workspaceInternalMutation({
       !c.installations.some((i) => i.id === a.installationId)
     )
       throw new ConvexError("GITHUB_CONNECTION_CHANGED");
+    const keys = [
+      `user:${c.identity}`,
+      `install:${a.installationId}`,
+      ...(a.selectId ? [`repo:${a.installationId}:${a.selectId}`] : []),
+    ];
     for (const seen of a.observed) {
       const old = await ctx.db.get(seen.id);
       if (
@@ -379,7 +403,10 @@ export const verify = workspaceInternalMutation({
         old.generation !== seen.generation
       )
         throw new ConvexError("GITHUB_SOURCE_CHANGED");
+      keys.push(`repo:${old.installationId}:${old.providerId}`);
     }
+    if ((await barrierSequence(ctx, keys)) > (c.discoverySequence ?? 0))
+      throw new ConvexError("GITHUB_SOURCE_CHANGED");
     const rows = await selected(ctx, ctx.workspace._id);
     for (const r of rows.filter((r) => r.installationId === a.installationId)) {
       const fresh = a.repositories.find((x) => x.providerId === r.providerId);
@@ -395,6 +422,7 @@ export const verify = workspaceInternalMutation({
             : {}),
           connectionGeneration: c.generation,
           verifiedAt: Date.now(),
+          verifiedSequence: c.discoverySequence ?? 0,
           proofExpiresAt: Date.now() + PROOF_TTL,
           updatedAt: Date.now(),
         });
@@ -432,6 +460,7 @@ export const verify = workspaceInternalMutation({
         connectionGeneration: c.generation,
         generation: (old?.generation ?? 0) + 1,
         verifiedAt: Date.now(),
+        verifiedSequence: c.discoverySequence ?? 0,
         proofExpiresAt: Date.now() + PROOF_TTL,
         updatedAt: Date.now(),
       };
@@ -474,7 +503,10 @@ export const configure = workspaceMutation({
     const c = await connection(ctx, ctx.workspace._id);
     if (
       (a.access || a.monitoring || a.content) &&
-      (!authorized(r!, c) || !c || !(await actorValid(ctx, c)))
+      (!authorized(r!, c) ||
+        !c ||
+        !(await actorValid(ctx, c)) ||
+        !(await proofCurrent(ctx, r!, c)))
     )
       throw new ConvexError("GITHUB_SOURCE_PROOF_EXPIRED");
     await ctx.db.patch(r!._id, {
@@ -655,6 +687,8 @@ export async function checkSource(
     !(await actorValid(ctx, c))
   )
     throw new ConvexError("GITHUB_SOURCE_DISABLED");
+  if (!(await proofCurrent(ctx, r, c)))
+    throw new ConvexError("GITHUB_SOURCE_DISABLED");
   const actor = await ctx.db
     .query("memberships")
     .withIndex("by_userId_and_workspaceId", (q) =>
@@ -664,6 +698,21 @@ export async function checkSource(
   if (!actor || !["Owner", "Admin"].includes(actor.role))
     throw new ConvexError("GITHUB_SOURCE_DISABLED");
   return r;
+}
+async function proofCurrent(
+  ctx: QueryCtx,
+  r: Doc<"githubRepositories">,
+  c: Doc<"githubConnections">,
+) {
+  const userRevoked = await barrierSequence(ctx, [`user:${c.identity}`]);
+  const sourceRevoked = await barrierSequence(ctx, [
+    `install:${r.installationId}`,
+    `repo:${r.installationId}:${r.providerId}`,
+  ]);
+  return (
+    (c.authorizedSequence ?? 0) >= userRevoked &&
+    (r.verifiedSequence ?? 0) >= sourceRevoked
+  );
 }
 export const source = internalQuery({
   args: {

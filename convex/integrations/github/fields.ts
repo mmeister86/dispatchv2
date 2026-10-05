@@ -33,6 +33,8 @@ export const connectionFields = {
   leaseUntil: v.number(),
   updatedAt: v.number(),
   errorCode: v.optional(v.string()),
+  authorizedSequence: v.optional(v.number()),
+  discoverySequence: v.optional(v.number()),
 };
 export const connectionDoc = v.object({
   _id: v.id("githubConnections"),
@@ -54,6 +56,7 @@ export const stateFields = {
     v.literal("denied"),
     v.literal("failed"),
   ),
+  revocationSequence: v.optional(v.number()),
 };
 export const stateDoc = v.object({
   _id: v.id("githubOAuthStates"),
@@ -76,6 +79,7 @@ export const repoFields = {
   verifiedAt: v.number(),
   proofExpiresAt: v.number(),
   updatedAt: v.number(),
+  verifiedSequence: v.optional(v.number()),
 };
 export const publicRepo = v.object({
   _id: v.id("githubRepositories"),
