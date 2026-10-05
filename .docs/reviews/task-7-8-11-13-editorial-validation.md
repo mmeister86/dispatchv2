@@ -1,6 +1,6 @@
 # Editorial validation — TASK-7/8/11/13
 
-2026-10-05 · master · code commits `9376587`, `6eea458`, `2079e68` · current-scope SPEC PASS; QUALITY NEEDS WORK at `2079e68`, corrections in progress.
+2026-10-05 · master · code commits `9376587`, `6eea458`, `2079e68`, `f041927` · current-scope SPEC PASS and QUALITY PASS at `f041927`.
 
 ## Verified code scope
 
@@ -25,7 +25,7 @@ Independent reviewer reran typecheck, all 40 tests and bundle security successfu
 2. The latest-100 approval query excludes an older still-active planned V1 approval after 100 newer approvals. Its planned-revocation UI disappears although its schedule and version remain loaded. Confirmed by isolated Convex reproduction. Referenced approvals must remain available alongside bounded recent history.
 3. The comment textarea remains editable during awaited submission, then clears unconditionally on success, discarding newer input. Clear only the unchanged submitted buffer or protect pending editing.
 
-The original implementer owns these minimal corrections and targeted regressions. SPEC and QUALITY will recheck the final commit before provider implementation starts.
+All three findings were corrected by the original implementer at `f041927`. The independent SPEC reviewer reran all 42 unit tests and the delayed-comment browser test successfully. The independent QUALITY reviewer additionally ran three isolated Convex checks, including concurrent requests for the last permitted active-schedule slot; exactly one won. Legacy overflow remained readable and cancellation exposed remaining rows. Old planned approvals stayed revocable; newer comment input survived success/failure and pending duplicate submission was blocked. Typecheck and the comment browser test also passed. No remaining review findings. Actual Dev update succeeded at 12:10:28; production unchanged.
 
 ## Remaining acceptance
 
