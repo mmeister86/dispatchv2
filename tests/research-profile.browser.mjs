@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='research/profiles:get')return window.profile;if(name==='research/profiles:configuration')return window.configuration;if(name==='research/runs:history')return window.orderHistory;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
+  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='research/profiles:get')return window.profile;if(name==='research/profiles:configuration')return window.configuration;if(name==='research/runs:history')return window.orderHistory;if(name==='research/native:availability')return window.sourceAvailability??[];if(name==='research/native:results')return window.sourceResults??[];};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';`,
   "@/lib/store": `import {useState} from 'react';export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:window.account,workspaceId:window.workspace,name:'Synthetic',channel:'X'}],drafts:[],ideas:[]},createDraft:()=>{throw new Error('No fake real draft');},mutate:()=>{}});`,
 };
@@ -664,6 +664,164 @@ try {
   expect(laterOrder.operationKey).not.toBe(admitted.operationKey);
   expect(laterOrder.expectedRevision).toBe(3);
   await page.evaluate(() => window.commands[4].resolve("later-order"));
+  await acknowledgedProfile();
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      version: {
+        config: {
+          ...window.profile.version.config,
+          cap: { currency: "USD", limitMicros: 300 },
+        },
+      },
+    };
+    window.sourceAvailability = [
+      {
+        operation: "x-trends",
+        state: "configuration_required",
+        currency: null,
+        reason: "Keine aktuelle Trendberechtigung; keine Live-Trends.",
+      },
+      {
+        operation: "web-search",
+        state: "available",
+        currency: "USD",
+        reason: "Synthetisch aktuell freigegeben.",
+      },
+    ];
+    window.render();
+  });
+  await expect(
+    page.getByText("Keine aktuelle Trendberechtigung; keine Live-Trends.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Suchanfrage", { exact: true })
+    .fill("Buffered public query");
+  await page
+    .getByRole("button", { name: "Quellensuche ausdrücklich starten" })
+    .click();
+  const nativeIntent = await page.evaluate(() => window.commands[0].args);
+  expect(nativeIntent).toMatchObject({
+    query: "Buffered public query",
+    language: "de",
+    operations: ["web-search"],
+    expectedRevision: 3,
+  });
+  await expect(page.getByLabel("Suchanfrage", { exact: true })).toBeDisabled();
+  await page.evaluate(() =>
+    window.commands[0].reject(new Error("lost native ACK")),
+  );
+  await expect(retry).toBeVisible();
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, revision: 4 },
+    };
+    window.render();
+  });
+  await retry.click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(
+    nativeIntent,
+  );
+  await page.evaluate(() => {
+    window.sourceResults = [
+      {
+        operation: "x-recent",
+        state: "unknown",
+        reason: "RESEARCH_PROVIDER_UNAVAILABLE",
+        cacheHit: false,
+        query: "Buffered public query",
+        language: "de",
+        provider: "x",
+        protocol: "x-post-fields-v2",
+        policyVersion: "synthetic-v1",
+        model: null,
+        windowStart: Date.now() - 7 * 86400000,
+        windowEnd: Date.now(),
+        truncated: false,
+        sources: [],
+        estimatedMicros: null,
+        currency: "USD",
+        usagePending: true,
+        billedMicros: null,
+      },
+      {
+        operation: "web-search",
+        state: "partial",
+        reason: "RESEARCH_STREAM_INCOMPLETE",
+        cacheHit: false,
+        query: "Buffered public query",
+        language: "de",
+        provider: "requesty",
+        protocol: "requesty-chat-web-search-v1",
+        policyVersion: "synthetic-v1",
+        model: "synthetic/model",
+        windowStart: Date.now() - 86400000,
+        windowEnd: Date.now(),
+        truncated: false,
+        sources: [
+          {
+            sourceId: "source-one",
+            operation: "web-search",
+            url: "https://example.test/actual",
+            title: "Actual delivered source",
+            text: "CURRENT_SOURCE_TEXT",
+            publishedAt: null,
+            count: null,
+            observedAt: Date.now(),
+            usableUntil: Date.now() + 2500,
+          },
+        ],
+        estimatedMicros: null,
+        currency: "USD",
+        usagePending: true,
+        billedMicros: null,
+      },
+    ];
+    window.commands[1].resolve("native-order");
+    window.render();
+  });
+  await expect(
+    page.getByRole("link", { name: "Actual delivered source" }),
+  ).toHaveAttribute("href", "https://example.test/actual");
+  await expect(
+    page.getByText("CURRENT_SOURCE_TEXT", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Websuche · partial", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Vorläufige Schätzung 0 USD", { exact: false }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Quelle abgelaufen; Inhalt ausgeblendet."),
+  ).toBeVisible();
+  await expect(
+    page.getByText("CURRENT_SOURCE_TEXT", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Actual delivered source" }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("Suchanfrage", { exact: true })
+    .fill("New explicit query");
+  await page
+    .getByRole("button", { name: "Quellensuche ausdrücklich starten" })
+    .click();
+  const nextNative = await page.evaluate(() => window.commands[2].args);
+  expect(nextNative.expectedRevision).toBe(4);
+  expect(nextNative.operationKey).not.toBe(nativeIntent.operationKey);
+  await page.evaluate(() => {
+    window.role = "Viewer";
+    window.render();
+    window.commands[2].reject(new Error("late native role failure"));
+  });
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Quellensuche ausdrücklich starten" }),
+  ).toBeDisabled();
   await page.goto("http://127.0.0.1:5174/research-fixture?demo=1");
   await expect(
     page.getByText("Weniger Funktionen. Mehr Produkt.").first(),

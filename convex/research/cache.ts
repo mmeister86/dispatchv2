@@ -247,10 +247,19 @@ export const settle = internalMutation({
       a.reportedCost >= 0 &&
       a.reportedCost <= 1e6 &&
       !a.costInvalid;
+    if (
+      (knownUnits && t.units !== null && t.units !== a.units) ||
+      (knownCost &&
+        t.reportedCost !== null &&
+        t.reportedCost !== a.reportedCost)
+    )
+      throw new ConvexError("RESEARCH_RECEIPT_CONFLICT");
+    const invalid = t.reportedCostInvalid || a.costInvalid;
     const known =
-      t.operation === "web-search"
+      !invalid &&
+      (t.operation === "web-search"
         ? knownCost && !!t.costCurrencyEvidence.trim()
-        : knownUnits && !a.costInvalid && a.reportedCost === null;
+        : knownUnits && a.reportedCost === null);
     const receipt = await sha256(
       JSON.stringify([a.units, a.reportedCost, a.costInvalid]),
     );
@@ -260,8 +269,9 @@ export const settle = internalMutation({
     if (!known) {
       await ctx.db.patch(t._id, {
         state: "unknown",
-        reportedCost: knownCost ? a.reportedCost : null,
-        reportedCostInvalid: a.costInvalid,
+        units: knownUnits ? a.units : t.units,
+        reportedCost: knownCost ? a.reportedCost : t.reportedCost,
+        reportedCostInvalid: invalid,
         errorCode: a.errorCode ?? "RESEARCH_USAGE_UNKNOWN",
       });
       return null;

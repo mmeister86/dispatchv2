@@ -36,7 +36,7 @@ async function fixture(
 ) {
   const f = await mediaFixture();
   vi.stubEnv("REQUESTY_API_KEY", "synthetic-key");
-  vi.stubEnv("X_RESEARCH_BEARER_TOKEN", "synthetic-x-key");
+  vi.stubEnv("X_APP_BEARER_TOKEN", "synthetic-x-key");
   const accountId = await f.t.run((ctx) =>
     ctx.db.insert("socialAccounts", {
       workspaceId: f.workspaceId,
@@ -561,7 +561,7 @@ test.each([
       await ctx.db.patch(f.accountId, { connection: "disconnected" });
   });
   if (kind === "credential")
-    vi.stubEnv("X_RESEARCH_BEARER_TOKEN", "changed-synthetic-key");
+    vi.stubEnv("X_APP_BEARER_TOKEN", "changed-synthetic-key");
   vi.spyOn(globalThis, "fetch").mockResolvedValue(Response.json({ data: [] }));
   await f.t.action(internal.research.execute.execute, {
     orderId: id,
@@ -761,4 +761,118 @@ test("native allocation proof binds the provider slice limit without claiming ex
   const rows = await execute(f, id);
   expect(rows[0].state).toBe("configuration_required");
   expect(fetch).not.toHaveBeenCalled();
+});
+
+test("unknown receipt preserves first unit/cost/invalid evidence and rejects conflicting late evidence", async () => {
+  const f = await fixture(["x-recent"]),
+    id = await f.start(),
+    fill = await f.t.mutation(internal.research.cache.begin, {
+      orderId: id,
+      generation: 1,
+      operation: "x-recent",
+    });
+  await f.t.mutation(internal.research.cache.settle, {
+    attemptId: fill.attemptId!,
+    units: 3,
+    reportedCost: null,
+    costInvalid: true,
+    errorCode: "RESEARCH_USAGE_INVALID",
+  });
+  await expect(
+    f.t.mutation(internal.research.cache.settle, {
+      attemptId: fill.attemptId!,
+      units: 4,
+      reportedCost: null,
+      costInvalid: false,
+      errorCode: null,
+    }),
+  ).rejects.toThrow("RESEARCH_RECEIPT_CONFLICT");
+  await f.t.mutation(internal.research.cache.settle, {
+    attemptId: fill.attemptId!,
+    units: 3,
+    reportedCost: null,
+    costInvalid: false,
+    errorCode: null,
+  });
+  expect(await f.t.run((ctx) => ctx.db.get(fill.attemptId!))).toMatchObject({
+    state: "unknown",
+    units: 3,
+    reportedCostInvalid: true,
+    heldMicros: 100,
+  });
+});
+test("unverified Requesty cost cannot be replaced by a conflicting later float or converted into billed currency", async () => {
+  const f = await fixture(["web-search"]);
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.policies[0], { costCurrencyEvidence: "" }),
+  );
+  const id = await f.start(),
+    fill = await f.t.mutation(internal.research.cache.begin, {
+      orderId: id,
+      generation: 1,
+      operation: "web-search",
+    }),
+    receipt = {
+      attemptId: fill.attemptId!,
+      units: null,
+      reportedCost: 0.00002,
+      costInvalid: false,
+      errorCode: null,
+    };
+  await f.t.mutation(internal.research.cache.settle, receipt);
+  await expect(
+    f.t.mutation(internal.research.cache.settle, {
+      ...receipt,
+      reportedCost: 0.00003,
+    }),
+  ).rejects.toThrow("RESEARCH_RECEIPT_CONFLICT");
+  expect(await f.t.run((ctx) => ctx.db.get(fill.attemptId!))).toMatchObject({
+    reportedCost: 0.00002,
+    state: "unknown",
+    heldMicros: 100,
+    billedMicros: null,
+    reportedCurrency: null,
+  });
+});
+test("late source revocation with known usage books honest finance once but writes no delivered source", async () => {
+  const f = await fixture(["web-search"]);
+  vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+    await f.t.run((ctx) => ctx.db.patch(f.policies[0], { enabled: false }));
+    return streamResponse();
+  });
+  const rows = await execute(f, await f.start());
+  expect(rows[0]).toMatchObject({
+    state: "configuration_required",
+    sources: [],
+    estimatedMicros: 20,
+    usagePending: false,
+  });
+  expect(
+    await f.t.run((ctx) => ctx.db.query("researchSources").collect()),
+  ).toEqual([]);
+});
+test("actual Requesty estimate above bound stays liable, fences the order and cannot write sources", async () => {
+  const f = await fixture(["web-search"]);
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    streamResponse(undefined, 0.0002),
+  );
+  const id = await f.start();
+  await execute(f, id);
+  expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({
+    state: "cancelled",
+    generation: 2,
+    reason: "RESEARCH_BUDGET_OVERRUN",
+  });
+  const t = (await f.t.run((ctx) => ctx.db.query("aiAttempts").first()))!;
+  expect(t).toMatchObject({
+    state: "settled",
+    estimatedMicros: 200,
+    heldMicros: 0,
+    billedMicros: null,
+  });
+  for (const bid of t.budgetIds)
+    expect((await f.t.run((ctx) => ctx.db.get(bid)))!.spentMicros).toBe(200);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("researchSources").collect()),
+  ).toEqual([]);
 });

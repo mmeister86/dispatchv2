@@ -1,3 +1,4 @@
+import { SourceSearch } from "./source-search";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -78,7 +79,12 @@ function ResearchAccount({
   const row = useQuery(api.research.profiles.get, { workspaceId, accountId });
   const configuration = useQuery(api.research.profiles.configuration, {
     workspaceId,
+    accountId,
   });
+  const [selectedId, setSelectedId] = useState<Id<"researchOrders"> | null>(
+    null,
+  );
+  const [capCurrency, setCapCurrency] = useState("");
   const [cursor, setCursor] = useState<string | null>(null);
   const history = useQuery(
     api.research.runs.history,
@@ -158,14 +164,21 @@ function ResearchAccount({
     setRevision(row?.profile.revision ?? 0);
     setCapText(c.cap ? String(c.cap.limitMicros / 1e6) : "");
     setCapChanged(false);
+    setCapCurrency("");
     setError("");
   }
+  const selectedCurrency =
+    buffer?.cap?.currency ?? (capCurrency || configuration?.currency);
+  const approvedCurrencies =
+    configuration?.currencies ??
+    (configuration?.currency ? [configuration.currency] : []);
   async function save() {
     if (!buffer) return;
     let cap: Config["cap"] = capChanged ? null : buffer.cap;
     if (capChanged && capText.trim()) {
       if (
-        !configuration?.currency ||
+        !selectedCurrency ||
+        !approvedCurrencies.includes(selectedCurrency) ||
         !/^\d{1,7}(?:\.\d{1,6})?$/.test(capText)
       ) {
         setError(
@@ -175,7 +188,7 @@ function ResearchAccount({
       }
       const [whole, fraction = ""] = capText.split(".");
       const limitMicros = Number(whole) * 1e6 + Number(fraction.padEnd(6, "0"));
-      cap = { currency: configuration.currency, limitMicros };
+      cap = { currency: selectedCurrency!, limitMicros };
     }
     const config = { ...buffer, cap };
     const acknowledge = () => {
@@ -208,9 +221,9 @@ function ResearchAccount({
       />
       <Section title="Verfügbarkeit">
         <p>
-          Research-Suche, Auswertung und Inbox-Übergabe sind noch nicht
-          verfügbar. Profile und Auftragsbelege können vorbereitet werden; es
-          wird kein Provider aufgerufen.
+          Quellenadapter benötigen eine aktuelle ausdrückliche Freigabe. Alte
+          vorbereitete Zeitpläne bleiben blockiert; Auswertung und
+          Inbox-Übergabe sind noch nicht verfügbar.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
           Kostenpflichtige Recherche benötigt einen freigegebenen
@@ -553,15 +566,14 @@ function ResearchAccount({
             <label>
               Auftragslimit{" "}
               {buffer.cap?.currency ??
-                configuration?.currency ??
+                selectedCurrency ??
                 "(Währung noch nicht freigegeben)"}
               <Input
                 inputMode="decimal"
                 disabled={
                   !row ||
-                  !configuration?.currency ||
-                  (!!buffer.cap &&
-                    buffer.cap.currency !== configuration.currency)
+                  !selectedCurrency ||
+                  !approvedCurrencies.includes(selectedCurrency)
                 }
                 value={capText}
                 onChange={(e) => {
@@ -571,6 +583,25 @@ function ResearchAccount({
                 }}
               />
             </label>
+            {!buffer.cap && approvedCurrencies.length > 1 && (
+              <label>
+                Limit-Währung
+                <select
+                  value={capCurrency}
+                  onChange={(e) => {
+                    setCapCurrency(e.target.value);
+                    setCapChanged(true);
+                    setBuffer({ ...buffer });
+                  }}
+                  className="w-full border rounded p-2"
+                >
+                  <option value="">Währung ausdrücklich auswählen</option>
+                  {approvedCurrencies.map((c) => (
+                    <option key={c}>{c}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             {buffer.cap && (
               <Button
                 variant="outline"
@@ -607,6 +638,26 @@ function ResearchAccount({
           </fieldset>
         </Section>
       )}
+      {row && !profile!.deleted && (
+        <SourceSearch
+          workspaceId={workspaceId}
+          accountId={accountId}
+          profileId={profile!._id}
+          revision={profile!.revision}
+          config={row.version.config}
+          disabled={
+            !writable ||
+            busy ||
+            profile!.paused ||
+            !!buffer ||
+            !!profile!.activeOrderId
+          }
+          command={command}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          canInvalidate={state.role === "Owner" || state.role === "Admin"}
+        />
+      )}
       <Section title="Auftragshistorie">
         {!row ? (
           <p>Noch keine Aufträge.</p>
@@ -627,10 +678,19 @@ function ResearchAccount({
                     </p>
                     <p className="text-sm">{o.config.topics}</p>
                     <p className="text-sm text-muted-foreground">
-                      {o.reason ?? "Auftrag wartet auf Prüfung"} · Kosten nicht
-                      verfügbar · keine Research-Ergebnisse
+                      {o.reason ??
+                        (o.state === "completed"
+                          ? "Quellensuche beendet; Belege separat prüfen"
+                          : "Auftrag wartet auf Prüfung")}{" "}
+                      · Evidenz und Research-Auswertung nicht verfügbar
                     </p>
                   </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setSelectedId(o._id)}
+                  >
+                    Quellenbelege anzeigen
+                  </Button>
                   {(o.state === "queued" || o.state === "running") && (
                     <Button
                       variant="outline"
@@ -669,8 +729,8 @@ function ResearchAccount({
       </Section>
       <Section title="Research-Inbox">
         <p>
-          Keine gespeicherten Research-Ergebnisse. Suche, Evidenz und Übergabe
-          folgen nach ihrer tatsächlichen Implementierung.
+          Keine Research-Evidenz oder Themencluster. Native Quellenbelege sind
+          in der Quellensuche einsehbar; Inbox-Übergabe bleibt nicht verfügbar.
         </p>
       </Section>
     </div>

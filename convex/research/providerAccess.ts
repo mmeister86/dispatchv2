@@ -23,7 +23,7 @@ export const fingerprint = (p: Doc<"researchSourcePolicies">) =>
 export function credential(op: Operation) {
   return op === "web-search"
     ? process.env.REQUESTY_API_KEY
-    : process.env.X_RESEARCH_BEARER_TOKEN;
+    : process.env.X_APP_BEARER_TOKEN;
 }
 const finite = (n: number, max: number) =>
   Number.isSafeInteger(n) && n > 0 && n <= max;

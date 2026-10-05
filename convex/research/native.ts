@@ -248,8 +248,8 @@ export const availability = workspaceQuery({
               op === "x-trends"
                 ? "Trendberechtigung, Auth-Modus und WOEID nicht aktuell nachgewiesen; keine Live-Trends."
                 : op === "web-search"
-                  ? "Suchverarbeitung und endlicher Gesamtpreis einschließlich interner Suchgebühren sowie drei Budgets erforderlich."
-                  : "Öffentliche Suchberechtigung, exaktes Feldprotokoll, Preise und laufende Quellenkontrolle erforderlich.",
+                  ? "REQUESTY_API_KEY, Suchverarbeitung und endlicher Gesamtpreis einschließlich interner Suchgebühren sowie drei Budgets erforderlich."
+                  : "X_APP_BEARER_TOKEN und öffentliche Suchberechtigung, exaktes Feldprotokoll, Preise und laufende Quellenkontrolle erforderlich.",
           };
         }
       }),
