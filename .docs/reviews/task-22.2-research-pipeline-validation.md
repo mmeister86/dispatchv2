@@ -1,6 +1,6 @@
 # TASK22.2 — Research workflow validation
 
-Status: QUALITY correction frozen at 3b51807; same SPEC then same QUALITY delta pending. Backlog remains In Progress; no manual/live acceptance or paid activation.
+Status: independent SPEC and QUALITY PASS at frozen3b51807. AC1–3 verified for code; Backlog remains In Progress pending manual user confirmation. No live acceptance or paid activation.
 
 Accepted prerequisite baseline: `d06234639086f9514c686007f549ceb37c856710` (evidence source `3e079cef`, SPEC/QUALITY PASS). Implementer: fresh `research_pipeline`, Backend Architect, gpt-6.1-sol/medium. Source milestone: `2670f50c5a5ad5138d83cce346bb89bbe2be0819`, exact34 paths, clean staged diff and working tree. ROOT metadata commits do not change the source baseline.
 
@@ -84,6 +84,14 @@ First unchanged QUALITY5 reproduced4RED/1PASS01:15:26 `/tmp/task22.2-quality-cor
 Focused43PASS01:17:37. Full539/28PASS01:17:48; unchanged QUALITY5, SPEC7+11 and four final neighboring controls PASS. `/tmp/task22.2-quality-correction-{quality5,spec7,spec11,branches4,full,typecheck-final,lint,build,bundle}.log`. Initial TypeScript test-only branded WorkflowId cast error remains in `...-typecheck.log`; final type check passes. All eight frozen reviewer script/config hashes unchanged `/tmp/task22.2-quality-correction-reviewer-sha.txt`. Prior fresh actual browser explicitly reused for unchanged UI; backend registered checks cover this delta. Scoped window closed, no broad WIP staged.
 
 Official codegen/postgeneration type/existing EU Dev--once EXIT0 `/tmp/task22.2-quality-correction-{codegen,post-codegen-typecheck,eu-dev-once}.log`, no generated changes; functionsready01:19:24local. Source/index/diffcheck clean23:19:28UTC, user5173PID48521preserved/5174absent. ROOT released same SPEC delta on source3b51807; same QUALITY delta awaits its final PASS. No paid/provider activation, code AC or Done.
+
+## Final independent acceptance — TASK22.3 released
+
+Same SPEC correction-delta **PASS/ReadyYes**, `/tmp/dispatch-research-pipeline-spec-quality-delta-receipt.md`: unchanged7/11/4PASS01:20:00–02, ownfivePASS01:20:43, focused43PASS01:20:44, originalQUALITYfivePASS01:20:45. New independently executed real50ms AbortSignal fires without replacing timeout and retains unknown positive hold; actual generated completed/partial/empty workflows preserve historical terminal metadata and exact finance rows through purge plus stale completion. Original hashes/REDs unchanged; no source edits or browser.
+
+Same fresh QUALITY correction-delta **ReadyYes**, no remaining confirmed Critical/Important/Minor, `/tmp/dispatch-research-pipeline-quality-delta-receipt.md`: unchangedown5PASS01:22:09, affectedpipeline/providers141PASS01:22:19, newindependent2PASS01:22:45. Opposite deadline boundary preserves a shorter10s model policy; genuine unknown native hold followed by explicit stop and repeated legitimate late overrun settles once without changing terminal reason/time/generation. Originalfive/config manifest match; no source/index/browser/Dev edits. Prior full review plus this delta accepts d062346..3b51807, without a live/model/manual claim.
+
+ROOT checks TASK22.2 AC1–3 for implemented/automatically verified software only; manual Done remains forbidden without explicit user confirmation. TASK22.3 reference evaluation is the next implementation unit. Parent22, full TASK20 criteria and actual TASK23 editorial handoff are not yet accepted by this receipt.
 
 ## Open acceptance
 

@@ -4,7 +4,7 @@ title: 'Begrenzten Research-Workflow und Themencluster bauen (P06.03, Teil 2)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 23:20'
+updated_date: '2026-10-05 23:24'
 labels:
   - p06
   - r2
@@ -29,9 +29,9 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P06.03. Der übergeord
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Der wiederaufnehmbare Ablauf führt alle zehn Schritte mit Tenant-Kontext, Budget, Timeout und Abbruchprüfung aus.
-- [ ] #2 Themenduplikate, Quellenkopien, alte Meldungen und bereits veröffentlichte Themen werden erkannt.
-- [ ] #3 Leeres Ergebnis, partielle Quellenausfälle und Budgetende erscheinen als unterschiedliche Zustände.
+- [x] #1 Der wiederaufnehmbare Ablauf führt alle zehn Schritte mit Tenant-Kontext, Budget, Timeout und Abbruchprüfung aus.
+- [x] #2 Themenduplikate, Quellenkopien, alte Meldungen und bereits veröffentlichte Themen werden erkannt.
+- [x] #3 Leeres Ergebnis, partielle Quellenausfälle und Budgetende erscheinen als unterschiedliche Zustände.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -81,4 +81,6 @@ Fresh whole-delta QUALITY f92d2ee With fixes: 2 Important/0 Critical/0 Minor. Ac
 Original implementer QUALITY correction exact5 source paths frozen3b518074bc2fb0bc6b5360ff5c00a23b90467318. Atomic persisted research deadline clamp; active pipeline source/retention, profile pause/delete and native-budget cancellation terminalized, historical completed/partial/empty outcomes preserved. First unchangedQUALITY5=4RED1PASS01:15:26/permanent4RED32PASS; direct expiry purge exposed genuine later stale snapshot overwriting cancelled outcome, fixed local normalized snapshot. Focused43PASS01:17:37; full539/28 and unchangedQUALITY5+SPEC7+11+branches4PASS01:17:48. Type/lint/build/bundlePASS; initial test-only branded WorkflowId TS error retained separately. All8 reviewer scripts/configSHA unchanged /tmp/task22.2-quality-correction-reviewer-sha.txt. No UIchange, prior fresh browser reuse explicit. Commit windowclosed; codegen/posttype/Dev then SAME SPECdelta→SAME QUALITYdelta pending; no AC/Done/activation.
 
 FINAL QUALITY correction sourcefreeze3b51807 confirmed: officialcodegen/postgentype/existingEUDev--once EXIT0 /tmp/task22.2-quality-correction-{codegen,post-codegen-typecheck,eu-dev-once}.log no generatedchanges; EUfunctionsready01:19:24local, source/index/diffclean23:19:28Z/user5173PID48521preserved/5174absent. Same independentSPECdelta nowactive; sameQUALITYdelta awaitsPASS. NoAC/Done/activation.
+
+Final source3b51807 SAME SPECdelta PASS/ReadyYes /tmp/dispatch-research-pipeline-spec-quality-delta-receipt.md (fresh7+11+4+own5/focused43/quality5); SAME freshQUALITYdelta ReadyYes no remainingconfirmedissues /tmp/dispatch-research-pipeline-quality-delta-receipt.md (freshown5/141affected/own2). Actual50ms signal abort/unknownhold, shorter10smodeldeadline, actualgenerated completedpartialempty historicalpurge and late nativeoverrun afterstop once preservefinance/terminalmetadata. AlloriginalRED/hashhistory preserved. ROOT AC1–3 checked SOFTWARE evidence only; InProgress/manualconfirmationstillrequired. Wholepipeline reviewed; no paid/provideractivation or actuallivequality/full23handoff. TASK22.3 releasednext; parent22/full20 acceptanceafterintegratedevaluation.
 <!-- SECTION:NOTES:END -->
