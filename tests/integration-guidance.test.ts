@@ -1,3 +1,4 @@
+import { getFunctionName } from "convex/server";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MemoryRouter, Routes, Route } from "react-router-dom";
@@ -9,7 +10,10 @@ const readiness = vi.hoisted(() => ({
 }));
 vi.mock("../src/lib/auth-client", () => ({ demoMode: false }));
 vi.mock("convex/react", () => ({
-  useQuery: () => readiness,
+  useQuery: (ref: unknown) =>
+    getFunctionName(ref as never).startsWith("integrations/github/")
+      ? { connection: null, repositories: [] }
+      : readiness,
   useAction: () => async () => ({ configured: false, redirectUri: null }),
   useMutation: () => async () => null,
 }));
@@ -44,6 +48,10 @@ test("real integration destination gives actionable provider/email guidance with
     "AUTH_EMAIL_FROM fehlt",
     "RESEND_API_KEY",
     "SITE_URL",
+    "GitHub-App &amp; Repository-Quellen",
+    "GITHUB_APP_CLIENT_ID",
+    "GITHUB_APP_CLIENT_SECRET",
+    "GITHUB_APP_PRIVATE_KEY",
     "Medien &amp; weitere Provider",
   ])
     expect(html).toContain(text);

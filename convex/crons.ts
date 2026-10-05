@@ -13,4 +13,10 @@ crons.interval(
   internal.integrations.x.oauth.cleanup,
   {},
 );
+crons.interval(
+  "GitHub source secret expiry cleanup",
+  { minutes: 15 },
+  internal.integrations.github.repositories.cleanup,
+  {},
+);
 export default crons;

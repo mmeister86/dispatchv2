@@ -77,11 +77,6 @@ export const repoFields = {
   proofExpiresAt: v.number(),
   updatedAt: v.number(),
 };
-export const repoDoc = v.object({
-  _id: v.id("githubRepositories"),
-  _creationTime: v.number(),
-  ...repoFields,
-});
 export const publicRepo = v.object({
   _id: v.id("githubRepositories"),
   ...repository.fields,

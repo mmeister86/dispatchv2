@@ -117,6 +117,11 @@ const RepurposePage = lazy(() =>
 const TrendsPage = lazy(() =>
   import("@/pages/Explore").then((m) => ({ default: m.TrendsPage })),
 );
+const GithubOAuthCallback = lazy(() =>
+  import("@/features/settings/github").then((m) => ({
+    default: m.GithubOAuthCallback,
+  })),
+);
 const XOAuthCallback = lazy(() =>
   import("@/features/settings/social-accounts").then((m) => ({
     default: m.XOAuthCallback,
@@ -834,6 +839,21 @@ export function App() {
                 />
               ) : (
                 <XOAuthCallback />
+              )}
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/integrations/github/callback"
+          element={
+            <ProtectedRoute>
+              {demoMode ? (
+                <EmptyState
+                  title="OAuth benötigt den echten Workspace"
+                  description="Im Demo-Modus werden keine GitHub-App-Quellen autorisiert."
+                />
+              ) : (
+                <GithubOAuthCallback />
               )}
             </ProtectedRoute>
           }

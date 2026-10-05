@@ -90,6 +90,10 @@ export async function request(
             : {}),
       },
     );
+    if (response.status === 401 || response.status === 403) {
+      await response.body?.cancel();
+      throw new ProviderError("GITHUB_REAUTH_REQUIRED");
+    }
     const reader = response.body?.getReader();
     if (!reader) throw new ProviderError("GITHUB_PROVIDER_RESPONSE_INVALID");
     let size = 0;
@@ -629,8 +633,13 @@ export const installationCredential = internalAction({
     );
     if (
       typeof result.token !== "string" ||
-      !/^\S{1,8192}$/.test(result.token) ||
+      !/^[\x21-\x7e]{1,8192}$/.test(result.token) ||
       typeof result.expires_at !== "string" ||
+      !result.permissions ||
+      typeof result.permissions !== "object" ||
+      Array.isArray(result.permissions) ||
+      Object.keys(result.permissions).length !== 1 ||
+      (result.permissions as Record<string, unknown>).metadata !== "read" ||
       !Array.isArray(result.repositories) ||
       result.repositories.length !== 1 ||
       String((result.repositories[0] as Record<string, unknown>).id) !==

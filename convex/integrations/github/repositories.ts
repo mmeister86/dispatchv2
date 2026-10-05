@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../../_generated/server";
-import { internalQuery } from "../../_generated/server";
+import { internalQuery, internalMutation } from "../../_generated/server";
 import type { Id, Doc } from "../../_generated/dataModel";
 import {
   workspaceQuery,
@@ -21,7 +21,7 @@ import {
   publicConnection,
   PROOF_TTL,
 } from "./fields";
-export async function manage(
+async function manage(
   ctx: QueryCtx | MutationCtx,
   workspaceId: Id<"workspaces">,
 ) {
@@ -31,13 +31,13 @@ export async function manage(
     throw new ConvexError("GITHUB_WORKSPACE_CHANGED");
   return a;
 }
-export async function connection(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
+async function connection(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
   return ctx.db
     .query("githubConnections")
     .withIndex("by_workspaceId", (q) => q.eq("workspaceId", workspaceId))
     .unique();
 }
-export async function connected(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
+async function connected(ctx: QueryCtx, workspaceId: Id<"workspaces">) {
   const c = await connection(ctx, workspaceId);
   if (!c || c.status !== "connected" || !c.envelope)
     throw new ConvexError("GITHUB_REAUTH_REQUIRED");
@@ -115,8 +115,8 @@ async function view(
           status: c.status,
           identity: c.identity,
           login: c.login,
-          installations: c.installations,
-          inventoryLimited: c.inventoryLimited,
+          installations: settings ? c.installations : [],
+          inventoryLimited: settings ? c.inventoryLimited : false,
           generation: c.generation,
           updatedAt: c.updatedAt,
           errorCode: c.errorCode ?? null,
@@ -383,6 +383,13 @@ export const verify = workspaceInternalMutation({
       if (fresh)
         await ctx.db.patch(r._id, {
           ...fresh,
+          ...(fresh.private !== r.private
+            ? {
+                monitoring: false,
+                content: false,
+                generation: r.generation + 1,
+              }
+            : {}),
           connectionGeneration: c.generation,
           verifiedAt: Date.now(),
           proofExpiresAt: Date.now() + PROOF_TTL,
@@ -727,6 +734,34 @@ export const installationProof = workspaceInternalMutation({
           updatedAt: Date.now(),
         });
     }
+    return null;
+  },
+});
+
+export const cleanup = internalMutation({
+  args: {},
+  returns: v.null(),
+  handler: async (ctx) => {
+    const now = Date.now();
+    for (const s of await ctx.db
+      .query("githubOAuthStates")
+      .withIndex("by_expiresAt", (q) => q.lte("expiresAt", now))
+      .take(50))
+      await ctx.db.delete(s._id);
+    for (const c of await ctx.db
+      .query("githubConnections")
+      .withIndex("by_leaseUntil", (q) =>
+        q.gt("leaseUntil", 0).lte("leaseUntil", now),
+      )
+      .take(50))
+      await ctx.db.patch(c._id, {
+        status: "reauth_required",
+        envelope: undefined,
+        credentialGeneration: c.credentialGeneration + 1,
+        leaseUntil: 0,
+        errorCode: "GITHUB_REFRESH_OUTCOME_UNKNOWN",
+        updatedAt: now,
+      });
     return null;
   },
 });

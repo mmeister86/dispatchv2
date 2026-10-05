@@ -1,3 +1,4 @@
+import { GithubSources } from "@/features/settings/github";
 import { useState, type ReactNode } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
@@ -1080,14 +1081,7 @@ export function OnboardingPage() {
                   </DemoNote>
                 </>
               ) : (
-                <Section
-                  title="GitHub, wenn du möchtest"
-                  description="Repository-Zugriff wird separat angebunden. Dein Workspace funktioniert ohne GitHub."
-                >
-                  <p className="muted text-sm">
-                    Du kannst diesen Schritt überspringen.
-                  </p>
-                </Section>
+                <GithubSources key={`github:${state.activeWorkspaceId}`} />
               ))}
             {step === 3 &&
               (demoMode ? (

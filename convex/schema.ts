@@ -48,11 +48,7 @@ export default defineSchema({
     .index("by_expiresAt", ["expiresAt"]),
   githubRepositories: defineTable(githubRepoFields)
     .index("by_workspaceId_and_providerId", ["workspaceId", "providerId"])
-    .index("by_workspaceId_and_selected", ["workspaceId", "selected"])
-    .index("by_workspaceId_and_installationId", [
-      "workspaceId",
-      "installationId",
-    ]),
+    .index("by_workspaceId_and_selected", ["workspaceId", "selected"]),
   xPostAttempts: defineTable(attemptFields)
     .index("by_scheduleId_and_generation_and_position", [
       "scheduleId",

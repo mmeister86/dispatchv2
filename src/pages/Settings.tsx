@@ -1,3 +1,4 @@
+import { GithubSources } from "@/features/settings/github";
 import {
   cloneElement,
   isValidElement,
@@ -177,6 +178,7 @@ function IntegrationGuidance() {
   return (
     <>
       <SocialAccounts key={state.activeWorkspaceId} />
+      <GithubSources key={`github:${state.activeWorkspaceId}`} />
       <Section
         title="Kritische E-Mail-Benachrichtigungen"
         description="Zustellprobleme bleiben im Kalender und Überblick sichtbar."
@@ -227,7 +229,7 @@ function IntegrationGuidance() {
         </p>
         <p className="mb-0 text-sm">
           GitHub-Anmeldung und Repository-Zugriff sind getrennte Berechtigungen.
-          Repository-Zugriff benötigt den späteren Verbindungsflow und eine
+          Repository-Zugriff benötigt den separaten App-Verbindungsflow und eine
           ausdrückliche Auswahl der erlaubten Repositories.
         </p>
       </Section>

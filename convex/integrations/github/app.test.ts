@@ -498,6 +498,7 @@ test("fresh scoped installation token contains only the selected repository and 
     });
     return Response.json({
       token: "installation-fixture",
+      permissions: { metadata: "read" },
       expires_at: new Date(Date.now() + 3600000).toISOString(),
       repositories: [{ id: 101 }],
     });
@@ -515,4 +516,176 @@ test("fresh scoped installation token contains only the selected repository and 
       )
     ).token,
   ).toBe("installation-fixture");
+});
+test("proof expiry and privacy transition close new/late content until explicit renewed purpose", async () => {
+  config();
+  const f = await mediaFixture();
+  provider(42, [{ ...repo, private: false }]);
+  await connect(f);
+  await f.signed.action(api.integrations.github.app.select, {
+    workspaceId: f.workspaceId,
+    installationId: "50",
+    repositoryId: "101",
+  });
+  const r = (
+    await f.signed.query(api.integrations.github.repositories.settings, {
+      workspaceId: f.workspaceId,
+    })
+  ).repositories[0];
+  await f.signed.mutation(api.integrations.github.repositories.configure, {
+    workspaceId: f.workspaceId,
+    repositoryId: r._id,
+    expectedGeneration: 1,
+    access: true,
+    monitoring: true,
+    content: true,
+    communicableContext: "",
+  });
+  vi.restoreAllMocks();
+  provider();
+  await f.signed.action(api.integrations.github.app.discoverRepositories, {
+    workspaceId: f.workspaceId,
+    installationId: "50",
+  });
+  let view = (
+    await f.signed.query(api.integrations.github.repositories.settings, {
+      workspaceId: f.workspaceId,
+    })
+  ).repositories[0];
+  expect(view).toMatchObject({
+    private: true,
+    monitoring: false,
+    content: false,
+    generation: 3,
+  });
+  await expect(
+    f.t.query(internal.integrations.github.repositories.source, {
+      workspaceId: f.workspaceId,
+      repositoryId: r._id,
+      generation: 2,
+      purpose: "content",
+    }),
+  ).rejects.toThrow("GITHUB_SOURCE_DISABLED");
+  await f.t.run((ctx) =>
+    ctx.db.patch(r._id, { proofExpiresAt: Date.now() - 1 }),
+  );
+  expect(
+    (
+      await f.signed.query(api.integrations.github.repositories.list, {
+        workspaceId: f.workspaceId,
+      })
+    ).repositories,
+  ).toEqual([]);
+});
+test("rotation reads previous key and successful refresh replaces both credentials; expired lease cleanup never replays", async () => {
+  config();
+  const f = await mediaFixture();
+  provider();
+  await connect(f);
+  vi.stubEnv("INTEGRATION_ENCRYPTION_PREVIOUS_KEY_ID", "key-one");
+  vi.stubEnv(
+    "INTEGRATION_ENCRYPTION_PREVIOUS_KEY",
+    base64(new Uint8Array(32).fill(1)),
+  );
+  vi.stubEnv("INTEGRATION_ENCRYPTION_KEY_ID", "key-two");
+  vi.stubEnv("INTEGRATION_ENCRYPTION_KEY", base64(new Uint8Array(32).fill(2)));
+  vi.restoreAllMocks();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({
+      access_token: "next-access",
+      refresh_token: "next-refresh",
+      token_type: "bearer",
+      scope: "",
+      expires_in: 28800,
+      refresh_token_expires_in: 15897600,
+    }),
+  );
+  await f.signed.action(api.integrations.github.app.refresh, {
+    workspaceId: f.workspaceId,
+  });
+  const c = await f.t.run((ctx) => ctx.db.query("githubConnections").first());
+  expect(c!.envelope!.keyId).toBe("key-two");
+  expect(await open(c!.envelope!, association(f.workspaceId))).toEqual({
+    accessToken: "next-access",
+    refreshToken: "next-refresh",
+  });
+  await f.t.run((ctx) => ctx.db.patch(c!._id, { leaseUntil: Date.now() - 1 }));
+  await f.t.mutation(internal.integrations.github.repositories.cleanup, {});
+  expect((await f.t.run((ctx) => ctx.db.get(c!._id)))!.status).toBe(
+    "reauth_required",
+  );
+});
+test("401 closes source authority even when provider returns an unparseable body", async () => {
+  config();
+  const f = await mediaFixture();
+  provider();
+  await connect(f);
+  vi.restoreAllMocks();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response("unauthorized html", { status: 401 }),
+  );
+  await expect(
+    f.signed.action(api.integrations.github.app.discoverRepositories, {
+      workspaceId: f.workspaceId,
+      installationId: "50",
+    }),
+  ).rejects.toThrow("GITHUB_REAUTH_REQUIRED");
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("githubConnections").first()))!.status,
+  ).toBe("reauth_required");
+});
+test("disconnect during OAuth provider I/O cannot restore a connection or accept late identity proof", async () => {
+  config();
+  const f = await mediaFixture(),
+    fetcher = provider();
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve)),
+    original = fetcher.getMockImplementation()!;
+  fetcher.mockImplementation(async (url, options) => {
+    if (new URL(String(url)).pathname === "/user") await held;
+    return original(url, options);
+  });
+  const pending = connect(f);
+  await vi.waitFor(() =>
+    expect(
+      fetcher.mock.calls.some(
+        ([url]) => new URL(String(url)).pathname === "/user",
+      ),
+    ).toBe(true),
+  );
+  await f.signed.mutation(api.integrations.github.repositories.disconnect, {
+    workspaceId: f.workspaceId,
+  });
+  release();
+  await expect(pending).rejects.toThrow("GITHUB_CONNECTION_CHANGED");
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("githubConnections").first()))!.status,
+  ).toBe("disconnected");
+  expect(
+    (
+      await f.signed.query(api.integrations.github.repositories.list, {
+        workspaceId: f.workspaceId,
+      })
+    ).repositories,
+  ).toEqual([]);
+});
+test("unselected installation metadata is not included in ordinary workspace projections", async () => {
+  config();
+  const f = await mediaFixture();
+  provider();
+  await connect(f);
+  expect(
+    (
+      await f.signed.query(api.integrations.github.repositories.list, {
+        workspaceId: f.workspaceId,
+      })
+    ).connection!.installations,
+  ).toEqual([]);
+  expect(
+    (
+      await f.signed.query(api.integrations.github.repositories.settings, {
+        workspaceId: f.workspaceId,
+      })
+    ).connection!.installations,
+  ).toHaveLength(1);
 });
