@@ -5,10 +5,235 @@ import { sourceFixture } from "../../tests/github-fixture";
 import { generateForRun, requestyFetch } from "./provider";
 import { modelFixture } from "../../tests/model-fixture";
 import { internal, api, components } from "../_generated/api";
+type StreamPart =
+  Awaited<
+    ReturnType<MockLanguageModelV3["doStream"]>
+  >["stream"] extends ReadableStream<infer Part>
+    ? Part
+    : never;
 
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
+});
+test.each([1, 2])(
+  "removing scope %s approver denies the actual call before funding",
+  async (index) => {
+    const f = await claimed();
+    await f.t.run((ctx) =>
+      ctx.db.patch(f.run.budgetIds[index], { approvedBy: undefined }),
+    );
+    let calls = 0;
+    const model = new MockLanguageModelV3({
+      doGenerate: async () => {
+        calls++;
+        return response();
+      },
+    });
+    await expect(
+      f.t.action((ctx) => generateForRun(ctx, f.runId, f.executionKey, model)),
+    ).rejects.toThrow("MODEL_BUDGET_GRANT_EXPIRED");
+    expect(calls).toBe(0);
+    expect(
+      await f.t.run((ctx) => ctx.db.query("aiAttempts").collect()),
+    ).toEqual([]);
+    await expect(
+      f.t.mutation(internal.ai.runs.toolContext, {
+        runId: f.runId,
+        generation: 1,
+        executionKey: f.executionKey,
+      }),
+    ).rejects.toThrow("MODEL_BUDGET_GRANT_EXPIRED");
+  },
+);
+test.each([1, 2])(
+  "removing scope %s approver after send retains usage and prevents output",
+  async (index) => {
+    const f = await claimed();
+    const model = new MockLanguageModelV3({
+      doGenerate: async () => {
+        await f.t.run((ctx) =>
+          ctx.db.patch(f.run.budgetIds[index], { approvedBy: undefined }),
+        );
+        return response();
+      },
+    });
+    await expect(
+      f.t.action((ctx) => generateForRun(ctx, f.runId, f.executionKey, model)),
+    ).rejects.toThrow("MODEL_PROVIDER_UNAVAILABLE");
+    const [attempt] = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(attempt).toMatchObject({ state: "settled", estimatedMicros: 30 });
+    for (const id of attempt.budgetIds)
+      expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({
+        heldMicros: 0,
+        spentMicros: 30,
+      });
+    await expect(
+      f.t.mutation(internal.ai.runs.fund, {
+        runId: f.runId,
+        generation: 1,
+        executionKey: f.executionKey,
+        key: "revoked-retry",
+      }),
+    ).rejects.toThrow("MODEL_BUDGET_GRANT_EXPIRED");
+    const messages = await f.t.query(
+      components.agent.messages.listMessagesByThreadId,
+      {
+        threadId: f.run.threadId,
+        order: "desc",
+        paginationOpts: { numItems: 10, cursor: null },
+      },
+    );
+    expect(
+      messages.page.some(
+        (m) => m.message?.role === "assistant" && m.status === "success",
+      ),
+    ).toBe(false);
+  },
+);
+test("actual fixed adapter minimizes tool thought signatures before official history and continuation", async () => {
+  const f = await modelFixture(),
+    runId = await f.create();
+  vi.stubEnv("REQUESTY_API_KEY", "synthetic-key-only");
+  let calls = 0;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+    calls++;
+    expect(String(input)).toBe(
+      "https://router.eu.requesty.ai/v1/chat/completions",
+    );
+    expect(init!.body).not.toContain("SYNTHETIC-PRIVATE-ADAPTER-PART");
+    expect(
+      await f.t.run((ctx) =>
+        ctx.db
+          .query("aiAttempts")
+          .withIndex("by_runId_and_state", (q) =>
+            q.eq("runId", runId).eq("state", "sent"),
+          )
+          .first(),
+      ),
+    ).not.toBeNull();
+    return Response.json({
+      id: "synthetic-completion",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message:
+            calls === 1
+              ? {
+                  role: "assistant",
+                  content: null,
+                  tool_calls: [
+                    {
+                      id: "context",
+                      type: "function",
+                      function: { name: "read_context", arguments: "{}" },
+                      extra_content: {
+                        google: {
+                          thought_signature: "SYNTHETIC-PRIVATE-ADAPTER-PART",
+                        },
+                      },
+                    },
+                  ],
+                }
+              : {
+                  role: "assistant",
+                  content: '{"text":"Adapter synthetic answer"}',
+                },
+          finish_reason: calls === 1 ? "tool_calls" : "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    });
+  });
+  await f.t.action(internal.ai.provider.execute, { runId });
+  expect(calls).toBe(2);
+  const run = (await f.t.run((ctx) => ctx.db.get(runId)))!;
+  expect(run.state).toBe("completed");
+  const messages = await f.t.query(
+    components.agent.messages.listMessagesByThreadId,
+    {
+      threadId: run.threadId,
+      order: "desc",
+      paginationOpts: { numItems: 10, cursor: null },
+    },
+  );
+  expect(messages.page.some((m) => m.message?.role === "tool")).toBe(true);
+  expect(JSON.stringify(messages)).not.toContain(
+    "SYNTHETIC-PRIVATE-ADAPTER-PART",
+  );
+});
+test("stream tool-part metadata does not persist or enter the next physical prompt", async () => {
+  const f = await claimed();
+  let calls = 0;
+  const model = new MockLanguageModelV3({
+    doStream: async (params) => {
+      calls++;
+      expect(JSON.stringify(params.prompt)).not.toContain(
+        "SYNTHETIC-PRIVATE-STREAM-TOOL",
+      );
+      return {
+        stream: simulateReadableStream<StreamPart>({
+          chunks:
+            calls === 1
+              ? [
+                  { type: "stream-start", warnings: [] },
+                  {
+                    type: "tool-call",
+                    toolCallId: "context",
+                    toolName: "read_context",
+                    input: "{}",
+                    providerMetadata: {
+                      private: { body: "SYNTHETIC-PRIVATE-STREAM-TOOL" },
+                    },
+                  },
+                  {
+                    type: "finish",
+                    usage,
+                    finishReason: { unified: "tool-calls", raw: "tool_calls" },
+                  },
+                ]
+              : [
+                  { type: "stream-start", warnings: [] },
+                  { type: "text-start", id: "text" },
+                  {
+                    type: "text-delta",
+                    id: "text",
+                    delta: '{"text":"Streaming tool answer"}',
+                  },
+                  { type: "text-end", id: "text" },
+                  {
+                    type: "finish",
+                    usage,
+                    finishReason: { unified: "stop", raw: "stop" },
+                  },
+                ],
+        }),
+      };
+    },
+  });
+  expect(
+    await f.t.action((ctx) =>
+      generateForRun(ctx, f.runId, f.executionKey, model, true),
+    ),
+  ).toBe("Streaming tool answer");
+  expect(calls).toBe(2);
+  const messages = await f.t.query(
+    components.agent.messages.listMessagesByThreadId,
+    {
+      threadId: f.run.threadId,
+      order: "desc",
+      paginationOpts: { numItems: 10, cursor: null },
+    },
+  );
+  expect(messages.page.some((m) => m.message?.role === "tool")).toBe(true);
+  expect(JSON.stringify(messages)).not.toContain(
+    "SYNTHETIC-PRIVATE-STREAM-TOOL",
+  );
 });
 test.each([0.12345, -1, "NaN", null])(
   "actual openai-compatible adapter preserves reported cost %s separately from estimates and bills",
@@ -138,7 +363,7 @@ test("real Agent streaming settles its own finish usage and preserves the stable
         ),
       ).not.toBeNull();
       return {
-        stream: simulateReadableStream({
+        stream: simulateReadableStream<StreamPart>({
           chunks: [
             { type: "stream-start", warnings: [] },
             { type: "text-start", id: "text" },
@@ -146,6 +371,9 @@ test("real Agent streaming settles its own finish usage and preserves the stable
               type: "text-delta",
               id: "text",
               delta: JSON.stringify({ text: "Streaming synthetic answer" }),
+              providerMetadata: {
+                private: { body: "SYNTHETIC-PRIVATE-STREAM-METADATA" },
+              },
             },
             { type: "text-end", id: "text" },
             {
@@ -200,7 +428,7 @@ test("missing streaming finish and transport timeout retain unknown cost, saniti
     doStream: async () => {
       calls++;
       return {
-        stream: simulateReadableStream({
+        stream: simulateReadableStream<StreamPart>({
           chunks: [
             { type: "stream-start", warnings: [] },
             { type: "error", error: new Error("RAW-SECRET-BODY") },
@@ -356,7 +584,18 @@ test("exact Agent/AI6/provider matrix sees durable funding before physical model
         (await f.t.run((ctx) => ctx.db.get(attempts[0].budgetIds[0])))!
           .heldMicros,
       ).toBe(8100);
-      return response();
+      return {
+        ...response(),
+        content: [
+          {
+            type: "text",
+            text: '{"text":"Synthetic valid answer"}',
+            providerMetadata: {
+              private: { body: "SYNTHETIC-PRIVATE-TEXT-PART" },
+            },
+          },
+        ],
+      };
     },
   });
   const result = await f.t.action((ctx) =>
@@ -372,6 +611,7 @@ test("exact Agent/AI6/provider matrix sees durable funding before physical model
       paginationOpts: { numItems: 10, cursor: null },
     },
   );
+  expect(JSON.stringify(messages)).not.toContain("SYNTHETIC-PRIVATE-TEXT-PART");
   expect(messages.page.filter((m) => m.message?.role === "user")).toHaveLength(
     1,
   );

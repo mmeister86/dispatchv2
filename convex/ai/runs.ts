@@ -136,6 +136,7 @@ async function active(
     if (
       !b ||
       b.scope !== scope ||
+      (scope !== "provider" && !b.approvedBy) ||
       (scope !== "provider" && b.workspaceId !== r.workspaceId) ||
       (scope === "account" && b.accountId !== r.accountId) ||
       b.expiresAt <= Date.now() ||

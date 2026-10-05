@@ -204,6 +204,10 @@ async function boundedAgent(
             );
           return {
             ...result,
+            content: result.content.map((part) => ({
+              ...part,
+              providerMetadata: undefined,
+            })),
             warnings: [],
             request: undefined,
             response: undefined,
