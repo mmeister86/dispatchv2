@@ -22,7 +22,7 @@ Fresh SPEC PASS against the whole `7f015fe..f6cb20e` unit, without an actionable
 
 ## Independent QUALITY
 
-Separate fresh QUALITY is running after SPEC PASS. No acceptance criterion is marked from this interim record.
+Separate fresh QUALITY found a confirmed P2 authorization bypass in the shared public `ai.runs.stop`: a second authenticated Editor can discover another actor's personal chat run through the workspace run list and stop it, despite denial by the conversation-specific stop endpoint. Root independently reproduced the same actual two-human case; the run changed from ready to stopped. Initial own evidence is nine passing cases and one failing case at `/tmp/dispatch-chat-quality-own.log`. The reviewer is completing the whole-unit initial assessment before the source freeze ends. The planned correction checks personal conversation/run authority at the common stop boundary before state-based returns and reuses the native abort bound to the exact stopped incarnation. Non-chat cancellation and late settlement remain part of the regression scope. Re-SPEC and QUALITY re-review must pass after correction; no acceptance criterion is marked from this interim record.
 
 ## Open acceptance
 

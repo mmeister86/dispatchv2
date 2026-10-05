@@ -4,7 +4,7 @@ title: Persistenten Chat und nachvollziehbare Agent-Arbeit liefern (P05.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 18:06'
+updated_date: '2026-10-05 18:11'
 labels:
   - p05
   - r2
@@ -73,4 +73,6 @@ Backend intermediate29558d340a892c9754616638125a5d86c8c608ba committed onmaster,
 Finalproductionfreeze f6cb20e64c380c9c90d199b0f189d1b5df2a4f1a onmaster, backend29558d3/sourceBASE7f015fe; rootmetadata-onlya2f2e6d withinrange. Full361/25 Unit at19:49:20 including21chat, typecheck/lint/build/bundle/diff, officialcodegen and actualChat+Ideas(olderexactobjectroute)browser PASS; existingEUDev ready19:49:50/4.39s afterfinalcorrection. Native0.6.4 sameorder successfultoolresponses are included; actualcorrectedgap is domainreceipt committedbeforeSDKstores Toolresponse/stop. PhysicalSSEresume test verifies realexistingIdea receipt inprompt, CreateTool absent, one savedinput/oneIdea. Source/indexclean/windowclosed, currentuser5173listenerPID48521 preserved (changedexternally from62707). FreshindependentSPEC now reviewingactualfullunit; QUALITY onlyafterPASS. Actualtwo stores conversations/chatOperations +optionalrunrefs/executionFinishedAt/nativeactive streamdeltas; newchatpurpose notimplicitdraftgrant. NoAC/Done/manual/live/paid/private/provideractivation fromfreeze.
 
 Fresh independent SPEC PASS for complete 7f015fe..f6cb20e unit, no actionable finding. Executed361 registered/25 files,24 own actual-component/physical-transport cases,8 actual installed-native-hook browser checks using captured native deltas, both affected Agent/Ideas browser fixtures, typecheck and diff check. /tmp/dispatch-chat-spec-receipt.md separates actual evidence, harness-only corrections and synthetic/manual limits. No production fixes were required. Fresh separate QUALITY now running; AC remains unchecked until both reviews pass. No grant/policy activation, live paid/private effect, deployment by reviewer or Done transition.
+
+Fresh QUALITY confirmed P2 authorization bypass at convex/ai/runs.ts public stop: second authenticated Editor in same workspace cannot use conversations.stop, but can discover owner chat run via runs.recent and generic runs.stop changes ready to stopped. Root independently reproduced exact own two-human case on frozen f6cb20e. Initial reviewer /tmp/dispatch-chat-quality-own.log records9 PASS/1 RED. Hold QUALITY/AC; minimal common-stop chat authority/native abort correction must preserve legacy nonchat cancellation and late usage, followed by independent re-SPEC then QUALITY re-review. Initial full QUALITY receipt still being finalized; no source mutation or task closure yet.
 <!-- SECTION:NOTES:END -->
