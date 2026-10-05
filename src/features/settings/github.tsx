@@ -1,3 +1,7 @@
+import {
+  githubSourceAuthorized,
+  useGithubSourceProofClock,
+} from "@/lib/github-source-proof";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useAction, useMutation, useQuery } from "convex/react";
@@ -77,7 +81,8 @@ function RepositorySettings({
       <p className="text-xs muted">
         Berechtigung zuletzt geprüft:{" "}
         {new Date(source.verifiedAt).toLocaleString()}. Prüfung gilt 15 Minuten;
-        eine erneute Auswahl aktualisiert sie.
+        eine erneute Prüfung aktualisiert sie. Lade bei Ablauf die
+        Repository-Auswahl erneut; deine Eingaben bleiben erhalten.
       </p>
       <label className="flex items-center gap-2">
         <Checkbox
@@ -133,7 +138,9 @@ function RepositorySettings({
       </p>
       <div className="flex flex-wrap gap-2">
         <Button
-          disabled={busy}
+          disabled={
+            busy || (!source.authorized && (access || monitoring || content))
+          }
           onClick={() =>
             command(
               () =>
@@ -183,6 +190,11 @@ export function GithubSources() {
       : api.integrations.github.repositories.list,
     { workspaceId },
   );
+  const proofClock = useGithubSourceProofClock(sources?.repositories);
+  const currentSources = sources?.repositories.map((r) => ({
+    ...r,
+    authorized: githubSourceAuthorized(r, proofClock),
+  }));
   const status = useAction(api.integrations.github.app.status),
     start = useAction(api.integrations.github.app.start),
     discover = useAction(api.integrations.github.app.discoverRepositories),
@@ -422,9 +434,9 @@ export function GithubSources() {
                   )}
                 </div>
               )}
-              {sources.repositories.map((r) => (
+              {currentSources?.map((r) => (
                 <RepositorySettings
-                  key={`${r._id}:${r.generation}:${r.verifiedAt}`}
+                  key={`${r._id}:${r.generation}`}
                   source={r}
                   workspaceId={workspaceId}
                   busy={busy}
@@ -434,12 +446,16 @@ export function GithubSources() {
             </>
           )}
           {!admin &&
-            sources.repositories.map((r) => (
-              <p key={r._id}>
-                {r.fullName} · {r.private ? "Privat" : "Öffentlich"}
-              </p>
-            ))}
-          {!sources.repositories.length && (
+            currentSources
+              ?.filter((r) => r.authorized)
+              .map((r) => (
+                <p key={r._id}>
+                  {r.fullName} · {r.private ? "Privat" : "Öffentlich"}
+                </p>
+              ))}
+          {!(admin
+            ? currentSources?.length
+            : currentSources?.filter((r) => r.authorized).length) && (
             <p className="text-sm muted">
               Noch keine freigegebenen Repository-Quellen.
             </p>

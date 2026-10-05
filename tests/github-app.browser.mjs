@@ -69,6 +69,22 @@ try {
   const page = await browser.newPage(),
     errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    const add = document.addEventListener.bind(document),
+      remove = document.removeEventListener.bind(document);
+    window.proofVisibilityListeners = new Set();
+    document.addEventListener = (name, listener, ...options) => {
+      if (name === "visibilitychange")
+        window.proofVisibilityListeners.add(listener);
+      return add(name, listener, ...options);
+    };
+    document.removeEventListener = (name, listener, ...options) => {
+      if (name === "visibilitychange")
+        window.proofVisibilityListeners.delete(listener);
+      return remove(name, listener, ...options);
+    };
+  });
+  await page.clock.install({ time: new Date() });
   await page.goto(
     "http://127.0.0.1:5174/github-app-fixture?state=synthetic-state&code=synthetic-code&installation_id=999",
   );
@@ -185,6 +201,71 @@ try {
   await expect(
     page.getByText("Quellen-Einstellungen gespeichert.", { exact: true }),
   ).toHaveCount(0);
+  // Cached Convex query data is intentionally unchanged: proof expiry must invalidate idle UI.
+  await expect(
+    page.getByText("Privat · Zugriff geprüft", { exact: true }),
+  ).toHaveCount(1);
+  await page.clock.fastForward(16 * 60000);
+  await expect(
+    page.getByText("Privat · Zugriff geprüft", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("checkbox", { name: "Ereignismetadaten überwachen" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("checkbox", {
+      name: "Redaktionelle Content-Aufträge erlauben",
+    }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Einstellungen speichern" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("textbox", {
+      name: "Ausdrücklich kommunizierbarer Projektkontext",
+    }),
+  ).toHaveValue("Approved context");
+  await page.evaluate(() => {
+    window.sources = {
+      ...window.sources,
+      repositories: [
+        {
+          ...window.sources.repositories[0],
+          proofExpiresAt: Date.now() + 900000,
+          verifiedAt: Date.now(),
+        },
+      ],
+    };
+    window.renderSettings("connected");
+  });
+  await expect(
+    page.getByText("Privat · Zugriff geprüft", { exact: true }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole("checkbox", { name: "Ereignismetadaten überwachen" }),
+  ).toBeEnabled();
+  await expect(
+    page.getByRole("textbox", {
+      name: "Ausdrücklich kommunizierbarer Projektkontext",
+    }),
+  ).toHaveValue("Approved context");
+  expect(await page.evaluate(() => window.proofVisibilityListeners.size)).toBe(
+    1,
+  );
+  // Ordinary Signals must also hide the same cached row when its own deadline arrives.
+  await page.evaluate(() => window.renderSignals());
+  await expect(
+    page.getByText("fixture/project · Privat · Monitoring aus · Content aus", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.clock.fastForward(16 * 60000);
+  await expect(
+    page.getByText("fixture/project · Privat · Monitoring aus · Content aus", {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page.evaluate(() => window.renderSettings("expired-after-signals"));
   await page.getByRole("button", { name: "GitHub-App trennen" }).click();
   await page.waitForFunction(() => window.commands.length === 2);
   await page.evaluate(() => window.commands[1].resolve(null));
@@ -204,6 +285,36 @@ try {
   await expect(
     page.getByRole("button", { name: "Als Idee übernehmen" }),
   ).toHaveCount(0);
+  // Visibility restoration rechecks wall-clock expiry even when the native timeout was suspended.
+  await page.evaluate(() => {
+    window.sources = {
+      ...window.sources,
+      repositories: [
+        {
+          ...window.sources.repositories[0],
+          proofExpiresAt: Date.now() + 900000,
+          verifiedAt: Date.now(),
+        },
+      ],
+    };
+    window.renderSettings("visible-check");
+  });
+  await expect(
+    page.getByText("Privat · Zugriff geprüft", { exact: true }),
+  ).toHaveCount(1);
+  await page.clock.setFixedTime(
+    new Date(await page.evaluate(() => Date.now() + 16 * 60000)),
+  );
+  await page.evaluate(() =>
+    document.dispatchEvent(new Event("visibilitychange")),
+  );
+  await expect(
+    page.getByText("Privat · Zugriff geprüft", { exact: true }),
+  ).toHaveCount(0);
+  await page.evaluate(() => window.unmount());
+  await expect
+    .poll(() => page.evaluate(() => window.proofVisibilityListeners.size))
+    .toBe(0);
   const demo = await browser.newPage();
   await demo.goto("http://127.0.0.1:5174/github-app-fixture?signals=1&demo=1");
   await expect(

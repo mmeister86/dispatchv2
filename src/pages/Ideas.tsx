@@ -1,3 +1,7 @@
+import {
+  githubSourceAuthorized,
+  useGithubSourceProofClock,
+} from "@/lib/github-source-proof";
 import { demoMode } from "@/lib/auth-client";
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
@@ -522,6 +526,7 @@ function GithubSignalsGuide() {
   const sources = useQuery(api.integrations.github.repositories.list, {
     workspaceId: state.activeWorkspaceId as Id<"workspaces">,
   });
+  const proofClock = useGithubSourceProofClock(sources?.repositories);
   return (
     <div className="fade-in">
       <EmptyState
@@ -535,13 +540,15 @@ function GithubSignalsGuide() {
           </Button>
         }
       />
-      {sources?.repositories.map((r) => (
-        <p key={r._id} className="text-sm">
-          {r.fullName} · {r.private ? "Privat" : "Öffentlich"} · Monitoring{" "}
-          {r.monitoring ? "freigegeben" : "aus"} · Content{" "}
-          {r.content ? "freigegeben" : "aus"}
-        </p>
-      ))}
+      {sources?.repositories
+        .filter((r) => githubSourceAuthorized(r, proofClock))
+        .map((r) => (
+          <p key={r._id} className="text-sm">
+            {r.fullName} · {r.private ? "Privat" : "Öffentlich"} · Monitoring{" "}
+            {r.monitoring ? "freigegeben" : "aus"} · Content{" "}
+            {r.content ? "freigegeben" : "aus"}
+          </p>
+        ))}
     </div>
   );
 }
