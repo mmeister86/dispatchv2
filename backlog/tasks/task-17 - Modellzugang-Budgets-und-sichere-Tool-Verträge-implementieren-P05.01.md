@@ -4,7 +4,7 @@ title: 'Modellzugang, Budgets und sichere Tool-Verträge implementieren (P05.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 14:48'
+updated_date: '2026-10-05 14:56'
 labels:
   - p05
   - r2
@@ -69,4 +69,6 @@ Read-only future UI prep /tmp/dispatch-ai-current-ui-receipt.md supplements boun
 Nur Read-only-Vorbereitung während TASK14, keine AI-Implementierung/Aktivierung: drei aktuelle Context7-Befehle (library-first offizielles /get-convex/agent plus zwei docs, keine Quota) und veröffentlichtes offizielles @convex-dev/agent0.6.4-Paket ohne Installationsskripte nur /tmp geprüft. Tatsächliche usageHandler/rawRequestResponseHandler laufen nach Ergebnis je Step/save, liefern keine Domain-AttemptID und sind kein Pre-request-Budgetgate; Streaming-Save kann erneut versucht werden. Jeder tatsächliche bezahlte Modellaufruf benötigt zuvor eigenen persistierten finanzierten Attempt mit idempotenter Settlement-ID; fehlende Usage bleibt unknown/pending. Exakter gepinnter Hookname rawRequestResponseHandler; aktuelle Main-Beispiele haben abweichenden Alias. Tatsächlicher Streaming-Errorlogger erfordert sanitisierte Adapterfehler ohne private Bodies/Secrets. Receipt /tmp/dispatch-agent-budget-hooks-current-docs.md, Brief /tmp/dispatch-model-budget-implementation-brief.md. Joint-Matrix/Mock-Component-Durchstich folgt Implementer nach14/15; kein Modell-/Embedding-/Paid-/Dev-Call oder manueller Nachweis.
 
 Additional read-only exact paid-call boundary receipt /tmp/dispatch-ai-sdk6-budget-middleware-current-docs.md:3currentContext7commands identify latestV4 docs, exact official ai6.0.300/provider3.0.18 archives prove V3 wrapGenerate/wrapStream awaiting preflight before actual underlying request. Native concrete middleware can fund own durableattemptID before call; Agent post-result usageHandler still insufficient. Candidate matrix metadata compatible declaredAgent0.6.4 AI6, but finaljointcompile/mockedcomponent required. Noinstall/provider/customerdata activation;17notstarted.
+
+Pinned officialAgent0.6.4 further read-only source evidence: @convex-dev/agent/test exports register(t,name=agent) for real component schema/modules through current convex-test; future matrix must actually run these through-component tests. Generation-only embeddingModel absent prevents automatic message embeddings; searchOtherThreads defaults false and must remain explicit false unless scoped retrieval authorized. Component userId is not workspace/account authority; sharedhuman crossworkspace context needs concrete mapping checks. Receipt /tmp/dispatch-agent-budget-hooks-current-docs.md updated, no17code/paid/embedding/data call.
 <!-- SECTION:NOTES:END -->

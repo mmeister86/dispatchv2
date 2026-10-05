@@ -4,7 +4,7 @@ title: Webhooks und Signal-Ingestion idempotent umsetzen (P04.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 14:46'
+updated_date: '2026-10-05 15:24'
 labels:
   - p04
   - r2
@@ -67,4 +67,10 @@ Read-only preparation while TASK12.3 active; no implementation. Current official
 Weitere Read-only-Prep während TASK14: Context7 library-first offizielles /github/docs plus docs (zwei Befehle/keine Quota), direkt aktuelle GitHub- und Octokit-Payload-Verträge geprüft. Receipt /tmp/dispatch-github-revocation-webhook-current-docs.md: github_app_authorization.revoked hat sender ohne installation und beendet User-Zugriff, nicht Deinstallation; volle Installation enthält app_id/IDs, Aktionen deleted/suspend/unsuspend/new_permissions_accepted. Repository-Auswahl all→selected kann leere removed-Arrays liefern: vorhandene breite Proofs dann konservativ invalidieren und konkret resyncen; added/unsuspend erteilt keine lokale Purpose-Aktivierung. Signierter Body plus diskriminative Form/Digest schützt vor Header-/GUID-Replay, sender/ghost ist keine Human-Autorität. Native WebCrypto auf unveränderten begrenzten Bytes; tatsächliche14-Gates werden nach Freeze übernommen. Keine Implementierung/Provider-/Webhook-/manuelle Abnahme.
 
 Implementation assigned following final TASK14 ad9d395 SPEC/QUALITY PASS; root closing metadata fc87b6d. Full brief /tmp/dispatch-github-signal-implementation-brief.md and current webhook/revocation/recovery primary docs required. Missing App-privatekey/webhooksecret stays visible per user answer. Implement actual typed factual-ingestion/recovery paths with synthetic effects only; no actual authenticated provider/redelivery/model request. New fresh worker, independent SPEC then QUALITY, no BacklogDone.
+
+Resolved security occurrence ambiguity with implementer: App-user revoked body has no signed eventID/time; a genuine repeat after fresh OAuth can have identical bytes/HMAC with new unsigned GUID. Permanent body-only suppression would miss the real revoke. Chosen conservative policy: knownGUID idempotent, newGUID/sameSecurityBody new monotonicFence plus visible unclear/resync, so freshproof may close again; no perfect replay/DoS immunity claim. Push/Release body+signedoccasion dedupe unchanged. Required freshgrant→secondidenticalbody revoke regression and documented ceiling; no extra providerlookup framework/actualcall.
+
+Implementation scope clarification: a fresh explicit Owner/Admin local recovery command may consume an already durable signed receipt after renewed current source proof, with exact source generation, actor/lifecycle/purpose and observed provider/installation/repository/privacy checks. It does not rebind old background work automatically, invent original timestamps, send another provider POST or reset cumulative GUID attempt/cooldown limits. Known delivery-GUID repeats remain idempotent; indistinguishable new-GUID security occurrences conservatively close authority again. Independent reviews verify these boundaries after source freeze. No live/manual acceptance or Done.
+
+Implementer frozen on master05ebfd8 (backend22f4f70), commit window closed/index empty. 246 registered checks/20 files PASS, 26 new TASK15 checks15webhook+11recovery; type/lint/build/bundle/diff PASS. Actual affected Chrome/React fixture completed17:22:17 CEST; existing EU Dev officially activated17:22:59 CEST. Separate tenant signals, immediate monotone barriers, global GUID cooldown/max3 and explicit local admission with current source authority verified synthetically. Fresh independent SPEC started; QUALITY follows acceptance. Review .docs/reviews/task-15-github-signal-validation.md; no live/manual/provider/privacy acceptance or Done.
 <!-- SECTION:NOTES:END -->
