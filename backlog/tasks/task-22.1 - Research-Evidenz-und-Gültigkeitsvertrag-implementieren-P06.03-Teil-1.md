@@ -4,7 +4,7 @@ title: 'Research-Evidenz und Gültigkeitsvertrag implementieren (P06.03, Teil 1)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 20:56'
+updated_date: '2026-10-05 21:00'
 labels:
   - p06
   - r2
@@ -61,4 +61,6 @@ Root formal D08 initial rule recorded in domain-contracts/release-scope under de
 Read-only native-source retrieval preparation /tmp/dispatch-research-source-fetch-current-docs.md: Context7 library-first /nodejs/node/v22_20_0 with two docs calls outside sandbox, no quota/network failure. Native DNS-all and net.BlockList/mapped-IPv6 checks avoid an unnecessary parser dependency. Exact https.request custom lookup/connection pinning syntax and actual runtime/TLS/redirect/timeout behavior still need current official/installed-source proof and actual synthetic connection tests if concrete delivered-source-ID retrieval is needed. No fetcher, source/provider call, SSRF certificate, TASK22 code or AC evidence implied; actual reviewed TASK21 sources/funding/cache schema remains prerequisite. Complete D08 claim support still cannot come from URL/title alone.
 
 Implementation released by ROOT after final TASK21 re-SPEC and QUALITY PASS e5e1c1e. Currentsource wins over earlier43f3cc5 prepmap. Read actualprovidercontract and finalreview: native3source stores/canonicalv2/legacyunknowncompat/ownfundedcontext coverage and source rights distinct; cachehitmaypriorfillorder. Sourcegenerationpolicygen notuniquecontentversion, bindactualmaterialidentity/observation/expiry. Web/trends metadata notarticle/body/factualquote; actualXboundedtextavailable. D08formal5f01f79 actualsource+versionedpurposevalidityrule/justifiedfiniteexpiry, otherwiseReview; modelproposal/searchwindow/newobservedtime noauthority. Newcopiedevidence extends actualphysicalscrub/proof/retention hooks now. No genericprovider/secondledger/messageengine, no paidactivation/Done. Full22.2 tenstepworkflow and23Inbox/contentbridge separate; 22.1mustnotclaim them.
+
+ROOT concrete D08 choice: manualsourcebound creation now, nofundedmodelbridge/articlefetcher. AddminimumexplicitOwnerAdmin humanvalidityreview asNEWimmutablelineage foractualmaterial+annotationversion/purpose/currentversionedrule/boundedmaxage/requestedfiniteexpiry/justification/actor/time/substantivesupportattestation. Quoteonlyprovenance, labelhumanreviewednotautomaticallyprovedtruth. Clampcurrentactualsource/cache/policy/grantretentionproof; originalreviewerrolecurrent. Source-publication alone cannotrenewoldmentioned event: separateattributedactualeventtime, earliestrelevantbasis for event/time-sensitiveclaims; missingrequiredtimeReview. Metadata-only/unknownfreshness/absentquote/consequential-contestednocorroborationReview. No globalruletable/engine/newproviderorpublicationpermission. Actualdecisionin domain-contracts7.2, initiallimitedrulecoverage documented rather thanfalseuniversalverification.
 <!-- SECTION:NOTES:END -->
