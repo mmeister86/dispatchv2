@@ -4,7 +4,7 @@ title: Persistenten Chat und nachvollziehbare Agent-Arbeit liefern (P05.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 17:26'
+updated_date: '2026-10-05 17:44'
 labels:
   - p05
   - r2
@@ -67,4 +67,6 @@ Read-only installed API map complete at /tmp/dispatch-chat-code-map.md: native l
 Native API preparation recorded at /tmp/dispatch-chat-native-api-current-docs.md through exactly three fresh Context7 CLI requests and pinned0.6.4 source inspection. Agent.deleteThreadAsync wrapper discards the component mutation isDone receipt and only initiates recursive cleanup; native direct mutation can preserve real completion proof. Persist stop first, keep financial unknown liabilities and truthful local cleanup; do not equate hiding a mapping or one accepted asynchronous page with complete erasure. TASK16 re-SPEC5ae8da3 passed66 registered and11 independent checks; separate QUALITY underway. No19 source implementation starts before final16 QUALITY passes.
 
 Prerequisite16 now independently reviewed5ae8da3:re-SPEC66 registered+11 own and QUALITY137 registered+8 own/both actual browsers PASS; root .docs/reviews/task-16-github-enrichment-validation.md records full chain and corrected shared consent closure. Authorize fresh19 implementation under whole-backlog user request and delegated choices using actual16/17/18 contracts, native Agent0.6.4 stream membership proof and /tmp/dispatch-chat-native-api-current-docs.md. Root owns Backlog/global/review metadata; no provider activation, paid probe or manual acceptance follows from readiness.
+
+Backend intermediate29558d340a892c9754616638125a5d86c8c608ba committed onmaster, sourcebaseline7f015fe (sameproduction asauthorizedd74a262; interveningrootdocs only). Exact11 source/contract/generated files scoped;360 fullUnit/25files including20actualChat cases and splitexistingToolboundary, Typecheck/Prettier/diff PASS. Nativeactualcomponent histories/cursor membership, stop/lateusage/stableprompt continuation, heldunknownstepbarrier and source/hash/actor/proof/credential withdrawal projections verified; malformedToolJSON rejected beforeSDKparser/logger. Contract labels UI/finalchecks/SPEC/QUALITY pending. Sourcecommitwindowclosed/indexempty, only UI/package/browserWIP remains. Implementer reports actualChatbrowser PASS; finalIdeasobjectroute/fullchecks/Dev/freeze and freshindependent reviews still pending. NoAC/Done/live/provideractivation accepted fromintermediate.
 <!-- SECTION:NOTES:END -->
