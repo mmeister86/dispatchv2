@@ -1,0 +1,11 @@
+# TASK-12.1 media preparation validation
+
+Implementation code frozen at `9e885d96f09a897a9f2f3059c75058ed6a8238e5`; documentation-only correction `a69a439f78c028370464e0625fee48a9fa83e262`. Work continues directly on master. This review covers media preparation behind the existing publishing guards; TASK-12.2 supplies post sending and explicit first-write consent, TASK-12.3 supplies reconciliation.
+
+Independent SPEC PASS: exact approved source/tenant/version/alt, reciprocal completed R2 session and namespace bindings, final-byte checksum before X effects, current credential generation, durable phase intents/CAS, confirmed chunk advancement, uncertain-write pause, bounded processing/expiry and same-ID nested alt acknowledgement. The reviewer independently ran eleven media/source/transport tests. Current primary append schema permits0–9999; Dispatch's conservative0–999 ceiling is documented separately.
+
+Root independently ran the full unit suite on the final code:103 tests across14 files passed. Implementer reports TypeScript, lint, build and bundle checks passed; the final two negative transport/parser cases passed their targeted checks and TypeScript/lint. The configured Dev deployment was activated with `convex dev --once` after checks. No UI changes require a new browser test for this unit.
+
+Independent QUALITY review is pending. Do not treat the code unit as reviewed complete until that verdict and any required corrections are recorded.
+
+Actual EU R2 access, jurisdiction/CORS evidence, maximum-asset Node runtime/RSS and measured costs, live X processing/metadata/attachment entitlement, authorized human test account/content and manual acceptance remain open. The bounded full-object read is intentionally repeated per segment; a32MiB video can receive288MiB across initialization and eight append actions. Payload reference cost is explicitly an estimate, billed cost remains unknown. No OAuth, media upload, public post, R2 object mutation, test email or bucket creation was performed for this unit. Backlog remains In Progress and cannot be marked Done without explicit confirmation after manual testing.
