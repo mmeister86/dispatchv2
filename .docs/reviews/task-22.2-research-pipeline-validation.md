@@ -1,6 +1,6 @@
 # TASK22.2 — Research workflow validation
 
-Status: original three SPEC gaps closed at4170920; one disposition regression needs original-implementer correction, QUALITY pending SPEC PASS. Backlog remains In Progress; no manual/live acceptance or paid activation.
+Status: narrow final correction f92d2ee frozen; same SPEC final recheck active, QUALITY pending SPEC PASS. Backlog remains In Progress; no manual/live acceptance or paid activation.
 
 Accepted prerequisite baseline: `d06234639086f9514c686007f549ceb37c856710` (evidence source `3e079cef`, SPEC/QUALITY PASS). Implementer: fresh `research_pipeline`, Backend Architect, gpt-6.1-sol/medium. Source milestone: `2670f50c5a5ad5138d83cce346bb89bbe2be0819`, exact34 paths, clean staged diff and working tree. ROOT metadata commits do not change the source baseline.
 
@@ -51,6 +51,14 @@ At the start of the same SPEC delta on frozen4170920, its own unchanged7 rerunPA
 Final delta receipt `/tmp/dispatch-research-pipeline-spec-delta-receipt.md`: ReadyNo, one Important, no confirmed Critical/Minor. Original7 unchangedPASS; independent extended10PASS00:57:21 `/tmp/dispatch-spec-delta-extended-final.log`; repository31pipelinePASS00:57:04; actual synthetic Research browserPASS `/tmp/dispatch-spec-delta-browser-authorized.log`, own5174closed/user5173preserved. Browser's first sandbox EPERM was resolved with command-specific escalation; no automatic-approval rejection or product failure. New reviewer prompt-coverage assertion initially compared JSON property order; corrected only its new harness to parse/deep-compare actual exact counts, preserving original checks and RED log.
 
 New unchanged eleven-check delta at00:58:07:10PASS/1RED `/tmp/dispatch-spec-delta-empty-coverage.log`. Actual X+Web both complete, funded Agent returns valid items[], all three intercepted physical calls succeed,20sources→10selected/10omitted, but researchTools.finish folds incomplete coverage into failed and emits RESEARCH_FAILED. Incomplete selection is not a technical operation failure. ROOT approved a narrow disposition correction: successful empty with omitted sources is partial; real operation/model/configuration/budget/cancel precedence stays intact. Same original implementer owns only researchTools, permanent pipeline regression and own contract if needed. Both reviewer scripts/config/hash manifests remain unchanged for recheck. No fresh QUALITY or code AC yet.
+
+## Narrow final correction — frozen f92d2ee
+
+Exacttwo-path commit `f92d2eed2cb12163bd8519911c56eb3a221febb9` changes only researchTools.finish and the actual registered-Workflow permanent regression. Actual operation failure is separate from incomplete coverage; successful empty with omitted sources returns partial. Budget/configuration/model-failure/cancel and genuinely complete empty precedence remain intact. No UI/proof/schema/helper changes.
+
+New independent repro first1RED/10PASS01:00:18 `/tmp/task22.2-empty-correction-independent-red.log`; permanent first1RED/31PASS01:00:43 `/tmp/task22.2-empty-correction-permanent-red.log`; focused32PASS01:00:54. Final full528/28PASS01:01:09, unchanged7+11PASS01:01:08; logs `/tmp/task22.2-empty-correction-{full,independent7,independent11,typecheck,lint,build,bundle}.log`. All four reviewer script/config hashes match frozen manifests `/tmp/task22.2-empty-correction-reviewer-sha.txt`. Fresh reviewer actual browserPASS4170920 explicitly reused because only backend disposition changed; actual registered component regression covers the new state boundary.
+
+Officialcodegen/postgeneration type/ existingEUDev--once EXIT0, functionsready01:02:33local `/tmp/task22.2-empty-correction-{codegen,post-codegen-typecheck,eu-dev-once}.log`. At23:02:37UTC source/index/diffcheck clean; user5173PID48521preserved,5174absent. No activation/paid call or acceptance claim. Same SPEC reviewer final narrow recheck active on f92d2ee, whole baseline d062346; fresh QUALITY waits its PASS.
 
 ## Open acceptance
 

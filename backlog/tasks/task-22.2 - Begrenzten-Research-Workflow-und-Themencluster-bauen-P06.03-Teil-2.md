@@ -4,7 +4,7 @@ title: 'Begrenzten Research-Workflow und Themencluster bauen (P06.03, Teil 2)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 23:00'
+updated_date: '2026-10-05 23:04'
 labels:
   - p06
   - r2
@@ -71,4 +71,6 @@ FreshSPEC2670f50 ReadyNo:3Important/0Critical/0Minor. Exactreceipt /tmp/dispatch
 Originalimplementer exact10-path correction41709200b7c0bd39d598e6d4800b3f0adcc6e2d8 frozen. Sharedcurrentdisplayproof acrossprimary/secondary grant-source-evidence horizons/Inbox+manualmodel projection; physicalretentionunchanged. Roundrobin10refs plusactualperopcoverage/prompt/gaps/partial. OpaquelocaltopicKey+exactdeclared-title compatibility group independentrows; topicCount UNIQUEgroups aftercopyfilter,20item/10sourceceilings/CAS/replay preserved. Related1topic2evidence productRED fixed. Full527/28 at00:48:06 andunchanged7 at00:48:19 PASS; type/lint/build/bundle/browser/helperformat/codegen/postgentype PASS. Browserinitialfailure fixtureViewer-committiming only, existingassertions/productionguardsretained. EUDevready00:55:02local /tmp/task22.2-correction-eu-dev-once.log clean source/index. SameSPECdelta nowactive: reviewerOWNunchanged7PASS00:55:43, extraaffectedchecks pending; freshQUALITYonlyafterfinalSPEC PASS. NoAC/Done/paidactivation; allRED/log/SHAhistory retained inROOTreceipt.
 
 SameSPECdelta4170920 ReadyNo: ORIGINAL3findings CLOSED; unchanged7PASS/extended10PASS/pipeline31PASS/actualbrowserPASS. NewONEImportant finish-dispositionregression:20actualdelivered→10selected/10omitted, bothnative+validAgentitems[] completed/all3physicalcalls successful, yetfailed/RESEARCH_FAILED dueincomplete folded intofailed. Exact /tmp/dispatch-research-pipeline-spec-delta-receipt.md andunchangednew11=10PASS1RED /tmp/dispatch-spec-delta-empty-coverage.log00:58:07. ROOT narrowhandoffsameimplementer onlyresearchTools/pipeline regression/owncontract ifneeded: partialsuccessfulboundedempty; preserveactualfailure/config/budget/cancelprecedence/noextraIO. Original7/new11/hash/REDhistory retained; sameSPECrecheck→freshQUALITY. NoAC/Done/provideractivation.
+
+Narrowexacttwo-path correctionf92d2eed2cb12163bd8519911c56eb3a221febb9 frozen: separatesselectionincomplete fromtechnicalfailure, validempty+omissions partial, actualfailure/config/budget/preexistingoutcomeprecedence retained. PermanentactualWorkflowregression firstRED1/31 at01:00:43 then32GREEN; reviewernew11 firstRED1/10 at01:00:18 thenunchanged7+11GREEN01:01:08; full528/28GREEN01:01:09. Fourreviewerscript/configSHA unchanged. Type/lint/build/bundle/codegen/postgentype/DevEXIT0 ready01:02:33local /tmp/task22.2-empty-correction-*.log, source/indexclean; user5173preserved/5174absent. FreshsameReviewerbrowserPASS4170920 reusedexplicitly sinceonlybackenddisposition changed. SameSPECfinalrecheckactivef92d2ee fullBASEd062346, freshQUALITYawaitsPASS; noAC/Done/paidactivation. ROOTreceipt preservesallinitial/correctionRED andprooflimits.
 <!-- SECTION:NOTES:END -->
