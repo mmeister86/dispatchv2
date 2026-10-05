@@ -10,7 +10,8 @@
     "test": "vitest run",
     "test:e2e": "playwright test",
     "preview": "vite preview --host 127.0.0.1",
-    "test:bundle": "node tests/bundle-security.mjs"
+    "test:bundle": "node tests/bundle-security.mjs",
+    "lint": "prettier --check \"convex/**/*.ts\" convex/tsconfig.json src/lib/auth-client.ts src/lib/store.tsx src/main.tsx src/App.tsx src/pages/Public.tsx src/pages/Settings.tsx src/pages/Overview.tsx tests/foundation.test.ts tests/bundle-security.mjs playwright.config.ts .github/workflows/ci.yml"
   },
   "dependencies": {
     "@convex-dev/better-auth": "0.12.5",
@@ -45,5 +46,6 @@
     "typescript": "^7.0.2",
     "vite": "^8.3.2",
     "vitest": "^5.0.3"
-  }
+  },
+  "packageManager": "pnpm@12.8.1"
 }

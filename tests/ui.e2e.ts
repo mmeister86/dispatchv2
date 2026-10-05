@@ -2,14 +2,12 @@ import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 test("every UI area and direct URL renders without client errors", async ({
   page,
+  baseURL,
 }) => {
   const errors: string[] = [];
   const remoteRequests: string[] = [];
   page.on("request", (request) => {
-    if (
-      /^https?:/.test(request.url()) &&
-      !request.url().startsWith("http://127.0.0.1:5173")
-    )
+    if (/^https?:/.test(request.url()) && !request.url().startsWith(baseURL!))
       remoteRequests.push(request.url());
   });
   page.on("pageerror", (e) => errors.push(e.message));

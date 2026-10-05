@@ -3,7 +3,6 @@ import {
   userMutation,
   workspaceMutation,
   workspaceQuery,
-  requireWorkspace,
 } from "./lib/authorization";
 import { defaultProfile } from "./users";
 

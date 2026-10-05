@@ -5,7 +5,6 @@ import schema from "../convex/schema";
 import { api, components } from "../convex/_generated/api";
 import { authOrigins } from "../convex/auth";
 import { requireReference } from "../convex/lib/authorization";
-import type { Id } from "../convex/_generated/dataModel";
 
 const modules = import.meta.glob("../convex/**/*.ts");
 function setup() {
@@ -242,6 +241,24 @@ test("real Better Auth handlers verify email, reset passwords and revoke session
     expect(signedIn.status).toBe(200);
     const signedSession = await signedIn.json();
     expect(signedSession.user.emailVerified).toBe(true);
+    const cookie = signedIn.headers
+      .get("set-cookie")!
+      .match(/(?:__Secure-)?better-auth\.session_token=[^;,]+/)![0];
+    const jwt = await t.fetch("/api/auth/convex/token", {
+      headers: {
+        "better-auth-cookie": cookie,
+        Origin: "http://localhost:5173",
+      },
+    });
+    expect(jwt.status).toBe(200);
+    const issuedToken = (await jwt.json()).token;
+    expect(issuedToken.split(".")).toHaveLength(3);
+    const payload = JSON.parse(
+      atob(issuedToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")),
+    );
+    expect(payload.aud).toBe("convex");
+    expect(payload.sub).toBe(signedSession.user.id);
+    expect(payload.sessionId).toBeTruthy();
     const reset = await post("request-password-reset", {
       email,
       redirectTo: "http://localhost:5173/reset-password",

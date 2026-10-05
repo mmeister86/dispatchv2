@@ -6,7 +6,6 @@ import {
   userQuery,
 } from "./lib/authorization";
 import { profile, role } from "./schema";
-import type { Id } from "./_generated/dataModel";
 
 export const defaultProfile = (name: string) => ({
   name,

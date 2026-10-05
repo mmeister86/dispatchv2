@@ -47,6 +47,14 @@ import {
   PanelLeftClose,
   RotateCcw,
 } from "lucide-react";
+import { useConvexAuth } from "convex/react";
+import {
+  authClient,
+  demoMode,
+  backendConfigured,
+  AuthBoundary,
+} from "@/lib/auth-client";
+import { api } from "../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -75,7 +83,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { useStore, useLocalState, useWorkspaceLocalState } from "@/lib/store";
+import {
+  WorkspaceStoreProvider,
+  useStore,
+  useLocalState,
+  useWorkspaceLocalState,
+} from "@/lib/store";
 import { AccountIcon, Status, EmptyState } from "@/components/shared";
 import { cn } from "@/lib/utils";
 import { OverviewPage } from "@/pages/Overview";
@@ -177,7 +190,7 @@ function Logo() {
   );
 }
 function AppShell() {
-  const { state, setState, createDraft } = useStore();
+  const { state, setState, selectWorkspace, createDraft } = useStore();
   const nav = useNavigate();
   const location = useLocation();
   const [mobile, setMobile] = useState(false);
@@ -245,7 +258,7 @@ function AppShell() {
                   {workspace?.name}
                 </strong>
                 <span className="text-[10px] muted">
-                  {state.role} · Demo-Workspace
+                  {state.role} · {demoMode ? "Demo-Workspace" : "Workspace"}
                 </span>
               </span>
               <ChevronDown size={13} className="muted" />
@@ -257,13 +270,9 @@ function AppShell() {
                 key={w.id}
                 onClick={() => {
                   if (!checkNavigate("/overview")) return;
-                  setState((s) => ({
-                    ...s,
-                    activeWorkspaceId: w.id,
-                    activeAccountId:
-                      s.accounts.find((a) => a.workspaceId === w.id)?.id ?? "",
-                  }));
-                  nav("/overview");
+                  void selectWorkspace(w.id).then((ok) => {
+                    if (ok) nav("/overview");
+                  });
                 }}
               >
                 {w.name}
@@ -355,10 +364,14 @@ function AppShell() {
             <span className="text-[10px] font-medium">
               Dein Raum für gute Inhalte
             </span>
-            <span className="text-[9px] muted">Demo</span>
+            <span className="text-[9px] muted">
+              {demoMode ? "Demo" : "Cloud"}
+            </span>
           </div>
           <p className="mb-3 text-[10px] leading-relaxed muted">
-            Alles lokal. Keine echten Veröffentlichungen.
+            {demoMode
+              ? "Alles lokal. Keine echten Veröffentlichungen."
+              : "Profil und Workspaces werden sicher gespeichert."}
           </p>
           <Link to="/help" className="text-[10px] muted hover:text-primary">
             Hilfe & Feedback
@@ -413,7 +426,9 @@ function AppShell() {
             </span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-3">
-            <Status className="hidden sm:inline-flex">Mock-Modus</Status>
+            <Status className="hidden sm:inline-flex">
+              {demoMode ? "Mock-Modus" : "Cloud"}
+            </Status>
             <select
               className="max-w-32 truncate border-0 bg-transparent py-2 text-[11px] sm:max-w-44"
               aria-label="Aktiver Account"
@@ -423,6 +438,9 @@ function AppShell() {
                   setState((s) => ({ ...s, activeAccountId: e.target.value }));
               }}
             >
+              {!accounts.length && (
+                <option value="">Kein Account verbunden</option>
+              )}
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.channel} · {a.handle}
@@ -486,12 +504,16 @@ function AppShell() {
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
-                  onClick={() => {
+                  onClick={async () => {
+                    if (!demoMode) {
+                      const result = await authClient.signOut();
+                      if (result.error) return;
+                    }
                     nav("/login");
                   }}
                 >
                   <LogOut size={14} />
-                  Demo abmelden
+                  {demoMode ? "Demo abmelden" : "Abmelden"}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -507,7 +529,20 @@ function AppShell() {
               }
             >
               <div key={state.activeWorkspaceId}>
-                <Outlet />
+                {demoMode ||
+                /^\/(overview|settings)(\/|$)/.test(location.pathname) ? (
+                  <Outlet />
+                ) : (
+                  <EmptyState
+                    title="Dieser Bereich wird noch angebunden"
+                    description="Dein Workspace ist bereit. Hier liegen noch keine gespeicherten Inhalte vor."
+                    action={
+                      <Button asChild>
+                        <Link to="/settings/profile">Profil einrichten</Link>
+                      </Button>
+                    }
+                  />
+                )}
               </div>
             </Suspense>
           </ErrorBoundary>
@@ -517,7 +552,10 @@ function AppShell() {
             dispatch. <span className="mx-2 opacity-40">/</span> Gute Arbeit
             verdient gute Geschichten.
           </span>
-          <span>{state.preferences.timezone} · Lokal gespeicherte Demo</span>
+          <span>
+            {state.preferences.timezone} ·{" "}
+            {demoMode ? "Lokal gespeicherte Demo" : "Cloud-Workspace"}
+          </span>
         </footer>
       </div>
       <Sheet open={mobile} onOpenChange={setMobile}>
@@ -693,6 +731,56 @@ function ResearchRoute() {
   const { state } = useStore();
   return <ResearchPage key={state.activeAccountId} />;
 }
+function ProtectedRoute({ children }: { children: ReactNode }) {
+  if (demoMode) return <>{children}</>;
+  if (!backendConfigured)
+    return (
+      <div className="p-12">
+        <EmptyState
+          title="Backend noch nicht konfiguriert"
+          description="Die öffentlichen Seiten sind verfügbar. Für deinen Workspace fehlt die Convex-Verbindung."
+          action={
+            <Button asChild>
+              <Link to="/welcome">Zur Startseite</Link>
+            </Button>
+          }
+        />
+      </div>
+    );
+  return <AuthenticatedRoute>{children}</AuthenticatedRoute>;
+}
+function AuthenticatedRoute({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+  const location = useLocation();
+  const nav = useNavigate();
+  const login = `/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`;
+  if (isLoading)
+    return (
+      <div className="p-12 muted" role="status">
+        Sitzung wird geprüft …
+      </div>
+    );
+  if (!isAuthenticated) return <Navigate to={login} replace />;
+  return (
+    <AuthBoundary
+      authClient={authClient}
+      getAuthUserFn={api.auth.session}
+      isAuthError={(error) =>
+        String(error).includes("Unauthenticated") ||
+        String(error).includes("EMAIL_NOT_VERIFIED")
+      }
+      onUnauth={() => nav(login, { replace: true })}
+      renderFallback={() => (
+        <div className="p-12 muted" role="status">
+          Bitte erneut anmelden.
+        </div>
+      )}
+    >
+      <WorkspaceStoreProvider>{children}</WorkspaceStoreProvider>
+    </AuthBoundary>
+  );
+}
+
 export function App() {
   useEffect(() => {
     try {
@@ -719,10 +807,23 @@ export function App() {
         <Route path="/signup" element={<AuthPage mode="signup" />} />
         <Route path="/reset-password" element={<AuthPage mode="reset" />} />
         <Route path="/verify" element={<AuthPage mode="verify" />} />
-        <Route path="/onboarding" element={<OnboardingPage />} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="/help" element={<HelpPage />} />
         <Route path="/legal" element={<LegalPage />} />
-        <Route element={<AppShell />}>
+        <Route
+          element={
+            <ProtectedRoute>
+              <AppShell />
+            </ProtectedRoute>
+          }
+        >
           <Route index element={<Navigate to="/overview" replace />} />
           <Route path="overview" element={<OverviewPage />} />
           <Route path="calendar" element={<CalendarPage />} />

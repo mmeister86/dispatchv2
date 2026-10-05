@@ -1,6 +1,6 @@
 packages:
   - "."
-storeDir: /Volumes/Speicher/Projekte/dispatch_v2/.pnpm-store
-cacheDir: /Volumes/Speicher/Projekte/dispatch_v2/.cache/pnpm
+storeDir: .pnpm-store
+cacheDir: .cache/pnpm
 allowBuilds:
   esbuild: true

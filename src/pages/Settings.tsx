@@ -38,6 +38,8 @@ import {
 } from "@/components/shared";
 import { useStore, useWorkspaceLocalState } from "@/lib/store";
 import { disconnectAccount, uid, now, type Channel } from "@/lib/model";
+import { demoMode } from "@/lib/auth-client";
+import { EmptyState } from "@/components/shared";
 import { toast } from "sonner";
 
 export function Field({
@@ -147,10 +149,17 @@ export function SettingsPage() {
               Abrechnung und Richtlinien benötigen Owner- oder Admin-Rechte.
             </DemoNote>
           )}
-          {content[tab] ?? (
-            <Section title="Bereich nicht gefunden">
-              <Link to="/settings/profile">Zum Profil</Link>
-            </Section>
+          {!demoMode && !["profile", "workspaces"].includes(tab) ? (
+            <EmptyState
+              title="Dieser Bereich wird noch angebunden"
+              description="Es wurden keine Verbindungen oder Einstellungen simuliert. Dein Profil und deine Workspaces sind bereits verfügbar."
+            />
+          ) : (
+            (content[tab] ?? (
+              <Section title="Bereich nicht gefunden">
+                <Link to="/settings/profile">Zum Profil</Link>
+              </Section>
+            ))
           )}
         </div>
       </div>
@@ -158,8 +167,9 @@ export function SettingsPage() {
   );
 }
 function ProfileSettings() {
-  const { state, setState } = useStore();
+  const { state, saveProfile } = useStore();
   const [profile, setProfile] = useState(state.preferences);
+  const [busy, setBusy] = useState(false);
   const readOnly = state.role === "Viewer";
   return (
     <>
@@ -169,14 +179,15 @@ function ProfileSettings() {
       >
         <form
           className="stack"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            if (readOnly) return;
-            setState((s) => ({
-              ...s,
-              preferences: { ...s.preferences, ...profile },
-            }));
-            toast.success("Profil lokal gespeichert.");
+            if (readOnly || busy) return;
+            setBusy(true);
+            if (await saveProfile(profile))
+              toast.success(
+                demoMode ? "Profil lokal gespeichert." : "Profil gespeichert.",
+              );
+            setBusy(false);
           }}
         >
           <div className="form-grid">
@@ -253,22 +264,27 @@ function ProfileSettings() {
             />
           </Field>
           <div className="flex items-center gap-3">
-            <Button disabled={readOnly}>Änderungen speichern</Button>
+            <Button disabled={readOnly || busy}>
+              {busy ? "Wird gespeichert…" : "Änderungen speichern"}
+            </Button>
             <span className="muted text-xs">
-              Gilt für dein lokales Demo-Profil.
+              {demoMode
+                ? "Gilt für dein lokales Demo-Profil."
+                : "Gilt für dein Profil im aktiven Workspace."}
             </span>
           </div>
         </form>
       </Section>
       <DemoNote>
-        Sprache und Zeitzone sind Profileinstellungen. Die Demo-Oberfläche
-        bleibt auf Deutsch.
+        Sprache und Zeitzone sind Profileinstellungen. Die Oberfläche bleibt
+        vorerst auf Deutsch.
       </DemoNote>
     </>
   );
 }
 function WorkspaceSettings({ admin }: { admin: boolean }) {
-  const { state, setState } = useStore();
+  const { state, createWorkspace } = useStore();
+  const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   return (
     <Section
@@ -295,25 +311,15 @@ function WorkspaceSettings({ admin }: { admin: boolean }) {
       </div>
       <form
         className="flex flex-wrap gap-2 mt-5"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          if (!admin || !name.trim()) return;
-          const id = uid("ws");
-          setState((s) => ({
-            ...s,
-            workspaces: [
-              ...s.workspaces,
-              {
-                id,
-                name: name.trim(),
-                description: "Eigener lokaler Marken-Workspace",
-              },
-            ],
-          }));
-          setName("");
-          toast.success(
-            "Workspace erstellt. Über den Workspace-Schalter öffnen.",
-          );
+          if (!admin || !name.trim() || busy) return;
+          setBusy(true);
+          if (await createWorkspace(name.trim())) {
+            setName("");
+            toast.success("Workspace erstellt.");
+          }
+          setBusy(false);
         }}
       >
         <Input
