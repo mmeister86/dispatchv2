@@ -20,7 +20,9 @@ The reviewer independently ran 16 targeted media/backend/UI checks and two safe 
 
 Safe reproduction: `/private/tmp/dispatch-r2-spec.test.ts`, invoked with `pnpm exec vitest run --config /private/tmp/dispatch-r2-spec.config.mts`. This temporary evidence is not a durable repository regression until the implementer adds the negative checks.
 
-The implementer has been assigned the three corrections and regression checks. SPEC re-review and the subsequent independent QUALITY review remain pending. The next provider implementer starts only after both pass.
+The three corrections are committed in `f381e39`: strict PNG chunk metadata/order checks before decode; the existing paginated inventory reused by Composer; shared authorized version-asset descriptors returned with history and merged in the real store. Committed negative checks reproduced the defects before correction. Implementer evidence on the corrected source: 62 unit checks, typecheck, formatting, build, seeded bundle security and four targeted browser checks passed. Configured Convex dev updated at 12:44:09. No new schema, jobs or dependencies were added by this correction.
+
+Root independently ran `pnpm audit --prod` on the updated pinned production dependencies: no known vulnerabilities found. SPEC re-review and the subsequent independent QUALITY review remain pending. The next provider implementer starts only after both pass.
 
 ## Actual acceptance still open
 
