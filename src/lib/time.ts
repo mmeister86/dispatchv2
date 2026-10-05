@@ -44,8 +44,59 @@ export function localInput(value: string, timeZone: string): string {
   return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
 }
 export function defaultSchedule(timeZone: string) {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  d.setHours(10, 0, 0, 0);
-  return localInput(d.toISOString(), timeZone);
+  return `${addCivilDays(civilDate(new Date().toISOString(), timeZone), 1)}T10:00`;
+}
+
+/** Civil dates are labels in a selected zone, never browser-local instants. */
+export function civilDate(instant: string, timeZone: string): string {
+  return localInput(instant, timeZone).slice(0, 10);
+}
+export function addCivilDays(value: string, days: number): string {
+  const date = new Date(`${value}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+export function addCivilMonths(value: string, months: number): string {
+  const date = new Date(`${value}T12:00:00Z`);
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + months, 1),
+  )
+    .toISOString()
+    .slice(0, 10);
+}
+export function formatCivilDate(
+  value: string,
+  options: Intl.DateTimeFormatOptions,
+): string {
+  return new Intl.DateTimeFormat("de-DE", {
+    ...options,
+    timeZone: "UTC",
+  }).format(new Date(`${value}T12:00:00Z`));
+}
+// Calendar boundaries use the earliest valid clock time, including an overlapping midnight.
+// User-selected publishing times still require explicit overlap resolution via resolveLocalTime.
+export function startOfCivilDay(day: string, timeZone: string): string | null {
+  for (let minute = 0; minute < 1440; minute += 15) {
+    const clock = `${String(Math.floor(minute / 60)).padStart(2, "0")}:${String(minute % 60).padStart(2, "0")}`;
+    const instant = resolveLocalTime(`${day}T${clock}`, timeZone)[0];
+    if (instant) return instant;
+  }
+  return null;
+}
+export function calendarWindow(
+  anchor: string,
+  month: boolean,
+  timeZone: string,
+) {
+  const first = month ? `${anchor.slice(0, 7)}-01` : anchor;
+  const weekday = new Date(`${first}T12:00:00Z`).getUTCDay();
+  const monday = addCivilDays(first, -((weekday + 6) % 7));
+  const days = Array.from({ length: month ? 42 : 7 }, (_, i) =>
+    addCivilDays(monday, i),
+  );
+  return {
+    days,
+    start: startOfCivilDay(days[0], timeZone),
+    end: startOfCivilDay(addCivilDays(days.at(-1)!, 1), timeZone),
+  };
 }

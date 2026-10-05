@@ -26,7 +26,7 @@ export const approvalView = (
 export const publishingError = (code: string | null) =>
   ({
     PUBLISHER_NOT_CONFIGURED:
-      "Publishing ist noch nicht eingerichtet. Provider-Verbindung in Einstellungen vervollständigen; dieser Termin wurde nicht gesendet.",
+      "Publishing ist noch nicht aktiviert. Unter Einstellungen → Verbindungen findest du X-Zugang, Publisher-Aktivierung und E-Mail-Einrichtung. Dieser Termin wurde nicht gesendet.",
     APPROVAL_REQUIRED:
       "Freigabe wurde widerrufen oder passt nicht mehr. Konkrete Version erneut prüfen und freigeben.",
     ACCOUNT_REAUTH_OR_CAPABILITY_REQUIRED:

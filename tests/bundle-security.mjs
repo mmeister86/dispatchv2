@@ -10,6 +10,12 @@ const serverNames = [
   "REQUESTY_API_KEY",
   "TYPESAFE_API_KEY",
 ];
+// Settings names required setup keys as prose, without reading their values.
+const guidanceNames = new Set([
+  "RESEND_API_KEY",
+  "INTEGRATION_ENCRYPTION_KEY",
+  "X_CLIENT_SECRET",
+]);
 const marker = `server-secret-must-stay-private-${crypto.randomUUID()}`;
 const built = spawnSync("pnpm", ["exec", "vite", "build"], {
   env: {
@@ -26,13 +32,14 @@ assert(assets.length > 0);
 for (const name of assets) {
   const source = readFileSync(`dist/assets/${name}`, "utf8");
   assert(!source.includes(marker), `${name} leaks a server secret value`);
-  // Better Auth's shared browser utility includes the inert env variable name;
-  // the injected value must never appear. Project-specific server config stays out.
+  // Better Auth includes an inert env name. Settings may show setup key names;
+  // actual server configuration and injected values must still stay out.
   for (const secret of serverNames.filter(
     (name) => name !== "BETTER_AUTH_SECRET",
   ))
     assert(
-      !source.includes(secret),
+      !source.includes(secret) ||
+        (/^Settings-/.test(name) && guidanceNames.has(secret)),
       `${name} imports server-only configuration ${secret}`,
     );
 }

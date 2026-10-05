@@ -92,7 +92,7 @@ export function OverviewPage() {
           werden. E-Mail-Absender und Zugang fehlen oder die Zustellung ist
           fehlgeschlagen.{" "}
           <Link to="/settings/integrations" className="underline">
-            Konfiguration prüfen
+            X- und E-Mail-Einrichtung prüfen
           </Link>
         </div>
       )}

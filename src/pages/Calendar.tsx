@@ -34,7 +34,13 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { demoMode } from "@/lib/auth-client";
 import { scheduleView } from "@/lib/editorial-mapping";
-import { resolveLocalTime } from "@/lib/time";
+import {
+  civilDate,
+  addCivilDays,
+  addCivilMonths,
+  formatCivilDate,
+  calendarWindow,
+} from "@/lib/time";
 import { useStore } from "@/lib/store";
 import {
   canApprove,
@@ -46,19 +52,6 @@ import {
   now,
   type Schedule,
 } from "@/lib/model";
-function dateKey(value: string, zone: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: zone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(value));
-}
-function addDate(d: Date, offset: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + offset);
-  return x;
-}
 type CalendarRange = { start: number; end: number; account: string };
 export function CalendarPage() {
   return demoMode ? <CalendarContent /> : <ConnectedCalendarPage />;
@@ -91,27 +84,20 @@ function CalendarContent({
   const { state, mutate, cancelSchedule } = useStore();
   const [params, setParams] = useSearchParams();
   const view = params.get("view") ?? "week";
-  const [anchor, setAnchor] = useState(new Date());
+  const zone = state.preferences.timezone;
+  const [anchor, setAnchor] = useState(() =>
+    civilDate(new Date().toISOString(), zone),
+  );
   const [account, setAccount] = useState("all");
   const [status, setStatus] = useState("all");
   const [detail, setDetail] = useState<Schedule | null>(null);
   const [moving, setMoving] = useState<Schedule | null>(null);
   const [dragged, setDragged] = useState<string | null>(null);
-  const zone = state.preferences.timezone;
-  const monday = addDate(anchor, -((anchor.getDay() + 6) % 7));
-  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 12);
-  const gridStart = addDate(first, -((first.getDay() + 6) % 7));
-  const days = Array.from({ length: view === "month" ? 42 : 7 }, (_, i) =>
-    addDate(view === "month" ? gridStart : monday, i),
-  );
-  const rangeStart = resolveLocalTime(
-    `${dateKey(days[0].toISOString(), zone)}T00:00`,
-    zone,
-  )[0];
-  const rangeEnd = resolveLocalTime(
-    `${dateKey(addDate(days.at(-1)!, 1).toISOString(), zone)}T00:00`,
-    zone,
-  )[0];
+  const {
+    days,
+    start: rangeStart,
+    end: rangeEnd,
+  } = calendarWindow(anchor, view === "month", zone);
   const start = rangeStart ? Date.parse(rangeStart) : 0,
     end = rangeEnd ? Date.parse(rangeEnd) : 0;
   useEffect(() => {
@@ -140,13 +126,15 @@ function CalendarContent({
   const snapshot = currentDetail
     ? snapshotDraft(state, currentDetail)
     : undefined;
-  const agenda = schedules.sort((a, b) => a.at.localeCompare(b.at));
+  const agenda = schedules
+    .filter((s) => Date.parse(s.at) >= start && Date.parse(s.at) < end)
+    .sort((a, b) => a.at.localeCompare(b.at));
   const editable = canApprove(state.role);
   const openMove = (s: Schedule) => {
     setDetail(null);
     setMoving(s);
   };
-  const weekCaption = `${new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" }).format(days[0])} – ${new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short", year: "numeric" }).format(days[6])}`;
+  const weekCaption = `${formatCivilDate(days[0], { day: "numeric", month: "short" })} – ${formatCivilDate(days[6], { day: "numeric", month: "short", year: "numeric" })}`;
   return (
     <div className="fade-in">
       {!demoMode && (
@@ -169,6 +157,12 @@ function CalendarContent({
           </Button>
         }
       />
+      {(!rangeStart || !rangeEnd) && (
+        <p role="alert" className="mb-4 text-sm">
+          Dieser Kalenderzeitraum beginnt an einem nicht existierenden lokalen
+          Datum. Bitte einen anderen Zeitraum wählen.
+        </p>
+      )}
       {remote?.tooDense && (
         <div role="alert" className="mb-4 surface p-4 text-sm">
           Dieser Zeitraum enthält mehr als 100 Termine. Es werden keine Termine
@@ -191,9 +185,7 @@ function CalendarContent({
             aria-label="Vorheriger Zeitraum"
             onClick={() =>
               setAnchor((d) =>
-                view === "month"
-                  ? new Date(d.getFullYear(), d.getMonth() - 1, 1, 12)
-                  : addDate(d, -7),
+                view === "month" ? addCivilMonths(d, -1) : addCivilDays(d, -7),
               )
             }
           >
@@ -205,9 +197,7 @@ function CalendarContent({
             aria-label="Nächster Zeitraum"
             onClick={() =>
               setAnchor((d) =>
-                view === "month"
-                  ? new Date(d.getFullYear(), d.getMonth() + 1, 1, 12)
-                  : addDate(d, 7),
+                view === "month" ? addCivilMonths(d, 1) : addCivilDays(d, 7),
               )
             }
           >
@@ -216,19 +206,14 @@ function CalendarContent({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setAnchor(new Date())}
+            onClick={() => setAnchor(civilDate(new Date().toISOString(), zone))}
           >
             Heute
           </Button>
           <strong className="ml-1 text-sm">
             {view === "month"
-              ? new Intl.DateTimeFormat("de-DE", {
-                  month: "long",
-                  year: "numeric",
-                }).format(anchor)
-              : view === "agenda"
-                ? "Alle Termine"
-                : weekCaption}
+              ? formatCivilDate(anchor, { month: "long", year: "numeric" })
+              : weekCaption}
           </strong>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -333,9 +318,9 @@ function CalendarContent({
                   {label}
                   {view === "week" && (
                     <span
-                      className={`mx-auto mt-2 grid size-8 place-items-center rounded-full text-lg font-semibold ${dateKey(days[i].toISOString(), zone) === dateKey(new Date().toISOString(), zone) ? "bg-primary text-primary-foreground" : "text-foreground"}`}
+                      className={`mx-auto mt-2 grid size-8 place-items-center rounded-full text-lg font-semibold ${days[i] === civilDate(new Date().toISOString(), zone) ? "bg-primary text-primary-foreground" : "text-foreground"}`}
                     >
-                      {days[i].getDate()}
+                      {Number(days[i].slice(-2))}
                     </span>
                   )}
                 </div>
@@ -343,15 +328,16 @@ function CalendarContent({
             </div>
             <div className="grid grid-cols-7">
               {days.map((day) => {
-                const key = dateKey(day.toISOString(), zone);
+                const key = day;
                 const slots = schedules.filter(
-                  (s) => dateKey(s.at, zone) === key,
+                  (s) => civilDate(s.at, zone) === key,
                 );
-                const isToday = key === dateKey(new Date().toISOString(), zone);
+                const isToday =
+                  key === civilDate(new Date().toISOString(), zone);
                 return (
                   <div
                     key={key}
-                    className={`min-h-36 border-r border-b p-2 last:border-r-0 ${view === "week" ? "min-h-[480px]" : ""} ${day.getMonth() !== anchor.getMonth() && view === "month" ? "bg-secondary/40" : ""} ${isToday ? "bg-primary/[.035]" : ""}`}
+                    className={`min-h-36 border-r border-b p-2 last:border-r-0 ${view === "week" ? "min-h-[480px]" : ""} ${day.slice(0, 7) !== anchor.slice(0, 7) && view === "month" ? "bg-secondary/40" : ""} ${isToday ? "bg-primary/[.035]" : ""}`}
                     onDragOver={(e) => {
                       if (editable) e.preventDefault();
                     }}
@@ -368,7 +354,7 @@ function CalendarContent({
                       <div
                         className={`mb-2 text-right text-xs ${isToday ? "text-primary font-semibold" : "muted"}`}
                       >
-                        {day.getDate()}
+                        {Number(day.slice(-2))}
                       </div>
                     )}
                     {slots.map((s) => {

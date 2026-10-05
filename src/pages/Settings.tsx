@@ -6,6 +6,8 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowUpRight,
@@ -149,7 +151,9 @@ export function SettingsPage() {
               Abrechnung und Richtlinien benötigen Owner- oder Admin-Rechte.
             </DemoNote>
           )}
-          {!demoMode && !["profile", "workspaces"].includes(tab) ? (
+          {!demoMode && tab === "integrations" ? (
+            <IntegrationGuidance />
+          ) : !demoMode && !["profile", "workspaces"].includes(tab) ? (
             <EmptyState
               title="Dieser Bereich wird noch angebunden"
               description="Es wurden keine Verbindungen oder Einstellungen simuliert. Dein Profil und deine Workspaces sind bereits verfügbar."
@@ -163,6 +167,112 @@ export function SettingsPage() {
           )}
         </div>
       </div>
+    </>
+  );
+}
+function IntegrationGuidance() {
+  const { state } = useStore();
+  const readiness = useQuery(api.auth.capabilities, {});
+  const connected = state.accounts.filter(
+    (a) =>
+      a.workspaceId === state.activeWorkspaceId &&
+      a.channel === "X" &&
+      a.connected,
+  );
+  return (
+    <>
+      <Section
+        title="X & Publishing"
+        description="Die bestätigte Provider-Verbindung und der echte Publisher folgen in den separaten Provider-Einheiten."
+      >
+        <Status tone="orange">Publishing noch nicht aktiviert</Status>
+        <p className="mt-4 text-sm">
+          {connected.length
+            ? `${connected.length} bestätigte X-Verbindung vorhanden. Der Publisher ist noch nicht aktiviert.`
+            : "Kein bestätigter X-Account in diesem Workspace verfügbar."}{" "}
+          Entwürfe können ohne Account geschrieben werden. Freigabe und Planung
+          benötigen einen verifiziert verbundenen Account.
+        </p>
+        <ol className="list-decimal space-y-2 pl-5 text-sm">
+          <li>
+            Owner/Admin richtet die X-Anwendung mit User-OAuth und den
+            erforderlichen Schreibberechtigungen ein. Serverseitig werden
+            X_CLIENT_ID, X_CLIENT_SECRET und INTEGRATION_ENCRYPTION_KEY
+            benötigt; SITE_URL bestimmt die App-Adresse.
+          </li>
+          <li>
+            Nach Implementierung des Verbindungsflows dessen Callback bei X
+            registrieren und den Ziel-Account ausdrücklich autorisieren. Ein
+            App-Bearer allein ersetzt keine User-Publishing-Berechtigung;
+            X_APP_BEARER_TOKEN ist eine getrennte Serverkonfiguration.
+          </li>
+          <li>
+            Bestätigte Account-Fähigkeiten prüfen und den echten Publisher
+            aktivieren. Danach eine konkrete Version freigeben und separat
+            planen. Fehlgeschlagene oder unklare Termine werden dadurch nicht
+            automatisch erneut gesendet.
+          </li>
+        </ol>
+        <p className="mt-4 mb-0 text-xs muted">
+          Hier werden keine Secrets angezeigt oder eingegeben und keine Accounts
+          simuliert. Die Einrichtung erfolgt serverseitig durch die zuständige
+          Administration.
+        </p>
+      </Section>
+      <Section
+        title="Kritische E-Mail-Benachrichtigungen"
+        description="Zustellprobleme bleiben im Kalender und Überblick sichtbar."
+      >
+        <Status
+          tone={
+            readiness?.emailDelivery && !readiness.restrictedSender
+              ? "green"
+              : "orange"
+          }
+        >
+          {!readiness
+            ? "Konfiguration wird geladen …"
+            : !readiness.emailDelivery
+              ? "RESEND_API_KEY fehlt"
+              : readiness.restrictedSender
+                ? "AUTH_EMAIL_FROM fehlt"
+                : "Absender und Zugang konfiguriert"}
+        </Status>
+        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm">
+          <li>
+            Die Administration hinterlegt RESEND_API_KEY und einen freigegebenen
+            Absender als AUTH_EMAIL_FROM im Convex-Deployment. SITE_URL muss auf
+            die App-Adresse zeigen.
+          </li>
+          <li>
+            Der Absender muss beim E-Mail-Provider für den Versand freigegeben
+            sein. Ohne eigenen konfigurierten Absender bleibt die kritische
+            Publishing-Benachrichtigung sichtbar blockiert.
+          </li>
+          <li>
+            Bei einem Zustellfehler die Provider-Konfiguration prüfen. Eine
+            gespeicherte Benachrichtigung ist erst als gesendet markiert, wenn
+            der Provider den Versand bestätigt; diese Seite löst keine
+            Test-E-Mail oder Wiederholung aus.
+          </li>
+        </ol>
+      </Section>
+      <Section
+        title="Medien & weitere Provider"
+        description="R2-Medien und GitHub-Repository-Zugriff werden separat aktiviert."
+      >
+        <p className="text-sm">
+          Für R2 fehlen noch der verifizierte Upload-/Finalisierungsflow und
+          autorisierte Vorschauen. Die Administration benötigt den vorgesehenen
+          Bucket und dessen serverseitige S3-Zugangskonfiguration. Es werden
+          hier keine Ressourcen angelegt.
+        </p>
+        <p className="mb-0 text-sm">
+          GitHub-Anmeldung und Repository-Zugriff sind getrennte Berechtigungen.
+          Repository-Zugriff benötigt den späteren Verbindungsflow und eine
+          ausdrückliche Auswahl der erlaubten Repositories.
+        </p>
+      </Section>
     </>
   );
 }
