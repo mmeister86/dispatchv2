@@ -9,12 +9,16 @@ const serverNames = [
   "GITHUB_CLIENT_SECRET",
   "REQUESTY_API_KEY",
   "TYPESAFE_API_KEY",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
 ];
 // Settings names required setup keys as prose, without reading their values.
 const guidanceNames = new Set([
   "RESEND_API_KEY",
   "INTEGRATION_ENCRYPTION_KEY",
   "X_CLIENT_SECRET",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
 ]);
 const marker = `server-secret-must-stay-private-${crypto.randomUUID()}`;
 const built = spawnSync("pnpm", ["exec", "vite", "build"], {
@@ -32,6 +36,10 @@ assert(assets.length > 0);
 for (const name of assets) {
   const source = readFileSync(`dist/assets/${name}`, "utf8");
   assert(!source.includes(marker), `${name} leaks a server secret value`);
+  assert(
+    !/S3Client|SignatureV4|cloudflarestorage\.com|jpeg-js|mp4box/.test(source),
+    `${name} imports server media SDK/validation`,
+  );
   // Better Auth includes an inert env name. Settings may show setup key names;
   // actual server configuration and injected values must still stay out.
   for (const secret of serverNames.filter(
@@ -39,7 +47,8 @@ for (const name of assets) {
   ))
     assert(
       !source.includes(secret) ||
-        (/^Settings-/.test(name) && guidanceNames.has(secret)),
+        (/^(Settings|Media|Drafts|shared)-/.test(name) &&
+          guidanceNames.has(secret)),
       `${name} imports server-only configuration ${secret}`,
     );
 }

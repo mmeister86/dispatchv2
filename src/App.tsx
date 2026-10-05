@@ -730,6 +730,10 @@ function ResearchRoute() {
   const { state } = useStore();
   return <ResearchPage key={state.activeAccountId} />;
 }
+function MediaRoute() {
+  const { state } = useStore();
+  return <MediaPage key={state.activeWorkspaceId} />;
+}
 function ProtectedRoute({ children }: { children: ReactNode }) {
   if (demoMode) return <>{children}</>;
   if (!backendConfigured)
@@ -834,7 +838,7 @@ export function App() {
           <Route path="research" element={<ResearchRoute />} />
           <Route path="agent" element={<AgentPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
-          <Route path="media" element={<MediaPage />} />
+          <Route path="media" element={<MediaRoute />} />
           <Route path="experiments" element={<ExperimentsPage />} />
           <Route path="repurpose" element={<RepurposePage />} />
           <Route path="trends" element={<TrendsPage />} />

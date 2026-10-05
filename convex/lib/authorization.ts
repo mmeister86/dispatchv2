@@ -6,6 +6,8 @@ import {
 import {
   mutation,
   query,
+  internalMutation,
+  internalQuery,
   type QueryCtx,
   type MutationCtx,
 } from "../_generated/server";
@@ -41,6 +43,7 @@ export async function requireWorkspace(
   if (!membership) throw new ConvexError("WORKSPACE_ACCESS_DENIED");
   const workspace = await ctx.db.get(workspaceId);
   if (!workspace) throw new ConvexError("WORKSPACE_ACCESS_DENIED");
+  requireActiveWorkspace(workspace);
   return { user: currentUser, workspace, membership };
 }
 export function requireRole(
@@ -76,3 +79,17 @@ export const userQuery = customQuery(query, userInput);
 export const userMutation = customMutation(mutation, userInput);
 export const workspaceQuery = customQuery(query, workspaceInput);
 export const workspaceMutation = customMutation(mutation, workspaceInput);
+
+export function requireActiveWorkspace(workspace: Doc<"workspaces"> | null) {
+  if (!workspace || (workspace.lifecycle && workspace.lifecycle !== "active"))
+    throw new ConvexError("WORKSPACE_INACTIVE");
+}
+
+export const workspaceInternalMutation = customMutation(
+  internalMutation,
+  workspaceInput,
+);
+export const workspaceInternalQuery = customQuery(
+  internalQuery,
+  workspaceInput,
+);

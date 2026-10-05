@@ -114,7 +114,10 @@ export interface MediaAsset {
   url: string;
   alt: string;
   size: number;
-  status: "ready" | "failed";
+  status:
+    "uploading" | "validating" | "ready" | "failed" | "deleting" | "deleted";
+  uploadSessionId?: string;
+  mime?: string;
   origin: string;
 }
 export interface Workspace {
@@ -177,7 +180,9 @@ export function draftValid(
       : account.channel !== "LinkedIn" || v.text.length === 1) &&
     v.mediaIds.length <= (account.capability?.maxMedia ?? 4) &&
     (!v.mediaIds.some(
-      (id) => media.find((m) => m.id === id)?.type === "video",
+      (id) =>
+        media.find((m) => m.id === id)?.type === "video" ||
+        media.find((m) => m.id === id)?.mime === "image/gif",
     ) ||
       v.mediaIds.length === 1) &&
     v.text.every(

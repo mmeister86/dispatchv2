@@ -8,6 +8,7 @@ import {
   workspaceQuery,
   requireReference,
   requireRole,
+  requireActiveWorkspace,
 } from "./lib/authorization";
 import {
   content,
@@ -46,6 +47,13 @@ export const scheduleDoc = v.object({
   ...scheduleFields,
 });
 const bundle = v.object({
+  assets: v.array(
+    v.object({
+      _id: v.id("mediaAssets"),
+      _creationTime: v.number(),
+      ...assetFields,
+    }),
+  ),
   draft: draftDoc,
   versions: v.array(versionDoc),
   approvals: v.array(approvalDoc),
@@ -138,7 +146,22 @@ export async function draftBundle(
         .take(101);
   const commentsLimited = comments.length > 100;
   if (commentsLimited) comments.pop();
+  const assets = (
+    await Promise.all(
+      [
+        ...new Set(
+          versions.flatMap((ver) =>
+            ver.content.media.map((ref) => ref.assetId),
+          ),
+        ),
+      ].map((id) => ctx.db.get(id)),
+    )
+  ).filter(
+    (asset): asset is Doc<"mediaAssets"> =>
+      asset !== null && asset.workspaceId === draft.workspaceId,
+  );
   return {
+    assets,
     draft,
     comments,
     commentsLimited,
@@ -246,8 +269,8 @@ export const resources = workspaceQuery({
         .take(101),
       assets: await ctx.db
         .query("mediaAssets")
-        .withIndex("by_workspaceId", (q) =>
-          q.eq("workspaceId", ctx.workspace._id),
+        .withIndex("by_workspaceId_and_state", (q) =>
+          q.eq("workspaceId", ctx.workspace._id).eq("state", "ready"),
         )
         .take(101),
       events: await ctx.db
@@ -330,6 +353,7 @@ export async function validateContent(
   c: Doc<"draftVersions">["content"],
   publishing = false,
 ) {
+  requireActiveWorkspace(await ctx.db.get(workspaceId));
   if (new TextEncoder().encode(JSON.stringify(c)).length > 32768)
     throw new ConvexError("CONTENT_SNAPSHOT_TOO_LARGE");
   if (
@@ -360,7 +384,7 @@ export async function validateContent(
         !a.checksum ||
         !a.objectKey ||
         !ref.alt.trim() ||
-        ref.alt.length > 2000
+        ref.alt.length > 1000
       )
         throw new ConvexError("MEDIA_NOT_READY");
       return a;
@@ -380,7 +404,8 @@ export async function validateContent(
       c.text.some((t) => t.length > caps.maxText) ||
       c.media.length > caps.maxMedia ||
       assets.some((a) => !caps.mediaTypes.includes(a.type)) ||
-      (assets.some((a) => a.type === "video") && assets.length !== 1) ||
+      (assets.some((a) => a.type === "video" || a.mime === "image/gif") &&
+        assets.length !== 1) ||
       (publishing && c.text.some((t) => !t.trim()))
     )
       throw new ConvexError("CAPABILITY_VALIDATION_FAILED");
@@ -429,6 +454,7 @@ export const create = workspaceMutation({
       createdAt: Date.now(),
       reason: "Erster Entwurf",
     });
+    await recordMediaReferences(ctx, ctx.workspace._id, versionId, a.content);
     await ctx.db.patch(draftId, { currentVersionId: versionId });
     await event(ctx, ctx.workspace._id, draftId, "DRAFT_CREATED", ctx.user._id);
     return draftId;
@@ -462,6 +488,7 @@ export const save = workspaceMutation({
       createdAt: Date.now(),
       reason: a.reason,
     });
+    await recordMediaReferences(ctx, ctx.workspace._id, versionId, a.content);
     await ctx.db.patch(d._id, {
       revision: d.revision + 1,
       currentVersionId: versionId,
@@ -876,3 +903,23 @@ export const history = workspaceQuery({
       });
   },
 });
+
+async function recordMediaReferences(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  versionId: Id<"draftVersions">,
+  c: Doc<"draftVersions">["content"],
+) {
+  for (const assetId of new Set(c.media.map((m) => m.assetId))) {
+    const asset = requireReference(
+      workspaceId,
+      await ctx.db.get(assetId),
+    ) as Doc<"mediaAssets">;
+    if (asset.state !== "ready") throw new ConvexError("MEDIA_NOT_READY");
+    await ctx.db.insert("mediaVersionReferences", {
+      workspaceId,
+      versionId,
+      assetId,
+    });
+  }
+}

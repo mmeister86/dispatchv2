@@ -1,3 +1,4 @@
+import { MediaPreview } from "@/features/drafts/media-preview";
 import { useEffect, useState, useRef } from "react";
 import {
   Link,
@@ -67,7 +68,6 @@ import {
   now,
   revokeDraftApproval,
   replaceScheduledVersion,
-  type MediaAsset,
 } from "@/lib/model";
 export function VersionCommentInput({
   version,
@@ -114,25 +114,6 @@ export function VersionCommentInput({
         {sending ? "Kommentar wird gesendet …" : "Kommentar senden"}
       </Button>
     </>
-  );
-}
-function MediaPreview({
-  asset,
-  className,
-}: {
-  asset: MediaAsset;
-  className?: string;
-}) {
-  return asset.type === "video" ? (
-    <video
-      src={asset.url}
-      aria-label={asset.alt || asset.name}
-      controls
-      preload="metadata"
-      className={className}
-    />
-  ) : (
-    <img src={asset.url} alt={asset.alt} className={className} />
   );
 }
 const strategies = [
@@ -391,6 +372,9 @@ export function ComposerPage() {
     draft?.accountId ?? state.activeAccountId,
   );
   const [mediaIds, setMediaIds] = useState<string[]>(v?.mediaIds ?? []);
+  const [mediaAlts, setMediaAlts] = useState<Record<string, string>>(() =>
+    Object.fromEntries((v?.media ?? []).map((m) => [m.assetId, m.alt])),
+  );
   const [pillar, setPillar] = useState(draft?.pillar ?? "Building in public");
   const [strategy, setStrategy] = useState(draft?.strategy ?? "generic");
   const [scheduleOpen, setScheduleOpen] = useState(false);
@@ -461,6 +445,9 @@ export function ComposerPage() {
       setTitle(draft.title);
       setAccountId(draft.accountId);
       setMediaIds(ver.mediaIds);
+      setMediaAlts(
+        Object.fromEntries((ver.media ?? []).map((m) => [m.assetId, m.alt])),
+      );
       setPillar(draft.pillar);
       setStrategy(draft.strategy);
       base.current = {
@@ -476,12 +463,28 @@ export function ComposerPage() {
       };
     }
   }, [draft?.id, v?.number]);
+  const mediaReferences = mediaIds.map((assetId) => ({
+    assetId,
+    alt:
+      mediaAlts[assetId] ??
+      base.current?.media?.find((m) => m.assetId === assetId)?.alt ??
+      v?.media?.find((m) => m.assetId === assetId)?.alt ??
+      state.media.find((m) => m.id === assetId)?.alt ??
+      "",
+  }));
   const dirty =
     !!draft &&
     (JSON.stringify(text) !== JSON.stringify(base.current?.text) ||
       title !== base.current?.title ||
       accountId !== base.current?.accountId ||
       JSON.stringify(mediaIds) !== JSON.stringify(base.current?.mediaIds) ||
+      mediaReferences.some(
+        (m) =>
+          m.alt !==
+          (base.current?.media?.find((ref) => ref.assetId === m.assetId)?.alt ??
+            state.media.find((a) => a.id === m.assetId)?.alt ??
+            ""),
+      ) ||
       pillar !== base.current?.pillar ||
       strategy !== base.current?.strategy);
   dirtyRef.current = dirty;
@@ -500,7 +503,7 @@ export function ComposerPage() {
       text,
       accountId,
       mediaIds,
-      media: base.current?.media ?? v?.media,
+      media: mediaReferences,
       pillar,
       strategy,
     });
@@ -520,7 +523,7 @@ export function ComposerPage() {
         text,
         accountId,
         mediaIds,
-        media: base.current?.media ?? v?.media,
+        media: mediaReferences,
         pillar,
         strategy,
       };
@@ -596,6 +599,7 @@ export function ComposerPage() {
     strategy,
     text,
     mediaIds,
+    mediaAlts,
     mutate,
   ]);
   if (!draft || !v)
@@ -736,6 +740,11 @@ export function ComposerPage() {
                 setTitle(draft.title);
                 setAccountId(draft.accountId);
                 setMediaIds(v.mediaIds);
+                setMediaAlts(
+                  Object.fromEntries(
+                    (v.media ?? []).map((m) => [m.assetId, m.alt]),
+                  ),
+                );
                 setPillar(draft.pillar);
                 setStrategy(draft.strategy);
                 base.current = {
@@ -1051,7 +1060,7 @@ export function ComposerPage() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={!canWrite || !demoMode}
+                disabled={!canWrite}
                 onClick={() => setMediaOpen(true)}
               >
                 <ImagePlus size={14} />
@@ -1070,12 +1079,34 @@ export function ComposerPage() {
                   return m ? (
                     <div key={mid} className="relative">
                       <MediaPreview
-                        asset={m}
+                        asset={{
+                          ...m,
+                          alt:
+                            mediaReferences.find((ref) => ref.assetId === mid)
+                              ?.alt ?? m.alt,
+                        }}
                         className="h-24 w-full rounded-md object-cover"
                       />
-                      <p className="mt-1 mb-0 truncate text-[10px] muted">
-                        {m.alt || "Alttext fehlt"}
-                      </p>
+                      <label className="block mt-2">
+                        <span className="field-label">
+                          Alttext dieser Inhaltsversion
+                        </span>
+                        <Textarea
+                          aria-label={`Alttext für ${m.name}`}
+                          maxLength={1000}
+                          value={
+                            mediaReferences.find((ref) => ref.assetId === mid)
+                              ?.alt ?? ""
+                          }
+                          disabled={!canWrite || demoMode}
+                          onChange={(e) =>
+                            setMediaAlts((a) => ({
+                              ...a,
+                              [mid]: e.target.value,
+                            }))
+                          }
+                        />
+                      </label>
                       <Button
                         variant="secondary"
                         size="icon"
@@ -1284,7 +1315,13 @@ export function ComposerPage() {
                         return m ? (
                           <MediaPreview
                             key={id}
-                            asset={m}
+                            asset={{
+                              ...m,
+                              alt:
+                                mediaReferences.find(
+                                  (ref) => ref.assetId === id,
+                                )?.alt ?? m.alt,
+                            }}
                             className="mb-2 w-full rounded-lg"
                           />
                         ) : null;
@@ -1878,49 +1915,59 @@ export function ComposerPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="grid max-h-80 grid-cols-2 gap-3 overflow-y-auto">
-            {activeMedia.map((m) => (
-              <label key={m.id} className="surface cursor-pointer p-2">
-                <MediaPreview
-                  asset={m}
-                  className="mb-2 h-24 w-full rounded object-cover"
-                />
-                <span className="flex items-center gap-2 text-xs">
-                  <Checkbox
-                    checked={mediaIds.includes(m.id)}
-                    onCheckedChange={(checked) => {
-                      if (
-                        checked &&
-                        (mediaIds.length >=
-                          (account?.capability?.maxMedia ??
-                            (demoMode ? 4 : 20)) ||
-                          (m.type === "video" && mediaIds.length > 0) ||
-                          mediaIds.some(
-                            (id) =>
-                              activeMedia.find((m) => m.id === id)?.type ===
-                              "video",
-                          ))
-                      ) {
-                        toast.error(
-                          "Bis zu vier Bilder oder genau ein Video auswählen.",
-                        );
-                        return;
-                      }
-                      setMediaIds((ids) =>
-                        checked
-                          ? [...ids, m.id]
-                          : ids.filter((id) => id !== m.id),
-                      );
-                    }}
+            {activeMedia
+              .filter((m) => m.status === "ready")
+              .map((m) => (
+                <label key={m.id} className="surface cursor-pointer p-2">
+                  <MediaPreview
+                    asset={m}
+                    className="mb-2 h-24 w-full rounded object-cover"
                   />
-                  {m.name}
-                </span>
-                {!m.alt && (
-                  <span className="text-xs text-destructive">
-                    Alttext fehlt
+                  <span className="flex items-center gap-2 text-xs">
+                    <Checkbox
+                      checked={mediaIds.includes(m.id)}
+                      onCheckedChange={(checked) => {
+                        if (
+                          checked &&
+                          (mediaIds.length >=
+                            (account?.capability?.maxMedia ??
+                              (demoMode ? 4 : 20)) ||
+                            ((m.type === "video" || m.mime === "image/gif") &&
+                              mediaIds.length > 0) ||
+                            mediaIds.some(
+                              (id) =>
+                                activeMedia.find((m) => m.id === id)?.type ===
+                                  "video" ||
+                                activeMedia.find((m) => m.id === id)?.mime ===
+                                  "image/gif",
+                            ))
+                        ) {
+                          toast.error(
+                            "Bis zu vier Bilder oder genau ein GIF/Video auswählen.",
+                          );
+                          return;
+                        }
+                        if (checked)
+                          setMediaAlts((alts) => ({
+                            ...alts,
+                            [m.id]: alts[m.id] ?? m.alt,
+                          }));
+                        setMediaIds((ids) =>
+                          checked
+                            ? [...ids, m.id]
+                            : ids.filter((id) => id !== m.id),
+                        );
+                      }}
+                    />
+                    {m.name}
                   </span>
-                )}
-              </label>
-            ))}
+                  {!m.alt && (
+                    <span className="text-xs text-destructive">
+                      Alttext fehlt
+                    </span>
+                  )}
+                </label>
+              ))}
           </div>
           <DialogFooter>
             <Button variant="outline" asChild>

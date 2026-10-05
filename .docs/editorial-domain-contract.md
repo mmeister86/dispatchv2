@@ -1,18 +1,18 @@
 # Editorial backend contract — TASK-7/8/11/13
 
-R1 internal milestone. The Dev deployment implements editorial persistence and planning. Provider publishing, verified account enrollment and R2 upload/preview are later units; no public account/media factory exists. Synthetic test fixtures do not establish J02/J08 live acceptance.
+R1 internal milestone. The Dev deployment implements editorial persistence and planning. Provider publishing and verified account enrollment are later units; TASK-9 implements the R2 upload/preview/lifecycle code with initial configuration guidance (see [media contract](media-domain-contract.md)); no public account factory or media-ready setter exists. Synthetic test fixtures do not establish J02/J08 live acceptance.
 
 ## Authoritative records
 
 - `drafts`: workspace, author, current immutable version, CAS revision, source and optional current-member assignee. `draftVersions`: ordered text, account selection, title/pillar/strategy, immutable asset references with alt metadata, author/time/reason and server-captured asset checksum/object key. Versions are never patched by public commands. Maximum encoded content snapshot: 32 KiB.
 - `socialAccounts`: verified provider identity, connection and capability adapter result (`maxText`, `maxThread`, `maxMedia`, media types, publishing capability). Only later internal verified provider code may insert/update accounts and capabilities.
-- `mediaAssets`: workspace, R2 immutable final object key/checksum, validated type/size and lifecycle. Only later internal verified upload code owns creation/readiness. A changed key/checksum invalidates old approval preflight.
+- `mediaAssets`: workspace, R2 immutable final object key/checksum, validated type/size and lifecycle. Only internal session-bound byte-validation code owns creation/readiness. A changed key/checksum invalidates old approval preflight.
 - `approvals`: workspace, exact version/account, human actor/time and separately recorded revocation actor/time. Owner/Admin only. This API does not expose an agent approval tool.
 - `schedules`: exact version/account/approval/actor, UTC instant, original IANA zone/local input, generation, internal scheduler job and durable publishing state. Scheduling and scheduler registration happen in one mutation. DB atomicity does not extend to external APIs.
 - `editorialComments`: workspace, immutable version, server author, creation time and resolution state. Assignment validates current workspace membership.
 - `editorialEvents`: sanitized operation codes with workspace/draft/schedule/actor/time; no credentials or post content. `publishingNotifications`: recipient and durable pending/sent/blocked delivery state. Real Resend delivery requires AUTH_EMAIL_FROM, RESEND_API_KEY and SITE_URL; missing configuration is persisted as blocked. No test email is sent by this unit.
 
-These workspace-bound tables must join the later inventory/export/deletion implementation. Media byte deletion and database deletion must be coordinated by the later R2 lifecycle implementation; this unit does not delete assets.
+These workspace-bound tables must join the later inventory/export/deletion implementation. Media byte deletion and database deletion must be coordinated by the later R2 lifecycle implementation; TASK-9 adds indexed whole-version media references and coordinated expiry-aware cleanup.
 
 ## Public and internal commands
 
@@ -32,10 +32,10 @@ The delegated D05 strategy is UTC instant plus retained IANA zone/local input. S
 
 New planning is atomically limited to 100 active scheduled/publishing rows per draft. Legacy overflow remains readable with `schedulesLimited`; the composer offers cancellation of a visible planned row, and other rows become reachable as active rows are cancelled. Returned schedules' exact approvals are loaded in addition to the latest 100 approval records, with workspace/draft/version/account validation, preserving revocation of old planned snapshots.
 
-Resources show the first 100 accounts/assets and expose `resourcesLimited`; larger account/media inventories need the later paginated provider UI. Comment display shows latest 100 comments and exposes `commentsLimited`. Current member options are authorized member IDs with preference names and server roles, never demo people.
+Resources show the first 100 accounts/ready assets; loaded versions also return their referenced asset descriptors, and the media library separately paginates50 rows. Resources expose `resourcesLimited`; larger account inventories need the later paginated provider UI. Comment display shows latest 100 comments and exposes `commentsLimited`. Current member options are authorized member IDs with preference names and server roles, never demo people.
 
 ## Verification and external limits
 
 Convex transaction tests cover CAS, immutable snapshots, reference/role validation, approval identity, claim deduplication, generations, cancellation ordering, capability limits, media checksum changes, planned version replacement, dense calendar recovery, paginated history, comments/assignment and Berlin DST gap/overlap. Tests insert internal synthetic fixtures and make no external social writes.
 
-Manual authenticated composer/workspace-switch verification and later approved provider account J02/J08 live publishing remain acceptance steps. Intelligence, channel-variant simulation and media uploads/previews remain visibly unavailable outside explicit demo mode until their respective units. Backlog tasks remain In Progress pending explicit user confirmation.
+Manual authenticated composer/workspace-switch verification and later approved provider account J02/J08 live publishing remain acceptance steps. Intelligence and channel-variant simulation remain visibly unavailable outside explicit demo mode. Media uploads/previews use the TASK-9 authorized R2 path and show missing EU-bucket configuration. Backlog tasks remain In Progress pending explicit user confirmation.

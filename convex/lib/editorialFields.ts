@@ -57,7 +57,26 @@ export const assetFields = {
   name: v.string(),
   type: v.union(v.literal("image"), v.literal("video")),
   size: v.number(),
-  state: v.union(v.literal("ready"), v.literal("failed"), v.literal("deleted")),
+  state: v.union(
+    ...(
+      [
+        "uploading",
+        "validating",
+        "ready",
+        "failed",
+        "deleting",
+        "deleted",
+      ] as const
+    ).map((x) => v.literal(x)),
+  ),
+  uploadSessionId: v.optional(v.id("mediaUploadSessions")),
+  mime: v.optional(v.string()),
+  width: v.optional(v.number()),
+  height: v.optional(v.number()),
+  duration: v.optional(v.number()),
+  defaultAlt: v.optional(v.string()),
+  errorCode: v.optional(v.string()),
+  bucket: v.optional(v.string()),
 };
 export const draftFields = {
   workspaceId: v.id("workspaces"),

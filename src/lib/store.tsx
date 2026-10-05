@@ -538,15 +538,25 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
       color: "#6b7c5d",
       capability: a.capability,
     })),
-    media: (resources?.assets ?? []).map((a) => ({
+    media: [
+      ...new Map(
+        [
+          ...(resources?.assets ?? []),
+          ...list.results.flatMap((b) => b.assets),
+          ...(fullDetail?.assets ?? []),
+        ].map((a) => [a._id, a]),
+      ).values(),
+    ].map((a) => ({
       id: a._id,
       workspaceId: a.workspaceId,
       name: a.name,
       type: a.type,
       url: "",
-      alt: "",
+      alt: a.defaultAlt ?? "",
       size: a.size,
-      status: a.state === "ready" ? "ready" : "failed",
+      status: a.state,
+      uploadSessionId: a.uploadSessionId,
+      mime: a.mime,
       origin: "R2",
     })),
     drafts: [

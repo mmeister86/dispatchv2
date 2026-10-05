@@ -12,9 +12,11 @@
     "test:e2e:auth": "playwright test --config playwright.auth.config.ts",
     "preview": "vite preview --host 127.0.0.1",
     "test:bundle": "node tests/bundle-security.mjs",
-    "lint": "prettier --check \"convex/**/*.ts\" convex/tsconfig.json src/lib/auth-client.ts src/lib/navigation.ts src/lib/store.tsx src/main.tsx src/App.tsx src/pages/Public.tsx src/pages/Settings.tsx src/pages/Overview.tsx src/pages/Drafts.tsx src/pages/Calendar.tsx src/components/ScheduleDialog.tsx src/lib/model.ts src/lib/time.ts src/lib/editorial-mapping.ts tests/editorial.test.ts tests/editorial-mapping.test.ts tests/calendar-time.test.ts tests/integration-guidance.test.ts tests/calendar.e2e.ts tests/comment.e2e.ts tests/foundation.test.ts tests/navigation.test.ts tests/auth.real-browser.ts tests/bundle-security.mjs playwright.config.ts playwright.auth.config.ts .github/workflows/ci.yml"
+    "lint": "prettier --check \"convex/**/*.ts\" convex/tsconfig.json src/lib/auth-client.ts src/lib/navigation.ts src/lib/store.tsx src/main.tsx src/App.tsx src/pages/Public.tsx src/pages/Settings.tsx src/pages/Overview.tsx src/pages/Drafts.tsx src/pages/Calendar.tsx src/components/ScheduleDialog.tsx src/lib/model.ts src/lib/time.ts src/lib/editorial-mapping.ts tests/editorial.test.ts tests/editorial-mapping.test.ts tests/calendar-time.test.ts tests/integration-guidance.test.ts tests/calendar.e2e.ts tests/comment.e2e.ts tests/foundation.test.ts tests/navigation.test.ts tests/auth.real-browser.ts tests/bundle-security.mjs playwright.config.ts playwright.auth.config.ts .github/workflows/ci.yml \"src/features/drafts/**/*.tsx\" src/pages/Media.tsx tests/media-fixture.ts tests/media-ui.test.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "3.1146.0",
+    "@aws-sdk/s3-request-presigner": "3.1146.0",
     "@convex-dev/better-auth": "0.12.5",
     "@fontsource/dm-sans": "^5.3.0",
     "@fontsource/manrope": "^5.3.0",
@@ -24,7 +26,11 @@
     "cn": "^0.4.0",
     "convex": "1.46.0",
     "convex-helpers": "0.1.124",
+    "jpeg-js": "0.4.4",
     "lucide-react": "^1.51.0",
+    "mp4box": "2.3.0",
+    "omggif": "1.0.10",
+    "pngjs": "7.0.0",
     "radix-ui": "^1.6.7",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -38,6 +44,8 @@
     "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.4",
+    "@types/omggif": "1.0.5",
+    "@types/pngjs": "6.0.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
