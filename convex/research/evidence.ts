@@ -253,6 +253,20 @@ export const list = workspaceQuery({
             e.sourceId,
           );
           if ((await materialHash(s)) !== e.materialHash) throw new Error();
+          if (e.assessment) {
+            try {
+              const reviewer = await ctx.db.get(e.assessment.reviewerId);
+              if (!reviewer) throw new Error();
+              requireRole(
+                (await requireWorkspace(ctx, e.workspaceId, reviewer))
+                  .membership,
+                ["Owner", "Admin"],
+              );
+            } catch (error) {
+              reason = "RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE";
+              throw error;
+            }
+          }
           proofUntil = Math.min(until, e.retentionUntil);
           payload = e.payload;
           source = {
@@ -268,7 +282,7 @@ export const list = workspaceQuery({
             usableUntil: proofUntil,
           };
         } catch {
-          reason = e.reason ?? "RESEARCH_EVIDENCE_NO_CURRENT_PROOF";
+          reason = reason ?? "RESEARCH_EVIDENCE_NO_CURRENT_PROOF";
         }
         let validityUntil: number | null = null;
         if (
@@ -276,17 +290,7 @@ export const list = workspaceQuery({
           e.assessment?.validUntil &&
           e.assessment.validUntil > Date.now()
         ) {
-          try {
-            const reviewer = await ctx.db.get(e.assessment.reviewerId);
-            if (!reviewer) throw new Error();
-            requireRole(
-              (await requireWorkspace(ctx, e.workspaceId, reviewer)).membership,
-              ["Owner", "Admin"],
-            );
-            validityUntil = Math.min(e.assessment.validUntil, proofUntil);
-          } catch {
-            reason = "RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE";
-          }
+          validityUntil = Math.min(e.assessment.validUntil, proofUntil);
         }
         return {
           evidenceId: e._id,

@@ -1,6 +1,6 @@
 import { test, expect, vi, beforeEach, afterEach } from "vitest";
 import { mediaFixture } from "../../tests/media-fixture";
-import { api, internal } from "../_generated/api";
+import { api, internal, components } from "../_generated/api";
 import { sha256 } from "../lib/crypto";
 import { parseSearch } from "./webSearch";
 import type { Id } from "../_generated/dataModel";
@@ -2239,3 +2239,85 @@ test("explicit human ISO event attribution uses the earliest relevant day withou
     ),
   ).toBe(true);
 });
+
+test.each(["future", "ineligible", "expired"] as const)(
+  "distinct reviewer withdrawal hides %s reviewed content while original annotation remains readable",
+  async (validity) => {
+    const f = await evidenceFixture(),
+      originalId = await f.create();
+    const identity = await f.t.run(async (ctx) => {
+      const user = await ctx.runMutation(components.betterAuth.adapter.create, {
+        input: {
+          model: "user",
+          data: {
+            name: "Separate reviewer",
+            email: "reviewer@example.test",
+            emailVerified: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          },
+        },
+      });
+      const session = await ctx.runMutation(
+        components.betterAuth.adapter.create,
+        {
+          input: {
+            model: "session",
+            data: {
+              userId: user._id,
+              token: crypto.randomUUID(),
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              expiresAt: Date.now() + 86400000,
+            },
+          },
+        },
+      );
+      return { subject: user._id, sessionId: session._id };
+    });
+    const reviewer = f.t.withIdentity(identity);
+    const reviewerId = await reviewer.mutation(api.users.bootstrap, {});
+    const membershipId = await f.t.run((ctx) =>
+      ctx.db.insert("memberships", {
+        userId: reviewerId,
+        workspaceId: f.workspaceId,
+        role: "Admin",
+      }),
+    );
+    const validUntil = Date.now() + 100000;
+    const reviewedId = await reviewer.mutation(api.research.evidence.review, {
+      workspaceId: f.workspaceId,
+      evidenceId: originalId,
+      commandKey: "distinct-reviewer",
+      maxAgeMs: 86400000,
+      validUntil,
+      reason: "Separate human reviewer reasoning",
+      substantiveSupportAttested: validity !== "ineligible",
+      eventAt: null,
+      eventQuote: null,
+    });
+    if (validity === "expired") vi.setSystemTime(validUntil + 1);
+    const before = (await f.list()).find((r) => r.evidenceId === reviewedId)!;
+    expect(before.payload).not.toBeNull();
+    expect(before.automaticEligible).toBe(validity === "future");
+    const stored = await f.t.run((ctx) => ctx.db.get(reviewedId));
+    await f.t.run((ctx) => ctx.db.patch(membershipId, { role: "Viewer" }));
+    const rows = await f.list();
+    expect(rows.find((r) => r.evidenceId === reviewedId)).toMatchObject({
+      state: "removed",
+      payload: null,
+      source: null,
+      assessment: null,
+      proofUntil: 0,
+      validityUntil: null,
+      automaticEligible: false,
+      reason: "RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE",
+    });
+    expect(rows.find((r) => r.evidenceId === originalId)).toMatchObject({
+      state: "review",
+      payload: { annotation: f.args.annotation },
+      automaticEligible: false,
+    });
+    expect(await f.t.run((ctx) => ctx.db.get(reviewedId))).toEqual(stored);
+  },
+);
