@@ -12,6 +12,8 @@ import type * as ai_fields from "../ai/fields.js";
 import type * as ai_provider from "../ai/provider.js";
 import type * as ai_runs from "../ai/runs.js";
 import type * as auth from "../auth.js";
+import type * as content_ideaFields from "../content/ideaFields.js";
+import type * as content_ideas from "../content/ideas.js";
 import type * as content_signals from "../content/signals.js";
 import type * as crons from "../crons.js";
 import type * as editorial from "../editorial.js";
@@ -62,6 +64,8 @@ declare const fullApi: ApiFromModules<{
   "ai/provider": typeof ai_provider;
   "ai/runs": typeof ai_runs;
   auth: typeof auth;
+  "content/ideaFields": typeof content_ideaFields;
+  "content/ideas": typeof content_ideas;
   "content/signals": typeof content_signals;
   crons: typeof crons;
   editorial: typeof editorial;

@@ -107,7 +107,7 @@ async function authority(
       "content",
     );
 }
-async function active(
+export async function active(
   ctx: QueryCtx | MutationCtx,
   runId: Id<"agentRuns">,
   generation?: number,
@@ -123,6 +123,24 @@ async function active(
   )
     throw new ConvexError("MODEL_RUN_INACTIVE");
   await authority(ctx, r);
+  const contentRequest = await ctx.db
+    .query("contentRequests")
+    .withIndex("by_runId", (q) => q.eq("runId", runId))
+    .unique();
+  if (contentRequest) {
+    const idea = await ctx.db.get(contentRequest.ideaId);
+    if (
+      contentRequest.workspaceId !== r.workspaceId ||
+      contentRequest.actorId !== r.actorId ||
+      contentRequest.accountId !== r.accountId ||
+      !idea ||
+      idea.workspaceId !== r.workspaceId ||
+      idea.revision !== contentRequest.inputRevision ||
+      idea.currentVersionId !== contentRequest.inputVersionId ||
+      idea.status === "archived"
+    )
+      throw new ConvexError("IDEA_SOURCE_CHANGED");
+  }
   const p = await policy(ctx);
   if (
     p.version !== r.policyVersion ||
@@ -161,6 +179,92 @@ async function active(
     throw new ConvexError("MODEL_BUDGET_GRANT_EXPIRED");
   return { r, p };
 }
+export async function createRun(
+  ctx: MutationCtx,
+  a: {
+    workspaceId: Id<"workspaces">;
+    accountId: Id<"socialAccounts">;
+    actorId: Id<"users">;
+    purpose: Doc<"agentRuns">["purpose"];
+    prompt: string;
+    promptVersion: string;
+    sources: Doc<"agentRuns">["sources"];
+  },
+) {
+  const p = await policy(ctx);
+  if (!p.purposes.includes(a.purpose))
+    throw new ConvexError("MODEL_PURPOSE_NOT_APPROVED");
+  if (
+    !a.prompt.trim() ||
+    new TextEncoder().encode(a.prompt).length >
+      Math.min(16000, p.maxInputTokens) ||
+    !a.promptVersion.trim() ||
+    a.promptVersion.length > 100 ||
+    a.sources.length > 10
+  )
+    throw new ConvexError("MODEL_INPUT_INVALID");
+  const account = await ctx.db.get(a.accountId);
+  requireReference(a.workspaceId, account);
+  const accountConnectionSequence = account!.xEvidence?.connectionSequence ?? 0;
+  await authority(ctx, { ...a, accountConnectionSequence });
+  const budgetIds: Id<"aiBudgets">[] = [];
+  for (const [scope, key] of [
+    ["provider", "provider"],
+    ["workspace", `workspace:${a.workspaceId}`],
+    ["account", `account:${a.accountId}`],
+  ] as const) {
+    const b = await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", key))
+      .unique();
+    if (
+      !b ||
+      b.scope !== scope ||
+      (scope !== "provider" &&
+        (b.workspaceId !== a.workspaceId || !b.approvedBy)) ||
+      (scope === "account" && b.accountId !== a.accountId) ||
+      b.policyVersion !== p.version ||
+      b.currency !== p.currency ||
+      !b.purposes.includes(a.purpose) ||
+      b.expiresAt <= Date.now() ||
+      !bounded(b.limitMicros, 1e12) ||
+      !Number.isSafeInteger(b.heldMicros) ||
+      !Number.isSafeInteger(b.spentMicros) ||
+      b.heldMicros < 0 ||
+      b.spentMicros < 0
+    )
+      throw new ConvexError("MODEL_BUDGET_CONFIGURATION_REQUIRED");
+    budgetIds.push(b._id);
+  }
+  const threadId = await createThread(ctx, components.agent, {
+    userId: a.actorId,
+  });
+  const saved = await saveMessage(ctx, components.agent, {
+    threadId,
+    userId: a.actorId,
+    message: { role: "user", content: a.prompt },
+  });
+  const { prompt, ...rest } = a;
+  const runId = await ctx.db.insert("agentRuns", {
+    ...rest,
+    accountConnectionSequence,
+    policyVersion: p.version,
+    policyFingerprint: await policyFingerprint(p),
+    threadId,
+    promptMessageId: saved.messageId,
+    generation: 1,
+    state: "ready",
+    executionKey: null,
+    deadline: Date.now() + p.maxDurationMs,
+    attempts: 0,
+    toolSteps: 0,
+    budgetIds,
+    createdAt: Date.now(),
+    errorCode: null,
+  });
+  await active(ctx, runId);
+  return runId;
+}
 export const create = internalMutation({
   args: {
     workspaceId: v.id("workspaces"),
@@ -173,80 +277,7 @@ export const create = internalMutation({
   },
   returns: v.id("agentRuns"),
   handler: async (ctx, a) => {
-    const p = await policy(ctx);
-    if (!p.purposes.includes(a.purpose))
-      throw new ConvexError("MODEL_PURPOSE_NOT_APPROVED");
-    if (
-      !a.prompt.trim() ||
-      new TextEncoder().encode(a.prompt).length >
-        Math.min(16000, p.maxInputTokens) ||
-      !a.promptVersion.trim() ||
-      a.promptVersion.length > 100 ||
-      a.sources.length > 10
-    )
-      throw new ConvexError("MODEL_INPUT_INVALID");
-    const account = await ctx.db.get(a.accountId);
-    requireReference(a.workspaceId, account);
-    const accountConnectionSequence =
-      account!.xEvidence?.connectionSequence ?? 0;
-    await authority(ctx, { ...a, accountConnectionSequence });
-    const budgetIds: Id<"aiBudgets">[] = [];
-    for (const [scope, key] of [
-      ["provider", "provider"],
-      ["workspace", `workspace:${a.workspaceId}`],
-      ["account", `account:${a.accountId}`],
-    ] as const) {
-      const b = await ctx.db
-        .query("aiBudgets")
-        .withIndex("by_key", (q) => q.eq("key", key))
-        .unique();
-      if (
-        !b ||
-        b.scope !== scope ||
-        (scope !== "provider" &&
-          (b.workspaceId !== a.workspaceId || !b.approvedBy)) ||
-        (scope === "account" && b.accountId !== a.accountId) ||
-        b.policyVersion !== p.version ||
-        b.currency !== p.currency ||
-        !b.purposes.includes(a.purpose) ||
-        b.expiresAt <= Date.now() ||
-        !bounded(b.limitMicros, 1e12) ||
-        !Number.isSafeInteger(b.heldMicros) ||
-        !Number.isSafeInteger(b.spentMicros) ||
-        b.heldMicros < 0 ||
-        b.spentMicros < 0
-      )
-        throw new ConvexError("MODEL_BUDGET_CONFIGURATION_REQUIRED");
-      budgetIds.push(b._id);
-    }
-    const threadId = await createThread(ctx, components.agent, {
-      userId: a.actorId,
-    });
-    const saved = await saveMessage(ctx, components.agent, {
-      threadId,
-      userId: a.actorId,
-      message: { role: "user", content: a.prompt },
-    });
-    const { prompt, ...rest } = a;
-    const runId = await ctx.db.insert("agentRuns", {
-      ...rest,
-      accountConnectionSequence,
-      policyVersion: p.version,
-      policyFingerprint: await policyFingerprint(p),
-      threadId,
-      promptMessageId: saved.messageId,
-      generation: 1,
-      state: "ready",
-      executionKey: null,
-      deadline: Date.now() + p.maxDurationMs,
-      attempts: 0,
-      toolSteps: 0,
-      budgetIds,
-      createdAt: Date.now(),
-      errorCode: null,
-    });
-    await active(ctx, runId);
-    return runId;
+    return createRun(ctx, a);
   },
 });
 export const claim = internalMutation({

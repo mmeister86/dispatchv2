@@ -1,3 +1,9 @@
+import {
+  ideaFields,
+  ideaVersionFields,
+  feedbackFields,
+  requestFields,
+} from "./content/ideaFields";
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
@@ -50,6 +56,26 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  ideas: defineTable(ideaFields)
+    .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"])
+    .index("by_workspaceId_and_actorId_and_operationKey", [
+      "workspaceId",
+      "actorId",
+      "operationKey",
+    ]),
+  ideaVersions: defineTable(ideaVersionFields).index("by_ideaId_and_number", [
+    "ideaId",
+    "number",
+  ]),
+  ideaFeedback: defineTable(feedbackFields).index("by_ideaId", ["ideaId"]),
+  contentRequests: defineTable(requestFields)
+    .index("by_runId", ["runId"])
+    .index("by_workspaceId_and_actorId_and_operationKey", [
+      "workspaceId",
+      "actorId",
+      "operationKey",
+    ])
+    .index("by_ideaId_and_createdAt", ["ideaId", "createdAt"]),
   aiPolicies: defineTable(policyFields).index("by_key", ["key"]),
   aiBudgets: defineTable(budgetFields).index("by_key", ["key"]),
   agentRuns: defineTable(runFields).index("by_workspaceId_and_createdAt", [

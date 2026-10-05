@@ -446,35 +446,43 @@ export async function event(
     createdAt: Date.now(),
   });
 }
+export async function createDraftTransaction(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  actorId: Id<"users">,
+  a: { content: Doc<"draftVersions">["content"]; source: string },
+) {
+  await validateContent(ctx, workspaceId, a.content);
+  if (a.source.length > 500) throw new ConvexError("INVALID_SOURCE");
+  const draftId = await ctx.db.insert("drafts", {
+    workspaceId: workspaceId,
+    revision: 1,
+    currentVersionId: null,
+    authorId: actorId,
+    source: a.source,
+    updatedAt: Date.now(),
+  });
+  const versionId = await ctx.db.insert("draftVersions", {
+    workspaceId: workspaceId,
+    draftId,
+    number: 1,
+    content: a.content,
+    mediaChecksums: await mediaSnapshot(ctx, a.content),
+    authorId: actorId,
+    createdAt: Date.now(),
+    reason: "Erster Entwurf",
+  });
+  await recordMediaReferences(ctx, workspaceId, versionId, a.content);
+  await ctx.db.patch(draftId, { currentVersionId: versionId });
+  await event(ctx, workspaceId, draftId, "DRAFT_CREATED", actorId);
+  return draftId;
+}
 export const create = workspaceMutation({
   args: { content, source: v.string() },
   returns: v.id("drafts"),
   handler: async (ctx, a) => {
     requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
-    await validateContent(ctx, ctx.workspace._id, a.content);
-    if (a.source.length > 500) throw new ConvexError("INVALID_SOURCE");
-    const draftId = await ctx.db.insert("drafts", {
-      workspaceId: ctx.workspace._id,
-      revision: 1,
-      currentVersionId: null,
-      authorId: ctx.user._id,
-      source: a.source,
-      updatedAt: Date.now(),
-    });
-    const versionId = await ctx.db.insert("draftVersions", {
-      workspaceId: ctx.workspace._id,
-      draftId,
-      number: 1,
-      content: a.content,
-      mediaChecksums: await mediaSnapshot(ctx, a.content),
-      authorId: ctx.user._id,
-      createdAt: Date.now(),
-      reason: "Erster Entwurf",
-    });
-    await recordMediaReferences(ctx, ctx.workspace._id, versionId, a.content);
-    await ctx.db.patch(draftId, { currentVersionId: versionId });
-    await event(ctx, ctx.workspace._id, draftId, "DRAFT_CREATED", ctx.user._id);
-    return draftId;
+    return createDraftTransaction(ctx, ctx.workspace._id, ctx.user._id, a);
   },
 });
 export const save = workspaceMutation({

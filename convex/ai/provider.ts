@@ -394,12 +394,17 @@ export const execute = internalAction({
         metadataExtractor: requestyMetadata,
         supportsStructuredOutputs: true,
       });
-      await generateForRun(
+      const output = await generateForRun(
         ctx,
         runId,
         executionKey,
         provider.chatModel(policy.model),
       );
+      await ctx.runMutation(internal.content.ideas.commitProposal, {
+        runId,
+        executionKey,
+        output,
+      });
       failed = false;
     } catch {
       /* Sanitized domain state only; provider errors and customer text never enter general logs. */
