@@ -15,6 +15,7 @@ import type * as http from "../http.js";
 import type * as lib_authorization from "../lib/authorization.js";
 import type * as lib_editorialFields from "../lib/editorialFields.js";
 import type * as media_assets from "../media/assets.js";
+import type * as media_binding from "../media/binding.js";
 import type * as media_cleanup from "../media/cleanup.js";
 import type * as media_cleanupR2 from "../media/cleanupR2.js";
 import type * as media_limits from "../media/limits.js";
@@ -40,6 +41,7 @@ declare const fullApi: ApiFromModules<{
   "lib/authorization": typeof lib_authorization;
   "lib/editorialFields": typeof lib_editorialFields;
   "media/assets": typeof media_assets;
+  "media/binding": typeof media_binding;
   "media/cleanup": typeof media_cleanup;
   "media/cleanupR2": typeof media_cleanupR2;
   "media/limits": typeof media_limits;
