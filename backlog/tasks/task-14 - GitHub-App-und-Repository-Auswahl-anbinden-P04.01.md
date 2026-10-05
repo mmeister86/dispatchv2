@@ -4,7 +4,7 @@ title: GitHub-App und Repository-Auswahl anbinden (P04.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 14:27'
+updated_date: '2026-10-05 14:38'
 labels:
   - p04
   - r2
@@ -79,4 +79,10 @@ Fresh SDD TASK14 implementation starts on master after finalTASK12.3 source77340
 Initialer Source-Freeze aa6e021 (Backend753a7e6) auf master: Implementer215/215 Unit-Checks (14 GitHub), Type/Format/Build/Bundle-/Diff-Prüfungen und tatsächliche Callback-/Settings-/Signals-Fixture PASS. Scope separates App-UserOAuth/S256, Mensch/App/Repository-Intersection, verschlüsselte unknown-safe Credentials, ausdrückliche Quellen/Purposes, aktuelle15min-Proofs und Source-/Discovery-Generationen. One-repo metadata:read-Installationstoken intern mit Source-Recheck; Hintergrundrechte unabhängig UI-Workspace. Native Cleanup, drei Tabellen/abgefragte Indizes inventarisiert, ungenutzter Validator/Index entfernt. Eager Guidance-Import-Bundle-Befund ohne Abschwächen vorhandener Prüfungen korrigiert. Bestehende EU-Dev final16:25:19 aktiviert,5174frei/5173erhalten. Fresh SPEC läuft, QUALITY erst nach PASS; ROOT Auth-/Onboarding-Regressionsprüfung läuft. Nachweis .docs/reviews/task-14-github-app-validation.md. Keine Live-/manuelle Abnahme, kein Done.
 
 ROOT unabhängig pnpm test:e2e:auth PASS: drei abgefangene Auth-Ziel-/Formularregressionen in4,4Sekunden; Fixture5175geschlossen, kein tatsächlicher Email-/Provider-Call. Fresh SPEC weiterhin in Prüfung, keine QUALITY-/Live-/manuelle Abnahme.
+
+Fresh SPEC NEEDS WORK aa6e021: ein P2-UI-Freshness-Befund. Date.now in gecachter Convex-Query invalidiert idle UI nicht; nach15min bleiben Settings Zugriff geprüft/Controls und Signals-Quellen sichtbar. Frische Backend-/Sourceguards sperren korrekt, kein Effekt-Autorisierungsbypass. Tatsächliche Browserrepro /tmp/dispatch-github-app-spec-expiry.browser.mjs mit16min-Clock FAIL1statt0Label. Originalimplementer korrigiert gemeinsame konkrete Deadline-Anzeige beiderViews ohne DB-Poller/Expirytable/generischenService und ergänzt permanenteRegression. Unabhängig15registrierte+5Negatives+OriginalBrowserPASS, sonst keine fehlende/übermäßige14Scope. SPEC-Re-review vorQUALITY; keinDone/Live-/manuellerNachweis.
+
+Expiry correction frozen c0944f0: shared concrete proof deadline/visibility hook updates idle Settings and Signals; dirty source context survives expiry/renewal, backend guards unchanged. Permanent actual browser expiry/renewal/visibility/StrictMode cleanup passes;216 full tests and type/lint/build/bundle/diff PASS, existing EU Dev activated16:33:57. Independent SPEC delta running before fresh QUALITY; no AC or status closure.
+
+Independent SPEC PASS c0944f0:16 targeted registered checks, actual expanded browser and separate staggered-expiry/renewal/remaining-source/unmount checks pass without DB updates/actions. Original idle-expiry P2 resolved; no missing/excessive scope. Fresh independent QUALITY now running. Provider/manual gates remain open; status In Progress.
 <!-- SECTION:NOTES:END -->

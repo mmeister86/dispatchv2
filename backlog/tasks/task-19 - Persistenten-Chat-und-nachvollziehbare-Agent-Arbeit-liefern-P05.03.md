@@ -4,7 +4,7 @@ title: Persistenten Chat und nachvollziehbare Agent-Arbeit liefern (P05.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 14:38'
 labels:
   - p05
   - r2
@@ -51,4 +51,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /agent. Account-scoped local conversations, simulated streaming/actions, stop/resume/error, linked draft proposal and mock step/cost states. Grenze: No Component threads, remote model streaming or token telemetry. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Read-only future backend preparation: actual AgentPage currently stores local conversations/messages, simulated330ms streaming/fixed answer/fabricated costs and fixed draft proposal. Future19 brief /tmp/dispatch-chat-implementation-brief.md requires official Agent-owned history plus authorized workspace/account/thread mapping, actual17 budgets/attempts and18 object tools, durable stop barrier with late evidence-only settlement, stable prompt references, safe explicit continuation, awaited real UI and truthful unavailable configuration. No19 implementation or AC evidence yet; final17/18 contracts must precede assignment.
 <!-- SECTION:NOTES:END -->
