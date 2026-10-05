@@ -26,7 +26,8 @@ import {
   TextLink,
 } from "@/components/shared";
 export function OverviewPage() {
-  const { state, createDraft } = useStore();
+  const { state, createDraft, events, notifications, hasMoreDrafts } =
+    useStore();
   const nav = useNavigate();
   const drafts = state.drafts.filter(
     (d) => d.workspaceId === state.activeWorkspaceId,
@@ -65,8 +66,8 @@ export function OverviewPage() {
         description="Deine Arbeit hat Geschichten. Gib ihnen einen guten Platz."
         actions={
           <Button
-            onClick={() => {
-              const id = createDraft("Unbenannter Entwurf");
+            onClick={async () => {
+              const id = await createDraft("Unbenannter Entwurf");
               if (id) nav(`/drafts/${id}`);
             }}
             disabled={state.role === "Viewer"}
@@ -76,6 +77,25 @@ export function OverviewPage() {
           </Button>
         }
       />
+      {!demoMode && (
+        <p className="mb-4 text-xs muted">
+          R1: Redaktion und Terminierung sind intern verfügbar. Live-Publishing
+          folgt mit der Provider-Integration.{" "}
+          {hasMoreDrafts
+            ? "Der Überblick zeigt die ersten 25 Entwürfe; weitere findest du in der Entwurfsliste."
+            : ""}
+        </p>
+      )}
+      {!demoMode && notifications.some((n) => n.state === "blocked") && (
+        <div role="alert" className="mb-4 surface p-4 text-sm">
+          Eine kritische Publishing-Benachrichtigung konnte nicht zugestellt
+          werden. E-Mail-Absender und Zugang fehlen oder die Zustellung ist
+          fehlgeschlagen.{" "}
+          <Link to="/settings/integrations" className="underline">
+            Konfiguration prüfen
+          </Link>
+        </div>
+      )}
       {!state.preferences.onboardingDone && (
         <div className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[#ddd9bc] bg-[#f0f0df] p-4 dark:bg-secondary">
           <div className="flex items-center gap-3">
@@ -349,6 +369,31 @@ export function OverviewPage() {
               </>
             )}
           </Section>
+          {!demoMode && (
+            <Section title="Technische Ereignisse">
+              {events.length ? (
+                events.slice(0, 5).map((e) => (
+                  <p key={e.id} className="text-xs muted">
+                    {{
+                      DRAFT_CREATED: "Entwurf erstellt",
+                      VERSION_SAVED: "Arbeitsversion gespeichert",
+                      VERSION_APPROVED: "Version freigegeben",
+                      APPROVAL_REVOKED: "Freigabe widerrufen",
+                      SCHEDULE_CREATED: "Termin geplant",
+                      SCHEDULE_MOVED: "Termin verschoben",
+                      SCHEDULE_CANCELLED: "Termin storniert",
+                      PUBLISHING_CLAIMED: "Publishing begonnen",
+                      PUBLISHER_NOT_CONFIGURED:
+                        "Publishing-Konfiguration fehlt",
+                    }[e.code] ?? "Redaktionelles Ereignis"}{" "}
+                    · {formatDate(e.at, state.preferences.timezone)}
+                  </p>
+                ))
+              ) : (
+                <p className="text-xs muted">Noch keine Ereignisse.</p>
+              )}
+            </Section>
+          )}
           <Section title="Ein ruhiger Überblick">
             <p className="text-xs leading-relaxed muted">
               {demoMode ? "Demo-Workspace" : "Workspace"} ·{" "}

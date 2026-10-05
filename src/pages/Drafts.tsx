@@ -52,6 +52,7 @@ import {
   formatDate,
 } from "@/components/shared";
 import { ScheduleDialog } from "@/components/ScheduleDialog";
+import { demoMode } from "@/lib/auth-client";
 import { useStore } from "@/lib/store";
 import {
   currentVersion,
@@ -99,7 +100,13 @@ const strategies = [
   ["promotional", "Angebot"],
 ];
 export function DraftsPage() {
-  const { state, createDraft } = useStore();
+  const {
+    state,
+    createDraft,
+    hasMoreDrafts,
+    loadMoreDrafts,
+    resourcesLimited,
+  } = useStore();
   const nav = useNavigate();
   const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState("");
@@ -140,8 +147,8 @@ export function DraftsPage() {
         actions={
           <Button
             disabled={!canEdit(state.role)}
-            onClick={() => {
-              const id = createDraft("Unbenannter Entwurf");
+            onClick={async () => {
+              const id = await createDraft("Unbenannter Entwurf");
               if (id) nav(`/drafts/${id}`);
             }}
           >
@@ -197,6 +204,12 @@ export function DraftsPage() {
           </select>
         </div>
       </div>
+      {resourcesLimited && (
+        <p role="status" className="mb-3 text-xs muted">
+          Die ersten 100 Accounts und Medien werden angezeigt. Weitere
+          Ressourcen benötigen eine paginierte Auswahl.
+        </p>
+      )}
       <div className="surface table-wrap">
         {drafts.length ? (
           <table className="data-table">
@@ -288,12 +301,31 @@ export function DraftsPage() {
           />
         )}
       </div>
+      {hasMoreDrafts && (
+        <Button className="mt-4" variant="outline" onClick={loadMoreDrafts}>
+          Weitere Entwürfe laden
+        </Button>
+      )}
     </div>
   );
 }
 export function ComposerPage() {
   const { id } = useParams();
-  const { state, mutate, createDraft } = useStore();
+  const {
+    state,
+    mutate,
+    createDraft,
+    saveDraft,
+    approveVersion,
+    revokeApproval,
+    replaceSchedule,
+    loadMoreVersions,
+    hasMoreVersions,
+    members,
+    addComment,
+    resolveComment,
+    assignDraft,
+  } = useStore();
   const nav = useNavigate();
   const draft = state.drafts.find(
     (d) => d.id === id && d.workspaceId === state.activeWorkspaceId,
@@ -325,6 +357,33 @@ export function ComposerPage() {
   const [verifyAttempts, setVerifyAttempts] = useState(0);
   const [variantOpen, setVariantOpen] = useState(false);
   const [variantAccount, setVariantAccount] = useState(state.activeAccountId);
+  const base = useRef<{
+    draftId: string;
+    revision: number;
+    text: string[];
+    title: string;
+    accountId: string;
+    mediaIds: string[];
+    pillar: string;
+    strategy: string;
+    media?: { assetId: string; alt: string }[];
+  } | null>(
+    draft && v
+      ? {
+          draftId: draft.id,
+          revision: draft.revision ?? v.number,
+          text: v.text,
+          title: draft.title,
+          accountId: draft.accountId,
+          mediaIds: v.mediaIds,
+          media: v.media,
+          pillar: draft.pillar,
+          strategy: draft.strategy,
+        }
+      : null,
+  );
+  const dirtyRef = useRef(false);
+  const [saving, setSaving] = useState(false);
   const identity = `${draft?.id}:${draft?.accountId}:${v?.number}`;
   useEffect(() => {
     setAnalysis("idle");
@@ -343,7 +402,7 @@ export function ComposerPage() {
     if (analysis === "loading") setAnalysis("idle");
   }, [v?.number]);
   useEffect(() => {
-    if (draft) {
+    if (draft && (!dirtyRef.current || base.current?.draftId !== draft.id)) {
       const ver = currentVersion(draft);
       setText(ver.text);
       setTitle(draft.title);
@@ -351,16 +410,74 @@ export function ComposerPage() {
       setMediaIds(ver.mediaIds);
       setPillar(draft.pillar);
       setStrategy(draft.strategy);
+      base.current = {
+        draftId: draft.id,
+        revision: draft.revision ?? ver.number,
+        text: ver.text,
+        title: draft.title,
+        accountId: draft.accountId,
+        mediaIds: ver.mediaIds,
+        media: ver.media,
+        pillar: draft.pillar,
+        strategy: draft.strategy,
+      };
     }
   }, [draft?.id, v?.number]);
   const dirty =
     !!draft &&
-    (JSON.stringify(text) !== JSON.stringify(v?.text) ||
-      title !== draft.title ||
-      accountId !== draft.accountId ||
-      JSON.stringify(mediaIds) !== JSON.stringify(v?.mediaIds) ||
-      pillar !== draft.pillar ||
-      strategy !== draft.strategy);
+    (JSON.stringify(text) !== JSON.stringify(base.current?.text) ||
+      title !== base.current?.title ||
+      accountId !== base.current?.accountId ||
+      JSON.stringify(mediaIds) !== JSON.stringify(base.current?.mediaIds) ||
+      pillar !== base.current?.pillar ||
+      strategy !== base.current?.strategy);
+  dirtyRef.current = dirty;
+  const conflict =
+    !!draft &&
+    base.current?.draftId === draft.id &&
+    base.current.revision !== (draft.revision ?? v?.number);
+  const saveBuffer = async () => {
+    if (!draft || saving) return false;
+    setSaving(true);
+    const revision = base.current?.revision ?? draft.revision ?? v!.number;
+    const ok = await saveDraft({
+      draftId: draft.id,
+      expectedRevision: revision,
+      title,
+      text,
+      accountId,
+      mediaIds,
+      media: base.current?.media ?? v?.media,
+      pillar,
+      strategy,
+    });
+    setSaving(false);
+    if (ok) {
+      base.current = {
+        draftId: draft.id,
+        revision: demoMode
+          ? revision +
+            (JSON.stringify(text) !== JSON.stringify(v?.text) ||
+            JSON.stringify(mediaIds) !== JSON.stringify(v?.mediaIds) ||
+            accountId !== draft.accountId
+              ? 1
+              : 0)
+          : revision + 1,
+        title,
+        text,
+        accountId,
+        mediaIds,
+        media: base.current?.media ?? v?.media,
+        pillar,
+        strategy,
+      };
+      dirtyRef.current = false;
+      toast.success(
+        "Neue Arbeitsversion gespeichert. Freigabe separat erforderlich.",
+      );
+    }
+    return ok;
+  };
   const allowTransition = useRef<string | undefined>(undefined);
   const blocker = useBlocker(({ currentLocation, nextLocation }) => {
     if (allowTransition.current === nextLocation.pathname) {
@@ -412,18 +529,7 @@ export function ComposerPage() {
     const saveKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "s") {
         e.preventDefault();
-        if (draft && dirty)
-          mutate(
-            (s) =>
-              editDraft(
-                s,
-                draft.id,
-                { title, accountId, pillar, strategy },
-                text,
-                mediaIds,
-              ),
-            "Neue Arbeitsversion gespeichert.",
-          );
+        if (draft && dirty) void saveBuffer();
       }
     };
     window.addEventListener("keydown", saveKey);
@@ -461,18 +567,7 @@ export function ComposerPage() {
   const activeMedia = state.media.filter(
     (m) => m.workspaceId === state.activeWorkspaceId,
   );
-  const save = () =>
-    mutate(
-      (s) =>
-        editDraft(
-          s,
-          draft.id,
-          { title, accountId, pillar, strategy },
-          text,
-          mediaIds,
-        ),
-      "Arbeitsversion gespeichert. Neue Inhalte benötigen eine neue Freigabe.",
-    );
+  const save = saveBuffer;
   const suggestions = [
     {
       title: "Mit der konkreten Beobachtung beginnen",
@@ -532,7 +627,7 @@ export function ComposerPage() {
         <span className="text-[11px] muted">
           {dirty
             ? "Ungespeicherte Änderungen"
-            : `Lokal gespeichert · Version ${v.number}`}
+            : `${demoMode ? "Lokal" : "Im Workspace"} gespeichert · Version ${v.number}`}
         </span>
       </div>
       <PageHeader
@@ -543,7 +638,7 @@ export function ComposerPage() {
           <>
             <Button
               variant="outline"
-              disabled={!dirty || !canWrite}
+              disabled={!dirty || !canWrite || saving}
               onClick={save}
             >
               <Save size={15} />
@@ -556,12 +651,10 @@ export function ComposerPage() {
                 !draftValid(draft, state.accounts, state.media) ||
                 approved(draft)
               }
-              onClick={() =>
-                mutate(
-                  (s) => approveDraft(s, draft.id),
-                  "Version für diesen Account freigegeben.",
-                )
-              }
+              onClick={async () => {
+                if (await approveVersion(draft))
+                  toast.success("Version für diesen Account freigegeben.");
+              }}
             >
               <ShieldCheck size={15} />
               {approved(draft)
@@ -571,6 +664,46 @@ export function ComposerPage() {
           </>
         }
       />
+      {conflict && (
+        <div role="alert" className="mb-4 surface p-4 text-sm">
+          Eine neuere Version wurde gespeichert. Deine lokalen Änderungen
+          bleiben erhalten. Vergleiche die Versionen und lade neu, um auf der
+          aktuellen Version weiterzuarbeiten.
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (
+                !dirty ||
+                window.confirm(
+                  "Lokale Änderungen verwerfen und aktuelle Version laden?",
+                )
+              ) {
+                setText(v.text);
+                setTitle(draft.title);
+                setAccountId(draft.accountId);
+                setMediaIds(v.mediaIds);
+                setPillar(draft.pillar);
+                setStrategy(draft.strategy);
+                base.current = {
+                  draftId: draft.id,
+                  revision: draft.revision ?? v.number,
+                  text: v.text,
+                  title: draft.title,
+                  accountId: draft.accountId,
+                  mediaIds: v.mediaIds,
+                  media: v.media,
+                  pillar: draft.pillar,
+                  strategy: draft.strategy,
+                };
+                dirtyRef.current = false;
+              }
+            }}
+          >
+            Aktuelle Version laden
+          </Button>
+        </div>
+      )}
       {scheduled.length > 0 && (
         <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-secondary/70 p-3 text-xs">
           <span>
@@ -585,6 +718,33 @@ export function ComposerPage() {
               diese Kanalvariante separat planen.
             </span>
           )}
+          {!demoMode &&
+            draft.approvals?.some(
+              (a) =>
+                a.version === scheduled[0].version &&
+                a.accountId === scheduled[0].accountId &&
+                !a.revokedAt,
+            ) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                disabled={!review}
+                onClick={async () => {
+                  const approval = draft.approvals!.find(
+                    (a) =>
+                      a.version === scheduled[0].version &&
+                      a.accountId === scheduled[0].accountId &&
+                      !a.revokedAt,
+                  )!;
+                  if (await revokeApproval({ ...draft, approval }))
+                    toast.success(
+                      "Freigabe des geplanten Snapshots widerrufen.",
+                    );
+                }}
+              >
+                Geplante v{scheduled[0].version} widerrufen
+              </Button>
+            )}
           {scheduled[0].version !== v.number && (
             <Button
               variant="outline"
@@ -595,12 +755,10 @@ export function ComposerPage() {
                 !review ||
                 scheduled[0].accountId !== draft.accountId
               }
-              onClick={() =>
-                mutate(
-                  (s) => replaceScheduledVersion(s, scheduled[0].id),
-                  "Geplanten Snapshot ausdrücklich durch die freigegebene Version ersetzt.",
-                )
-              }
+              onClick={async () => {
+                if (await replaceSchedule(draft, scheduled[0]))
+                  toast.success("Geplanten Snapshot ausdrücklich ersetzt.");
+              }}
             >
               Geplante Version ersetzen
             </Button>
@@ -666,31 +824,35 @@ export function ComposerPage() {
               >
                 Account ist getrennt.{" "}
                 <Link to="/settings/integrations" className="underline">
-                  Verbindung simuliert erneuern
+                  {demoMode
+                    ? "Verbindung simuliert erneuern"
+                    : "Account neu verbinden"}
                 </Link>
                 .
               </p>
             )}
-            {account?.channel === "LinkedIn" && text.length > 1 && (
-              <div
-                role="alert"
-                className="mb-4 rounded-md border border-primary/30 p-3 text-xs"
-              >
-                <p>
-                  LinkedIn benötigt einen Einzelbeitrag. Die übernommene
-                  Thread-Struktur bleibt erhalten, bis du sie bewusst
-                  zusammenführst.
-                </p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={!canWrite}
-                  onClick={() => setText((t) => [t.join("\n\n")])}
+            {(account?.capability?.maxThread === 1 ||
+              (demoMode && account?.channel === "LinkedIn")) &&
+              text.length > 1 && (
+                <div
+                  role="alert"
+                  className="mb-4 rounded-md border border-primary/30 p-3 text-xs"
                 >
-                  Thread als Einzelbeitrag zusammenführen
-                </Button>
-              </div>
-            )}
+                  <p>
+                    Dieser Account unterstützt einen Einzelbeitrag. Die
+                    übernommene Thread-Struktur bleibt erhalten, bis du sie
+                    bewusst zusammenführst.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={!canWrite}
+                    onClick={() => setText((t) => [t.join("\n\n")])}
+                  >
+                    Thread als Einzelbeitrag zusammenführen
+                  </Button>
+                </div>
+              )}
             <div className="mb-4 flex items-center justify-between">
               <span className="text-xs font-semibold">
                 {text.length > 1
@@ -702,8 +864,13 @@ export function ComposerPage() {
                 size="sm"
                 disabled={
                   !canWrite ||
-                  text.length >= 12 ||
-                  account?.channel === "LinkedIn"
+                  text.length >=
+                    (account?.capability?.maxThread ??
+                      (demoMode
+                        ? account?.channel === "LinkedIn"
+                          ? 1
+                          : 12
+                        : 100))
                 }
                 onClick={() => setText((t) => [...t, ""])}
               >
@@ -789,12 +956,16 @@ export function ComposerPage() {
                     </span>
                     <span
                       className={
-                        t.length > limits[account?.channel ?? "X"]
+                        t.length >
+                        (account?.capability?.maxText ??
+                          (demoMode ? limits[account?.channel ?? "X"] : 25000))
                           ? "text-destructive font-semibold"
                           : "muted"
                       }
                     >
-                      {t.length} / {limits[account?.channel ?? "X"]}
+                      {t.length} /{" "}
+                      {account?.capability?.maxText ??
+                        (demoMode ? limits[account?.channel ?? "X"] : 25000)}
                     </span>
                   </div>
                 </div>
@@ -804,7 +975,7 @@ export function ComposerPage() {
               <Button
                 variant="outline"
                 size="sm"
-                disabled={!canWrite}
+                disabled={!canWrite || !demoMode}
                 onClick={() => setMediaOpen(true)}
               >
                 <ImagePlus size={14} />
@@ -863,8 +1034,7 @@ export function ComposerPage() {
                 </select>
               </label>
               <p className="mt-2 mb-0 text-[10px] muted">
-                Manuelle Auswahl · Empfehlung im Demo-Beispiel: Wissen teilen,
-                mittlere Sicherheit. Du behältst die Entscheidung.
+                Manuelle Auswahl. Du behältst die Entscheidung.
               </p>
             </div>
           </Section>
@@ -906,12 +1076,12 @@ export function ComposerPage() {
                 <Button
                   variant="ghost"
                   disabled={!review}
-                  onClick={() =>
-                    mutate(
-                      (s) => revokeDraftApproval(s, draft.id),
-                      "Freigabe widerrufen. Zugehörige offene Termine storniert.",
-                    )
-                  }
+                  onClick={async () => {
+                    if (await revokeApproval(draft))
+                      toast.success(
+                        "Freigabe widerrufen. Neue Publishing-Claims gesperrt.",
+                      );
+                  }}
                 >
                   Freigabe widerrufen
                 </Button>
@@ -938,24 +1108,38 @@ export function ComposerPage() {
                 className="native-select"
                 value={draft.assignee ?? ""}
                 disabled={!canWrite}
-                onChange={(e) =>
-                  mutate(
-                    (s) => editDraft(s, draft.id, { assignee: e.target.value }),
-                    "Zuweisung gespeichert.",
-                  )
-                }
+                onChange={async (e) => {
+                  await assignDraft(draft, e.target.value);
+                }}
               >
                 <option value="">Nicht zugewiesen</option>
-                <option>Matthias</option>
-                <option>Lea</option>
-                <option>Jonas</option>
+                {demoMode ? (
+                  <>
+                    <option>Matthias</option>
+                    <option>Lea</option>
+                    <option>Jonas</option>
+                  </>
+                ) : (
+                  members.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} · {m.role}
+                    </option>
+                  ))
+                )}
               </select>
             </label>
+            {draft.commentsLimited && (
+              <p className="text-xs muted">
+                Die letzten 100 Kommentare werden angezeigt. Ältere Kommentare
+                bleiben gespeichert.
+              </p>
+            )}
             {draft.comments.map((c) => (
               <div key={c.id} className="mb-3 border-b pb-3">
                 <div className="flex items-center justify-between">
                   <strong className="text-xs">
-                    {c.author} · v{c.version}
+                    {members.find((m) => m.id === c.author)?.name ?? c.author} ·
+                    v{c.version}
                   </strong>
                   <Status tone={c.resolved ? "green" : "neutral"}>
                     {c.resolved ? "Erledigt" : "Offen"}
@@ -966,23 +1150,9 @@ export function ComposerPage() {
                   variant="ghost"
                   size="sm"
                   disabled={!canWrite}
-                  onClick={() =>
-                    mutate((s) => ({
-                      ...s,
-                      drafts: s.drafts.map((d) =>
-                        d.id === draft.id
-                          ? {
-                              ...d,
-                              comments: d.comments.map((x) =>
-                                x.id === c.id
-                                  ? { ...x, resolved: !x.resolved }
-                                  : x,
-                              ),
-                            }
-                          : d,
-                      ),
-                    }))
-                  }
+                  onClick={async () => {
+                    await resolveComment(c.id, c.resolved);
+                  }}
                 >
                   {c.resolved ? "Wieder öffnen" : "Als erledigt markieren"}
                 </Button>
@@ -1004,31 +1174,8 @@ export function ComposerPage() {
               size="sm"
               className="mt-3"
               disabled={!comment.trim() || !canWrite}
-              onClick={() => {
-                mutate(
-                  (s) => ({
-                    ...s,
-                    drafts: s.drafts.map((d) =>
-                      d.id === draft.id
-                        ? {
-                            ...d,
-                            comments: [
-                              ...d.comments,
-                              {
-                                id: uid("comment"),
-                                version: v.number,
-                                author: state.preferences.name,
-                                text: comment.trim(),
-                                resolved: false,
-                              },
-                            ],
-                          }
-                        : d,
-                    ),
-                  }),
-                  "Kommentar gespeichert. Keine Inhaltsfreigabe erteilt.",
-                );
-                setComment("");
+              onClick={async () => {
+                if (await addComment(draft, comment)) setComment("");
               }}
             >
               Kommentar senden
@@ -1041,7 +1188,11 @@ export function ComposerPage() {
               <TabsTrigger value="preview" className="flex-1">
                 Vorschau
               </TabsTrigger>
-              <TabsTrigger value="intelligence" className="flex-1">
+              <TabsTrigger
+                value="intelligence"
+                className="flex-1"
+                disabled={!demoMode}
+              >
                 Intelligence
               </TabsTrigger>
               <TabsTrigger value="versions" className="flex-1">
@@ -1416,6 +1567,13 @@ export function ComposerPage() {
                   Jede Inhaltsänderung bleibt nachvollziehbar. Wiederherstellung
                   erzeugt eine neue Arbeitsversion.
                 </p>
+                {draft.historyLimited && (
+                  <p role="status" className="text-xs muted">
+                    Die letzten 20 Versionen und geplante Snapshots werden
+                    angezeigt. Ältere Versionen bleiben im Backend unverändert
+                    erhalten.
+                  </p>
+                )}
                 <label>
                   <span className="field-label">Vergleich mit</span>
                   <select
@@ -1442,27 +1600,42 @@ export function ComposerPage() {
                   size="sm"
                   variant="outline"
                   disabled={!canWrite || dirty || compare === v.number}
-                  onClick={() => {
+                  onClick={async () => {
                     const old = draft.versions.find(
                       (ver) => ver.number === compare,
                     );
-                    if (old)
-                      mutate(
-                        (s) =>
-                          editDraft(
-                            s,
-                            draft.id,
-                            {},
-                            old.text,
-                            old.mediaIds,
-                            `Wiederherstellung v${compare}`,
-                          ),
+                    if (
+                      old &&
+                      (await saveDraft({
+                        draftId: draft.id,
+                        expectedRevision:
+                          base.current?.revision ?? draft.revision ?? v.number,
+                        title,
+                        accountId,
+                        pillar,
+                        strategy,
+                        text: old.text,
+                        mediaIds: old.mediaIds,
+                        media: old.media,
+                        reason: `Wiederherstellung v${compare}`,
+                      }))
+                    )
+                      toast.success(
                         "Als neue ungeprüfte Version wiederhergestellt.",
                       );
                   }}
                 >
                   Als neue Version übernehmen
                 </Button>
+                {hasMoreVersions && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadMoreVersions}
+                  >
+                    Ältere Versionen laden
+                  </Button>
+                )}
                 <div className="mt-5 space-y-4">
                   {[...draft.versions].reverse().map((ver) => (
                     <div key={ver.number} className="border-t pt-3">
@@ -1486,7 +1659,7 @@ export function ComposerPage() {
           <Button
             variant="ghost"
             size="sm"
-            disabled={!canWrite || dirty}
+            disabled={!demoMode || !canWrite || dirty}
             onClick={() => {
               setVariantAccount(
                 state.accounts.find(
@@ -1587,7 +1760,9 @@ export function ComposerPage() {
               Abbrechen
             </Button>
             <Button
-              disabled={!canWrite || variantAccount === draft.accountId}
+              disabled={
+                !demoMode || !canWrite || variantAccount === draft.accountId
+              }
               onClick={() => {
                 const did = uid("draft");
                 const packageId = draft.packageId ?? uid("package");
@@ -1655,7 +1830,9 @@ export function ComposerPage() {
                     onCheckedChange={(checked) => {
                       if (
                         checked &&
-                        (mediaIds.length >= 4 ||
+                        (mediaIds.length >=
+                          (account?.capability?.maxMedia ??
+                            (demoMode ? 4 : 20)) ||
                           (m.type === "video" && mediaIds.length > 0) ||
                           mediaIds.some(
                             (id) =>

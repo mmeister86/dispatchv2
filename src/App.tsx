@@ -190,7 +190,8 @@ function Logo() {
   );
 }
 function AppShell() {
-  const { state, setState, selectWorkspace, createDraft } = useStore();
+  const { state, setState, selectWorkspace, createDraft, selectAccount } =
+    useStore();
   const nav = useNavigate();
   const location = useLocation();
   const [mobile, setMobile] = useState(false);
@@ -434,8 +435,7 @@ function AppShell() {
               aria-label="Aktiver Account"
               value={state.activeAccountId}
               onChange={(e) => {
-                if (checkNavigate())
-                  setState((s) => ({ ...s, activeAccountId: e.target.value }));
+                if (checkNavigate()) selectAccount(e.target.value);
               }}
             >
               {!accounts.length && (
@@ -646,8 +646,7 @@ function AppShell() {
           <SheetHeader>
             <SheetTitle>Dein Posteingang</SheetTitle>
             <SheetDescription>
-              Wichtige Hinweise für deinen Workspace. Alle Zustände sind
-              simuliert.
+              Wichtige Hinweise für deinen Workspace.
             </SheetDescription>
           </SheetHeader>
           <div className="space-y-4 p-4">

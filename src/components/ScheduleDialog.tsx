@@ -12,7 +12,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useStore } from "@/lib/store";
-import { scheduleDraft, type Draft, type Schedule } from "@/lib/model";
+import { type Draft, type Schedule } from "@/lib/model";
 import { resolveLocalTime, localInput, defaultSchedule } from "@/lib/time";
 export function ScheduleDialog({
   draft,
@@ -25,7 +25,7 @@ export function ScheduleDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { state, mutate } = useStore();
+  const { state, planVersion } = useStore();
   const [value, setValue] = useState(
     schedule
       ? localInput(schedule.at, state.preferences.timezone)
@@ -33,7 +33,7 @@ export function ScheduleDialog({
   );
   const [chosen, setChosen] = useState("");
   const matches = resolveLocalTime(value, state.preferences.timezone);
-  const save = () => {
+  const save = async () => {
     if (!matches.length) {
       toast.error(
         "Diese lokale Uhrzeit existiert nicht. Bitte Datum und Sommerzeitwechsel prüfen.",
@@ -47,35 +47,12 @@ export function ScheduleDialog({
       return;
     }
     const at = chosen || matches[0];
-    const ok = mutate(
-      (s) => {
-        if (!schedule) return scheduleDraft(s, draft.id, at);
-        if (s.role !== "Owner" && s.role !== "Admin")
-          throw new Error("Terminänderungen benötigen Admin-Rechte.");
-        if (schedule.status === "published" || schedule.status === "cancelled")
-          throw new Error("Dieser Termin kann nicht mehr verschoben werden.");
-        if (new Date(at).getTime() <= Date.now())
-          throw new Error("Der neue Zeitpunkt muss in der Zukunft liegen.");
-        if (
-          s.schedules.some(
-            (x) =>
-              x.id !== schedule.id &&
-              x.accountId === schedule.accountId &&
-              x.at === at &&
-              x.status === "scheduled",
-          )
-        )
-          throw new Error("Dieser Slot ist bereits belegt.");
-        return {
-          ...s,
-          schedules: s.schedules.map((x) =>
-            x.id === schedule.id ? { ...x, at } : x,
-          ),
-        };
-      },
-      schedule
-        ? "Termin verschoben. Der Inhalts-Snapshot bleibt unverändert."
-        : "Freigegebene Version im Demo-Kalender geplant.",
+    const ok = await planVersion(
+      draft,
+      at,
+      state.preferences.timezone,
+      value,
+      schedule,
     );
     if (ok) onOpenChange(false);
   };

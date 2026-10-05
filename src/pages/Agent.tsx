@@ -157,7 +157,7 @@ export function AgentPage() {
     setSelected(id);
     setPrompt("");
   }
-  function draft() {
+  async function draft() {
     if (!conversation || !editable) return;
     if (
       conversation.draftId &&
@@ -166,7 +166,7 @@ export function AgentPage() {
       navigate(`/drafts/${conversation.draftId}`);
       return;
     }
-    const id = createDraft(
+    const id = await createDraft(
       "Eine kleine Entscheidung, ein besseres Produkt",
       "Heute haben wir einen Ablauf vereinfacht. Ein Klick weniger, ein klarer nächster Schritt.\n\nKleine Entscheidungen machen ein Produkt jeden Tag ein bisschen besser.",
       `Agent · Unterhaltung ${conversation.id} · Vorschlag v${conversation.version} · simuliert · Quelle: ${conversation.source ?? "Eigene Notiz"} · ${state.accounts.find((a) => a.id === account)?.channel}`,

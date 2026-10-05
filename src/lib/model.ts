@@ -1,7 +1,13 @@
 export type Channel = "X" | "LinkedIn" | "Bluesky" | "Mastodon";
 export type Role = "Owner" | "Admin" | "Editor" | "Viewer";
 export type PublishStatus =
-  "scheduled" | "published" | "failed" | "partial" | "uncertain" | "cancelled";
+  | "scheduled"
+  | "publishing"
+  | "published"
+  | "failed"
+  | "partial"
+  | "uncertain"
+  | "cancelled";
 export interface Account {
   id: string;
   workspaceId: string;
@@ -10,8 +16,17 @@ export interface Account {
   channel: Channel;
   connected: boolean;
   color: string;
+  capability?: {
+    maxText: number;
+    maxThread: number;
+    maxMedia: number;
+    mediaTypes: ("image" | "video")[];
+    publish: boolean;
+  };
 }
 export interface Version {
+  id?: string;
+  media?: { assetId: string; alt: string }[];
   number: number;
   text: string[];
   mediaIds: string[];
@@ -19,6 +34,8 @@ export interface Version {
   reason: string;
 }
 export interface Approval {
+  id?: string;
+  versionId?: string;
   version: number;
   accountId: string;
   at: string;
@@ -33,6 +50,9 @@ export interface Comment {
   resolved: boolean;
 }
 export interface Draft {
+  revision?: number;
+  historyLimited?: boolean;
+  commentsLimited?: boolean;
   id: string;
   workspaceId: string;
   title: string;
@@ -56,6 +76,12 @@ export interface Draft {
   }[];
 }
 export interface Schedule {
+  generation?: number;
+  versionId?: string;
+  timezone?: string;
+  localTime?: string;
+  draftTitle?: string;
+  durableState?: string;
   id: string;
   draftId: string;
   workspaceId: string;
@@ -145,14 +171,18 @@ export function draftValid(
     !!account?.connected &&
     account.workspaceId === draft.workspaceId &&
     v.text.length > 0 &&
-    (account.channel !== "LinkedIn" || v.text.length === 1) &&
-    v.mediaIds.length <= 4 &&
+    (account.capability
+      ? v.text.length <= account.capability.maxThread
+      : account.channel !== "LinkedIn" || v.text.length === 1) &&
+    v.mediaIds.length <= (account.capability?.maxMedia ?? 4) &&
     (!v.mediaIds.some(
       (id) => media.find((m) => m.id === id)?.type === "video",
     ) ||
       v.mediaIds.length === 1) &&
     v.text.every(
-      (t) => t.trim().length > 0 && t.length <= limits[account.channel],
+      (t) =>
+        t.trim().length > 0 &&
+        t.length <= (account.capability?.maxText ?? limits[account.channel]),
     ) &&
     v.mediaIds.every((id) =>
       media.some(
@@ -160,7 +190,10 @@ export function draftValid(
           m.id === id &&
           m.workspaceId === draft.workspaceId &&
           m.status === "ready" &&
-          m.alt.trim().length > 0,
+          (v.media?.find((ref) => ref.assetId === id)?.alt ?? m.alt).trim()
+            .length > 0 &&
+          (!account.capability ||
+            account.capability.mediaTypes.includes(m.type)),
       ),
     )
   );

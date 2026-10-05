@@ -113,8 +113,8 @@ export function IdeasPage() {
                 variant="outline"
                 size="sm"
                 disabled={!write}
-                onClick={() => {
-                  const id = ideaToDraft(i);
+                onClick={async () => {
+                  const id = await ideaToDraft(i);
                   if (id) nav(`/drafts/${id}`);
                 }}
               >

@@ -12,7 +12,7 @@
     "test:e2e:auth": "playwright test --config playwright.auth.config.ts",
     "preview": "vite preview --host 127.0.0.1",
     "test:bundle": "node tests/bundle-security.mjs",
-    "lint": "prettier --check \"convex/**/*.ts\" convex/tsconfig.json src/lib/auth-client.ts src/lib/navigation.ts src/lib/store.tsx src/main.tsx src/App.tsx src/pages/Public.tsx src/pages/Settings.tsx src/pages/Overview.tsx tests/foundation.test.ts tests/navigation.test.ts tests/auth.real-browser.ts tests/bundle-security.mjs playwright.config.ts playwright.auth.config.ts .github/workflows/ci.yml"
+    "lint": "prettier --check \"convex/**/*.ts\" convex/tsconfig.json src/lib/auth-client.ts src/lib/navigation.ts src/lib/store.tsx src/main.tsx src/App.tsx src/pages/Public.tsx src/pages/Settings.tsx src/pages/Overview.tsx src/pages/Drafts.tsx src/pages/Calendar.tsx src/components/ScheduleDialog.tsx src/lib/model.ts src/lib/editorial-mapping.ts tests/editorial.test.ts tests/editorial-mapping.test.ts tests/foundation.test.ts tests/navigation.test.ts tests/auth.real-browser.ts tests/bundle-security.mjs playwright.config.ts playwright.auth.config.ts .github/workflows/ci.yml"
   },
   "dependencies": {
     "@convex-dev/better-auth": "0.12.5",

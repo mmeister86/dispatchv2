@@ -451,7 +451,7 @@ export function RepurposePage() {
     setHandoffs({});
     setReviewed([]);
   }
-  function handoff(accountId: string) {
+  async function handoff(accountId: string) {
     if (!editable || !permission || !sourceText) return;
     const key = `${accountId}-${sections.join("-")}`;
     const existing = handoffs[key];
@@ -465,7 +465,7 @@ export function RepurposePage() {
       account.channel === "LinkedIn"
         ? `${sourceText}\n\nWelche kleine Entscheidung hat dein Produkt zuletzt einfacher gemacht?`
         : sourceText.slice(0, 250);
-    const id = createDraft(
+    const id = await createDraft(
       `Repurpose · ${account.channel} · Gute Produkte respektieren Zeit`,
       text,
       `Repurpose → ${kind === "url" ? input : "Eigener Text: " + input.slice(0, 300)} · feste Demo-Auszüge (${sections.join(", ")}) · Nutzungsrecht vom Nutzer bestätigt · separater Review erforderlich`,

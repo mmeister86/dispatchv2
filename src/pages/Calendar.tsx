@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
@@ -28,6 +28,13 @@ import {
   formatDate,
 } from "@/components/shared";
 import { ScheduleDialog } from "@/components/ScheduleDialog";
+import type { FunctionReturnType } from "convex/server";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import { demoMode } from "@/lib/auth-client";
+import { scheduleView } from "@/lib/editorial-mapping";
+import { resolveLocalTime } from "@/lib/time";
 import { useStore } from "@/lib/store";
 import {
   canApprove,
@@ -52,8 +59,36 @@ function addDate(d: Date, offset: number) {
   x.setDate(x.getDate() + offset);
   return x;
 }
+type CalendarRange = { start: number; end: number; account: string };
 export function CalendarPage() {
-  const { state, mutate } = useStore();
+  return demoMode ? <CalendarContent /> : <ConnectedCalendarPage />;
+}
+function ConnectedCalendarPage() {
+  const { state } = useStore();
+  const [range, setRange] = useState<CalendarRange | null>(null);
+  const remote = useQuery(
+    api.editorial.calendar,
+    state.activeWorkspaceId && range
+      ? {
+          workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+          start: range.start,
+          end: range.end,
+          ...(range.account !== "all"
+            ? { accountId: range.account as Id<"socialAccounts"> }
+            : {}),
+        }
+      : "skip",
+  );
+  return <CalendarContent remote={remote} onRange={setRange} />;
+}
+function CalendarContent({
+  remote,
+  onRange,
+}: {
+  remote?: FunctionReturnType<typeof api.editorial.calendar>;
+  onRange?: (range: CalendarRange) => void;
+}) {
+  const { state, mutate, cancelSchedule } = useStore();
   const [params, setParams] = useSearchParams();
   const view = params.get("view") ?? "week";
   const [anchor, setAnchor] = useState(new Date());
@@ -69,14 +104,32 @@ export function CalendarPage() {
   const days = Array.from({ length: view === "month" ? 42 : 7 }, (_, i) =>
     addDate(view === "month" ? gridStart : monday, i),
   );
-  const schedules = state.schedules.filter(
+  const rangeStart = resolveLocalTime(
+    `${dateKey(days[0].toISOString(), zone)}T00:00`,
+    zone,
+  )[0];
+  const rangeEnd = resolveLocalTime(
+    `${dateKey(addDate(days.at(-1)!, 1).toISOString(), zone)}T00:00`,
+    zone,
+  )[0];
+  const start = rangeStart ? Date.parse(rangeStart) : 0,
+    end = rangeEnd ? Date.parse(rangeEnd) : 0;
+  useEffect(() => {
+    if (start && end) onRange?.({ start, end, account });
+  }, [start, end, account, onRange]);
+  const calendarSchedules = demoMode
+    ? state.schedules
+    : (remote?.rows ?? []).map((row) =>
+        scheduleView(row.schedule, row.version),
+      );
+  const schedules = calendarSchedules.filter(
     (s) =>
       s.workspaceId === state.activeWorkspaceId &&
       (account === "all" || s.accountId === account) &&
       (status === "all" || s.status === status),
   );
   const currentDetail = detail
-    ? state.schedules.find((s) => s.id === detail.id)
+    ? calendarSchedules.find((s) => s.id === detail.id)
     : undefined;
   const draft = currentDetail
     ? state.drafts.find((d) => d.id === currentDetail.draftId)
@@ -96,6 +149,13 @@ export function CalendarPage() {
   const weekCaption = `${new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" }).format(days[0])} – ${new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short", year: "numeric" }).format(days[6])}`;
   return (
     <div className="fade-in">
+      {!demoMode && (
+        <p className="mb-4 text-xs muted">
+          R1: Redaktion und Planung sind intern verfügbar. Live-Publishing wird
+          mit der Provider-Integration aktiviert.{" "}
+          {remote === undefined ? "Termine werden geladen …" : ""}
+        </p>
+      )}
       <PageHeader
         eyebrow="Redaktionsplanung"
         title="Platz für gute Geschichten"
@@ -109,6 +169,20 @@ export function CalendarPage() {
           </Button>
         }
       />
+      {remote?.tooDense && (
+        <div role="alert" className="mb-4 surface p-4 text-sm">
+          Dieser Zeitraum enthält mehr als 100 Termine. Es werden keine Termine
+          ausgeblendet: Bitte auf Wochenansicht wechseln oder einen einzelnen
+          Account auswählen.
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setParams({ view: "week" })}
+          >
+            Woche anzeigen
+          </Button>
+        </div>
+      )}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Button
@@ -220,7 +294,9 @@ export function CalendarPage() {
                   </div>
                   <AccountIcon channel={a?.channel ?? "X"} />
                   <div className="min-w-0 flex-1">
-                    <strong className="block text-sm">{d?.title}</strong>
+                    <strong className="block text-sm">
+                      {d?.title ?? s.draftTitle}
+                    </strong>
                     <span className="mt-1 block text-[11px] muted">
                       {a?.handle} · v{s.version} ·{" "}
                       {s.text.length > 1
@@ -319,7 +395,7 @@ export function CalendarPage() {
                             </span>
                           </div>
                           <h3 className="mb-2 text-[11px] leading-snug">
-                            {d?.title}
+                            {d?.title ?? s.draftTitle}
                           </h3>
                           <div className="mb-2">
                             <PublishBadge status={s.status} />
@@ -380,7 +456,9 @@ export function CalendarPage() {
       >
         <DialogContent className="sm:max-w-xl">
           <DialogHeader>
-            <DialogTitle>{draft?.title ?? "Termindetails"}</DialogTitle>
+            <DialogTitle>
+              {draft?.title ?? currentDetail?.draftTitle ?? "Termindetails"}
+            </DialogTitle>
             <DialogDescription>
               Geplanter Snapshot · v{currentDetail?.version} ·{" "}
               {currentDetail ? formatDate(currentDetail.at, zone) : ""} · {zone}
@@ -425,8 +503,9 @@ export function CalendarPage() {
                     </p>
                     {i < currentDetail.publishedCount && (
                       <span className="mt-2 block text-[10px] muted">
-                        Externe Demo-ID: demo-{currentDetail.id}-{i + 1}. Kein
-                        echter öffentlicher Post.
+                        {demoMode
+                          ? `Externe Demo-ID: demo-${currentDetail.id}-${i + 1}. Kein echter öffentlicher Post.`
+                          : "Vom Provider bestätigter Beitrag."}
                       </span>
                     )}
                   </div>
@@ -443,7 +522,7 @@ export function CalendarPage() {
                     Termin verschieben
                   </Button>
                 )}
-                {currentDetail.status === "uncertain" && (
+                {demoMode && currentDetail.status === "uncertain" && (
                   <Button
                     disabled={!editable}
                     onClick={() =>
@@ -470,111 +549,104 @@ export function CalendarPage() {
                     Demo-Abgleich durchführen
                   </Button>
                 )}
-                {(currentDetail.status === "partial" ||
-                  currentDetail.status === "failed") && (
-                  <>
-                    <Button
-                      disabled={!canResumeSnapshot(state, currentDetail)}
-                      onClick={() =>
-                        mutate(
-                          (s) => resumeSnapshot(s, currentDetail.id),
-                          "Nur offene Beiträge des unveränderten Snapshots im Demo-Zustand fortgesetzt.",
-                        )
-                      }
-                    >
-                      <ArrowRight size={14} />
-                      Offene Beiträge simulieren
-                    </Button>
-                    {!canResumeSnapshot(state, currentDetail) && snapshot && (
-                      <>
-                        <Button
-                          variant="outline"
-                          disabled={
-                            !editable ||
-                            !draftValid(snapshot, state.accounts, state.media)
-                          }
-                          onClick={() =>
-                            mutate(
-                              (s) => approveSnapshot(s, currentDetail.id),
-                              "Genau diese Snapshot-Version erneut freigegeben. Arbeitsversion bleibt unverändert.",
-                            )
-                          }
-                        >
-                          Snapshot v{currentDetail.version} erneut freigeben
-                        </Button>
-                        {(["editorial", "brand"] as const)
-                          .filter(
-                            (stage) =>
-                              snapshot.reviewPolicy?.[stage] &&
-                              !snapshot.reviews?.some(
-                                (r) =>
-                                  r.stage === stage &&
-                                  r.version === currentDetail.version &&
-                                  r.accountId === currentDetail.accountId,
-                              ),
+                {demoMode &&
+                  (currentDetail.status === "partial" ||
+                    currentDetail.status === "failed") && (
+                    <>
+                      <Button
+                        disabled={!canResumeSnapshot(state, currentDetail)}
+                        onClick={() =>
+                          mutate(
+                            (s) => resumeSnapshot(s, currentDetail.id),
+                            "Nur offene Beiträge des unveränderten Snapshots im Demo-Zustand fortgesetzt.",
                           )
-                          .map((stage) => (
-                            <Button
-                              key={stage}
-                              variant="outline"
-                              size="sm"
-                              disabled={!editable}
-                              onClick={() =>
-                                mutate(
-                                  (s) => ({
-                                    ...s,
-                                    drafts: s.drafts.map((d) =>
-                                      d.id === currentDetail.draftId
-                                        ? {
-                                            ...d,
-                                            reviews: [
-                                              ...(d.reviews ?? []),
-                                              {
-                                                version: currentDetail.version,
-                                                accountId:
-                                                  currentDetail.accountId,
-                                                stage,
-                                                by: s.preferences.name,
-                                                at: now(),
-                                              },
-                                            ],
-                                          }
-                                        : d,
-                                    ),
-                                  }),
-                                  "Snapshot-Review bestätigt. Keine Freigabe erteilt.",
-                                )
-                              }
-                            >
-                              {stage === "editorial"
-                                ? "Redaktionellen"
-                                : "Marken-"}
-                              Snapshot-Review bestätigen
-                            </Button>
-                          ))}
-                      </>
-                    )}
-                  </>
-                )}
+                        }
+                      >
+                        <ArrowRight size={14} />
+                        Offene Beiträge simulieren
+                      </Button>
+                      {!canResumeSnapshot(state, currentDetail) && snapshot && (
+                        <>
+                          <Button
+                            variant="outline"
+                            disabled={
+                              !editable ||
+                              !draftValid(snapshot, state.accounts, state.media)
+                            }
+                            onClick={() =>
+                              mutate(
+                                (s) => approveSnapshot(s, currentDetail.id),
+                                "Genau diese Snapshot-Version erneut freigegeben. Arbeitsversion bleibt unverändert.",
+                              )
+                            }
+                          >
+                            Snapshot v{currentDetail.version} erneut freigeben
+                          </Button>
+                          {(["editorial", "brand"] as const)
+                            .filter(
+                              (stage) =>
+                                snapshot.reviewPolicy?.[stage] &&
+                                !snapshot.reviews?.some(
+                                  (r) =>
+                                    r.stage === stage &&
+                                    r.version === currentDetail.version &&
+                                    r.accountId === currentDetail.accountId,
+                                ),
+                            )
+                            .map((stage) => (
+                              <Button
+                                key={stage}
+                                variant="outline"
+                                size="sm"
+                                disabled={!editable}
+                                onClick={() =>
+                                  mutate(
+                                    (s) => ({
+                                      ...s,
+                                      drafts: s.drafts.map((d) =>
+                                        d.id === currentDetail.draftId
+                                          ? {
+                                              ...d,
+                                              reviews: [
+                                                ...(d.reviews ?? []),
+                                                {
+                                                  version:
+                                                    currentDetail.version,
+                                                  accountId:
+                                                    currentDetail.accountId,
+                                                  stage,
+                                                  by: s.preferences.name,
+                                                  at: now(),
+                                                },
+                                              ],
+                                            }
+                                          : d,
+                                      ),
+                                    }),
+                                    "Snapshot-Review bestätigt. Keine Freigabe erteilt.",
+                                  )
+                                }
+                              >
+                                {stage === "editorial"
+                                  ? "Redaktionellen"
+                                  : "Marken-"}
+                                Snapshot-Review bestätigen
+                              </Button>
+                            ))}
+                        </>
+                      )}
+                    </>
+                  )}
                 {!["published", "cancelled", "uncertain"].includes(
                   currentDetail.status,
                 ) && (
                   <Button
                     variant="ghost"
                     disabled={!editable}
-                    onClick={() => {
-                      mutate(
-                        (s) => ({
-                          ...s,
-                          schedules: s.schedules.map((x) =>
-                            x.id === currentDetail.id
-                              ? { ...x, status: "cancelled" }
-                              : x,
-                          ),
-                        }),
-                        "Weitere Ausführung storniert. Bereits veröffentlichte Beiträge bleiben erhalten.",
-                      );
-                      setDetail(null);
+                    onClick={async () => {
+                      if (await cancelSchedule(currentDetail)) {
+                        setDetail(null);
+                      }
                     }}
                   >
                     Termin stornieren
@@ -590,10 +662,30 @@ export function CalendarPage() {
           )}
         </DialogContent>
       </Dialog>
-      {moving && state.drafts.find((d) => d.id === moving.draftId) && (
+      {moving && (
         <ScheduleDialog
           key={moving.id}
-          draft={state.drafts.find((d) => d.id === moving.draftId)!}
+          draft={
+            state.drafts.find((d) => d.id === moving.draftId) ?? {
+              id: moving.draftId,
+              workspaceId: moving.workspaceId,
+              title: moving.draftTitle ?? "Geplanter Beitrag",
+              accountId: moving.accountId,
+              pillar: "",
+              strategy: "generic",
+              comments: [],
+              versions: [
+                {
+                  id: moving.versionId,
+                  number: moving.version,
+                  text: moving.text,
+                  mediaIds: moving.mediaIds,
+                  createdAt: moving.at,
+                  reason: "Geplanter Snapshot",
+                },
+              ],
+            }
+          }
           schedule={moving}
           open
           onOpenChange={(o) => {
