@@ -364,6 +364,16 @@ function videoTracks(count: number, sampleCounts?: number[]) {
     original.subarray(896),
   ]);
 }
+function excessiveDependencies() {
+  const bytes = readFileSync(
+    new URL("../../tests/fixtures/media-h264.mp4", import.meta.url),
+  );
+  const box = mp4Box("sdtp", Buffer.alloc(4 + 20001));
+  for (const offset of [32, 148, 284, 369, 433])
+    bytes.writeUInt32BE(bytes.readUInt32BE(offset) + box.length, offset);
+  bytes.writeUInt32BE(bytes.readUInt32BE(892) + box.length, 892);
+  return Buffer.concat([bytes.subarray(0, 896), box, bytes.subarray(896)]);
+}
 function duplicateSampleTable() {
   const original = readFileSync(
     new URL("../../tests/fixtures/media-h264.mp4", import.meta.url),
@@ -391,6 +401,7 @@ test("whole-file track/sample budgets and duplicate sample tables reject before 
       videoTracks(3),
       videoTracks(2, [10001, 10000]),
       duplicateSampleTable(),
+      excessiveDependencies(),
     ]) {
       parse.mockClear();
       expect(() => validateBytes(bytes, bytes.length, "video/mp4")).toThrow(
