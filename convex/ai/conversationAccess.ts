@@ -6,6 +6,7 @@ import {
   requireReference,
   requireRole,
 } from "../lib/authorization";
+import { generationAttempt } from "./accounting";
 import { currentIdeaSource } from "../content/ideas";
 export async function conversationAccess(
   ctx: QueryCtx | MutationCtx,
@@ -38,6 +39,26 @@ export async function historyAuthority(
     await currentIdeaSource(ctx, c.workspaceId, version!.source);
   }
 }
+export async function operationRun(
+  ctx: QueryCtx | MutationCtx,
+  op: Doc<"chatOperations">,
+  id: Id<"agentRuns">,
+) {
+  const r = await ctx.db.get(id);
+  if (
+    !r ||
+    r.workspaceId !== op.workspaceId ||
+    r.accountId !== op.accountId ||
+    r.actorId !== op.actorId ||
+    r.conversationId !== op.conversationId ||
+    r.chatOperationId !== op._id ||
+    r.promptMessageId !== op.promptMessageId ||
+    r.purpose !== "chat" ||
+    !op.runIds.includes(id)
+  )
+    throw new ConvexError("MODEL_ATTEMPT_OWNER_INVALID");
+  return r;
+}
 export async function conversationAuthority(
   ctx: QueryCtx | MutationCtx,
   r: Doc<"agentRuns">,
@@ -60,16 +81,19 @@ export async function conversationAuthority(
     throw new ConvexError("CHAT_RUN_CHANGED");
   for (const previous of op.runIds)
     if (previous !== r._id) {
-      for (const state of ["sent", "unknown"] as const)
-        if (
-          await ctx.db
-            .query("aiAttempts")
-            .withIndex("by_runId_and_state", (q) =>
-              q.eq("runId", previous).eq("state", state),
-            )
-            .first()
-        )
+      const owner = await operationRun(ctx, op, previous);
+      for (const state of ["sent", "unknown"] as const) {
+        const receipt = await ctx.db
+          .query("aiAttempts")
+          .withIndex("by_runId_and_state", (q) =>
+            q.eq("runId", previous).eq("state", state),
+          )
+          .first();
+        if (receipt) {
+          await generationAttempt(ctx, receipt, owner);
           throw new ConvexError("CHAT_USAGE_RECONCILIATION_REQUIRED");
+        }
+      }
     }
   await historyAuthority(ctx, c);
 }

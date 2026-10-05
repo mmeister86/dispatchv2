@@ -1,4 +1,4 @@
-import { changeLiability } from "./accounting";
+import { changeLiability, generationAttempt } from "./accounting";
 import {
   conversationAccess,
   conversationAuthority,
@@ -368,25 +368,28 @@ export const fund = internalMutation({
     const { r, p } = await active(ctx, a.runId, a.generation, a.executionKey);
     if (r.state !== "running" || !a.key || a.key.length > 100)
       throw new ConvexError("MODEL_RUN_INACTIVE");
-    if (
-      await ctx.db
-        .query("aiAttempts")
-        .withIndex("by_runId_and_key", (q) =>
-          q.eq("runId", r._id).eq("key", a.key),
-        )
-        .unique()
-    )
-      throw new ConvexError("MODEL_ATTEMPT_ALREADY_ADMITTED");
-    for (const state of ["sent", "unknown"] as const)
-      if (
-        await ctx.db
-          .query("aiAttempts")
-          .withIndex("by_runId_and_state", (q) =>
-            q.eq("runId", r._id).eq("state", state),
-          )
-          .first()
+    const old = await ctx.db
+      .query("aiAttempts")
+      .withIndex("by_runId_and_key", (q) =>
+        q.eq("runId", r._id).eq("key", a.key),
       )
+      .unique();
+    if (old) {
+      await generationAttempt(ctx, old, r);
+      throw new ConvexError("MODEL_ATTEMPT_ALREADY_ADMITTED");
+    }
+    for (const state of ["sent", "unknown"] as const) {
+      const previous = await ctx.db
+        .query("aiAttempts")
+        .withIndex("by_runId_and_state", (q) =>
+          q.eq("runId", r._id).eq("state", state),
+        )
+        .first();
+      if (previous) {
+        await generationAttempt(ctx, previous, r);
         throw new ConvexError("MODEL_PREVIOUS_ATTEMPT_UNRESOLVED");
+      }
+    }
     if (r.attempts >= p.maxAttempts)
       throw new ConvexError("MODEL_ATTEMPT_LIMIT");
     const reservedMicros = tokenEstimate(
@@ -441,17 +444,13 @@ export const settle = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
-    const attempt = await ctx.db.get(a.attemptId);
-    if (!attempt) throw new ConvexError("MODEL_ATTEMPT_NOT_FOUND");
-    if (
-      attempt.owner === "native-search" ||
-      attempt.researchOrderId ||
-      attempt.logicalIntent
-    )
-      throw new ConvexError("MODEL_ATTEMPT_OWNER_INVALID");
-    const ownerRun = await ctx.db.get(attempt.runId);
-    if (!ownerRun || ownerRun.workspaceId !== attempt.workspaceId)
-      throw new ConvexError("MODEL_ATTEMPT_OWNER_INVALID");
+    const receipt = await ctx.db.get(a.attemptId);
+    if (!receipt) throw new ConvexError("MODEL_ATTEMPT_NOT_FOUND");
+    const attempt = await generationAttempt(
+      ctx,
+      receipt,
+      receipt.runId ? await ctx.db.get(receipt.runId) : null,
+    );
     const newCostEvidence =
       (!!a.reportedCostInvalid && !attempt.reportedCostInvalid) ||
       (a.reportedCost !== undefined &&
@@ -725,10 +724,13 @@ export const recent = query({
       .take(10);
     return Promise.all(
       runs.map(async (r) => {
-        const attempts = await ctx.db
+        const receipts = await ctx.db
           .query("aiAttempts")
           .withIndex("by_runId_and_key", (q) => q.eq("runId", r._id))
           .take(10);
+        const attempts = await Promise.all(
+          receipts.map((a) => generationAttempt(ctx, a, r)),
+        );
         const observed = attempts.filter(
           (attempt) => attempt.estimatedMicros !== null,
         );

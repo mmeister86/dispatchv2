@@ -1094,3 +1094,56 @@ test("delayed generic-stop abort cannot abort the newer actual continuation", as
   expect(streams.some((s) => s.streamId === streamId)).toBe(true);
   expect((await f.t.run((ctx) => ctx.db.get(resumed)))!.state).toBe("ready");
 });
+
+test.each(["status", "resume", "continuation-authority"] as const)(
+  "chat %s rejects a foreign account receipt before usage shortcuts",
+  async (consumer) => {
+    const f = await fixture(),
+      runId = await f.send(),
+      control = await claim(f, runId);
+    const attemptId = await f.t.mutation(internal.ai.runs.fund, {
+      ...control,
+      key: "chat-owned-receipt",
+    });
+    await f.t.mutation(internal.ai.runs.settle, {
+      attemptId,
+      inputTokens: 10,
+      outputTokens: 20,
+      errorCode: null,
+    });
+    await f.signed.mutation(api.ai.conversations.stop, f.target);
+    const op = (await f.t.run((ctx) =>
+      ctx.db.query("chatOperations").first(),
+    ))!;
+    const resumeArgs = {
+      ...f.target,
+      operationId: op._id,
+      expectedRunId: runId,
+    };
+    const next =
+      consumer === "continuation-authority"
+        ? await f.signed.mutation(api.ai.conversations.resume, resumeArgs)
+        : null;
+    await f.t.run(async (ctx) => {
+      const receipt = (await ctx.db.get(attemptId))!;
+      const { _id, _creationTime, ...account } = (await ctx.db.get(
+        f.accountId,
+      ))!;
+      const foreignAccount = await ctx.db.insert("socialAccounts", account);
+      await ctx.db.patch(receipt.budgetIds[2], { accountId: foreignAccount });
+      await ctx.db.patch(attemptId, { state: "unknown" });
+    });
+    if (consumer === "status")
+      await expect(
+        f.signed.query(api.ai.conversations.status, f.target),
+      ).rejects.toThrow("MODEL_ATTEMPT_OWNER_INVALID");
+    if (consumer === "resume")
+      await expect(
+        f.signed.mutation(api.ai.conversations.resume, resumeArgs),
+      ).rejects.toThrow("MODEL_ATTEMPT_OWNER_INVALID");
+    if (next)
+      await expect(claim(f, next)).rejects.toThrow(
+        "MODEL_ATTEMPT_OWNER_INVALID",
+      );
+  },
+);

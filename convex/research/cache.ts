@@ -8,7 +8,12 @@ import {
 } from "../lib/authorization";
 import { changeLiability } from "../ai/accounting";
 import { sha256 } from "../lib/crypto";
-import { orderAuthority, sourceAuthority, provider } from "./providerAccess";
+import {
+  orderAuthority,
+  sourceAuthority,
+  provider,
+  nativeAttempt,
+} from "./providerAccess";
 import { operation, delivered, resultState } from "./providerFields";
 export const begin = internalMutation({
   args: { orderId: v.id("researchOrders"), generation: v.number(), operation },
@@ -57,6 +62,16 @@ export const begin = internalMutation({
       )
       .unique();
     if (prior) {
+      if (!prior.attemptId)
+        throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+      const owned = await nativeAttempt(ctx, prior.attemptId);
+      if (
+        owned.c._id !== prior._id ||
+        owned.t.workspaceId !== o.workspaceId ||
+        owned.t.accountId !== o.accountId ||
+        owned.t.operation !== a.operation
+      )
+        throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
       if (prior.state !== "completed" && prior.state !== "empty")
         throw new ConvexError("RESEARCH_FILL_UNRESOLVED");
       if (prior.expiresAt > Date.now()) {
@@ -98,6 +113,15 @@ export const begin = internalMutation({
         q.eq("logicalIntent", logicalIntent),
       )
       .take(101);
+    for (const receipt of historical) {
+      const { t } = await nativeAttempt(ctx, receipt._id);
+      if (
+        t.workspaceId !== o.workspaceId ||
+        t.accountId !== o.accountId ||
+        t.operation !== a.operation
+      )
+        throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+    }
     if (
       historical.length > 100 ||
       historical.some((x) => x.state === "sent" || x.state === "unknown")
@@ -109,6 +133,11 @@ export const begin = internalMutation({
         q.eq("researchOrderId", o._id),
       )
       .take(31);
+    for (const receipt of attempts) {
+      const { t } = await nativeAttempt(ctx, receipt._id);
+      if (t.researchOrderId !== o._id)
+        throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+    }
     if (
       attempts.length > 30 ||
       attempts.some((x) => x.owner !== "native-search")
@@ -208,34 +237,7 @@ export const settle = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
-    const t = await ctx.db.get(a.attemptId);
-    if (!t || t.owner !== "native-search" || t.runId !== undefined)
-      throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
-    const o = await ctx.db.get(t.researchOrderId),
-      c = await ctx.db.get(t.cacheId);
-    const captured =
-      o?.native?.approvals[o.native.operations.indexOf(t.operation)];
-    if (
-      !captured ||
-      captured.policyId !== t.policyId ||
-      captured.fingerprint !== t.policyFingerprint ||
-      captured.budgetIds.length !== t.budgetIds.length ||
-      captured.budgetIds.some((id, i) => id !== t.budgetIds[i]) ||
-      c?.operation !== t.operation ||
-      c?.generation !== t.generation ||
-      o?.config.cap?.currency !== t.currency ||
-      !o?.native ||
-      !c ||
-      o.workspaceId !== t.workspaceId ||
-      o.accountId !== t.accountId ||
-      c.orderId !== o._id ||
-      c.attemptId !== t._id ||
-      c.logicalIntent !== t.logicalIntent ||
-      c.policyId !== t.policyId ||
-      c.policyFingerprint !== t.policyFingerprint ||
-      !o.native.operations.includes(t.operation)
-    )
-      throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+    const { t, o } = await nativeAttempt(ctx, a.attemptId);
     const knownUnits =
       a.units !== null &&
       Number.isSafeInteger(a.units) &&

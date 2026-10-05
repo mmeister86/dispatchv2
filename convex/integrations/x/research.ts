@@ -56,7 +56,7 @@ export async function searchX(
       meta?: { next_token?: unknown; result_count?: unknown };
     };
     if (b.data === undefined && b.meta?.result_count === 0) b.data = [];
-    if (b.errors || !Array.isArray(b.data) || b.data.length > 10)
+    if (!Array.isArray(b.data) || b.data.length > 10)
       throw new SearchError("RESEARCH_RESPONSE_INVALID");
     for (const value of b.data) {
       if (!value || typeof value !== "object")
@@ -143,6 +143,8 @@ export async function searchX(
         });
       }
     }
+    // Validate delivered public items before retaining partial output; mixed errors leave cost uncertain.
+    if (b.errors) throw new SearchError("RESEARCH_RESPONSE_INVALID");
     result.units = recent ? b.data.length : 1;
     result.truncated = !!b.meta?.next_token;
     result.state = result.sources.length ? "completed" : "empty";

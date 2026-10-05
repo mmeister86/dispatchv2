@@ -23,7 +23,12 @@ import {
   requireReference,
   requireRole,
 } from "../lib/authorization";
-import { conversationAccess, historyAuthority } from "./conversationAccess";
+import { generationAttempt } from "./accounting";
+import {
+  conversationAccess,
+  historyAuthority,
+  operationRun,
+} from "./conversationAccess";
 import { active, createRun } from "./runs";
 import { currentIdeaSource, insertIdea } from "../content/ideas";
 import { currentContext } from "../integrations/github/contextAccess";
@@ -272,17 +277,21 @@ export const messages = query({
   },
 });
 async function priorUnresolved(ctx: MutationCtx, op: Doc<"chatOperations">) {
-  for (const id of op.runIds)
-    for (const state of ["sent", "unknown"] as const)
-      if (
-        await ctx.db
-          .query("aiAttempts")
-          .withIndex("by_runId_and_state", (q) =>
-            q.eq("runId", id).eq("state", state),
-          )
-          .first()
-      )
+  for (const id of op.runIds) {
+    const owner = await operationRun(ctx, op, id);
+    for (const state of ["sent", "unknown"] as const) {
+      const receipt = await ctx.db
+        .query("aiAttempts")
+        .withIndex("by_runId_and_state", (q) =>
+          q.eq("runId", id).eq("state", state),
+        )
+        .first();
+      if (receipt) {
+        await generationAttempt(ctx, receipt, owner);
         throw new ConvexError("CHAT_USAGE_RECONCILIATION_REQUIRED");
+      }
+    }
+  }
 }
 export const send = mutation({
   args: {
@@ -633,25 +642,26 @@ export const status = query({
       .take(50);
     const rows = await Promise.all(
       operations.map(async (op) => {
+        if (
+          op.workspaceId !== c.workspaceId ||
+          op.accountId !== c.accountId ||
+          op.actorId !== c.actorId
+        )
+          throw new ConvexError("MODEL_ATTEMPT_OWNER_INVALID");
         const runs = await Promise.all(
-          [...op.runIds].reverse().map(async (id) => ({
-            r: (await ctx.db.get(id))!,
-            attempts: (
-              await ctx.db
-                .query("aiAttempts")
-                .withIndex("by_runId_and_key", (q) => q.eq("runId", id))
-                .take(10)
-            ).map((attempt) => {
-              if (
-                attempt.owner === "native-search" ||
-                attempt.researchOrderId ||
-                attempt.logicalIntent ||
-                attempt.workspaceId !== c.workspaceId
-              )
-                throw new ConvexError("MODEL_ATTEMPT_OWNER_INVALID");
-              return attempt;
-            }),
-          })),
+          [...op.runIds].reverse().map(async (id) => {
+            const r = await operationRun(ctx, op, id);
+            const receipts = await ctx.db
+              .query("aiAttempts")
+              .withIndex("by_runId_and_key", (q) => q.eq("runId", id))
+              .take(10);
+            return {
+              r,
+              attempts: await Promise.all(
+                receipts.map((a) => generationAttempt(ctx, a, r)),
+              ),
+            };
+          }),
         );
         const operationUsagePending = runs.some((x) =>
           x.attempts.some((a) => a.state !== "settled"),

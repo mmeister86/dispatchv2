@@ -718,6 +718,9 @@ try {
     window.profile = {
       ...window.profile,
       profile: { ...window.profile.profile, revision: 4 },
+      version: {
+        config: { ...window.profile.version.config, languages: ["en"] },
+      },
     };
     window.render();
   });
@@ -804,6 +807,39 @@ try {
   await expect(
     page.getByRole("link", { name: "Actual delivered source" }),
   ).toHaveCount(0);
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      version: {
+        config: { ...window.profile.version.config, languages: ["en"] },
+      },
+    };
+    window.render();
+  });
+  await expect(page.getByRole("combobox").last()).toHaveValue("en");
+  await expect(page.getByLabel("Suchanfrage", { exact: true })).toHaveValue(
+    "Buffered public query",
+  );
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      version: {
+        config: { ...window.profile.version.config, languages: ["en", "de"] },
+      },
+    };
+    window.render();
+  });
+  await page.getByRole("combobox").last().selectOption("en");
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      version: {
+        config: { ...window.profile.version.config, languages: ["de", "en"] },
+      },
+    };
+    window.render();
+  });
+  await expect(page.getByRole("combobox").last()).toHaveValue("en");
   await page
     .getByLabel("Suchanfrage", { exact: true })
     .fill("New explicit query");
@@ -812,6 +848,7 @@ try {
     .click();
   const nextNative = await page.evaluate(() => window.commands[2].args);
   expect(nextNative.expectedRevision).toBe(4);
+  expect(nextNative.language).toBe("en");
   expect(nextNative.operationKey).not.toBe(nativeIntent.operationKey);
   await page.evaluate(() => {
     window.role = "Viewer";

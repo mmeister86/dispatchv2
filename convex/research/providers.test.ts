@@ -876,3 +876,260 @@ test("actual Requesty estimate above bound stays liable, fences the order and ca
     await f.t.run((ctx) => ctx.db.query("researchSources").collect()),
   ).toEqual([]);
 });
+
+test("independent mixed X response retains delivered source and Web with durable reserves", async () => {
+  const f = await fixture();
+  const id = await f.start();
+  let count = 0;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+    count++;
+    expect(init?.redirect).toBe("error");
+    const ats = await f.t.run((ctx) => ctx.db.query("aiAttempts").collect());
+    const sent = ats.filter((a) => a.state === "sent");
+    expect(sent).toHaveLength(1);
+    expect(sent[0].budgetIds).toHaveLength(3);
+    for (const bid of sent[0].budgetIds)
+      expect(
+        (await f.t.run((ctx) => ctx.db.get(bid)))?.heldMicros,
+      ).toBeGreaterThanOrEqual(100);
+    if (String(url).includes("api.x.com"))
+      return Response.json({
+        data: [
+          {
+            id: "123456789",
+            text: "Actually delivered public source",
+            created_at: new Date(Date.now() - 60000).toISOString(),
+          },
+          {
+            id: "123456788",
+            text: "PROTECTED_NEVER_RETAIN",
+            protected: true,
+            created_at: new Date(Date.now() - 60000).toISOString(),
+          },
+          {
+            id: "123456787",
+            text: "WITHHELD_NEVER_RETAIN",
+            withheld: { country_codes: ["DE"] },
+            created_at: new Date(Date.now() - 60000).toISOString(),
+          },
+        ],
+        errors: [
+          {
+            title: "Partial upstream failure",
+            detail: "Another source could not be expanded",
+          },
+        ],
+      });
+    return streamResponse();
+  });
+  const rows = await execute(f, id);
+  expect(count).toBe(2);
+  expect(rows[1].state).toBe("completed");
+  expect(rows[0].usagePending).toBe(true);
+  expect(rows[0].sources).toHaveLength(1);
+  expect(rows[0].state).toBe("partial");
+  const xAttempt = (
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())
+  ).find((a) => a.owner === "native-search" && a.operation === "x-recent")!;
+  expect(xAttempt).toMatchObject({
+    state: "unknown",
+    heldMicros: 100,
+    estimatedMicros: null,
+  });
+  for (const id of xAttempt.budgetIds)
+    expect((await f.t.run((ctx) => ctx.db.get(id)))!.heldMicros).toBe(100);
+});
+test("independent recent generation projection rejects native receipt with run alias", async () => {
+  const f = await fixture(["web-search"]);
+  const id = await f.start();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+  await execute(f, id);
+  await f.t.run(async (ctx) => {
+    const attempt = (await ctx.db.query("aiAttempts").collect())[0];
+    const run = await ctx.db.insert("agentRuns", {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      actorId: f.userId,
+      purpose: "research",
+      policyVersion: "test",
+      promptVersion: "test",
+      policyFingerprint: "test",
+      accountConnectionSequence: 0,
+      sources: [],
+      threadId: "synthetic",
+      promptMessageId: "synthetic",
+      generation: 1,
+      state: "completed",
+      executionKey: null,
+      deadline: Date.now(),
+      attempts: 0,
+      toolSteps: 0,
+      budgetIds: [],
+      createdAt: Date.now(),
+      errorCode: null,
+    });
+    await ctx.db.patch(attempt._id, { runId: run });
+  });
+  await expect(
+    f.signed.query(api.ai.runs.recent, { workspaceId: f.workspaceId }),
+  ).rejects.toThrow("MODEL_ATTEMPT_OWNER_INVALID");
+});
+
+test.each([
+  "workspace",
+  "account",
+  "cache-workspace",
+  "budget-ref",
+  "run-alias",
+  "currency",
+] as const)(
+  "native projection and settled shortcut reject %s receipt corruption",
+  async (corruption) => {
+    const f = await fixture(["web-search"]),
+      id = await f.start();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+    await execute(f, id);
+    const foreign = await f.signed.mutation(api.workspaces.create, {
+      name: "Foreign native receipt",
+      description: "",
+    });
+    const attemptId = await f.t.run(async (ctx) => {
+      const t = (await ctx.db.query("aiAttempts").first())!;
+      if (t.owner !== "native-search")
+        throw new Error("native fixture expected");
+      if (corruption === "workspace")
+        await ctx.db.patch(t._id, { workspaceId: foreign });
+      if (corruption === "account") {
+        const { _id, _creationTime, ...account } = (await ctx.db.get(
+          f.accountId,
+        ))!;
+        const other = await ctx.db.insert("socialAccounts", account);
+        await ctx.db.patch(t._id, { accountId: other });
+      }
+      if (corruption === "currency")
+        await ctx.db.patch(t.budgetIds[2], { currency: "EUR" });
+      if (corruption === "cache-workspace")
+        await ctx.db.patch(t.cacheId, { workspaceId: foreign });
+      if (corruption === "budget-ref")
+        await ctx.db.patch(t._id, { budgetIds: t.budgetIds.slice(0, 2) });
+      if (corruption === "run-alias") {
+        const runId = await ctx.db.insert("agentRuns", {
+          workspaceId: f.workspaceId,
+          accountId: f.accountId,
+          actorId: f.userId,
+          purpose: "research",
+          policyVersion: "synthetic-v1",
+          promptVersion: "test",
+          policyFingerprint: "test",
+          accountConnectionSequence: 0,
+          sources: [],
+          threadId: "synthetic",
+          promptMessageId: "synthetic",
+          generation: 1,
+          state: "completed",
+          executionKey: null,
+          deadline: Date.now(),
+          attempts: 0,
+          toolSteps: 0,
+          budgetIds: [],
+          createdAt: Date.now(),
+          errorCode: null,
+        });
+        await ctx.db.patch(t._id, { runId });
+      }
+      return t._id;
+    });
+    await expect(
+      f.signed.query(api.research.native.results, {
+        workspaceId: f.workspaceId,
+        orderId: id,
+      }),
+    ).rejects.toThrow("RESEARCH_ATTEMPT_OWNER_INVALID");
+    await expect(
+      f.t.mutation(internal.research.cache.settle, {
+        attemptId,
+        units: null,
+        reportedCost: 0.00002,
+        costInvalid: false,
+        errorCode: null,
+      }),
+    ).rejects.toThrow("RESEARCH_ATTEMPT_OWNER_INVALID");
+  },
+);
+
+test.each(["historical-unknown", "cumulative-cap"] as const)(
+  "native %s funding rejects malformed ownership before hold or cap shortcuts",
+  async (consumer) => {
+    const f = await fixture(
+      consumer === "historical-unknown"
+        ? ["web-search"]
+        : ["x-recent", "web-search"],
+    );
+    const first = await f.start();
+    let orderId = first;
+    if (consumer === "historical-unknown") {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue(
+        new Response("", { status: 503 }),
+      );
+      await execute(f, first);
+      orderId = await f.start("new-native-wrapper");
+    } else {
+      await f.t.mutation(internal.research.cache.begin, {
+        orderId: first,
+        generation: 1,
+        operation: "x-recent",
+      });
+    }
+    const foreign = await f.signed.mutation(api.workspaces.create, {
+      name: "Foreign hold",
+      description: "",
+    });
+    await f.t.run(async (ctx) => {
+      const t = (await ctx.db.query("aiAttempts").first())!;
+      await ctx.db.patch(t._id, { workspaceId: foreign });
+    });
+    await expect(
+      f.t.mutation(internal.research.cache.begin, {
+        orderId,
+        generation: 1,
+        operation: "web-search",
+      }),
+    ).rejects.toThrow("RESEARCH_ATTEMPT_OWNER_INVALID");
+    const attempts = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0].heldMicros).toBe(100);
+  },
+);
+
+test("unknown native currency corruption retains all original holds", async () => {
+  const f = await fixture(["web-search"]),
+    id = await f.start();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response("", { status: 503 }),
+  );
+  await execute(f, id);
+  const receipt = (await f.t.run((ctx) => ctx.db.query("aiAttempts").first()))!;
+  await f.t.run((ctx) =>
+    ctx.db.patch(receipt.budgetIds[2], { currency: "EUR" }),
+  );
+  await expect(
+    f.t.mutation(internal.research.cache.settle, {
+      attemptId: receipt._id,
+      units: null,
+      reportedCost: 0.00002,
+      costInvalid: false,
+      errorCode: null,
+    }),
+  ).rejects.toThrow("RESEARCH_ATTEMPT_OWNER_INVALID");
+  expect(await f.t.run((ctx) => ctx.db.get(receipt._id))).toMatchObject({
+    state: "unknown",
+    heldMicros: 100,
+  });
+  for (const bid of receipt.budgetIds)
+    expect(await f.t.run((ctx) => ctx.db.get(bid))).toMatchObject({
+      heldMicros: 100,
+      spentMicros: 0,
+    });
+});

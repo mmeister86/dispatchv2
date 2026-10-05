@@ -89,6 +89,16 @@ describe("funded model runs through official Agent", () => {
       (await import("../_generated/api")).api.ai.runs.stop,
       { workspaceId: f.workspaceId, runId },
     );
+    await f.t.run(async (ctx) => {
+      for (const b of await ctx.db.query("aiBudgets").collect())
+        await ctx.db.patch(b._id, {
+          expiresAt: 0,
+          purposes: [],
+          approvedBy: undefined,
+          policyVersion: "withdrawn",
+          limitMicros: 0,
+        });
+    });
     await Promise.all([settle(10, 20), settle(10, 20)]);
     const attempt = (await f.t.run((ctx) => ctx.db.get(attemptId)))!;
     expect(attempt.state).toBe("settled");
@@ -335,4 +345,130 @@ describe("funded model runs through official Agent", () => {
       ),
     ).toEqual([]);
   });
+});
+
+test.each([
+  "workspace",
+  "provider-grant",
+  "workspace-grant",
+  "account-grant",
+  "budget-alias",
+  "run-alias",
+  "currency",
+] as const)(
+  "generation receipt %s corruption is rejected before projections, duplicate and terminal shortcuts",
+  async (corruption) => {
+    const f = await modelFixture(),
+      runId = await f.create(),
+      executionKey = "owner-guard";
+    await f.t.mutation(internal.ai.runs.claim, { runId, executionKey });
+    const args = { runId, generation: 1, executionKey, key: "owner-receipt" };
+    const attemptId = await f.t.mutation(internal.ai.runs.fund, args);
+    await f.t.mutation(internal.ai.runs.settle, {
+      attemptId,
+      inputTokens: 10,
+      outputTokens: 20,
+      errorCode: null,
+    });
+    const foreign = await f.signed.mutation(api.workspaces.create, {
+      name: "Foreign receipt",
+      description: "",
+    });
+    await f.t.run(async (ctx) => {
+      const attempt = (await ctx.db.get(attemptId))!;
+      if (corruption === "workspace")
+        await ctx.db.patch(attemptId, { workspaceId: foreign });
+      if (corruption === "currency")
+        await ctx.db.patch(attempt.budgetIds[2], { currency: "EUR" });
+      if (corruption === "provider-grant")
+        await ctx.db.patch(attempt.budgetIds[0], { workspaceId: foreign });
+      if (corruption === "workspace-grant")
+        await ctx.db.patch(attempt.budgetIds[1], { workspaceId: foreign });
+      if (corruption === "account-grant") {
+        const budget = await ctx.db.get(attempt.budgetIds[2]);
+        const { _id, _creationTime, ...account } = (await ctx.db.get(
+          f.accountId,
+        ))!;
+        const otherAccount = await ctx.db.insert("socialAccounts", account);
+        await ctx.db.patch(budget!._id, { accountId: otherAccount });
+      }
+      if (corruption === "budget-alias") {
+        const { _id, _creationTime, ...budget } = (await ctx.db.get(
+          attempt.budgetIds[2],
+        ))!;
+        const otherBudget = await ctx.db.insert("aiBudgets", budget);
+        await ctx.db.patch(attemptId, {
+          budgetIds: [...attempt.budgetIds.slice(0, 2), otherBudget],
+        });
+      }
+      if (corruption === "run-alias") {
+        const { _id, _creationTime, ...r } = (await ctx.db.get(runId))!;
+        const otherRun = await ctx.db.insert("agentRuns", {
+          ...r,
+          budgetIds: [],
+        });
+        await ctx.db.patch(attemptId, { runId: otherRun });
+      }
+    });
+    await expect(
+      f.signed.query(api.ai.runs.recent, { workspaceId: f.workspaceId }),
+    ).rejects.toThrow("MODEL_ATTEMPT_OWNER_INVALID");
+    await expect(
+      f.t.mutation(internal.ai.runs.settle, {
+        attemptId,
+        inputTokens: 10,
+        outputTokens: 20,
+        errorCode: null,
+      }),
+    ).rejects.toThrow("MODEL_ATTEMPT_OWNER_INVALID");
+    if (corruption === "workspace" || corruption === "budget-alias") {
+      await expect(f.t.mutation(internal.ai.runs.fund, args)).rejects.toThrow(
+        "MODEL_ATTEMPT_OWNER_INVALID",
+      );
+      await f.t.run((ctx) => ctx.db.patch(attemptId, { state: "unknown" }));
+      await expect(
+        f.t.mutation(internal.ai.runs.fund, { ...args, key: "different-key" }),
+      ).rejects.toThrow("MODEL_ATTEMPT_OWNER_INVALID");
+    }
+  },
+);
+
+test("unknown generation currency corruption retains all original holds", async () => {
+  const f = await modelFixture(),
+    runId = await f.create(),
+    executionKey = "late-currency";
+  await f.t.mutation(internal.ai.runs.claim, { runId, executionKey });
+  const attemptId = await f.t.mutation(internal.ai.runs.fund, {
+    runId,
+    generation: 1,
+    executionKey,
+    key: "currency-hold",
+  });
+  await f.t.mutation(internal.ai.runs.settle, {
+    attemptId,
+    inputTokens: null,
+    outputTokens: null,
+    errorCode: null,
+  });
+  const receipt = (await f.t.run((ctx) => ctx.db.get(attemptId)))!;
+  await f.t.run((ctx) =>
+    ctx.db.patch(receipt.budgetIds[2], { currency: "EUR" }),
+  );
+  await expect(
+    f.t.mutation(internal.ai.runs.settle, {
+      attemptId,
+      inputTokens: 10,
+      outputTokens: 20,
+      errorCode: null,
+    }),
+  ).rejects.toThrow("MODEL_ATTEMPT_OWNER_INVALID");
+  expect(await f.t.run((ctx) => ctx.db.get(attemptId))).toMatchObject({
+    state: "unknown",
+    heldMicros: receipt.heldMicros,
+  });
+  for (const id of receipt.budgetIds)
+    expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({
+      heldMicros: receipt.heldMicros,
+      spentMicros: 0,
+    });
 });

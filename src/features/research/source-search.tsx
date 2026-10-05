@@ -52,6 +52,9 @@ export function SourceSearch({
   const [query, setQuery] = useState(""),
     [language, setLanguage] = useState(config.languages[0]),
     [operations, setOperations] = useState<Operation[]>(["web-search"]);
+  const effectiveLanguage = config.languages.includes(language)
+    ? language
+    : config.languages[0];
   const clock = useGithubSourceProofClock(
     (results ?? []).flatMap((r) =>
       r.sources.map((s) => ({
@@ -89,7 +92,7 @@ export function SourceSearch({
           Suchsprache
           <select
             className="w-full border rounded p-2"
-            value={language}
+            value={effectiveLanguage}
             onChange={(e) => setLanguage(e.target.value)}
           >
             {config.languages.map((l) => (
@@ -130,7 +133,7 @@ export function SourceSearch({
               profileId,
               expectedRevision: revision,
               query,
-              language,
+              language: effectiveLanguage,
               operations: [...operations],
             };
             let id: Id<"researchOrders">;

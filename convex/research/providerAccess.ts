@@ -220,3 +220,60 @@ export async function sourceAuthority(
   await grants(ctx, p, captured.budgetIds);
   return { p, captured };
 }
+
+// Validate the immutable filling-owner graph, independently of current source permission or grant expiry.
+export async function nativeAttempt(ctx: Ctx, attemptId: Id<"aiAttempts">) {
+  const t = await ctx.db.get(attemptId);
+  if (!t || t.owner !== "native-search" || t.runId !== undefined)
+    throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+  const o = await ctx.db.get(t.researchOrderId),
+    c = await ctx.db.get(t.cacheId);
+  const captured =
+    o?.native?.approvals[o.native.operations.indexOf(t.operation)];
+  if (
+    !captured ||
+    captured.policyId !== t.policyId ||
+    captured.fingerprint !== t.policyFingerprint ||
+    t.budgetIds.length !== 3 ||
+    new Set(t.budgetIds).size !== 3 ||
+    captured.budgetIds.length !== t.budgetIds.length ||
+    captured.budgetIds.some((id, i) => id !== t.budgetIds[i]) ||
+    c?.operation !== t.operation ||
+    c?.generation !== t.generation ||
+    o?.config.cap?.currency !== t.currency ||
+    !o?.native ||
+    !c ||
+    o.workspaceId !== t.workspaceId ||
+    o.accountId !== t.accountId ||
+    c.workspaceId !== t.workspaceId ||
+    c.accountId !== t.accountId ||
+    c.orderId !== o._id ||
+    c.attemptId !== t._id ||
+    c.logicalIntent !== t.logicalIntent ||
+    c.policyId !== t.policyId ||
+    c.policyFingerprint !== t.policyFingerprint ||
+    !o.native.operations.includes(t.operation)
+  )
+    throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+  for (const [i, id] of t.budgetIds.entries()) {
+    const b = await ctx.db.get(id);
+    if (
+      !b ||
+      b.currency !== t.currency ||
+      (i === 0 &&
+        (b.scope !== "provider" ||
+          b.workspaceId !== undefined ||
+          b.accountId !== undefined)) ||
+      (i === 1 &&
+        (b.scope !== "workspace" ||
+          b.workspaceId !== t.workspaceId ||
+          b.accountId !== undefined)) ||
+      (i === 2 &&
+        (b.scope !== "account" ||
+          b.workspaceId !== t.workspaceId ||
+          b.accountId !== t.accountId))
+    )
+      throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+  }
+  return { t, o, c };
+}

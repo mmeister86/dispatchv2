@@ -14,6 +14,7 @@ import {
   fingerprint,
   orderAuthority,
   sourceAuthority,
+  nativeAttempt,
 } from "./providerAccess";
 import {
   operation,
@@ -291,9 +292,24 @@ export const results = workspaceQuery({
       o!.native.operations.map(async (op, i) => {
         const cacheId = o!.native!.cacheIds[i],
           cache = cacheId ? await ctx.db.get(cacheId) : null;
-        const attempt = cache?.attemptId
-          ? await ctx.db.get(cache.attemptId)
+        if (
+          cache &&
+          (!cache.attemptId ||
+            cache.workspaceId !== o!.workspaceId ||
+            cache.accountId !== o!.accountId ||
+            cache.operation !== op)
+        )
+          throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+        const owned = cache?.attemptId
+          ? await nativeAttempt(ctx, cache.attemptId)
           : null;
+        if (
+          owned &&
+          (owned.c._id !== cache!._id ||
+            (!o!.native!.outcomes[i].cacheHit && owned.o._id !== o!._id))
+        )
+          throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+        const attempt = owned?.t ?? null;
         let currentPolicy: Doc<"researchSourcePolicies"> | null = null;
         let allowed = readable;
         let proofUntil = cache?.expiresAt ?? 0;
