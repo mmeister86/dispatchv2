@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 20:44'
+updated_date: '2026-10-05 20:51'
 labels:
   - p06
   - r2
@@ -95,4 +95,6 @@ Same final independent SPEC PASS5521672:113registered/3 incl64native plus7distin
 Fresh QUALITY confirmed Important parser byte-limit failure webSearch.ts163-185: complete70KB comment/id/event lines consumed before residual check can produce completed/settled; multibyte residual countedUTF16 notbytes. Threeownactualexecute/fetchcases inspectdurableorder/sentattempt/all3holds plusoneownparsercase allRED /tmp/task21-quality-independent.test.ts and initial-red.log. ROOT inspectedactualsource/fixtures and confirms. Source frozen until consolidatedQUALITY; originalimplementer minimal sharedparser bytecheck then sameSPECdelta/reQUALITY. NoAC/Done.
 
 Consolidated fresh QUALITY WITH FIXES552, exactlyoneImportantSSEbyteboundaryfamily/nootherconfirmedfindings. 113registeredPASS;10distinctowncases8RED2PASS /tmp/dispatch-research-provider-quality-receipt.md: samewirepartition, multibytependingline/event, exact65536ASCIIvalid but splitCRLFwronglyrejected, actualpartialsource wronglysettled20/hold0; positiveidentitywithdrawal latefinancePASS. Originalimplementerreleasedonly webSearch/providers.test/providercontract minimal logical-line/pending-event bytebounds retainingframingCR/partialholds. SameSPECdelta then sameQUALITYrerun required beforeAC/next22.1; noDone/activation.
+
+Parser correction frozene5e1c1e51de025bd8f63f1bc55e893cc42b66138 exactlywebSearch/providers.test/providercontract. Extractedlogicallinebyteguard/rawresidualoctets incldecoderpending/oneframingCR/pendingfragment+newlinecounter retainfinaleventguard andpartialprefixbeforeoversizedtail. Nohelperframework/dependency/schema/UIchange. FinalQUALITYinitial11distinct9RED2PASS preserved; rawpendingprecision alreadyunknownfinance,noextrasettlementexploit. Implementer475/27 native77 affected223/7 type/lint/build/bundle/diff original11rerun/codegenPASS; EUDev22:50:21. Streamcancelautoprefetchclosed harness correctedhighWaterMark0 separately. SameSPECbytedelta pending then sameQUALITYonlyafterPASS/noAC/Done/activation.
 <!-- SECTION:NOTES:END -->
