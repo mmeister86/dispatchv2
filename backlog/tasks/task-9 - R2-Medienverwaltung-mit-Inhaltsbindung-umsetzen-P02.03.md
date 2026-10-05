@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:08'
+updated_date: '2026-10-05 11:09'
 labels:
   - p02
   - r1
@@ -90,4 +90,6 @@ QUALITY corrections frozen a51f9ed after tests-first1e494b1: actual StrictMode m
 Independent renewed SPEC PASSa51f9ed:22 targeted unit checks and actual MediaLibrary lifecycle browser passed, including StrictMode success/failure and late unmount/workspace outcomes. Reviewer verified supported bounded MP4 metadata forms before library parsing and valid fixtures, no schema/jobs/dependency changes. Fresh complete QUALITY audit nowrunning; external EU-R2/CORS/runtime/manual gates remain open and taskInProgress.
 
 Fresh complete QUALITY NEEDS WORKa51f9ed: MP4 aggregate allocation/track/table limits must run before library parsing; inherited MIME lookup admitted unsupported type; prepare replay signs old bucket after configuration drift; native file input remount clears selected visible filename. Small safe counterexamples and actual browser checks reproduced. Prior corrections/core backend flows hold;22 targeted/lifecycle and additional async upload/preview checks pass. Worker assigned four root corrections; narrow physical account namespace follow-up pending. No live/provider acceptance claim or Done.
+
+Storage-binding follow-up confirmed same root includes Cloudflare account drift at unchanged bucket name: old keys can reach a different physical endpoint and cleanup receipt can refer to the wrong namespace. Shared scoped fix persists normalized nonsecret accountId+bucket on session/asset and checks all Prepare/Finish/Preview/Cleanup paths; legacy unknown binding fails closed, same-namespace key rotation stays valid. Synthetic frozen-config evidence only, no provider calls. Worker incorporates this into current correction and updates inventory after freeze.
 <!-- SECTION:NOTES:END -->
