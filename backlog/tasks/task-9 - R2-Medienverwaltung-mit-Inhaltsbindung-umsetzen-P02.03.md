@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:01'
+updated_date: '2026-10-05 11:08'
 labels:
   - p02
   - r1
@@ -88,4 +88,6 @@ Partial QUALITY review also reproduced P1 MP4 predecode-bound gap with two small
 QUALITY corrections frozen a51f9ed after tests-first1e494b1: actual StrictMode mounted lifecycle and supported MP4 dref/AAC descriptor predecode checks corrected. Only2 production files; no schema/jobs/dependencies added. Worker reports64 unit checks,8 targeted byte checks, actual media lifecycle browser success/failure/unmount/workspace checks, type/lint/build/bundle passed; valid synthetic H264/AAC FFmpeg decode passes. Configured Dev updated12:58:28. Renewed SPEC running, fresh complete QUALITY follows; actual EU-R2/manual gates remain open.
 
 Independent renewed SPEC PASSa51f9ed:22 targeted unit checks and actual MediaLibrary lifecycle browser passed, including StrictMode success/failure and late unmount/workspace outcomes. Reviewer verified supported bounded MP4 metadata forms before library parsing and valid fixtures, no schema/jobs/dependency changes. Fresh complete QUALITY audit nowrunning; external EU-R2/CORS/runtime/manual gates remain open and taskInProgress.
+
+Fresh complete QUALITY NEEDS WORKa51f9ed: MP4 aggregate allocation/track/table limits must run before library parsing; inherited MIME lookup admitted unsupported type; prepare replay signs old bucket after configuration drift; native file input remount clears selected visible filename. Small safe counterexamples and actual browser checks reproduced. Prior corrections/core backend flows hold;22 targeted/lifecycle and additional async upload/preview checks pass. Worker assigned four root corrections; narrow physical account namespace follow-up pending. No live/provider acceptance claim or Done.
 <!-- SECTION:NOTES:END -->

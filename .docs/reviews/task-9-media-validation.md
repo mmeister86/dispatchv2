@@ -48,6 +48,17 @@ Implementer evidence:64 unit checks, eight targeted media-byte checks, actual `p
 
 The reviewer independently ran four targeted files:22/22 unit checks passed. The actual isolated `pnpm test:media-lifecycle` browser check passed for StrictMode success/failure and true unmount/workspace replacement; server/browser closed. The reviewer verified the supported bounded MP4 metadata before decoding, valid H.264/AAC fixtures, preserved previous corrections and unchanged schema/jobs/dependencies. The fresh reviewer is now performing the full-unit QUALITY audit. External acceptance gates below remain open.
 
+## Fresh complete QUALITY — NEEDS WORK at a51f9ed
+
+The full audit confirms the prior corrections and core authorization, immutability, quota, generations, reference deletion and lifecycle mechanisms. Four findings remain:
+
+1. P1: MP4 table bounds are individual, while unsupported track counts are rejected after MP4Box already allocates their sample lists. A tiny three-track fixture demonstrates three sample-list builds before rejection. Enforce supported track count, whole-file sample-allocation budget and structural-table uniqueness before parsing; no stress fixture is needed.
+2. P2: `MIME_LIMITS["toString"]` resolves an inherited property, making the numeric preparation check ineffective. A small unsupported-MIME reservation is admitted. Require supported own numeric entries in the shared lookup.
+3. P2: Replaying preparation after changing the configured bucket signs the session's old bucket, while finish/preview/cleanup reject that binding. Reject storage-binding drift before signing; do not issue an unusable grant.
+4. P3: The native file input's key changes on selection, remounting it and clearing the visible filename while the File remains buffered. Preserve the input across selection and reset only after accepted success.
+
+Independent evidence:22 targeted checks and the actual lifecycle browser check passed. Additional actual uploader/preview checks passed for failed-upload buffer preservation, cancellation during preparation, stale workspace responses and renewal after error. Counterexamples: `/tmp/dispatch-r2-quality-final.test.ts` with `/tmp/dispatch-r2-quality-final.config.mts`; UI evidence: `/tmp/dispatch-r2-quality-async.browser.mjs`. Servers/browser closed, source unchanged, no real provider writes. Worker corrections and re-review are pending. A narrow follow-up checks whether physical account/endpoint drift is the same storage-binding cause; it does not assume credential rotation should invalidate a stable namespace.
+
 ## Actual acceptance still open
 
 An approved existing private bucket with actual EU jurisdiction and restricted S3 access, browser-origin CORS, live signature/size enforcement, conditional-write/runtime/race probes, late-PUT cleanup and authenticated manual upload/abort/preview-refresh/replacement evidence remain open. No bucket, public post or test email was created. An EU location hint or a passing synthetic test does not satisfy those checks.
