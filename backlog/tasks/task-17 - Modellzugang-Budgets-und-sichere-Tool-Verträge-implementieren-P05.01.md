@@ -4,7 +4,7 @@ title: 'Modellzugang, Budgets und sichere Tool-Verträge implementieren (P05.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 16:12'
+updated_date: '2026-10-05 16:18'
 labels:
   - p05
   - r2
@@ -83,4 +83,8 @@ Implementation authorized now after final reviewedTASK15 source1706c05 SPEC49/QU
 TASK17 implementation progress: exact official Agent0.6.4/AI6.0.300/openai-compatible2.0.81 installed; official component codegen and published @convex-dev/agent/test helper execute real modules. Five targeted through-Agent checks PASS: underlying doGenerate observes committed own attempt and budget holds before call; one stable official prompt/output; transport failure makes one physical call with unknown holds/no blind retry; sensitive errors are sanitized; human stop allows truthful late token-estimate settlement while blocking output; bounded tool loop/foreign or forbidden arguments are checked. Joint Convex TypeScript compile PASS. Streaming/deadline/settlement, UI and final broad checks remain in progress; no paid/provider/customer transfer or independent acceptance is claimed. pnpm core-js build script explicitly denied, not executed. Fresh SPEC then QUALITY follow frozen implementation.
 
 Implementer freeze 2026-10-05: source 928b26c9af0d6e09be7cf70f0202347bee6d1e2e on master; source commit window closed and index empty. Official Agent 0.6.4 / AI 6.0.300 / openai-compatible 2.0.81 uses durable funding before underlying model attempts, three quota scopes, idempotent settlement and retained unknown financial liabilities. Current four-store/component inventory and explicit processing/pricing/manual gates are documented in .docs/model-run-contract.md. Implementer reports 279 unit tests in 22 files, typecheck, lint, build, bundle and actual affected browser PASS; existing EU-West-1 Dev and Agent ready 18:10:52. No policy/grants, paid provider calls or activation values were created. Independent SPEC review has started against the concrete frozen source; QUALITY and code acceptance remain pending. TASK remains In Progress, no manual/provider acceptance or Done.
+
+Independent SPEC isolated a concrete P2 current-grant defect at convex/ai/runs.ts136-156: after a workspace/account grant loses approvedBy, create would reject it but active skips the absent approver and a pre-existing run can reach the actual model mock. Two through-Agent negatives are RED; four other own negatives pass. Reproducer /tmp/dispatch-model-budget-spec-negative.test.ts. This is a server-side grant-change boundary, not a public policy activation. Minimal shared guard correction and permanent regression are required before SPEC re-review and QUALITY; no acceptance criteria checked.
+
+Final independent SPEC verdict NEEDS WORK, frozen928b26c: 27 registered tests pass; nine own negatives yield five passes and four failures covering two P2 findings. In addition to removed non-provider approver, provider.ts205-210 passes per-part metadata unchanged, and actual pinned openai-compatible tool-call thought-signature metadata persists in official Agent assistant/tool providerOptions. Actual intercepted provider.execute reproduces it, no live call. Real affected browser PASS, fixture closed. Receipt /tmp/dispatch-model-budget-spec-receipt.md. Root assigns minimal shared grant guard and per-part metadata minimization, permanent through-Agent regressions, then independent SPEC re-review before QUALITY. No code acceptance yet.
 <!-- SECTION:NOTES:END -->
