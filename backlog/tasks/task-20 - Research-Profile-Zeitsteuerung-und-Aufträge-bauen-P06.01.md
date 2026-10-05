@@ -4,7 +4,7 @@ title: 'Research-Profile, Zeitsteuerung und Aufträge bauen (P06.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 18:40'
+updated_date: '2026-10-05 19:00'
 labels:
   - p06
   - r2
@@ -78,4 +78,6 @@ Read-only explorer actual map complete /tmp/dispatch-research-profile-code-map.m
 Implementation released after TASK19 final re-SPEC/QUALITY PASS8e5a6b4. Read final .docs/chat-domain-contract.md and /tmp/dispatch-research-profile-code-map.md: actual convo/operation/run authority, immutable source pins and same-operation unknown barriers. Shared generic personal-chat stop now enforces original actor/account before terminal returns and exact-old-run native abort; do not bypass it through arbitrary caller IDs. Root owns metadata; fresh implementer owns minimal durable profiles/immutable versions/unified orders/native scheduler/real profile-history UI and unitcontract. Formal D02 manual-inactive/no seeded budget, finite actual-currency cap and saved-IANA gap-skip/earlier-overlap recurrence apply. Real research remains unavailable until actual21/22; AC1 cannotbecheckedfromblockedorder alone. IndependentSPEC thenQUALITY required; noDone/manual/provideractivation.
 
 Root D02 clarification formalized in domain-contracts: prepared native schedule before researchpipeline mayonly produce visible configuration-blocked callback receipts. Generation prerequisites are NOTnativeX/Web approval. Later adapterdeployment cannot automaticallyactivatepaidsearch; explicit reactivation captures currentnativeprovider/processing/pricing/budgetproof. Blocked oldorders cannotbecome newpaidattempts. Minimal20 localreadonlyeligibilitycheck approved (notreservation/secondledger), existingvalidPolicy+3indexedgrants/currentapprovers/fullcapcoverage reused, actual21paidledgerextension separatelylater. Profileedit/save usefulwithoutprovideractivation.
+
+Fresh SPEC at frozen 6f1d062 reproduced a P2 lost-ACK UI defect in actual React: failed pause/activation/delete closures can become unreachable after reactive profile state changes; a later same-kind toggle replays an obsolete successful receipt without applying current intent. Registered 19 and own 9 native cases pass, but independent browser counterexample is red. Root verified shared command callers; minimal explicit retry/new-command correction assigned to original implementer before re-SPEC. No acceptance criterion checked or Done transition from initial implementation.
 <!-- SECTION:NOTES:END -->
