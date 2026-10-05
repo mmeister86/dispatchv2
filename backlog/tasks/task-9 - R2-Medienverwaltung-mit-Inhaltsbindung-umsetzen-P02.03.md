@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 09:51'
 labels:
   - p02
   - r1
@@ -54,8 +54,20 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Bestehende Asset- und unveränderliche Versionsverträge übernehmen; aktuelle R2-Dokumentation und EU-Konfiguration prüfen.
+2. Workspace-gebundene Uploadsessions, temporäre Browser-Uploads und serverseitig geprüfte unveränderliche Finalisierung implementieren.
+3. Medien-UI mit Fortschritt, Abbruch, Alt-Text, autorisierten erneuerbaren Vorschauen und sichtbaren Konfigurationshinweisen verbinden.
+4. Fremdzugriff, Replay, laufende Finalisierung, Referenzen und Wiederaufnahme mit gezielten Tests prüfen; vorhandene UI-Regressionsprüfungen ausführen.
+5. Entwicklungsbackend aktualisieren und regelmäßig auf master committen; echte EU-R2- und Benutzerabnahme separat dokumentieren.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /media, /drafts/:id. Local file validation/upload progress/cancel/retry, image/video previews, media selection and alt text; referenced alt-text edits make new media/content versions. Grenze: No R2 URLs, server finalization, checksums, multipart upload or provider media processing. Demo limits: 2 MB/file, 3 MB total. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Nutzerentscheidung: Fehlende EU-R2-S3-Zugangsdaten zunächst mit sichtbaren Konfigurationshinweisen behandeln. Keine geheimen Werte im Chat; kein Ersatz durch nicht belegten weur-Location-Hint. Implementierung folgt nach unabhängiger Prüfung des Editorial-Vertrags.
 <!-- SECTION:NOTES:END -->

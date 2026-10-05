@@ -4,7 +4,7 @@ title: Algorithmuswissen kontrolliert aktualisieren (P11.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 09:51'
 labels:
   - p11
   - r5
@@ -54,4 +54,6 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Algorithmusprofile. Mock before/after source statement, interpretation, affected rule, review/evaluation, activate/discard/rollback and version log. Grenze: No actual source monitoring, verified algorithm knowledge or production assessment changes. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Vorbereitung: Öffentliche X-Quellen wurden schreibgeschützt geprüft (2026-10-05). Aktueller Primärquellen-Pin xai-org/x-algorithm b412112d03f27acbfd668e0cc040abcafa1080c1 vom 2026-10-03. Report /tmp/dispatch-algorithm-source-review.md enthält unveränderliche Quellenlinks, 13 Datei-SHA256-Prüfsummen und Update-/Rollback-Vertrag. Der öffentliche Code beweist weder aktuelle Produktionskonfiguration noch Reichweitenvorhersagen; dispatch-score-v1 bleibt getrennte redaktionelle Heuristik. Noch kein Profil aktiviert, keine Aufgabe geschlossen.
 <!-- SECTION:NOTES:END -->
