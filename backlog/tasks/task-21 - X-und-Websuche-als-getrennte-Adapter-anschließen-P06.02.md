@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 20:16'
+updated_date: '2026-10-05 20:29'
 labels:
   - p06
   - r2
@@ -85,4 +85,6 @@ Additional ROOT actual-handler RED22:00:59: native.results projects20microUSD fi
 Correction source frozen at82e9ff75f6c79a772c4df6319b97b39db5284641: validated mixed X partial data retained with uncertain usage hold; fresh UI displayed/submitted language aligned without altering frozen retries; shared concrete generationAttempt/nativeAttempt guards cover actual financial projections, admission/history/cap/settlement consumers with captured ownership/scope/currency. Legitimate previous-order cache hit and once-only late finance after expiry/withdrawal remain valid. Implementer final448/27/native50 plus196affected/7, actual Research browser/type/lint/build/bundle/diff/officialcodegen passed; existing EU Dev ready22:08:19, no activation/paid I/O. ROOT original native projection negative rerun unchanged22:10:11 PASS one own actual-handler case/two copied SPEC cases skipped, /tmp/task21-root-native-projection-green.log. Same independent SPEC delta now checking original failures and sibling boundaries; fresh QUALITY follows only after PASS. No AC or manual/Done acceptance yet.
 
 Four original finding families re-SPEC PASS82e9ff7:99registered/3 plus5distinctindependenthandlercases and actual isolated/full React fixtures; ROOTnativeprojection negativePASS. This historical PASS is superseded overall by additional effective-intent NEEDS FIXES before QUALITY. ROOT actual X freshness30→90 sends second EXACTidentical physical URL despite first unknown hold; independent SPEC confirms and adds Web freshness changes identicalURL/body plus WOEID query changes identicalURL. Raw/unused operation-agnostic identity inputs bypass unknown barrier. /tmp/dispatch-research-provider-spec-intent-receipt.md and ROOTredlog retained. Originalworker minimal source-specific effective canonicalization plus bounded current-scope legacy raw-identity unknown compatibility; changing algorithm/deploy/restore cannot drop old sent/unknown liability. No absolute time or new wrapper paid-retry bypass. Same SPEC intent delta then fresh QUALITY only after PASS; no AC/Done.
+
+ROOT current-coverage RED22:24:23: actual oldWebunknown100hold/newXreserved100, then actuallateWeb1200settlement puts sharedWS/account above1000limits; currentfunded native.context pre-I/O reauth wrongly resolves. /tmp/task21-root-overage.test.ts/red.log oneownhandlerfailed/twocopiedskip. Actual reauth-boundary miss, notclaimexternalfetchexecuted. Originalworker minimal own-reservation held+spent coverage at physicalcontext; immutablelatefinancialgraph still books1200once/keepsnew100hold, freecurrent-authorized cache/history/partialsource material stays separate from source deletion. Include in canonicalintent/legacyunknown final correctiveunit; same independent SPECintentdelta before freshQUALITY. NoAC/Done/activation.
 <!-- SECTION:NOTES:END -->
