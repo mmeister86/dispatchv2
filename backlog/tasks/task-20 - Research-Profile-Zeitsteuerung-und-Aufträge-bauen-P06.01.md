@@ -4,7 +4,7 @@ title: 'Research-Profile, Zeitsteuerung und Aufträge bauen (P06.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 18:30'
+updated_date: '2026-10-05 18:40'
 labels:
   - p06
   - r2
@@ -76,4 +76,6 @@ Root formal D02 initial implementation rule recorded under delegated decisions: 
 Read-only explorer actual map complete /tmp/dispatch-research-profile-code-map.md: ResearchPage has no real/Demo split and displays daily2EUR/seed completedrun/sampleInbox although real local setter is unavailable; no actual create/save/delete/timezone controls. Reuse existing workspace/reference/currentactor guards, immutable Ideas CAS/version/operation receipt, native editorial scheduler generation/cancel and IANA time helpers. Proposed minimum3 domain stores with one embedded schedule, immutable profileversions and unifiedorders; names are proposals notschema claims. CurrentVersion change alone mustnotcancel immutable oldrunning snapshot; livepause/stop/role/account/source guards independent. Root delegated recurrence rule nowformal: explicit savedIANA/localclock/weekday; gap skips thatlocaloccurrence, overlap earlierinstantonly, exactUTC+generationdedupe, no automatic missed-period batch and zonechange onlyfuture explicitreplan. No20source/AC acceptance; wait reviewed19 before freshimplementation.
 
 Implementation released after TASK19 final re-SPEC/QUALITY PASS8e5a6b4. Read final .docs/chat-domain-contract.md and /tmp/dispatch-research-profile-code-map.md: actual convo/operation/run authority, immutable source pins and same-operation unknown barriers. Shared generic personal-chat stop now enforces original actor/account before terminal returns and exact-old-run native abort; do not bypass it through arbitrary caller IDs. Root owns metadata; fresh implementer owns minimal durable profiles/immutable versions/unified orders/native scheduler/real profile-history UI and unitcontract. Formal D02 manual-inactive/no seeded budget, finite actual-currency cap and saved-IANA gap-skip/earlier-overlap recurrence apply. Real research remains unavailable until actual21/22; AC1 cannotbecheckedfromblockedorder alone. IndependentSPEC thenQUALITY required; noDone/manual/provideractivation.
+
+Root D02 clarification formalized in domain-contracts: prepared native schedule before researchpipeline mayonly produce visible configuration-blocked callback receipts. Generation prerequisites are NOTnativeX/Web approval. Later adapterdeployment cannot automaticallyactivatepaidsearch; explicit reactivation captures currentnativeprovider/processing/pricing/budgetproof. Blocked oldorders cannotbecome newpaidattempts. Minimal20 localreadonlyeligibilitycheck approved (notreservation/secondledger), existingvalidPolicy+3indexedgrants/currentapprovers/fullcapcoverage reused, actual21paidledgerextension separatelylater. Profileedit/save usefulwithoutprovideractivation.
 <!-- SECTION:NOTES:END -->
