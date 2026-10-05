@@ -75,7 +75,10 @@ export async function open<T>(
   envelope: Envelope,
   association: string,
 ): Promise<T> {
-  const material = keyring().keys[envelope.keyId];
+  const ring = keyring();
+  const material = Object.hasOwn(ring.keys, envelope.keyId)
+    ? ring.keys[envelope.keyId]
+    : undefined;
   if (!material) throw new ConvexError("X_ENCRYPTION_KEY_UNAVAILABLE");
   try {
     if (envelope.version !== 1 || bytes(envelope.iv).length !== 12)

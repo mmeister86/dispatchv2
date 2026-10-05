@@ -5,7 +5,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { internal, components } from "./_generated/api";
-import { checkApproval, event } from "./editorial";
+import { checkApproval, checkAccountConnection, event } from "./editorial";
 import { content } from "./lib/editorialFields";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
@@ -19,6 +19,7 @@ async function preflight(ctx: MutationCtx, s: Doc<"schedules">) {
     .unique();
   if (!actor || !["Owner", "Admin"].includes(actor.role))
     throw new ConvexError("SCHEDULER_AUTHORITY_CHANGED");
+  await checkAccountConnection(ctx, s);
   return checkApproval(
     ctx,
     s.workspaceId,

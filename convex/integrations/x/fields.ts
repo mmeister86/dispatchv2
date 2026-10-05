@@ -8,6 +8,7 @@ export const envelope = v.object({
 export const xEvidence = v.object({
   scopes: v.array(v.string()),
   identityVerifiedAt: v.number(),
+  connectionSequence: v.optional(v.number()),
   textScopeEligible: v.boolean(),
   mediaScopeEligible: v.boolean(),
   liveWrite: v.union(

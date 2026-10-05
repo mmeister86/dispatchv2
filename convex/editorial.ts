@@ -625,6 +625,20 @@ export async function checkApproval(
   await immutableMedia(ctx, ver);
   return ver;
 }
+export async function checkAccountConnection(
+  ctx: QueryCtx,
+  s: Doc<"schedules">,
+) {
+  const account = requireReference(
+    s.workspaceId,
+    await ctx.db.get(s.accountId),
+  ) as Doc<"socialAccounts">;
+  if (
+    (s.accountConnectionSequence ?? 0) !==
+    (account.xEvidence?.connectionSequence ?? 0)
+  )
+    throw new ConvexError("ACCOUNT_CONNECTION_CHANGED");
+}
 const timing = { at: v.number(), timezone: v.string(), localTime: v.string() };
 export const schedule = workspaceMutation({
   args: {
@@ -659,6 +673,8 @@ export const schedule = workspaceMutation({
       accountId: a.accountId,
       approvalId: a.approvalId,
       actorId: ctx.user._id,
+      accountConnectionSequence:
+        (await ctx.db.get(a.accountId))?.xEvidence?.connectionSequence ?? 0,
       generation: 1,
       ...timingValues(a),
       state: "scheduled",
@@ -729,6 +745,8 @@ export const reschedule = workspaceMutation({
       ...timingValues(a),
       versionId,
       versionNumber: ver.number,
+      accountConnectionSequence:
+        (await ctx.db.get(s.accountId))?.xEvidence?.connectionSequence ?? 0,
       approvalId,
       generation,
       jobId,

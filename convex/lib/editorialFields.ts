@@ -126,6 +126,7 @@ export const scheduleFields = {
   accountId: v.id("socialAccounts"),
   approvalId: v.id("approvals"),
   actorId: v.id("users"),
+  accountConnectionSequence: v.optional(v.number()),
   generation: v.number(),
   at: v.number(),
   timezone: v.string(),

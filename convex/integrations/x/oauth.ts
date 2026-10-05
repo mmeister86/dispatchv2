@@ -1,4 +1,4 @@
-import { checkApproval } from "../../editorial";
+import { checkApproval, checkAccountConnection } from "../../editorial";
 import { ConvexError, v } from "convex/values";
 import {
   internalMutation,
@@ -118,6 +118,7 @@ export const claim = workspaceInternalMutation({
       s.workspaceId !== ctx.workspace._id ||
       s.expiresAt <= Date.now() ||
       s.status !== "pending" ||
+      s.startedSequence === undefined ||
       !s.verifier
     )
       throw new ConvexError("X_OAUTH_STATE_INVALID");
@@ -307,6 +308,7 @@ export const complete = workspaceInternalMutation({
       xEvidence: {
         scopes: a.scopes,
         identityVerifiedAt: Date.now(),
+        connectionSequence: s.startedSequence,
         textScopeEligible: a.scopes.includes("tweet.write"),
         mediaScopeEligible: a.scopes.includes("media.write"),
         liveWrite: "unverified",
@@ -559,6 +561,7 @@ export const scheduleSource = internalQuery({
       s.accountId,
       s.approvalId,
     );
+    await checkAccountConnection(ctx, s);
     const c = await gate(ctx, s.workspaceId, s.accountId);
     if (
       !c.scopes.includes(

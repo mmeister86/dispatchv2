@@ -347,32 +347,59 @@ test("capacity prevents invisible account101; reconnect existing ID still works"
   ).toBe(id);
 });
 
-test("role or lifecycle lost during exchange prevents commit", async () => {
-  config();
-  const f = await mediaFixture(),
-    args = await start(f);
-  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
-    if (String(url).endsWith("/token"))
-      return Response.json({
-        access_token: "fixture-access",
-        token_type: "bearer",
-        expires_in: 7200,
-        scope: scopes,
+test.each(["lifecycle", "role", "membership", "selection"] as const)(
+  "%s lost during exchange prevents commit",
+  async (changed) => {
+    config();
+    const f = await mediaFixture(),
+      args = await start(f);
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+      if (String(url).endsWith("/token"))
+        return Response.json({
+          access_token: "fixture-access",
+          token_type: "bearer",
+          expires_in: 7200,
+          scope: scopes,
+        });
+      await f.t.run(async (ctx) => {
+        const member = await ctx.db
+          .query("memberships")
+          .withIndex("by_userId_and_workspaceId", (q) =>
+            q.eq("userId", f.userId).eq("workspaceId", f.workspaceId),
+          )
+          .unique();
+        if (changed === "lifecycle")
+          await ctx.db.patch(f.workspaceId, { lifecycle: "deleting" });
+        else if (changed === "role")
+          await ctx.db.patch(member!._id, { role: "Viewer" });
+        else if (changed === "membership") await ctx.db.delete(member!._id);
+        else {
+          const other = await ctx.db.insert("workspaces", {
+            name: "Elsewhere",
+            description: "",
+          });
+          await ctx.db.patch(f.userId, { activeWorkspaceId: other });
+        }
       });
-    await f.t.run((ctx) =>
-      ctx.db.patch(f.workspaceId, { lifecycle: "deleting" }),
-    );
-    return Response.json({
-      data: { id: "100", name: "Fixture", username: "fixture" },
+      return Response.json({
+        data: { id: "100", name: "Fixture", username: "fixture" },
+      });
     });
-  });
-  await expect(
-    f.signed.action(api.integrations.x.client.callback, args),
-  ).rejects.toThrow("WORKSPACE_INACTIVE");
-  expect(
-    await f.t.run((ctx) => ctx.db.query("socialAccounts").take(1)),
-  ).toEqual([]);
-});
+    await expect(
+      f.signed.action(api.integrations.x.client.callback, args),
+    ).rejects.toThrow(
+      {
+        lifecycle: "WORKSPACE_INACTIVE",
+        role: "ROLE_ACCESS_DENIED",
+        membership: "WORKSPACE_ACCESS_DENIED",
+        selection: "X_WORKSPACE_CHANGED",
+      }[changed],
+    );
+    expect(
+      await f.t.run((ctx) => ctx.db.query("socialAccounts").take(1)),
+    ).toEqual([]);
+  },
+);
 
 test("parallel refresh and rotation commit once; stale completion cannot survive reconnect/disconnect", async () => {
   config();
@@ -541,4 +568,200 @@ test("strict token/user/config boundaries and bounded provider response reject u
   ).rejects.toThrow("X_PROVIDER_RESPONSE_INVALID");
   vi.stubEnv("SITE_URL", "https://attacker@dispatch.example");
   expect(() => configuration()).toThrow("X_CONFIGURATION_REQUIRED");
+});
+
+test("schedule credential access rechecks exact approval, authority, scopes and generation", async () => {
+  config();
+  const f = await mediaFixture(),
+    accountId = await connect(f);
+  await f.t.run(async (ctx) => {
+    const a = (await ctx.db.get(accountId))!;
+    await ctx.db.patch(accountId, {
+      capability: { ...a.capability, publish: true },
+      xEvidence: { ...a.xEvidence!, liveWrite: "verified" },
+    });
+  });
+  const draftId = await f.signed.mutation(api.editorial.create, {
+    workspaceId: f.workspaceId,
+    source: "Synthetic",
+    content: {
+      title: "Synthetic",
+      text: ["Synthetic"],
+      media: [],
+      accountId,
+      pillar: "",
+      strategy: "generic",
+    },
+  });
+  const versionId = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId,
+  }))!.versions[0]._id;
+  const approvalId = await f.signed.mutation(api.editorial.approve, {
+    workspaceId: f.workspaceId,
+    versionId,
+    accountId,
+  });
+  const scheduleId = await f.t.run(async (ctx) =>
+    ctx.db.insert("schedules", {
+      workspaceId: f.workspaceId,
+      draftId,
+      versionId,
+      accountId,
+      approvalId,
+      actorId: f.userId,
+      accountConnectionSequence: (await ctx.db.get(accountId))!.xEvidence!
+        .connectionSequence,
+      generation: 1,
+      at: Date.now(),
+      timezone: "UTC",
+      localTime: "synthetic",
+      state: "publishing",
+      publishedCount: 0,
+      errorCode: null,
+      jobId: null,
+    }),
+  );
+  const args = { scheduleId, generation: 1, operation: "text" as const };
+  expect(
+    (
+      await f.t.action(
+        internal.integrations.x.client.credentialForSchedule,
+        args,
+      )
+    ).accessToken,
+  ).toBe("fixture-access");
+  await expect(
+    f.t.action(internal.integrations.x.client.credentialForSchedule, {
+      ...args,
+      generation: 2,
+    }),
+  ).rejects.toThrow("X_SCHEDULE_CHANGED");
+  await f.t.run(async (ctx) => {
+    const c = await ctx.db.query("xCredentials").first();
+    await ctx.db.patch(c!._id, { scopes: [] });
+  });
+  await expect(
+    f.t.action(internal.integrations.x.client.credentialForSchedule, args),
+  ).rejects.toThrow("X_SCOPE_REQUIRED");
+  await f.signed.mutation(api.integrations.x.oauth.disconnect, {
+    workspaceId: f.workspaceId,
+    accountId,
+  });
+  await expect(
+    f.t.action(internal.integrations.x.client.credentialForSchedule, args),
+  ).rejects.toThrow();
+});
+
+test("unknown encryption key yields actionable reauth without provider use", async () => {
+  config();
+  const f = await mediaFixture(),
+    accountId = await connect(f);
+  vi.restoreAllMocks();
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("Unexpected external call"));
+  vi.stubEnv("INTEGRATION_ENCRYPTION_KEY_ID", "changed");
+  vi.stubEnv("INTEGRATION_ENCRYPTION_KEY", base64(new Uint8Array(32).fill(2)));
+  await expect(
+    f.signed.action(api.integrations.x.client.refresh, {
+      workspaceId: f.workspaceId,
+      accountId,
+    }),
+  ).rejects.toThrow("X_ENCRYPTION_KEY_UNAVAILABLE");
+  expect(fetch).not.toHaveBeenCalled();
+  const a = await f.t.run((ctx) => ctx.db.get(accountId));
+  expect(a!.connection).toBe("reauth_required");
+  expect(a!.xEvidence?.errorCode).toBe("X_ENCRYPTION_KEY_UNAVAILABLE");
+});
+
+test("reconnect cannot automatically resume schedules even when later live capability is proven", async () => {
+  config();
+  const f = await mediaFixture(),
+    accountId = await connect(f);
+  async function proveFixture() {
+    await f.t.run(async (ctx) => {
+      const a = (await ctx.db.get(accountId))!;
+      await ctx.db.patch(accountId, {
+        capability: { ...a.capability, publish: true },
+        xEvidence: { ...a.xEvidence!, liveWrite: "verified" },
+      });
+    });
+  }
+  await proveFixture();
+  const draftId = await f.signed.mutation(api.editorial.create, {
+    workspaceId: f.workspaceId,
+    source: "Synthetic",
+    content: {
+      title: "Synthetic",
+      text: ["Synthetic"],
+      media: [],
+      accountId,
+      pillar: "",
+      strategy: "generic",
+    },
+  });
+  const versionId = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId,
+  }))!.versions[0]._id;
+  const approvalId = await f.signed.mutation(api.editorial.approve, {
+    workspaceId: f.workspaceId,
+    versionId,
+    accountId,
+  });
+  const at = Math.floor(Date.now() / 60000) * 60000 + 3600000;
+  const scheduleId = await f.signed.mutation(api.editorial.schedule, {
+    workspaceId: f.workspaceId,
+    versionId,
+    accountId,
+    approvalId,
+    at,
+    timezone: "UTC",
+    localTime: new Date(at).toISOString().slice(0, 16),
+  });
+  const sequence = (await f.t.run((ctx) => ctx.db.get(scheduleId)))!
+    .accountConnectionSequence;
+  await f.signed.action(api.integrations.x.client.refresh, {
+    workspaceId: f.workspaceId,
+    accountId,
+  });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(accountId)))!.xEvidence!
+      .connectionSequence,
+  ).toBe(sequence);
+  await f.signed.action(
+    api.integrations.x.client.callback,
+    await start(f, accountId),
+  );
+  await proveFixture();
+  await f.t.run((ctx) => ctx.db.patch(scheduleId, { state: "publishing" }));
+  await expect(
+    f.t.query(internal.integrations.x.oauth.scheduleSource, {
+      scheduleId,
+      generation: 1,
+      operation: "text",
+    }),
+  ).rejects.toThrow("ACCOUNT_CONNECTION_CHANGED");
+  await f.t.run((ctx) => ctx.db.patch(scheduleId, { state: "scheduled" }));
+  await f.signed.mutation(api.editorial.reschedule, {
+    workspaceId: f.workspaceId,
+    scheduleId,
+    expectedGeneration: 1,
+    at: at + 60000,
+    timezone: "UTC",
+    localTime: new Date(at + 60000).toISOString().slice(0, 16),
+  });
+  const explicit = (await f.t.run((ctx) => ctx.db.get(scheduleId)))!;
+  expect(explicit.accountConnectionSequence).not.toBe(sequence);
+  await f.t.run((ctx) => ctx.db.patch(scheduleId, { state: "publishing" }));
+  expect(
+    (
+      await f.t.query(internal.integrations.x.oauth.scheduleSource, {
+        scheduleId,
+        generation: 2,
+        operation: "text",
+      })
+    ).accountId,
+  ).toBe(accountId);
 });

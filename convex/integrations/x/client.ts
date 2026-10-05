@@ -351,6 +351,17 @@ export const refresh = action({
         generation: c.generation,
         code,
       });
+      if (
+        e instanceof ConvexError &&
+        [
+          "X_CONNECTION_CHANGED",
+          "X_WORKSPACE_CHANGED",
+          "WORKSPACE_ACCESS_DENIED",
+          "WORKSPACE_INACTIVE",
+          "ROLE_ACCESS_DENIED",
+        ].includes(String(e.data))
+      )
+        throw e;
       throw new ConvexError(code);
     }
   },
