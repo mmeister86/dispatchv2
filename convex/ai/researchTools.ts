@@ -616,6 +616,8 @@ export const bindModel = internalMutation({
         })),
       },
     });
+    const run = (await ctx.db.get(runId))!;
+    await ctx.db.patch(runId, { deadline: Math.min(run.deadline, o.deadline) });
     await phase(ctx, bound, 5, { runId, clusterPins: suppliedClusterPins });
     await active(ctx, runId);
     return runId;

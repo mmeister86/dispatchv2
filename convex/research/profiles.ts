@@ -297,6 +297,15 @@ export const change = workspaceMutation({
             ? "RESEARCH_PROFILE_DELETED"
             : "RESEARCH_PROFILE_PAUSED",
           finishedAt: Date.now(),
+          ...(order.pipeline
+            ? {
+                pipeline: {
+                  ...order.pipeline,
+                  outcome: "cancelled" as const,
+                  pending: null,
+                },
+              }
+            : {}),
         });
       await ctx.db.patch(p._id, { activeOrderId: null });
     }

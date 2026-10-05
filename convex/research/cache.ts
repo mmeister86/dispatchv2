@@ -353,6 +353,15 @@ export const settle = internalMutation({
         generation: o.generation + 1,
         reason: "RESEARCH_BUDGET_OVERRUN",
         finishedAt: Date.now(),
+        ...(o.pipeline
+          ? {
+              pipeline: {
+                ...o.pipeline,
+                outcome: "cancelled" as const,
+                pending: null,
+              },
+            }
+          : {}),
       });
       const p = await ctx.db.get(o.profileId);
       if (p?.activeOrderId === o._id)

@@ -274,14 +274,19 @@ export const clearSource = internalMutation({
     for (const row of rows) {
       await ctx.db.patch(row._id, { state: "removed" });
       const o = await ctx.db.get(row.orderId);
+      const cancelling = o && ["queued", "running"].includes(o.state);
       if (o?.pipeline && o.pipeline.cleanupState === "retained")
         await ctx.db.patch(o._id, {
           generation: o.generation + 1,
           state: ["queued", "running"].includes(o.state)
             ? "cancelled"
             : o.state,
+          ...(cancelling
+            ? { finishedAt: Date.now(), reason: "RESEARCH_CANCELLED" }
+            : {}),
           pipeline: {
             ...o.pipeline,
+            ...(cancelling ? { outcome: "cancelled" as const } : {}),
             cleanupState: "pending",
             pending: null,
             inboxReady: false,
@@ -312,11 +317,18 @@ export const purge = internalMutation({
       o.pipeline.retentionUntil > Date.now()
     )
       return null;
-    const p = o.pipeline;
+    const cancelling = ["queued", "running"].includes(o.state);
+    const p = {
+      ...o.pipeline,
+      ...(cancelling ? { outcome: "cancelled" as const } : {}),
+    };
     await ctx.db.patch(o._id, {
       generation:
         p.cleanupState === "retained" ? o.generation + 1 : o.generation,
       state: ["queued", "running"].includes(o.state) ? "cancelled" : o.state,
+      ...(cancelling
+        ? { finishedAt: Date.now(), reason: "RESEARCH_CANCELLED" }
+        : {}),
       pipeline: {
         ...p,
         cleanupState: "pending",

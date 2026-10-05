@@ -28,6 +28,7 @@ test("semantic output may not fabricate supplied references or confidence", () =
 });
 import { vi, beforeEach, afterEach } from "vitest";
 import workflowComponent from "@convex-dev/workflow/test";
+import type { WorkflowId } from "@convex-dev/workflow";
 import agentComponent from "@convex-dev/agent/test";
 import { fixture, streamResponse } from "../../tests/research-fixture";
 import { api, internal, components } from "../_generated/api";
@@ -359,6 +360,8 @@ test("actual registered Workflow and funded Agent use only two physical calls, s
   ).toEqual([]);
   await driveUntil(f, orderId, (o) => o.pipeline?.cleanupState === "complete");
   const clean = (await f.t.run((ctx) => ctx.db.get(orderId)))!;
+  expect(clean.pipeline!.outcome).toBe("completed");
+  expect(clean.state).toBe("completed");
   expect(clean.pipeline).toMatchObject({
     cleanupState: "complete",
     agentCleaned: true,
@@ -1606,3 +1609,194 @@ test("new topic identifiers are bounded local declarations and cannot also selec
     ),
   ).toThrow();
 });
+
+test("Q1 semantic run inherits immutable total order deadline after native work consumes time", async () => {
+  const f = await pipelineFixture();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+  const id = await f.start();
+  const a = await prepared(f, id);
+  const o = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  vi.setSystemTime(o.deadline - 1000);
+  const runId = (await f.t.mutation(internal.ai.researchTools.bindModel, a))!;
+  const r = (await f.t.run((ctx) => ctx.db.get(runId)))!;
+  expect(r.deadline).toBeLessThanOrEqual(o.deadline);
+});
+test("Q2 withdrawing a running source leaves an explicit cancelled disposition after cleanup", async () => {
+  const f = await pipelineFixture();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+  const id = await f.start();
+  const a = await prepared(f, id);
+  await f.t.mutation(internal.ai.researchTools.bindModel, a);
+  const o = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  await f.signed.mutation(api.research.cache.invalidate, {
+    workspaceId: f.workspaceId,
+    sourceId: o.pipeline!.sourcePins[0].sourceId,
+    reason: "blocked",
+  });
+  await f.t.mutation(internal.research.pipeline.clearSource, {
+    sourceId: o.pipeline!.sourcePins[0].sourceId,
+  });
+  await f.t.mutation(internal.research.pipeline.purge, { orderId: id });
+  const stopped = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  expect(stopped.state).toBe("cancelled");
+  const view = await f.signed.query(api.research.pipeline.results, {
+    workspaceId: f.workspaceId,
+    orderId: id,
+  });
+  expect(view!.removed).toBe(true);
+  expect(view!.results).toEqual([]);
+  expect(view!.outcome).toBe("cancelled");
+});
+test("Q1 physical Agent request uses only remaining order time for abort timeout", async () => {
+  const f = await pipelineFixture();
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(streamResponse());
+  const id = await f.start();
+  const a = await prepared(f, id);
+  const o = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  vi.setSystemTime(o.deadline - 1000);
+  const runId = (await f.t.mutation(internal.ai.researchTools.bindModel, a))!;
+  const durations: number[] = [];
+  vi.spyOn(AbortSignal, "timeout").mockImplementation((ms) => {
+    durations.push(ms);
+    return new AbortController().signal;
+  });
+  fetch.mockResolvedValue(
+    Response.json({
+      id: "semantic",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({ text: '{"items":[]}' }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    }),
+  );
+  await f.t.action(internal.ai.provider.execute, { runId });
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(durations.length).toBeGreaterThan(0);
+  expect(Math.max(...durations)).toBeLessThanOrEqual(1000);
+});
+test("Q2 completion callback cannot repair withdrawal disposition after generation fencing", async () => {
+  const f = await pipelineFixture();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+  const id = await f.start();
+  const a = await prepared(f, id);
+  const o = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  await f.signed.mutation(api.research.cache.invalidate, {
+    workspaceId: f.workspaceId,
+    sourceId: o.pipeline!.sourcePins[0].sourceId,
+    reason: "blocked",
+  });
+  await f.t.mutation(internal.research.pipeline.clearSource, {
+    sourceId: o.pipeline!.sourcePins[0].sourceId,
+  });
+  await f.t.mutation(internal.ai.researchAgent.completed, {
+    workflowId: o.pipeline!.workflowId! as WorkflowId,
+    result: { kind: "canceled" },
+    context: a,
+  });
+  const current = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  expect(current.state).toBe("cancelled");
+  expect(current.pipeline!.outcome).toBe("cancelled");
+});
+
+test.each(["pause", "delete"] as const)(
+  "profile %s atomically cancels active pipeline disposition",
+  async (kind) => {
+    const f = await pipelineFixture();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+    const id = await f.start();
+    await prepared(f, id);
+    await f.signed.mutation(api.research.profiles.change, {
+      workspaceId: f.workspaceId,
+      profileId: f.profileId,
+      expectedRevision: 2,
+      commandKey: `terminal-${kind}`,
+      action: kind === "pause" ? { kind, paused: true } : { kind },
+    });
+    const o = (await f.t.run((ctx) => ctx.db.get(id)))!;
+    expect(o.state).toBe("cancelled");
+    expect(o.pipeline!.outcome).toBe("cancelled");
+    expect(o.pipeline!.pending).toBeNull();
+    expect(o.finishedAt).not.toBeNull();
+    expect(o.reason).toBe(
+      kind === "pause" ? "RESEARCH_PROFILE_PAUSED" : "RESEARCH_PROFILE_DELETED",
+    );
+  },
+);
+test("native budget overrun atomically cancels pipeline disposition and preserves once-only settlement", async () => {
+  const f = await pipelineFixture();
+  const id = await f.start();
+  await f.t.mutation(internal.ai.researchTools.reserve, {
+    orderId: id,
+    generation: 1,
+  });
+  const attempt = (
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())
+  ).find((t) => t.researchOrderId === id)!;
+  const receipt = {
+    attemptId: attempt._id,
+    units: null,
+    reportedCost: 1,
+    costInvalid: false,
+    errorCode: null,
+  };
+  await f.t.mutation(internal.research.cache.settle, receipt);
+  const o = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  expect(o.state).toBe("cancelled");
+  expect(o.reason).toBe("RESEARCH_BUDGET_OVERRUN");
+  expect(o.pipeline!.outcome).toBe("cancelled");
+  expect(o.pipeline!.pending).toBeNull();
+  const settled = await f.t.run((ctx) => ctx.db.get(attempt._id));
+  await f.t.mutation(internal.research.cache.settle, receipt);
+  expect(await f.t.run((ctx) => ctx.db.get(attempt._id))).toEqual(settled);
+});
+test.each(["active", "completed", "partial", "empty"] as const)(
+  "retention purge terminalizes only active orders and preserves %s disposition",
+  async (kind) => {
+    const f = await pipelineFixture();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+    const id = await f.start(),
+      a = await prepared(f, id);
+    if (kind !== "active") {
+      await finishSemantic(
+        f,
+        id,
+        a,
+        kind === "empty" ? '{"items":[]}' : undefined,
+      );
+      if (kind === "partial")
+        await f.t.run(async (ctx) => {
+          const o = (await ctx.db.get(id))!;
+          await ctx.db.patch(id, {
+            pipeline: { ...o.pipeline!, outcome: "partial" },
+            reason: "RESEARCH_PARTIAL",
+          });
+        });
+    }
+    const before = (await f.t.run((ctx) => ctx.db.get(id)))!;
+    vi.setSystemTime(before.pipeline!.retentionUntil! + 1);
+    await f.t.mutation(internal.research.pipeline.purge, { orderId: id });
+    const after = (await f.t.run((ctx) => ctx.db.get(id)))!;
+    expect(after.pipeline!.outcome).toBe(
+      kind === "active" ? "cancelled" : kind,
+    );
+    expect(after.state).toBe(kind === "active" ? "cancelled" : "completed");
+    expect(after.pipeline!.pending).toBeNull();
+    expect(after.finishedAt).not.toBeNull();
+    if (kind !== "active") {
+      expect(after.reason).toBe(before.reason);
+      expect(after.finishedAt).toBe(before.finishedAt);
+    }
+  },
+);
