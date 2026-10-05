@@ -189,7 +189,14 @@ export default defineSchema({
     .index("by_runId_and_key", ["runId", "key"])
     .index("by_runId_and_state", ["runId", "state"])
     .index("by_researchOrderId_and_key", ["researchOrderId", "key"])
-    .index("by_logicalIntent", ["logicalIntent"]),
+    .index("by_logicalIntent", ["logicalIntent"])
+    .index("by_native_legacy_intent", [
+      "workspaceId",
+      "accountId",
+      "operation",
+      "intentVersion",
+      "state",
+    ]),
   githubContexts: defineTable(contextFields)
     .index("by_workspaceId_and_actorId_and_operationKey", [
       "workspaceId",

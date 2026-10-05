@@ -82,6 +82,9 @@ export const execute = internalAction({
         }
         const message = e instanceof Error ? e.message : String(e),
           budget = message.includes("BUDGET_EXHAUSTED"),
+          legacy = message.includes(
+            "RESEARCH_LEGACY_INTENT_RECONCILIATION_REQUIRED",
+          ),
           config =
             message.includes("CONFIGURATION") ||
             message.includes("SOURCE_CHANGED") ||
@@ -93,11 +96,13 @@ export const execute = internalAction({
             : config
               ? "configuration_required"
               : "unknown",
-          reason: budget
-            ? "RESEARCH_BUDGET_EXHAUSTED"
-            : config
-              ? "RESEARCH_SOURCE_CONFIGURATION_REQUIRED"
-              : "RESEARCH_PROVIDER_UNAVAILABLE",
+          reason: legacy
+            ? "RESEARCH_LEGACY_INTENT_RECONCILIATION_REQUIRED"
+            : budget
+              ? "RESEARCH_BUDGET_EXHAUSTED"
+              : config
+                ? "RESEARCH_SOURCE_CONFIGURATION_REQUIRED"
+                : "RESEARCH_PROVIDER_UNAVAILABLE",
           cacheHit: false,
         });
       }

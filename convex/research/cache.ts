@@ -30,37 +30,60 @@ export const begin = internalMutation({
       a.operation === "x-recent"
         ? Math.max(o.windowStart, o.windowEnd - 7 * 86400000 + 1000)
         : o.windowStart;
+    // Durable identity follows the actual request; elapsed time and profile wrappers never authorize retry.
+    const inputs =
+      a.operation === "x-recent"
+        ? [
+            o.native!.query,
+            o.native!.language.split("-")[0],
+            Math.min(o.config.freshnessDays, 7),
+          ]
+        : a.operation === "web-search"
+          ? [o.native!.query, o.native!.language]
+          : [p.woeid];
     const logicalIntent = await sha256(
-      JSON.stringify([
-        o.workspaceId,
-        o.accountId,
-        o.profileId,
-        a.operation,
-        o.native!.query,
-        o.native!.language,
-        o.config.freshnessDays,
-        p.woeid,
-      ]),
+      JSON.stringify([2, o.workspaceId, o.accountId, a.operation, ...inputs]),
     );
-    const key = await sha256(
-      JSON.stringify([
-        logicalIntent,
-        o.actorId,
-        o.profileVersionId,
-        o.config,
-        captured.fingerprint,
-        Math.floor(o.windowEnd / 300000),
-      ]),
-    );
-    const prior = await ctx.db
-      .query("researchCaches")
-      .withIndex("by_workspaceId_and_accountId_and_key", (q) =>
-        q
-          .eq("workspaceId", o.workspaceId)
-          .eq("accountId", o.accountId)
-          .eq("key", key),
-      )
-      .unique();
+    const cacheKey = (intent: string) =>
+      sha256(
+        JSON.stringify([
+          intent,
+          o.actorId,
+          o.profileVersionId,
+          o.config,
+          captured.fingerprint,
+          Math.floor(o.windowEnd / 300000),
+        ]),
+      );
+    const key = await cacheKey(logicalIntent);
+    const lookup = (key: string) =>
+      ctx.db
+        .query("researchCaches")
+        .withIndex("by_workspaceId_and_accountId_and_key", (q) =>
+          q
+            .eq("workspaceId", o.workspaceId)
+            .eq("accountId", o.accountId)
+            .eq("key", key),
+        )
+        .unique();
+    let prior = await lookup(key);
+    if (!prior) {
+      // One exact old cache probe preserves authorized hits from an unchanged pre-v2 snapshot.
+      const oldIntent = await sha256(
+        JSON.stringify([
+          o.workspaceId,
+          o.accountId,
+          o.profileId,
+          a.operation,
+          o.native!.query,
+          o.native!.language,
+          o.config.freshnessDays,
+          p.woeid,
+        ]),
+      );
+      const old = await lookup(await cacheKey(oldIntent));
+      if (old?.state === "completed" || old?.state === "empty") prior = old;
+    }
     if (prior) {
       if (!prior.attemptId)
         throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
@@ -106,6 +129,26 @@ export const begin = internalMutation({
       if (prior.orderId === o._id)
         throw new ConvexError("RESEARCH_ATTEMPT_ALREADY_ADMITTED");
       await ctx.db.patch(prior._id, { key: `expired:${prior._id}` });
+    }
+    // Old raw hashes cannot reconstruct all effective requests after policy/profile changes.
+    // Fail closed for this account/source family until old sent/unknown liability is reconciled.
+    for (const state of ["sent", "unknown"] as const) {
+      const legacy = await ctx.db
+        .query("aiAttempts")
+        .withIndex("by_native_legacy_intent", (q) =>
+          q
+            .eq("workspaceId", o.workspaceId)
+            .eq("accountId", o.accountId)
+            .eq("operation", a.operation)
+            .eq("intentVersion", undefined)
+            .eq("state", state),
+        )
+        .take(101);
+      if (legacy.length > 100)
+        throw new ConvexError("RESEARCH_LEGACY_INTENT_RECONCILIATION_REQUIRED");
+      for (const receipt of legacy) await nativeAttempt(ctx, receipt._id);
+      if (legacy.length)
+        throw new ConvexError("RESEARCH_LEGACY_INTENT_RECONCILIATION_REQUIRED");
     }
     const historical = await ctx.db
       .query("aiAttempts")
@@ -186,6 +229,7 @@ export const begin = internalMutation({
       });
     const attemptId = await ctx.db.insert("aiAttempts", {
       owner: "native-search",
+      intentVersion: 2,
       workspaceId: o.workspaceId,
       accountId: o.accountId,
       researchOrderId: o._id,

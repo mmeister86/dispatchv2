@@ -140,6 +140,7 @@ export const publicSource = v.object({
   usableUntil: v.number(),
 });
 export const nativeAttemptFields = {
+  intentVersion: v.optional(v.literal(2)),
   owner: v.literal("native-search"),
   runId: v.optional(v.id("agentRuns")),
   workspaceId: v.id("workspaces"),

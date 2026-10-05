@@ -1133,3 +1133,510 @@ test("unknown native currency corruption retains all original holds", async () =
       spentMicros: 0,
     });
 });
+
+test.each(["x-recent", "web-search", "x-trends"] as const)(
+  "%s effective physical request cannot be retried through unused profile inputs",
+  async (operation) => {
+    const f = await fixture([operation]);
+    const requests: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+      requests.push(JSON.stringify([String(url), init?.body]));
+      return new Response("", { status: 503 });
+    });
+    await execute(f, await f.start());
+    await f.signed.mutation(api.research.profiles.change, {
+      workspaceId: f.workspaceId,
+      profileId: f.profileId,
+      expectedRevision: 2,
+      commandKey: "unused-profile-wrapper",
+      action: {
+        kind: "save",
+        config: {
+          ...config,
+          freshnessDays: 90,
+          languages: operation === "x-trends" ? ["en"] : ["de"],
+          cap: { currency: "USD", limitMicros: 300 },
+        },
+      },
+    });
+    const next = await f.signed.mutation(api.research.native.start, {
+      workspaceId: f.workspaceId,
+      profileId: f.profileId,
+      expectedRevision: 3,
+      operationKey: "new-wrapper-same-request",
+      query:
+        operation === "x-trends" ? "Unused different text" : "Product news",
+      language: operation === "x-trends" ? "en" : "de",
+      operations: [operation],
+    });
+    await execute(f, next);
+    expect(requests[1] ?? requests[0]).toBe(requests[0]);
+    expect(requests).toHaveLength(1);
+    const receipts = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]).toMatchObject({
+      state: "unknown",
+      heldMicros: operation === "x-trends" ? 10 : 100,
+    });
+  },
+);
+
+test("X primary language and unused WOEID changes cannot bypass unknown receipt", async () => {
+  const f = await fixture(["x-recent"]),
+    requests: string[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+    requests.push(String(url));
+    return new Response("", { status: 503 });
+  });
+  await execute(f, await f.start());
+  await f.t.run((ctx) => ctx.db.patch(f.policies[0], { woeid: 23424829 }));
+  await f.signed.mutation(api.research.profiles.change, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    commandKey: "language-wrapper",
+    action: {
+      kind: "save",
+      config: {
+        ...config,
+        languages: ["de-AT"],
+        cap: { currency: "USD", limitMicros: 300 },
+      },
+    },
+  });
+  const next = await f.signed.mutation(api.research.native.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 3,
+    operationKey: "same-primary-language",
+    query: "Product news",
+    language: "de-AT",
+    operations: ["x-recent"],
+  });
+  await execute(f, next);
+  expect(requests[1] ?? requests[0]).toBe(requests[0]);
+  expect(requests).toHaveLength(1);
+});
+
+async function legacyReceipt(
+  f: Awaited<ReturnType<typeof fixture>>,
+  orderId: Id<"researchOrders">,
+) {
+  return f.t.run(async (ctx) => {
+    const o = (await ctx.db.get(orderId))!;
+    const t = (await ctx.db
+      .query("aiAttempts")
+      .withIndex("by_researchOrderId_and_key", (q) =>
+        q.eq("researchOrderId", orderId),
+      )
+      .first())!;
+    if (t.owner !== "native-search") throw new Error("native fixture expected");
+    const p = (await ctx.db.get(t.policyId))!;
+    // Imported pre-v2 shape: the original raw hash and unchanged exact cache snapshot.
+    const logicalIntent = await sha256(
+      JSON.stringify([
+        o.workspaceId,
+        o.accountId,
+        o.profileId,
+        t.operation,
+        o.native!.query,
+        o.native!.language,
+        o.config.freshnessDays,
+        p.woeid,
+      ]),
+    );
+    const key = await sha256(
+      JSON.stringify([
+        logicalIntent,
+        o.actorId,
+        o.profileVersionId,
+        o.config,
+        t.policyFingerprint,
+        Math.floor(o.windowEnd / 300000),
+      ]),
+    );
+    await ctx.db.patch(t._id, { logicalIntent, intentVersion: undefined });
+    await ctx.db.patch(t.cacheId, { logicalIntent, key });
+    return t._id;
+  });
+}
+
+test("legacy raw X unknown blocks only X after canonical deployment and settles once after revocation", async () => {
+  const f = await fixture(),
+    requests: string[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
+    requests.push(String(url));
+    return String(url).includes("api.x.com")
+      ? new Response("", { status: 503 })
+      : streamResponse();
+  });
+  const first = await f.start("old-x-schema", ["x-recent"]);
+  await execute(f, first);
+  const attemptId = await legacyReceipt(f, first);
+  await f.signed.mutation(api.research.profiles.change, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    commandKey: "legacy-config-change",
+    action: {
+      kind: "save",
+      config: {
+        ...config,
+        freshnessDays: 90,
+        cap: { currency: "USD", limitMicros: 300 },
+      },
+    },
+  });
+  const next = await f.signed.mutation(api.research.native.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 3,
+    operationKey: "new-canonical-deployment",
+    query: "Product news",
+    language: "de",
+    operations: ["x-recent", "web-search"],
+  });
+  const rows = await execute(f, next);
+  expect(requests.filter((url) => url.includes("api.x.com"))).toHaveLength(1);
+  expect(rows[0].reason).toBe("RESEARCH_LEGACY_INTENT_RECONCILIATION_REQUIRED");
+  expect(rows[1].state).toBe("completed");
+  const old = (await f.t.run((ctx) => ctx.db.get(attemptId)))!;
+  expect(old).toMatchObject({ state: "unknown", heldMicros: 100 });
+  for (const bid of old.budgetIds)
+    expect((await f.t.run((ctx) => ctx.db.get(bid)))!.heldMicros).toBe(100);
+  await f.t.run((ctx) => ctx.db.patch(f.policies[0], { enabled: false }));
+  const receipt = {
+    attemptId,
+    units: 3,
+    reportedCost: null,
+    costInvalid: false,
+    errorCode: null,
+  };
+  await f.t.mutation(internal.research.cache.settle, receipt);
+  await f.t.mutation(internal.research.cache.settle, receipt);
+  expect(await f.t.run((ctx) => ctx.db.get(attemptId))).toMatchObject({
+    state: "settled",
+    heldMicros: 0,
+    estimatedMicros: 30,
+  });
+  expect(requests).toHaveLength(2);
+});
+
+test("legacy Web unknown expires no financial hold, then known late usage permits new canonical work/cache", async () => {
+  const f = await fixture(["web-search"]);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(new Response("", { status: 503 }));
+  const first = await f.start();
+  await execute(f, first);
+  const attemptId = await legacyReceipt(f, first);
+  await f.t.run(async (ctx) => {
+    const t = (await ctx.db.get(attemptId))!;
+    if (t.owner === "native-search")
+      await ctx.db.patch(t.cacheId, { expiresAt: 0, leaseUntil: 0 });
+  });
+  const second = await f.signed.mutation(api.research.native.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    operationKey: "different-canonical-query",
+    query: "Different genuine query",
+    language: "de",
+    operations: ["web-search"],
+  });
+  const rows = await execute(f, second);
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(rows[0].reason).toBe("RESEARCH_LEGACY_INTENT_RECONCILIATION_REQUIRED");
+  expect(await f.t.run((ctx) => ctx.db.get(attemptId))).toMatchObject({
+    state: "unknown",
+    heldMicros: 100,
+  });
+  await f.t.run(async (ctx) => {
+    for (const b of await ctx.db.query("aiBudgets").collect())
+      await ctx.db.patch(b._id, { expiresAt: 0, purposes: [], limitMicros: 0 });
+  });
+  const receipt = {
+    attemptId,
+    units: null,
+    reportedCost: 0.00002,
+    costInvalid: false,
+    errorCode: null,
+  };
+  await f.t.mutation(internal.research.cache.settle, receipt);
+  await f.t.mutation(internal.research.cache.settle, receipt);
+  await f.t.run(async (ctx) => {
+    for (const b of await ctx.db.query("aiBudgets").collect())
+      await ctx.db.patch(b._id, {
+        expiresAt: Date.now() + 86400000,
+        purposes: ["native-search"],
+        limitMicros: 1000,
+      });
+  });
+  fetch.mockResolvedValue(streamResponse());
+  const start = (key: string) =>
+    f.signed.mutation(api.research.native.start, {
+      workspaceId: f.workspaceId,
+      profileId: f.profileId,
+      expectedRevision: 2,
+      operationKey: key,
+      query: "Different genuine query",
+      language: "de",
+      operations: ["web-search"],
+    });
+  await execute(f, await start("known-now-new-work"));
+  const cached = await execute(f, await start("canonical-cache-hit"));
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(cached[0]).toMatchObject({ cacheHit: true, estimatedMicros: null });
+  const attempts = await f.t.run((ctx) => ctx.db.query("aiAttempts").collect());
+  expect(attempts).toHaveLength(2);
+  expect(attempts.find((t) => t._id !== attemptId)).toMatchObject({
+    intentVersion: 2,
+    state: "settled",
+  });
+});
+
+test("known pre-v2 cache hit preserves current authorization without new paid receipt", async () => {
+  const f = await fixture(["web-search"]),
+    fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+  const first = await f.start();
+  await execute(f, first);
+  await legacyReceipt(f, first);
+  const cached = await execute(f, await f.start("old-cache-new-wrapper"));
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(cached[0]).toMatchObject({
+    cacheHit: true,
+    estimatedMicros: null,
+    usagePending: false,
+  });
+  expect(cached[0].sources).toHaveLength(1);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect()),
+  ).toHaveLength(1);
+});
+
+test("pre-v2 sent receipt stays held after stop and blocks new same-source admission", async () => {
+  const f = await fixture(["web-search"]),
+    first = await f.start();
+  await f.t.mutation(internal.research.cache.begin, {
+    orderId: first,
+    generation: 1,
+    operation: "web-search",
+  });
+  const attemptId = await legacyReceipt(f, first);
+  await f.signed.mutation(api.research.runs.stop, {
+    workspaceId: f.workspaceId,
+    orderId: first,
+  });
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(streamResponse());
+  const rows = await execute(f, await f.start("legacy-sent-wrapper"));
+  expect(rows[0].reason).toBe("RESEARCH_LEGACY_INTENT_RECONCILIATION_REQUIRED");
+  expect(fetch).not.toHaveBeenCalled();
+  expect(await f.t.run((ctx) => ctx.db.get(attemptId))).toMatchObject({
+    state: "sent",
+    heldMicros: 100,
+  });
+});
+
+test("legacy unresolved index saturation fails closed without another reservation", async () => {
+  const f = await fixture(["web-search"]),
+    first = await f.start();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response("", { status: 503 }),
+  );
+  await execute(f, first);
+  const attemptId = await legacyReceipt(f, first);
+  // Deliberately malformed restored saturation: the guard must stop before trusting any of these copies.
+  await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...t } = (await ctx.db.get(attemptId))!;
+    for (let i = 0; i < 100; i++) await ctx.db.insert("aiAttempts", t);
+  });
+  const next = await f.signed.mutation(api.research.native.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    operationKey: "saturated-old-family",
+    query: "Different query",
+    language: "de",
+    operations: ["web-search"],
+  });
+  const rows = await execute(f, next);
+  expect(rows[0].reason).toBe("RESEARCH_LEGACY_INTENT_RECONCILIATION_REQUIRED");
+  expect(fetch).toHaveBeenCalledTimes(1);
+  for (const bid of (await f.t.run((ctx) => ctx.db.get(attemptId)))!.budgetIds)
+    expect((await f.t.run((ctx) => ctx.db.get(bid)))!.heldMicros).toBe(100);
+});
+
+test("new canonical unknown leaves genuinely different Web work funded within shared cover", async () => {
+  const f = await fixture(["web-search"]),
+    fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("", { status: 503 }));
+  await execute(f, await f.start());
+  fetch.mockResolvedValue(streamResponse());
+  const next = await f.signed.mutation(api.research.native.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    operationKey: "genuine-different-work",
+    query: "Actually different query",
+    language: "de",
+    operations: ["web-search"],
+  });
+  const rows = await execute(f, next);
+  expect(rows[0].state).toBe("completed");
+  expect(fetch).toHaveBeenCalledTimes(2);
+  const attempts = await f.t.run((ctx) => ctx.db.query("aiAttempts").collect());
+  expect(attempts).toHaveLength(2);
+  expect(
+    attempts.every((t) => t.owner === "native-search" && t.intentVersion === 2),
+  ).toBe(true);
+  expect(attempts[0]).toMatchObject({ state: "unknown", heldMicros: 100 });
+});
+
+test("late overage fences another reserved order's current coverage without forgiving either liability", async () => {
+  const f = await fixture(["web-search", "x-recent"]);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValue(new Response("", { status: 503 }));
+  await execute(f, await f.start("old-unknown-web", ["web-search"]));
+  const old = (await f.t.run((ctx) => ctx.db.query("aiAttempts").first()))!;
+  const next = await f.start("new-independent-x", ["x-recent"]);
+  await f.t.mutation(internal.research.cache.begin, {
+    orderId: next,
+    generation: 1,
+    operation: "x-recent",
+  });
+  const receipt = {
+    attemptId: old._id,
+    units: null,
+    reportedCost: 0.0012,
+    costInvalid: false,
+    errorCode: null,
+  };
+  await f.t.mutation(internal.research.cache.settle, receipt);
+  await f.t.mutation(internal.research.cache.settle, receipt);
+  for (const b of await f.t.run((ctx) => ctx.db.query("aiBudgets").collect()))
+    if (b.scope !== "provider")
+      expect(b).toMatchObject({ heldMicros: 100, spentMicros: 1200 });
+  await expect(
+    f.t.query(internal.research.native.context, {
+      orderId: next,
+      generation: 1,
+      operation: "x-recent",
+    }),
+  ).rejects.toThrow("RESEARCH_BUDGET_EXHAUSTED");
+  const rows = await execute(f, next);
+  expect(rows[0].state).toBe("budget_exhausted");
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(await f.t.run((ctx) => ctx.db.get(old._id))).toMatchObject({
+    state: "settled",
+    estimatedMicros: 1200,
+    heldMicros: 0,
+  });
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())).find(
+      (t) => t._id !== old._id,
+    ),
+  ).toMatchObject({ heldMicros: 100 });
+});
+
+test("late budget overage preserves delivered partial metadata and an authorized free X cache hit", async () => {
+  const f = await fixture(["x-recent", "web-search"]);
+  const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) =>
+    String(url).includes("api.x.com")
+      ? Response.json({
+          data: [
+            {
+              id: "123",
+              text: "PUBLIC_X_SOURCE",
+              created_at: new Date(Date.now() - 60000).toISOString(),
+            },
+          ],
+        })
+      : new Response(
+          frame({
+            choices: [
+              {
+                delta: {
+                  web_search: {
+                    content: [
+                      {
+                        url: "https://example.test/partial",
+                        title: "DELIVERED_PARTIAL_TITLE",
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          }),
+          { headers: { "content-type": "text/event-stream" } },
+        ),
+  );
+  const first = await f.start();
+  await execute(f, first);
+  const old = (
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())
+  ).find((t) => t.owner === "native-search" && t.operation === "web-search")!;
+  await f.t.mutation(internal.research.cache.settle, {
+    attemptId: old._id,
+    units: null,
+    reportedCost: 0.0012,
+    costInvalid: false,
+    errorCode: null,
+  });
+  const historical = await f.signed.query(api.research.native.results, {
+    workspaceId: f.workspaceId,
+    orderId: first,
+  });
+  expect(historical[1].state).toBe("partial");
+  expect(historical[1].sources[0].title).toBe("DELIVERED_PARTIAL_TITLE");
+  const cached = await execute(
+    f,
+    await f.start("free-cache-after-overage", ["x-recent"]),
+  );
+  expect(cached[0]).toMatchObject({ cacheHit: true, estimatedMicros: null });
+  expect(cached[0].sources[0].text).toBe("PUBLIC_X_SOURCE");
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect()),
+  ).toHaveLength(2);
+});
+
+test.each(["generation", "operation"] as const)(
+  "funded context rejects its selected cache %s mismatch before I/O",
+  async (field) => {
+    const f = await fixture(["x-recent"]),
+      orderId = await f.start();
+    const fill = await f.t.mutation(internal.research.cache.begin, {
+      orderId,
+      generation: 1,
+      operation: "x-recent",
+    });
+    await f.t.run(async (ctx) => {
+      if (field === "generation") {
+        await ctx.db.patch(fill.cacheId, { generation: 2 });
+        await ctx.db.patch(fill.attemptId!, { generation: 2 });
+      } else {
+        const cache = (await ctx.db.get(fill.cacheId))!;
+        await ctx.db.patch(fill.cacheId, { operation: "web-search" });
+        expect(cache.operation).toBe("x-recent");
+      }
+    });
+    await expect(
+      f.t.query(internal.research.native.context, {
+        orderId,
+        generation: 1,
+        operation: "x-recent",
+      }),
+    ).rejects.toThrow("RESEARCH_ATTEMPT_OWNER_INVALID");
+    const attempt = (await f.t.run((ctx) => ctx.db.get(fill.attemptId!)))!;
+    expect(attempt).toMatchObject({ state: "sent", heldMicros: 100 });
+    for (const id of attempt.budgetIds)
+      expect((await f.t.run((ctx) => ctx.db.get(id)))!.heldMicros).toBe(100);
+  },
+);

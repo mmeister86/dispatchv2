@@ -154,7 +154,34 @@ export const context = internalQuery({
   }),
   handler: async (ctx, a) => {
     const order = await orderAuthority(ctx, a.orderId, a.generation),
-      { p } = await sourceAuthority(ctx, order, a.operation);
+      { p, captured } = await sourceAuthority(ctx, order, a.operation);
+    const cacheId =
+      order.native!.cacheIds[order.native!.operations.indexOf(a.operation)];
+    const cache = cacheId ? await ctx.db.get(cacheId) : null;
+    if (
+      cacheId &&
+      (!cache?.attemptId ||
+        cache.workspaceId !== order.workspaceId ||
+        cache.accountId !== order.accountId ||
+        cache.operation !== a.operation)
+    )
+      throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+    const owned = cache?.attemptId
+      ? await nativeAttempt(ctx, cache.attemptId)
+      : null;
+    if (owned && owned.c._id !== cacheId)
+      throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+    if (owned?.o._id === order._id && owned.t.state === "sent") {
+      if (owned.t.generation !== a.generation)
+        throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
+      // A late liability can consume coverage after this reservation; recheck before physical I/O.
+      for (const id of captured.budgetIds) {
+        const b = (await ctx.db.get(id))!;
+        const total = b.heldMicros + b.spentMicros;
+        if (!Number.isSafeInteger(total) || total > b.limitMicros)
+          throw new ConvexError("RESEARCH_BUDGET_EXHAUSTED");
+      }
+    }
     return { order, policy: p };
   },
 });
