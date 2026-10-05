@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 09:51'
+updated_date: '2026-10-05 10:20'
 labels:
   - p02
   - r1
@@ -70,4 +70,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /media, /drafts/:id. Local file validation/upload progress/cancel/retry, image/video previews, media selection and alt text; referenced alt-text edits make new media/content versions. Grenze: No R2 URLs, server finalization, checksums, multipart upload or provider media processing. Demo limits: 2 MB/file, 3 MB total. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Nutzerentscheidung: Fehlende EU-R2-S3-Zugangsdaten zunächst mit sichtbaren Konfigurationshinweisen behandeln. Keine geheimen Werte im Chat; kein Ersatz durch nicht belegten weur-Location-Hint. Implementierung folgt nach unabhängiger Prüfung des Editorial-Vertrags.
+
+Implementierung nach unabhängiger Editorial-SPEC/QUALITY PASS f041927 gestartet (Root-Plancommit e188453). Eigener TASK-9-Implementer übernimmt bestehenden mediaAssets-Vertrag, servereigene Sessions, unveränderliche finale Objekte, indexierte Versionsreferenzen und Workspace-Lifecycle-Barriere. Aktuelle offizielle R2-Dokumentation via Context7 geprüft; X-Alt-Text-Metadaten sind pro freigegebener Version auf1000Zeichen begrenzt. Echte EU-R2-Credentials/CORS-/Runtime-Abnahme bleiben wie vom Nutzer gewünscht separat offen.
 <!-- SECTION:NOTES:END -->
