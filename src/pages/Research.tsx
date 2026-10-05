@@ -1,3 +1,5 @@
+import { demoMode } from "@/lib/auth-client";
+import { RealResearch } from "@/features/research/profile-editor";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -130,6 +132,9 @@ const labels: Record<string, string> = {
   empty: "Keine Treffer",
 };
 export function ResearchPage() {
+  return demoMode ? <DemoResearch /> : <RealResearch />;
+}
+function DemoResearch() {
   const { state, createDraft, mutate } = useStore();
   const navigate = useNavigate();
   const editable = canEdit(state.role);

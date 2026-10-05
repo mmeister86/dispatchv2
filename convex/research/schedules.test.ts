@@ -498,3 +498,71 @@ test("simultaneous manual requests admit one active order; durable stop fences i
   expect(stopped?.usageMicros).toBeNull();
   expect(stopped?.config).toEqual(config);
 });
+test("actual native timer executes the saved scheduled function and queued shell without external I/O", async () => {
+  const f = await prepared();
+  await vi.advanceTimersByTimeAsync(f.callback.at - Date.now() + 1);
+  await f.t.finishInProgressScheduledFunctions();
+  await vi.advanceTimersByTimeAsync(1);
+  await f.t.finishInProgressScheduledFunctions();
+  const orders = await f.t.run((ctx) =>
+    ctx.db.query("researchOrders").collect(),
+  );
+  expect(orders).toHaveLength(1);
+  expect(orders[0].occurrence).toEqual({
+    generation: f.callback.generation,
+    at: f.callback.at,
+  });
+  expect(orders[0].state).toBe("blocked");
+  expect(orders[0].reason).toBe("RESEARCH_DOWNSTREAM_UNAVAILABLE");
+  expect(
+    await f.t.run((ctx) => ctx.db.query("agentRuns").collect()),
+  ).toHaveLength(0);
+});
+test("profile edits retain an unchanged historical cap after pricing withdrawal, removal is explicit, public projections hide grant/job authority", async () => {
+  const f = await prepared();
+  const row = (await f.get())!;
+  expect(row.profile).not.toHaveProperty("scheduleApproval");
+  expect(row.profile).not.toHaveProperty("scheduledJobId");
+  await f.t.run(async (ctx) => {
+    const p = (await ctx.db.query("aiPolicies").collect())[0];
+    await ctx.db.delete(p._id);
+  });
+  await f.signed.mutation(api.research.profiles.change, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 3,
+    commandKey: "withdraw-edit",
+    action: {
+      kind: "save",
+      config: { ...row.version.config, topics: "Still editable" },
+    },
+  });
+  expect((await f.get())!.version.config.cap).toEqual({
+    currency: "USD",
+    limitMicros: 10000,
+  });
+  const id = await f.signed.mutation(api.research.runs.start, {
+    ...startArgs(f, 4),
+    operationKey: "withdraw-run",
+  });
+  await f.t.mutation(internal.research.runs.execute, {
+    orderId: id,
+    generation: 1,
+  });
+  const history = await f.signed.query(api.research.runs.history, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    paginationOpts: { numItems: 1, cursor: null },
+  });
+  expect(history.page[0]).not.toHaveProperty("approval");
+  expect(history.page[0]).not.toHaveProperty("actorId");
+  expect(history.page[0].usageMicros).toBeNull();
+  await f.signed.mutation(api.research.profiles.change, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 4,
+    commandKey: "remove-cap",
+    action: { kind: "save", config: { ...row.version.config, cap: null } },
+  });
+  expect((await f.get())!.version.config.cap).toBeNull();
+});
