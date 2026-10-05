@@ -4,7 +4,7 @@ title: Publisher mit Einzelpost-Checkpoints und Abgleich bauen (P03.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 10:03'
 labels:
   - p03
   - r1
@@ -54,6 +54,16 @@ Großes Paket: Die zugeordneten Unteraufgaben liefern die Implementierung in beg
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Nach TASK-9/10 den bestehenden generation-/versionsgebundenen Claim und checkSend übernehmen.
+2. TASK-12.1: finalisierte R2-Bytes erneut prüfen, begrenzte X-Medienübertragung und dauerhafte Processing-/Verfallszustände integrieren.
+3. TASK-12.2: pro Threadposition vor dem nicht idempotenten Request einen dauerhaften Versuch anlegen, jeden bestätigten externen Post sofort speichern, keine automatischen Schreib-Retries.
+4. TASK-12.3: transiente/permanente/unklare Ergebnisse trennen; bekannte IDs abgleichen, unbekannte mögliche Effekte pausieren und nur explizit sicher fehlende Positionen fortsetzen.
+5. Crash nach Position2, Timeout nach möglichem Erfolg, Widerruf/Disconnect/Generationswechsel und aktualisierte UI-Aktionen prüfen; echten Testversand nur mit konkret freigegebenem Account/Inhalt.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 

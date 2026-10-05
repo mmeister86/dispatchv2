@@ -38,7 +38,7 @@ Inferenz, Speicherung, Embeddings, Statistik und Training sind getrennte Zwecke.
 
 **Präzisierung zur Abnahme:** Eine Wiederverbindung aktualisiert Zugang und nachgewiesene Capabilities desselben eindeutig identifizierten Provider-Accounts. Sie darf keine gespeicherten Inhaltsfreigaben auf einen anderen Provider-Account umhängen. Ein Accountwechsel ist eine neue Zielauswahl mit eigener Freigabe. Disconnect sperrt neue betroffene Aufrufe und Jobs; bereits abgesendete Requests werden abgeglichen. Wiederverbindung allein löst keine pauschale Wiederholung unklarer Veröffentlichungen aus.
 
-**Offen – D06, vor TASK-10/P03.01:** Ein aktiver Publishing-Workspace je Provider-Account ist ein Vorschlag. Übernahme, Konfliktauflösung und gegebenenfalls geteilte Verwaltung entscheidet Matthias. Dieses Dokument erlaubt weder stilles Übernehmen noch eine automatische Cross-Tenant-Verknüpfung.
+**Implementierungsentscheidung D06, 2026-10-05, TASK-10/P03.01:** Innerhalb der vom Nutzer übertragenen Entscheidungsfreiheit gilt ein aktiver Publishing-Workspace je Provider-Identität. Eine neue Bindung in einem anderen Workspace verlangt zunächst einen autorisierten Disconnect in der bisherigen Verwaltung und danach einen expliziten frischen OAuth-Vorgang. Ein Konflikt bewirkt keine Übernahme und legt keine fremden Workspace-Daten offen. Inhaltsversionen, Freigaben, Historie und Planungen werden nicht übertragen; Wiederverbindung im alten Workspace darf eine neue aktive Bindung nicht überschreiben. Geteilte Verwaltung und automatische Cross-Tenant-Verknüpfung sind nicht gewählt. Die technische Umsetzung folgt in TASK-10; dies ist noch kein Live-Zugangsnachweis.
 
 | Beispiel | Erwartetes Verhalten |
 |---|---|
@@ -227,7 +227,7 @@ Die Tabellen und Beispiele sind prüfbare Sollverträge, keine ausgeführten Tes
 | Offen / zu bestätigen | Verantwortlicher und Tor |
 |---|---|
 | TASK-2-Fachvertrag einschließlich hier präzisierter Transitionen und D07 | Matthias; manuelle TASK-2-Abnahme, anschließend Umsetzung in zuständigen Tasks |
-| D06 Account über mehrere Workspaces, Übernahme/Wechsel | Matthias; TASK-10 vor P03.01 |
+| D06 Account über mehrere Workspaces, Übernahme/Wechsel | Unter übertragener Entscheidungsfreiheit 2026-10-05 gewählt: ein aktiver Workspace, autorisierter Disconnect vor frischem OAuth; technische Umsetzung TASK-10 |
 | Zeitzonen-/DST-/Reisestrategie | Matthias; TASK-11 vor P03.02 |
 | Slotkonflikte, Gültigkeitsklassen und Nachprüfung D08 | Matthias; TASK-22.1/24/25 vor betroffenen P06.03-/P07-Funktionen |
 | D02 Research-Frequenz und Startbudget | Matthias; TASK-20 vor Aktivierung |

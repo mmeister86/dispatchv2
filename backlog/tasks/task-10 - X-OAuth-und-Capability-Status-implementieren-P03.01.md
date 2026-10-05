@@ -4,7 +4,7 @@ title: X-OAuth und Capability-Status implementieren (P03.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 10:03'
 labels:
   - p03
   - r1
@@ -51,8 +51,20 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Bestehende Social-Account-, Freigabe- und Konfigurationsverträge übernehmen; aktuelle X-OAuth2-Dokumentation prüfen.
+2. D06 als einen aktiven Publishing-Workspace je Provider-Identität umsetzen: kein stilles Übernehmen; zuerst autorisiertes Trennen im bisherigen Workspace, danach expliziter frischer OAuth im neuen. Alte Inhalte/Freigaben werden nicht übertragen.
+3. Einmaligen actor-/workspace-gebundenen PKCE-State, getrennte verschlüsselte Server-Tokens, koordinierte Refresh-Generationen und Wiederverbindung derselben Identität implementieren.
+4. Account-Verwaltung mit realen Metadaten, nachgewiesenen Capabilities und konkreten Konfigurations-/Reauth-Zuständen verbinden.
+5. Foreign-State, Replay, parallele Refreshes, Disconnect und Identitätskonflikte prüfen; keine unangekündigten öffentlichen Testposts.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/integrations. Mock social account connection, reconnect/disconnect and account/instance metadata. Grenze: No X OAuth/PKCE/tokens/refresh. Connection labels explicitly describe simulated publishing. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+D06-Implementierungsentscheidung innerhalb der vom Nutzer übertragenen Freiheit: ein aktiver Publishing-Workspace je Provider-Identität, expliziter Disconnect vor einer neuen Bindung, keine automatische Cross-Tenant-Verknüpfung/Übernahme oder Übertragung alter Freigaben. Live Callback-/Scope-/Zugangsnachweise bleiben getrennte Abnahme; keine Consumer- oder historischen V1-User-Tokens einsetzen.
 <!-- SECTION:NOTES:END -->
