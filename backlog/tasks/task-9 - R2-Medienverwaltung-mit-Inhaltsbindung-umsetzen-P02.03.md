@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 10:33'
+updated_date: '2026-10-05 10:35'
 labels:
   - p02
   - r1
@@ -74,4 +74,6 @@ Nutzerentscheidung: Fehlende EU-R2-S3-Zugangsdaten zunächst mit sichtbaren Konf
 Implementierung nach unabhängiger Editorial-SPEC/QUALITY PASS f041927 gestartet (Root-Plancommit e188453). Eigener TASK-9-Implementer übernimmt bestehenden mediaAssets-Vertrag, servereigene Sessions, unveränderliche finale Objekte, indexierte Versionsreferenzen und Workspace-Lifecycle-Barriere. Aktuelle offizielle R2-Dokumentation via Context7 geprüft; X-Alt-Text-Metadaten sind pro freigegebener Version auf1000Zeichen begrenzt. Echte EU-R2-Credentials/CORS-/Runtime-Abnahme bleiben wie vom Nutzer gewünscht separat offen.
 
 TASK-9 code is frozen for independent SPEC review at 33663d3. Implementer reports 58 unit checks, typecheck, formatting, build, seeded bundle security and two UI regressions passing; configured Convex dev updated 2026-10-05 12:32:36. Private temporary upload grants, conditional immutable final bytes/readback, indexed historical references, lifecycle barriers, paginated library and version-bound alt metadata implemented. Actual EU-jurisdiction bucket credentials, origin CORS, live size/signature/runtime/race evidence and authenticated manual acceptance remain open. Status remains In Progress; no automatic Done.
+
+Independent root full browser regression at frozen media code33663d3: pnpm test:e2e completed 34/34 tests in 2.0m on isolated5174. SPEC reviewer reproduced duplicate-PNG-header predecode-bound bypass and composer/history media lookup gaps; acceptance stays open while fixes and re-review proceed.
 <!-- SECTION:NOTES:END -->
