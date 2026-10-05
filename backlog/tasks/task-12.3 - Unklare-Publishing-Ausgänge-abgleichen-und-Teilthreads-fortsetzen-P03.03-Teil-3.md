@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 12:55'
+updated_date: '2026-10-05 13:23'
 labels:
   - p03
   - r1
@@ -61,4 +61,10 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 Preparation only while TASK12.2 QUALITY cancellation correction is pending. Root candidate-ID lookup is the minimum sufficient reconciliation path; no automatic timeline collector or speculative provider abstraction. Current docs receipt /tmp/dispatch-x-reconciliation-current-docs.md (Context7 library-first3commands plus current primary schema); final implementation brief /tmp/dispatch-x-reconciliation-implementation-brief.md. Actual final12.2 hash/abort-field receipt will be supplied after both reviews PASS. No implementation/provider call or acceptance claimed.
 
 Fresh SDD implementation begins after TASK12.2 final eddf1a2 independent SPEC/QUALITY PASS. Concrete final engine/optional abortRequestedAt/By and cross-generation evidence documented in .docs/x-thread-publishing-contract.md; root full brief /tmp/dispatch-x-reconciliation-implementation-brief.md. Scope candidate-ID verified read-only reconciliation, explicit same-snapshot missing-only continuation/new generation/realUI, positive evidence never grants write capability and abort never cleared to resend. No live provider action or manual acceptance authorized by these synthetic checks.
+
+Delegated root continuation clarification in .docs/decisions/first-write-verification.md: ordinary partial after same-identity reconnect may have capfalse while partial accountBarrier blocks separate proof. Concrete continueThread may obtain fresh exact immutableversion/providerIdentity/prefix OwnerAdmin approval plus separate visible-post ack and new persisted bounded first_write_verification purpose for definitelyunsent positions only. Unknown/sending/abort/differentidentity block; normalcalendar guards unchanged, no generic bypass; READmatch nevercapProof. Required regression ordinarypartial->reconnect->freshconsent->onlymissingactualPOSTproof. Documentation/codegen clarification: installedConvex1.46 codegen uploads analysis/types without finishPush/runtime activation; existingDevonce follows fullchecks.
+
+Implementer-Zwischenstand: 177 Unit-Checks, Typprüfung und tatsächliche Composer-/Kalender-Fixture bestehen; Fixture-Port 5174 ist wieder frei. Selbstreview ergänzt vor Freeze eine konkrete aktuelle Owner/Admin-finalizeAbort-CAS für bereits eindeutig abgelehnte oder bestätigte Outcomes ohne Kandidaten-ID. Unklare/sending Outcomes einschließlich alter Generationen bleiben gesperrt; Abort-Flag wird niemals gelöscht. Abschließende Gesamttests und unabhängige SPEC/QUALITY stehen noch aus. Keine Live-Provider- oder manuelle Abnahme.
+
+Code-Freeze b00093a (Backend 0b5f7cc, UI/Contract b00093a): 181 Unit-Checks, Typprüfung, Formatierung, Build, Bundle- und Diff-Prüfung bestehen; tatsächlicher Composer-/Kalender-Browsertest umfasst Backoff-Timer, Puffererhalt, explizite Fortsetzung und ID-freien bekannten Abort-Abschluss. Bestehende EU-Dev final um 15:21:29 aktiviert, Codegen-Analyse davon getrennt. Unabhängige SPEC-Prüfung und ROOT-Gesamtbrowserregression laufen; QUALITY folgt erst nach SPEC-PASS. AC/Done bleiben bis verifizierten Reviews bzw. manueller Nutzerbestätigung offen. Keine Live-Provideraktionen.
 <!-- SECTION:NOTES:END -->
