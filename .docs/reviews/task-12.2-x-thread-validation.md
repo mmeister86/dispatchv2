@@ -1,0 +1,13 @@
+# TASK-12.2 X thread publishing validation
+
+Implementation is frozen at `8b84329` (backend `1122ef3`, UI/contract `8b84329`; base `d927d91`). Existing EU Convex Dev accepted `convex dev --once` on 2026-10-05 at 14:40:34. No live OAuth, X post/probe, R2 mutation, email, remote push or unrelated deployment was performed.
+
+The implementer reports 136 passing tests in 16 files, typecheck, lint, production build, bundle-secret guard and diff checks. Actual Composer first-write, media lifecycle/upload and OAuth browser fixtures passed. Root separately audited the resolved dependency lock: no known vulnerabilities. The OAuth reconnect regression exercises the distinct global binding fence and account connection sequence through first-write consent and dispatch.
+
+Root independently ran all 34 existing Playwright browser regressions against `8b84329`: PASS in 2.1 minutes. These cover demo/editor/calendar/navigation/accessibility regressions; the implementer's actual Composer fixture checks the intercepted backend-command UI. Neither proves authenticated live-provider acceptance.
+
+Independent SPEC review found two Important defects on `8b84329`. The initial `publishing.claim` commits `publishing` before the separate action call registers a continuation; a crash in that gap leaves no durable step or watchdog. Finalize/status media-key acknowledgements are parsed but discarded if INIT omitted the key. The reviewer independently reproduced both with two failing temporary tests; 31 existing targeted tests passed. The original implementer is correcting both causes before SPEC re-review. Independent QUALITY review follows SPEC approval. Acceptance criteria are not yet checked on this evidence alone.
+
+Fix candidate `9f5f593` registers the initial workflow step in the claim transaction and removes the separate action dispatch. Finalize/status retains actual acknowledged media keys; contradictory evidence pauses as `uncertain` without overwriting the prior key. Five permanent regression tests were reproduced red and now pass. The implementer reports 141 tests plus type/lint/build/bundle/diff checks PASS and existing Dev functions ready at 14:45:43. Independent SPEC re-review is running; QUALITY has not started. The UI is unchanged from root's passing browser regression.
+
+The current unit records durable per-position outcomes and stops possible writes as unknown. TASK-12.3 owns read-only reconciliation and explicit continuation. Configured provider access, actual API entitlement/write proof, EU-R2 runtime/egress/media processing, costs and authenticated manual acceptance remain open. Backlog stays In Progress until explicit user confirmation after manual testing.

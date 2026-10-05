@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 12:17'
+updated_date: '2026-10-05 12:46'
 labels:
   - p03
   - r1
@@ -58,4 +58,14 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P03.03. Der übergeord
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /calendar?view=agenda. Thread detail shows each contribution and confirmed checkpoint; local completion updates only pending mock contributions. Grenze: No durable backend checkpoints or external IDs. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Fresh SDD implementation begins after TASK12.1 final SPEC/QUALITYddd3ad4. Explicit first-write decision .docs/decisions/first-write-verification.md; current provider receipt /tmp/dispatch-x-post-current-docs.md. Existing version-level media list attaches to first position only, shown in exact human consent snapshot. No root/provider live posts without actual testaccount/content authorization; current missing configuration remains visible per user decision.
+
+Implementation ongoing: native per-position preparing/sending/confirmed/rejected/unknown CAS checkpoints, concrete expiring first-write approval/schedule purpose, first-position-only media and actual optional media_key capture. Official twitter-text3.1.0 replaces incorrect UTF16/CJK/URL counting in shared checks; root independent pnpm audit --audit-level moderate reports no known vulnerabilities after install. Root Context7 current post query plus primary endpoint/schema receipts resolve201/nestedmedia/reply; no matched Context7 character docs after3 commands, current official character guide/repository used explicitly. No runtime deployment or live provider evidence claimed at this stage; UI/browser/full checks/reviews remain.
+
+Implementation frozen at 8b84329 (backend 1122ef3). Implementer reports 136 tests/16 files, type/lint/build/bundle/diff and four actual local browser fixtures PASS; configured existing EU Convex Dev --once ready 14:40:34. OAuth reconnect-to-first-write regression preserves distinct global binding fence and pinned account connection sequence. Root full34 browser regression and independent SPEC are running; QUALITY follows SPEC PASS. No live provider/manual acceptance or Backlog closure claimed. Receipt .docs/x-thread-publishing-contract.md and .docs/reviews/task-12.2-x-thread-validation.md.
+
+Independent SPEC FAIL on 8b84329: (1) initial publishing.claim commits publishing before a separate action registers continuation, so an intervening crash leaves no durable watchdog/attempt; (2) finalize/status actual media_key is parsed but discarded when INIT omitted it. Reviewer independently reproduced both with two failing temporary tests; 31 existing targeted checks pass. Original implementer is correcting causes with durable native claim scheduling and retained/conflict-checked media-key evidence, then re-review. No AC or Done marked.
+
+Root independent existing Playwright regression on 8b84329: all34 cases PASS in2.1min, including calendar/editor/navigation/accessibility. This is local browser evidence, not live provider/manual acceptance. SPEC defects remain under correction; no broad regression repeat needed unless subsequent UI changes/failures justify it.
+
+Fix candidate 9f5f593: initial workflow step registered atomically within claim mutation; dispatch no longer has separate action gap. Finalize/status retains real acknowledged media keys; conflicts pause uncertain without overwriting. Five permanent regressions reproduced red then green; implementer full141/type/lint/build/bundle/diff and existing EU Dev ready14:45:43 PASS. UI unchanged from root34 browser PASS. Same independent SPEC reviewer re-review running; QUALITY not yet started.
 <!-- SECTION:NOTES:END -->
