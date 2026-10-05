@@ -1,10 +1,10 @@
 ---
 id: TASK-49
 title: Einladungen und belastbare Rollenmatrix umsetzen (P13.01)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p13
   - r6
@@ -47,3 +47,9 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /team. Invite/accept/revoke/expire, member roles, permissions preview, owner transfer/last-owner protection and selectable demo role. Grenze: No invitation email, authenticated memberships or server-side permission enforcement. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

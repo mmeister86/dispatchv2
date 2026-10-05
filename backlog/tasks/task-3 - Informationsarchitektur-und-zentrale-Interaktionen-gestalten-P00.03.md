@@ -1,10 +1,10 @@
 ---
 id: TASK-3
 title: Informationsarchitektur und zentrale Interaktionen gestalten (P00.03)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p00
   - r0
@@ -13,6 +13,7 @@ dependencies:
   - TASK-2
 references:
   - .docs/dispatch-end-to-end-implementation-plan.md
+  - .docs/reviews/2026-10-01-task-3-evaluation.md
 priority: high
 ordinal: 3000
 ---
@@ -46,3 +47,11 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-10-01: Auswertung durch Nutzer beauftragt, keine Design-/UI-Implementierung. Zwei unabhängige lesende Reviews zu Fachverträgen und Design-Startfähigkeit konsolidiert. TASK-2 ist auf ausdrückliche Nutzeranweisung Done; formale Abhängigkeit erfüllt. Ergebnis: TASK-3 bleibt To Do, AC1–3 offen. experience-design.md und core-flows.md fehlen, keine alternativen Prototypen, keine Ansichtszustandsmatrix oder dokumentierte Nutzerprüfung. AC2 ist fachlich durch Domain-Verträge vorbereitet, aber nicht als verständliche Interaktion nachgewiesen. Umfangslücke: Analyzer, Dispatch Score und J07 müssen wegen D04/R2 ausdrücklich in den Composer-Designumfang aufgenommen werden. Empfohlen: Informationsarchitektur/Gestaltungsentscheidungen und fünf Kernansichten samt Zuständen ausarbeiten, J01–J08/frühe J12-Sperrungen prüfen und spätere Team-/Kanal-Designgates festhalten. Bericht: .docs/reviews/2026-10-01-task-3-evaluation.md. Offene Produktentscheidungen und Provider-Aktivierungstore bleiben bestehen; keine AC abgehakt.
+
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /overview, /drafts/:id, /research, /agent, /calendar, /team. App navigation, object handoffs, light/dark themes, responsive layout and status/empty/error states form the interactive prototype. Grenze: Product-owner design approval and representative-user evaluation remain manual acceptance. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

@@ -1,10 +1,10 @@
 # Dispatch – Backlog-Roadmap
 
-Stand: 16. September 2026. Quelle: [End-to-End-Plan](dispatch-end-to-end-implementation-plan.md), insbesondere §§8–16.
+Stand: 1. Oktober 2026. Quellen: [End-to-End-Plan](dispatch-end-to-end-implementation-plan.md), insbesondere §§8–16, und [JEV-Integration](JEV_INTEGRATION.md).
 
-**84 offene Tasks in zehn Release-Milestones und 17 Phasen:** 62 Plan-Arbeitspakete, 18 Unteraufgaben für sechs große Pakete sowie vier ergänzende Gate-/Entscheidungstasks. Übergeordnete Pakete und Unteraufgaben werden in der Anzahl getrennt gezählt; daraus lässt sich kein Aufwand ableiten.
+**89 Tasks in zehn Release-Milestones und 17 Phasen, davon 87 offen:** 62 Plan-Arbeitspakete, 21 Unteraufgaben für sieben große Pakete, vier ergänzende Gate-/Entscheidungstasks und zwei JEV-Erweiterungen. Übergeordnete Pakete und Unteraufgaben werden in der Anzahl getrennt gezählt; daraus lässt sich kein Aufwand ableiten.
 
-Alle Aufgaben stehen auf **To Do**. Es wurden keine Implementierung begonnen, Kriterien abgehakt oder Tasks abgeschlossen. Die Backlog-Erstellung gibt keine offenen Produktentscheidungen oder optionalen Erweiterungen frei. Umsetzung beginnt mit dem jeweils freigegebenen Umfang; `Done` erfordert ausdrücklich bestätigte Nutzerprüfung.
+**TASK-1 und TASK-2 stehen auf ausdrückliche Nutzeranweisung vom 01.10.2026 auf Done, 87 Aufgaben auf To Do.** Offene Kriterien und Aktivierungstore aus TASK-1 bleiben sichtbar; der Statusabschluss erbringt keine fehlenden Provider- oder EU-Nachweise. Der frühere JEV-Abgleich aktualisierte 26 bestehende Aufgaben und ergänzte fünf neue. Offene Provider-, Produkt- und Datenschutzfreigaben bleiben erforderlich.
 
 ## Milestones
 
@@ -12,10 +12,10 @@ Alle Aufgaben stehen auf **To Do**. Es wurden keine Implementierung begonnen, Kr
 |---|---|---:|
 | [R0 – Tragfähige Grundlage](../backlog/milestones/m-0%20-%20r0-%E2%80%93-tragf%C3%A4hige-grundlage.md) | P00, P01 | 6 |
 | [R1 – Interne Publishing-Alpha](../backlog/milestones/m-1%20-%20r1-%E2%80%93-interne-publishing-alpha.md) | P02, P03 | 10 |
-| [R2 – Dispatch-MVP](../backlog/milestones/m-2%20-%20r2-%E2%80%93-dispatch-mvp.md) | P04, P05, P06, P07, P09 | 17 |
-| [R3 – Private Beta](../backlog/milestones/m-3%20-%20r3-%E2%80%93-private-beta.md) | P08, P09 | 17 |
+| [R2 – Dispatch-MVP](../backlog/milestones/m-2%20-%20r2-%E2%80%93-dispatch-mvp.md) | P04, P05, P06, P07, P08.01–03, P09 | 23 |
+| [R3 – Private Beta](../backlog/milestones/m-3%20-%20r3-%E2%80%93-private-beta.md) | P08.04, P09 | 14 |
 | [R4 – Kommerzielles X-Produkt](../backlog/milestones/m-4%20-%20r4-%E2%80%93-kommerzielles-x-produkt.md) | P10 | 4 |
-| [R5 – Lernendes Produkt](../backlog/milestones/m-5%20-%20r5-%E2%80%93-lernendes-produkt.md) | P11, P12 | 11 |
+| [R5 – Lernendes Produkt](../backlog/milestones/m-5%20-%20r5-%E2%80%93-lernendes-produkt.md) | P11, P12, JEV-Erweiterungen | 13 |
 | [R6 – Teamprodukt](../backlog/milestones/m-6%20-%20r6-%E2%80%93-teamprodukt.md) | P13 | 3 |
 | [R7 – Kanalübergreifendes Produkt](../backlog/milestones/m-7%20-%20r7-%E2%80%93-kanal%C3%BCbergreifendes-produkt.md) | P14 | 7 |
 | [R8 – Ausgebautes Endprodukt](../backlog/milestones/m-8%20-%20r8-%E2%80%93-ausgebautes-endprodukt.md) | P15 | 7 |
@@ -27,10 +27,13 @@ Alle Aufgaben stehen auf **To Do**. Es wurden keine Implementierung begonnen, Kr
 - **Abnahmen:** MVP in [TASK-26](../backlog/tasks/task-26%20-%20Dispatch-MVP-anhand-realer-Redaktionsarbeit-abnehmen-P07.03.md), Beta in [TASK-64](../backlog/tasks/task-64%20-%20Private-Beta-anhand-der-Nutzerabl%C3%A4ufe-und-Betriebs%C3%BCbungen-abnehmen.md), GA in [TASK-40](../backlog/tasks/task-40%20-%20GA-Gate-durchf%C3%BChren-P10.04.md), Endprodukt in [TASK-66](../backlog/tasks/task-66%20-%20Das-ausgew%C3%A4hlte-Endprodukt-%C3%BCber-alle-eingef%C3%BChrten-Module-abnehmen.md).
 - **Portfolio:** [TASK-65](../backlog/tasks/task-65%20-%20Erweiterungsportfolio-f%C3%BCr-das-Endprodukt-verbindlich-ausw%C3%A4hlen.md) entscheidet, welche P15-Pakete tatsächlich umgesetzt werden. Dabei werden nur die ausgewählten Tasks als zusätzliche Voraussetzungen des Endprodukt-Gates eingetragen. Die Vorausplanung behauptet diese Auswahl noch nicht.
 - **Optional:** P13.03, P14.04, P15.05 sowie ganz P16. Alle P15-Pakete tragen zusätzlich `portfolio-kandidat`. Nicht gewählte Optionen blockieren weder MVP/GA noch das Endprodukt-Gate.
-- **Große Pakete:** P03.03, P06.03, P09.03, P09.06, P11.03 und P14.02 haben jeweils drei echte Unteraufgaben. Ihr übergeordneter Task hält den vollständigen Vertrag und wartet auf deren integrierte Abnahme.
+- **Große Pakete:** P03.03, P06.03, P08.02, P09.03, P09.06, P11.03 und P14.02 haben jeweils drei echte Unteraufgaben. Ihr übergeordneter Task hält den vollständigen Vertrag und wartet auf deren integrierte Abnahme.
 - **Parallelität:** Release-Nummern sind keine zusätzlichen pauschalen Sperren. P11-Datensammlung kann neben Billing laufen; reine Profilpflege P11.04 wartet nicht auf Kalibrierung. Team- und Kanalentwicklung können nach den konkreten Voraussetzungen parallel erfolgen.
 - **Spätere Adapter:** P14.02 wählt genau einen Kanal; LinkedIn ist ein Kandidat. P14.04 und P15.02 verlangen vor Coding je ausgewähltem Provider eine konkretisierte Unteraufgabe. Nicht freigegebene Plattformen und Quellen sind keine zugesagten Integrationen.
 - **Planungsdetails:** Technische Dateipfade, fachliche Schritte, ursprüngliche Abhängigkeitshinweise und offene Entscheidungen stehen in den Tasks. Prioritäten sind vorgeschlagene Ausführungsprioritäten; Termine und Verantwortliche wurden nicht erfunden.
+- **JEV-Reihenfolge:** R2 enthält nach D04 vom 19.09.2026 bereits Post Analyzer + Dispatch Score in TASK-28.1–28.3 und der Composer-Darstellung in TASK-29. TASK-67 (Intent-Routing) und TASK-68 (Output-Verifikation) sind als nachgelagerte R5-Erweiterungen eingeordnet; die Release-Zuordnung steht im [TASK-2-Vertrag](decisions/release-scope.md). Sie blockieren weder R2 noch das Analyzer-MVP-Gate. Network Fit wird in TASK-54 für tatsächlich freigegebene Kanäle ergänzt. Jev steuert weder Publishing noch Orchestrierung.
+- **JEV-Datenfreigabe:** Die bestehende EU-only-Vorgabe aus TASK-1 gilt auch für TypeSafe. DPA/SCC und Nicht-Training sind kein EU-Nachweis. Ohne dokumentierte Freigabe bleiben Kundendatenaufrufe deaktiviert; bereits ein MVP mit reduziertem Umfang benötigt eine ausdrückliche Entscheidung.
+- **JEV-Qualität:** Assessments sind an Workspace, Account, exakte Inhaltsversion und Netzwerk gebunden. Cache-Schlüssel berücksichtigen alle genutzten Kontexte und Versionen. Publish-Snapshots bewahren den damaligen Analysezustand. Dispatch kalibriert eigene Gewichte/Policies; Jev wird nicht trainiert.
 
 ## Aufgaben nach Release und Phase
 
@@ -118,15 +121,23 @@ Alle Aufgaben stehen auf **To Do**. Es wurden keine Implementierung begonnen, Kr
 |---|---|---|
 | G-R2 | [TASK-63](../backlog/tasks/task-63%20-%20Sicheren-Basisbetrieb-vor-der-MVP-Abnahme-nachweisen.md) – Sicheren Basisbetrieb vor der MVP-Abnahme nachweisen | Gate / Entscheidung |
 
-### R3 – Private Beta
-
-#### P08 – Algorithm Intelligence im Composer
+#### P08.01–P08.03 – Intelligence im Dispatch-MVP (D04)
 
 | Planreferenz | Task | Umfang |
 |---|---|---|
 | P08.01 | [TASK-27](../backlog/tasks/task-27%20-%20Versionierte-Algorithmus-und-Audience-Profile-erstellen-P08.01.md) – Versionierte Algorithmus- und Audience-Profile erstellen (P08.01) | Planpaket |
 | P08.02 | [TASK-28](../backlog/tasks/task-28%20-%20Begrenzte-Pre-Publish-Analyse-implementieren-P08.02.md) – Begrenzte Pre-Publish-Analyse implementieren (P08.02) | Planpaket |
+| P08.02, Teil 1 | [TASK-28.1](../backlog/tasks/task-28.1%20-%20Jev-Adapter-mit-begrenzten-Aufrufen-und-Betriebsflags-implementieren-P08.02-Teil-1.md) – Jev-Adapter mit begrenzten Aufrufen und Betriebsflags implementieren (P08.02, Teil 1) | Unteraufgabe |
+| P08.02, Teil 2 | [TASK-28.2](../backlog/tasks/task-28.2%20-%20Jev-Post-Analyzer-und-reproduzierbaren-Dispatch-Score-implementieren-P08.02-Teil-2.md) – Jev-Post-Analyzer und reproduzierbaren Dispatch Score implementieren (P08.02, Teil 2) | Unteraufgabe |
+| P08.02, Teil 3 | [TASK-28.3](../backlog/tasks/task-28.3%20-%20Jev-Assessments-versionsgebunden-speichern-und-isoliert-cachen-P08.02-Teil-3.md) – Jev-Assessments versionsgebunden speichern und isoliert cachen (P08.02, Teil 3) | Unteraufgabe |
 | P08.03 | [TASK-29](../backlog/tasks/task-29%20-%20Empfehlungen-Vergleich-und-%C3%9Cbernahme-gestalten-P08.03.md) – Empfehlungen, Vergleich und Übernahme gestalten (P08.03) | Planpaket |
+
+### R3 – Private Beta
+
+#### P08.04 – Messgrundlage
+
+| Planreferenz | Task | Umfang |
+|---|---|---|
 | P08.04 | [TASK-30](../backlog/tasks/task-30%20-%20Messgrundlage-bereits-in-der-Beta-schaffen-P08.04.md) – Messgrundlage bereits in der Beta schaffen (P08.04) | Planpaket |
 
 #### P09 – Sicherheit, Datenschutz, Betrieb und Produktqualität
@@ -180,6 +191,13 @@ Alle Aufgaben stehen auf **To Do**. Es wurden keine Implementierung begonnen, Kr
 | P12.02 | [TASK-46](../backlog/tasks/task-46%20-%20Historische-%C3%84hnlichkeit-und-intelligente-Redaktionsplanung-erg%C3%A4nzen-P12.02.md) – Historische Ähnlichkeit und intelligente Redaktionsplanung ergänzen (P12.02) | Planpaket |
 | P12.03 | [TASK-47](../backlog/tasks/task-47%20-%20Begrenzte-Experimente-und-Lernkontrolle-bauen-P12.03.md) – Begrenzte Experimente und Lernkontrolle bauen (P12.03) | Planpaket |
 | P12.04 | [TASK-48](../backlog/tasks/task-48%20-%20Mehrere-Accounts-sicher-im-redaktionellen-Alltag-unterst%C3%BCtzen-P12.04.md) – Mehrere Accounts sicher im redaktionellen Alltag unterstützen (P12.04) | Planpaket |
+
+#### JEV – Unterstützte Entscheidungen und Verifikation
+
+| Planreferenz | Task | Umfang |
+|---|---|---|
+| JEV §§17–18 | [TASK-67](../backlog/tasks/task-67%20-%20Jev-Intent-Routing-f%C3%BCr-die-Content-Erzeugung-erg%C3%A4nzen.md) – Jev-Intent-Routing für die Content-Erzeugung ergänzen | Erweiterung nach Analyzer-MVP |
+| JEV §§19–20 | [TASK-68](../backlog/tasks/task-68%20-%20Generierte-Inhalte-mit-Jev-pr%C3%BCfen-und-begrenzt-nachbessern.md) – Generierte Inhalte mit Jev prüfen und begrenzt nachbessern | Erweiterung nach Intent-Routing |
 
 ### R6 – Teamprodukt
 
@@ -241,14 +259,29 @@ backlog board
 backlog doctor
 ```
 
-**Nächster fachlicher Einstieg:** TASK-1 „Provider-Zugänge und Kostenmodell prüfen (P00.01)“. Die Bereitschaftsanzeige prüft technische Task-Abhängigkeiten; erforderliche Produkt-, Daten- und Providerfreigaben stehen zusätzlich in den Beschreibungen.
+**Aktueller fachlicher Einstieg:** TASK-3 „Informationsarchitektur und zentrale Interaktionen gestalten (P00.03)“; die Abhängigkeit TASK-2 ist abgeschlossen. Die [Bewertung vom 01.10.2026](reviews/2026-10-01-task-3-evaluation.md) dokumentiert fehlende Designartefakte und den erforderlichen R2-Intelligence-Umfang. Providerwahl und Aktivierungsnachweise aus TASK-1 bleiben offen. Die Bereitschaftsanzeige prüft technische Task-Abhängigkeiten; erforderliche Produkt-, Daten- und Providerfreigaben stehen zusätzlich in den Beschreibungen.
 
 Tasks ausschließlich mit der Backlog-CLI bearbeiten. Den konkreten Implementierungsplan beim tatsächlichen Arbeitsbeginn per `backlog task edit <ID> --plan ...` hinterlegen; Fortschritt und Nachweise per CLI pflegen. Keine eigenständige Umstellung auf `Done`.
 
 ## Prüfung der Übertragung
 
 - Alle 62 Pxx.yy-Pakete des Quellplans sind genau einmal als übergeordnete beziehungsweise eigenständige Planaufgabe vorhanden.
-- Alle 84 Tasks haben Milestone, Phasenlabel, Akzeptanzkriterien, Planreferenz und eine ausdrückliche Nutzerbestätigung als Abschlussbedingung.
+- Alle 89 Tasks haben Milestone, Phasen- oder JEV-Label, Akzeptanzkriterien, Quellenreferenz und eine ausdrückliche Nutzerbestätigung als Abschlussbedingung.
 - Die gespeicherten Abhängigkeiten und Eltern-Kind-Zuordnungen wurden gegen die geplante Struktur geprüft.
 - `backlog doctor` meldet keine doppelten IDs, Selbstabhängigkeiten oder Abhängigkeitszyklen.
 - Pflicht-Gates haben keine unbedingten Abhängigkeiten auf optionale Portfolio-Pakete. Die Auswahlentscheidung ergänzt später die tatsächlich bestellten Erweiterungen.
+
+## JEV-Abgleich am 18. September 2026
+
+- Bestehende Aufgaben über die Backlog-CLI angepasst: TASK-1, 2, 17, 18, 27–31, 33, 33.1–33.3, 35, 41–43, 43.1–43.3, 46, 52, 53.3, 54, 58 und 64.
+- Neu angelegt: TASK-28.1–28.3, TASK-67 und TASK-68; alle auf To Do, keine Akzeptanzkriterien vorweggenommen.
+- Vorhandene Status, Kriterien/DoD, Notizen, Pläne, Prioritäten und Release-Zuordnungen erhalten; Abhängigkeiten des Analyzer-Pakets um seine Unteraufgaben ergänzt.
+- SDK-Syntax, Preise und TypeSafe-Verarbeitung sind noch zu prüfende Implementierungs-/Aktivierungstore, keine durch diese Dokumentpflege bestätigten Fakten.
+
+## D04-Änderung am 19. September 2026
+
+- Nutzerentscheidung: Intelligence bereits in R2. TASK-27, TASK-28, TASK-28.1–28.3 und TASK-29 wechseln von m-3/r3 nach m-2/r2.
+- TASK-27 wartet auf TASK-1/7 statt auf TASK-26. TASK-26 wartet nun auf TASK-29 und den um Intelligence erweiterten TASK-63-Basisbetrieb; TASK-64 ausdrücklich auf TASK-26.
+- J01–J08 gehören zur MVP-Abnahme. P08.04 bleibt R3; Routing, Verifikation und Kalibrierung bleiben R5.
+- Fachliche Quelle: [Release-Vertrag](decisions/release-scope.md), [Domain-Vertrag](decisions/domain-contracts.md). Bestehende Implementierungsstände und Nutzer-Abnahmetore bleiben erhalten.
+- Die installierte Backlog-CLI unterstützt keine Bearbeitung bestehender Milestone-Beschreibungen. Die alten Kurztexte in m-2/m-3 sind deshalb historische Zusammenfassungen; maßgeblich sind dieser Vertrag, die obige Tabelle und die aktualisierten Task-Zuordnungen. Keine Milestones wurden gelöscht oder neu angelegt.

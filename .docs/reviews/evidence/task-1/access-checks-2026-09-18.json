@@ -1,0 +1,659 @@
+{
+  "date": "2026-09-18",
+  "paid_test_budget_eur": 10,
+  "checks": {
+    "requesty_catalog": {
+      "status": 200,
+      "duration_ms": 304,
+      "model_count": 691,
+      "selected_model_found": true,
+      "selected": [
+        {
+          "id": "azure/gpt-5.6-luna@germanywestcentral",
+          "pricing": [
+            {
+              "prompt_tokens_threshold": 0,
+              "input_price": 2.2e-07,
+              "cached_price": 2.2e-08,
+              "output_price": 1.32e-06
+            }
+          ],
+          "context_window": 1050000,
+          "max_output_tokens": 128000,
+          "supports_tool_calling": true,
+          "supports_web_search": false,
+          "data_retention": false,
+          "data_retention_days": 0,
+          "data_used_for_training": false
+        }
+      ]
+    },
+    "convex_reachability": {
+      "CONVEX_URL": {
+        "status": 200,
+        "duration_ms": 193,
+        "authenticated": false,
+        "scope": "origin-reachability-only"
+      },
+      "CONVEX_SITE_URL": {
+        "status": 404,
+        "duration_ms": 192,
+        "authenticated": false,
+        "scope": "origin-reachability-only"
+      }
+    },
+    "requesty_text": {
+      "status": 200,
+      "duration_ms": 492,
+      "model": "lyceum/deepseek-v4.1-flash",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": true,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 38,
+        "completion_tokens": 21,
+        "total_tokens": 59,
+        "cost": 5.05e-05
+      },
+      "error": "",
+      "raw_x_data_sent": false,
+      "adapter": "direct HTTPS; AI SDK not tested"
+    },
+    "requesty_schema": {
+      "status": 200,
+      "duration_ms": 444,
+      "model": "lyceum/deepseek-v4.1-flash",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": false,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 43,
+        "completion_tokens": 17,
+        "total_tokens": 60,
+        "cost": 4.7e-05
+      },
+      "error": "",
+      "raw_x_data_sent": false,
+      "adapter": "direct HTTPS; AI SDK not tested"
+    },
+    "requesty_tool": {
+      "status": 200,
+      "duration_ms": 279,
+      "model": "lyceum/deepseek-v4.1-flash",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": false,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 320,
+        "completion_tokens": 7,
+        "total_tokens": 327,
+        "cost": 0.00012314
+      },
+      "error": "",
+      "raw_x_data_sent": false,
+      "adapter": "direct HTTPS; AI SDK not tested"
+    },
+    "x_user_lookup": {
+      "status": 200,
+      "duration_ms": 262,
+      "resource_count": 1,
+      "documented_max_estimate_usd": 0.01,
+      "actual_billed_usd": null,
+      "error": "",
+      "content_retained": false,
+      "model_processing": false,
+      "auth_mode": "OAuth2 app-only Bearer; no user token"
+    },
+    "x_recent_search": {
+      "status": 200,
+      "duration_ms": 298,
+      "resource_count": 3,
+      "documented_max_estimate_usd": 0.05,
+      "actual_billed_usd": null,
+      "error": "",
+      "content_retained": false,
+      "model_processing": false,
+      "auth_mode": "OAuth2 app-only Bearer; no user token"
+    },
+    "x_trends": {
+      "status": 200,
+      "duration_ms": 235,
+      "resource_count": 1,
+      "documented_max_estimate_usd": 0.01,
+      "actual_billed_usd": null,
+      "error": "",
+      "content_retained": false,
+      "model_processing": false,
+      "auth_mode": "OAuth2 app-only Bearer; no user token"
+    },
+    "requesty_schema_diagnostic": {
+      "status": 200,
+      "duration_ms": 274,
+      "model": "lyceum/deepseek-v4.1-flash",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": false,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 43,
+        "completion_tokens": 17,
+        "total_tokens": 60,
+        "cost": 4.7e-05
+      },
+      "error": "",
+      "response_model": "deepseek/deepseek-v4.1-flash",
+      "synthetic_response": {
+        "role": "assistant"
+      },
+      "raw_x_data_sent": false,
+      "adapter": "direct HTTPS; AI SDK not tested",
+      "reasoning_content_present": true
+    },
+    "requesty_tool_diagnostic": {
+      "status": 200,
+      "duration_ms": 313,
+      "model": "lyceum/deepseek-v4.1-flash",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": false,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 320,
+        "completion_tokens": 7,
+        "total_tokens": 327,
+        "cost": 0.00012314
+      },
+      "error": "",
+      "response_model": "deepseek/deepseek-v4.1-flash",
+      "synthetic_response": {
+        "role": "assistant"
+      },
+      "raw_x_data_sent": false,
+      "adapter": "direct HTTPS; AI SDK not tested",
+      "reasoning_content_present": true
+    },
+    "requesty_schema_diagnostic_comparison": {
+      "status": 200,
+      "duration_ms": 1011,
+      "model": "openai/gpt-4.1-nano",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": true,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 59,
+        "completion_tokens": 10,
+        "total_tokens": 69,
+        "cost": 9.9e-06
+      },
+      "error": "",
+      "response_model": "gpt-4.1-nano-2025-04-14",
+      "synthetic_response": {
+        "content": "{\"count\":2,\"status\":\"ready\"}",
+        "role": "assistant"
+      },
+      "raw_x_data_sent": false,
+      "adapter": "direct HTTPS; AI SDK not tested"
+    },
+    "requesty_tool_diagnostic_comparison": {
+      "status": 200,
+      "duration_ms": 1010,
+      "model": "openai/gpt-4.1-nano",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": true,
+      "finish_reason": "tool_calls",
+      "usage": {
+        "prompt_tokens": 67,
+        "completion_tokens": 6,
+        "total_tokens": 73,
+        "cost": 9.1e-06
+      },
+      "error": "",
+      "response_model": "gpt-4.1-nano-2025-04-14",
+      "synthetic_response": {
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 0,
+            "function": {
+              "arguments": "{\"value\":\"ready\"}",
+              "name": "echo_probe"
+            },
+            "id": "call_zkj2U9fHBpDc3tqNEbmjv5Ax",
+            "type": "function"
+          }
+        ]
+      },
+      "raw_x_data_sent": false,
+      "adapter": "direct HTTPS; AI SDK not tested"
+    },
+    "requesty_embedding_catalog": {
+      "status": 200,
+      "duration_ms": 116,
+      "model_count": 15,
+      "selected": [
+        {
+          "id": "openai/text-embedding-3-small",
+          "pricing": {
+            "input_text": 2e-08
+          }
+        }
+      ]
+    },
+    "requesty_embedding": {
+      "status": 200,
+      "duration_ms": 377,
+      "model": "openai/text-embedding-3-small",
+      "dimensions": 1536,
+      "finite_vector": true,
+      "usage": {
+        "prompt_tokens": 5,
+        "total_tokens": 5
+      },
+      "error": "",
+      "synthetic_data_only": true
+    },
+    "requesty_web_search": {
+      "status": 200,
+      "duration_ms": 3408,
+      "model": "anthropic/claude-haiku-4-5",
+      "max_tokens": 512,
+      "max_search_uses": 1,
+      "content_block_types": [
+        "text",
+        "tool_use"
+      ],
+      "citations": [],
+      "source_results": [],
+      "tool_errors": [],
+      "stop_reason": "end_turn",
+      "usage": {
+        "input_tokens": 19021,
+        "output_tokens": 109,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cost": 0.019566
+      },
+      "error": "",
+      "synthetic_query_only": true,
+      "raw_x_data_sent": false,
+      "adapter": "direct Messages HTTPS; AI SDK not tested"
+    },
+    "requesty_text_diagnostic_azure_luna": {
+      "status": 200,
+      "duration_ms": 873,
+      "model": "azure/gpt-5.6-luna@germanywestcentral",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": true,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 13,
+        "completion_tokens": 5,
+        "total_tokens": 18,
+        "cost": 9.46e-06
+      },
+      "error": "",
+      "response_model": "gpt-5.6-luna",
+      "synthetic_response": {
+        "content": "READY",
+        "role": "assistant"
+      },
+      "raw_x_data_sent": false,
+      "adapter": "direct HTTPS; AI SDK not tested"
+    },
+    "requesty_schema_diagnostic_azure_luna": {
+      "status": 200,
+      "duration_ms": 1068,
+      "model": "azure/gpt-5.6-luna@germanywestcentral",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": true,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 57,
+        "completion_tokens": 30,
+        "total_tokens": 87,
+        "cost": 5.214e-05
+      },
+      "error": "",
+      "response_model": "gpt-5.6-luna",
+      "synthetic_response": {
+        "content": "{\"count\":2,\"status\":\"ready\"}",
+        "role": "assistant"
+      },
+      "raw_x_data_sent": false,
+      "adapter": "direct HTTPS; AI SDK not tested"
+    },
+    "requesty_tool_diagnostic_azure_luna": {
+      "status": 200,
+      "duration_ms": 908,
+      "model": "azure/gpt-5.6-luna@germanywestcentral",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": true,
+      "finish_reason": "tool_calls",
+      "usage": {
+        "prompt_tokens": 63,
+        "completion_tokens": 18,
+        "total_tokens": 81,
+        "cost": 3.762e-05
+      },
+      "error": "",
+      "response_model": "gpt-5.6-luna",
+      "synthetic_response": {
+        "role": "assistant",
+        "tool_calls": [
+          {
+            "index": 0,
+            "function": {
+              "arguments": "{\"value\":\"ready\"}",
+              "name": "echo_probe"
+            },
+            "id": "call_ZSGB68DbCu4aYYsMRKASKE6E",
+            "type": "function"
+          }
+        ]
+      },
+      "raw_x_data_sent": false,
+      "adapter": "direct HTTPS; AI SDK not tested"
+    },
+    "requesty_web_search_stream": {
+      "model": "perplexity/sonar",
+      "max_tokens": 256,
+      "adapter": "direct streaming Chat Completions HTTPS; AI SDK not tested",
+      "sources": [
+        {
+          "url": "https://developers.cloudflare.com/r2/pricing/",
+          "title": "Pricing · Cloudflare R2 docs"
+        },
+        {
+          "url": "https://www.cloudflare.com/products/r2/",
+          "title": "Cloudflare R2 - Egress-Free Object Storage"
+        },
+        {
+          "url": "https://developers.cloudflare.com/r2/pricing/index.md",
+          "title": "Cloudflare Docs"
+        },
+        {
+          "url": "https://r2-calculator.cloudflare.com/",
+          "title": "Cloudflare R2 - Pricing Calculator"
+        },
+        {
+          "url": "https://www.cloudflare.com/en-gb/developer-platform/products/r2/",
+          "title": "R2 | Scalable solution for distributed object ... - Cloudflare"
+        },
+        {
+          "url": "https://developers.cloudflare.com/r2-data-catalog/platform/pricing/",
+          "title": "R2 Data Catalog pricing"
+        },
+        {
+          "url": "https://developers.cloudflare.com/r2/llms-full.txt",
+          "title": "R2 llms-full.txt - Cloudflare Docs"
+        },
+        {
+          "url": "https://developers.cloudflare.com/workers/platform/pricing/",
+          "title": "Pricing · Cloudflare Workers docs"
+        },
+        {
+          "url": "https://blog.cloudflare.com/r2-ga/",
+          "title": "R2 is now Generally Available"
+        },
+        {
+          "url": "https://developers.cloudflare.com/changelog/product/r2/",
+          "title": "R2 Changelog - Cloudflare Docs"
+        },
+        {
+          "url": "https://blog.cloudflare.com/r2-open-beta/",
+          "title": "A New Hope for Object Storage: R2 enters open beta"
+        },
+        {
+          "url": "https://developers.cloudflare.com/r2/get-started/",
+          "title": "Get started · Cloudflare R2 docs"
+        },
+        {
+          "url": "https://r2-calculator.cloudflare.com/jp/",
+          "title": "R2 Pricing Calculator - Cloudflare"
+        },
+        {
+          "url": "https://developers.cloudflare.com/changelog/post/2026-05-11-r2-sql-pricing-announced/",
+          "title": "R2 SQL pricing announced · Changelog - Cloudflare Docs"
+        },
+        {
+          "url": "https://r2-calculator.cloudflare.com/kr/",
+          "title": "R2 가격 계산기 - R2 Pricing Calculator - Cloudflare"
+        },
+        {
+          "url": "https://www.budgetforge.dev/tools/cloudflare-r2-pricing-2026",
+          "title": "Cloudflare R2 Pricing in 2026: What You Actually Pay"
+        },
+        {
+          "url": "https://developers.cloudflare.com/r2/",
+          "title": "Overview · Cloudflare R2 docs"
+        },
+        {
+          "url": "https://www.cloudflare.com/plans/",
+          "title": "Pricing"
+        }
+      ],
+      "citation_urls": [],
+      "usage": {
+        "completion_tokens": 27,
+        "prompt_tokens": 30,
+        "total_tokens": 57,
+        "cost": 5.7e-05
+      },
+      "chunk_count": 26,
+      "text_received": true,
+      "synthetic_query_only": true,
+      "status": 200,
+      "finish_reason": "stop",
+      "duration_ms": 1504
+    },
+    "r2_roundtrip": {
+      "tool": "wrangler 4.134.0",
+      "bucket": "dispatch-v2-dev",
+      "location_hint": "weur",
+      "storage_class": "Standard",
+      "key": "task-1/synthetic-roundtrip-2026-09-18.txt",
+      "bytes": 66,
+      "sha256": "c59c10557d927d06f9c744504e08f272276c665a6368030fa61ef0ee085d9ce8",
+      "remote_put_success": true,
+      "remote_get_success": true,
+      "bytes_match": true,
+      "public_r2_dev_enabled": false,
+      "custom_domains": [],
+      "cors_configuration": "absent (10059)",
+      "r2_initial_activation_error": 10042,
+      "billing_verified": false,
+      "browser_presigned_upload_tested": false,
+      "finalization_tested": false,
+      "publisher_tested": false
+    },
+    "requesty_catalog_vertex_eu": {
+      "status": 200,
+      "duration_ms": 343,
+      "model_count": 691,
+      "selected_model_found": true,
+      "selected": [
+        {
+          "id": "vertex/gemini-3.5-flash-lite@eu",
+          "pricing": [
+            {
+              "prompt_tokens_threshold": 0,
+              "input_price": 3.3e-07,
+              "cached_price": 3.3e-08,
+              "output_price": 2.75e-06
+            }
+          ],
+          "max_output_tokens": 65535,
+          "context_window": 1048576,
+          "supports_caching": true,
+          "supports_vision": true,
+          "supports_computer_use": false,
+          "supports_reasoning": true,
+          "supports_image_generation": false,
+          "supports_tool_calling": true,
+          "supports_role_developer": false,
+          "supports_web_search": true,
+          "supports_output_json_object": true,
+          "supports_output_json_schema": true,
+          "data_retention": false,
+          "data_retention_days": 0,
+          "data_used_for_training": false
+        }
+      ]
+    },
+    "requesty_vertex_eu_text": {
+      "status": 200,
+      "duration_ms": 512,
+      "model": "vertex/gemini-3.5-flash-lite@eu",
+      "base_url": "https://router.eu.requesty.ai/v1",
+      "response_model": "gemini-3.5-flash-lite",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": true,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 7,
+        "completion_tokens": 1,
+        "total_tokens": 8,
+        "cost": 5.06e-06
+      },
+      "error": "",
+      "message_fields": [
+        "content",
+        "role"
+      ],
+      "adapter": "direct HTTPS; AI SDK not tested",
+      "request_fallback_configured": false
+    },
+    "requesty_vertex_eu_schema": {
+      "status": 200,
+      "duration_ms": 648,
+      "model": "vertex/gemini-3.5-flash-lite@eu",
+      "base_url": "https://router.eu.requesty.ai/v1",
+      "response_model": "gemini-3.5-flash-lite",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": true,
+      "finish_reason": "stop",
+      "usage": {
+        "prompt_tokens": 102,
+        "completion_tokens": 18,
+        "total_tokens": 120,
+        "cost": 8.316e-05
+      },
+      "error": "",
+      "message_fields": [
+        "content",
+        "role"
+      ],
+      "adapter": "direct HTTPS; AI SDK not tested",
+      "request_fallback_configured": false
+    },
+    "requesty_vertex_eu_tool": {
+      "status": 200,
+      "duration_ms": 486,
+      "model": "vertex/gemini-3.5-flash-lite@eu",
+      "base_url": "https://router.eu.requesty.ai/v1",
+      "response_model": "gemini-3.5-flash-lite",
+      "max_tokens": 512,
+      "synthetic_data_only": true,
+      "validated_expected_result": true,
+      "finish_reason": "tool_calls",
+      "usage": {
+        "prompt_tokens": 43,
+        "completion_tokens": 16,
+        "total_tokens": 59,
+        "cost": 5.819e-05
+      },
+      "error": "",
+      "message_fields": [
+        "role",
+        "tool_calls"
+      ],
+      "adapter": "direct HTTPS; AI SDK not tested",
+      "request_fallback_configured": false
+    },
+    "requesty_vertex_eu_search": {
+      "model": "vertex/gemini-3.5-flash-lite@eu",
+      "base_url": "https://router.eu.requesty.ai/v1",
+      "max_tokens": 512,
+      "sources": [
+        {
+          "title": "filebase.com",
+          "url_host": "vertexaisearch.cloud.google.com"
+        }
+      ],
+      "citation_urls": [],
+      "usage": {
+        "prompt_tokens": 67,
+        "completion_tokens": 32,
+        "total_tokens": 99,
+        "cost": 0.00011011
+      },
+      "chunk_count": 4,
+      "text_received": true,
+      "stream_done": true,
+      "public_documentation_query_only": true,
+      "request_fallback_configured": false,
+      "adapter": "direct streaming HTTPS; AI SDK not tested",
+      "status": 200,
+      "response_model": "gemini-3.5-flash-lite",
+      "finish_reason": "stop",
+      "answer_contains_expected_price": true,
+      "answer_contains_source_marker": false,
+      "duration_ms": 1393,
+      "source_url_storage": "host only; opaque grounding redirect omitted",
+      "claim_to_source_mapping_verified": false
+    },
+    "requesty_vertex_eu_search_official_domain": {
+      "model": "vertex/gemini-3.5-flash-lite@eu",
+      "base_url": "https://router.eu.requesty.ai/v1",
+      "max_tokens": 512,
+      "sources": [
+        {
+          "title": "cloudflare.com",
+          "url_host": "vertexaisearch.cloud.google.com"
+        }
+      ],
+      "citation_urls": [],
+      "usage": {
+        "prompt_tokens": 75,
+        "completion_tokens": 20,
+        "total_tokens": 95,
+        "cost": 7.975e-05
+      },
+      "chunk_count": 3,
+      "text_received": true,
+      "stream_done": true,
+      "public_documentation_query_only": true,
+      "request_fallback_configured": false,
+      "adapter": "direct streaming HTTPS; AI SDK not tested",
+      "status": 200,
+      "response_model": "gemini-3.5-flash-lite",
+      "finish_reason": "stop",
+      "answer_contains_expected_price": true,
+      "answer_contains_source_marker": false,
+      "duration_ms": 1360,
+      "source_url_storage": "host only; opaque grounding redirect omitted",
+      "claim_to_source_mapping_verified": false
+    }
+  },
+  "cost_summary": {
+    "requesty_reported_usage_cost_usd": "0.02046827",
+    "x_estimate_by_returned_resources_usd": "0.035",
+    "x_reserved_ceiling_usd": "0.070",
+    "embedding_catalog_estimate_usd": "0.00000010",
+    "provider_invoice_reconciled": false,
+    "r2_actual_cost_unknown": true,
+    "search_fee_coverage_unknown": true,
+    "budget_eur": 10,
+    "requesty_vertex_eu_reported_usage_cost_usd": "0.00033627"
+  }
+}

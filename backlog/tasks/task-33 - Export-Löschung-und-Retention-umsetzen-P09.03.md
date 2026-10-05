@@ -1,14 +1,15 @@
 ---
 id: TASK-33
 title: 'Export, Löschung und Retention umsetzen (P09.03)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p09
   - r3
   - arbeitspaket
+  - jev
 milestone: m-3
 dependencies:
   - TASK-26
@@ -19,6 +20,7 @@ dependencies:
   - TASK-33.3
 references:
   - .docs/dispatch-end-to-end-implementation-plan.md
+  - .docs/JEV_INTEGRATION.md
 priority: medium
 ordinal: 33000
 ---
@@ -44,6 +46,10 @@ Phase: P09 – Sicherheit, Datenschutz, Betrieb und Produktqualität.
 Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Beginn freigegeben sein. Diese Aufgabe dokumentiert geplante Arbeit; ihre Erstellung ist keine Implementierungsfreigabe.
 
 Großes Paket: Die zugeordneten Unteraufgaben liefern die Implementierung in begrenzten Schritten. Dieses übergeordnete Ticket hält den vollständigen Planvertrag und wird erst nach integrierter Abnahme aller Unteraufgaben geschlossen.
+
+### JEV-Abgleich vom 18.09.2026
+
+Das Daten-Lifecycle-Paket umfasst zusätzlich Jev-Assessments, Analyse-Caches, Entscheidungs-/Verifikationsergebnisse sobald eingeführt, Usage, kontrollierte Eval-Daten und optionale Debug-Rohantworten. TASK-33.1–33.3 liefern Inventar/Export, wiederaufnehmbare Löschung und Retention. Die Provider-/EU-only-Freigabe gehört vor die erste Übertragung in TASK-1; dieses spätere Self-Service-Paket ersetzt sie nicht.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -52,6 +58,7 @@ Großes Paket: Die zugeordneten Unteraufgaben liefern die Implementierung in beg
 - [ ] #2 Wiederholungen reaktivieren den Workspace nicht.
 - [ ] #3 Export enthält keine Provider-Secrets.
 - [ ] #4 Der Betreiber kann den Abschluss nachweisen, ohne Inhalte unnötig zu behalten.
+- [ ] #5 Alle bis zum Release eingeführten Jev-Daten und Jobs sind durch Inventar, autorisierten Export, Löschung und Retention abgedeckt.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -59,3 +66,9 @@ Großes Paket: Die zugeordneten Unteraufgaben liefern die Implementierung in beg
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/data, /team. Active-workspace JSON export, retention preferences, scoped deletion confirmation/error/retry; account identity/membership deletion preserves shared contents. Grenze: No server data inventory, provider/R2 deletion, backups or legal retention execution. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

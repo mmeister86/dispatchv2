@@ -1,19 +1,21 @@
 ---
 id: TASK-52
 title: Provider-Vertrag aus bewährtem X-Verhalten herauslösen (P14.01)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p14
   - r7
+  - jev
 milestone: m-7
 dependencies:
   - TASK-40
   - TASK-41
 references:
   - .docs/dispatch-end-to-end-implementation-plan.md
+  - .docs/JEV_INTEGRATION.md
 priority: medium
 ordinal: 52000
 ---
@@ -34,12 +36,17 @@ Phase: P14 – Multi-Channel Publishing und plattformspezifische Intelligence.
 Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Beginn freigegeben sein. Diese Aufgabe dokumentiert geplante Arbeit; ihre Erstellung ist keine Implementierungsfreigabe.
 
 Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Dateninventar, Export, Löschung, Retention, Kostenmessung und Deployment/Recovery aufnehmen (Plan §§12/15).
+
+### JEV-Abgleich vom 18.09.2026
+
+Publishing-Adapter und Jev-Entscheidungsadapter bleiben getrennte Grenzen. Plattformlängen, Fähigkeiten und Medienrestriktionen deterministisch validieren; semantische Network-Fit-Werte können diese harten Regeln nicht überstimmen. LinkedIn/Bluesky aus dem Leitfaden sind keine zusätzliche Integrationsfreigabe: TASK-53.1 wählt weiterhin genau einen zusätzlichen Kanal, weitere Kanäle über TASK-55.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Ein Adapter kann eine Fähigkeit ausdrücklich nicht anbieten.
 - [ ] #2 Ein Fehler auf Kanal A verändert keinen erfolgreichen Status auf Kanal B.
+- [ ] #3 Semantische Empfehlungen können keine fehlende Publishing-Capability oder verletzte deterministische Providergrenze freigeben.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -47,3 +54,9 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id, /settings/integrations, /calendar. Linked content packages with separately editable channel drafts, versions, approvals and schedules; channel text limits and separate states. Grenze: No backend provider contract/registry; capability numbers are illustrative local validation, not access-tested platform promises. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

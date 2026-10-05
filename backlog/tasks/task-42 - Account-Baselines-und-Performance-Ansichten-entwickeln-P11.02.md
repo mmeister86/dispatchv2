@@ -1,18 +1,20 @@
 ---
 id: TASK-42
 title: Account-Baselines und Performance-Ansichten entwickeln (P11.02)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p11
   - r5
+  - jev
 milestone: m-5
 dependencies:
   - TASK-41
 references:
   - .docs/dispatch-end-to-end-implementation-plan.md
+  - .docs/JEV_INTEGRATION.md
 priority: medium
 ordinal: 42000
 ---
@@ -27,12 +29,16 @@ Phase: P11 – Performance Feedback und Account Intelligence.
 
 - Vergleichsgruppen nach Account, Format und Messalter bilden; kleine Gruppen sichtbar begrenzen.
 - Themen, Formate und Veröffentlichungsfenster beschreibend auswerten.
-- Prediction und Ergebnis nebeneinanderstellen, ohne nicht messbare Dimensionen als validiert zu kennzeichnen.
+- Inhaltsassessment und gemessenes Ergebnis nebeneinanderstellen, ohne heuristische Scores als Reichweitenprognose oder nicht messbare Dimensionen als validiert zu kennzeichnen.
 - Outcome-Daten als kompakte `performance_signal`-Einträge an den Content-Kontext zurückgeben.
 
 Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Beginn freigegeben sein. Diese Aufgabe dokumentiert geplante Arbeit; ihre Erstellung ist keine Implementierungsfreigabe.
 
 Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Dateninventar, Export, Löschung, Retention, Kostenmessung und Deployment/Recovery aufnehmen (Plan §§12/15).
+
+### JEV-Abgleich vom 18.09.2026
+
+Vergleichbare Impression-/Engagement-/Reply-/Repost-/Click-/Follower-Conversion-Raten nur bei verfügbaren passenden Nennern und definiertem Messfenster berechnen. Accountgröße, Netzwerk, Content-/Medientyp, Postingzeit und historische Basis berücksichtigen. Rohcounts verschiedener Accounts nicht direkt als Qualitätsvergleich ausgeben; Korrelationen semantischer Scores mit Ergebnissen sind kein kausaler oder individueller Erfolgsnachweis.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -40,6 +46,7 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 - [ ] #1 Der Nutzer kann nachvollziehen, welche Posts relativ zur passenden eigenen Basis gut liefen.
 - [ ] #2 Diagramme weisen Zeitraum, Fallzahl und fehlende Daten aus.
 - [ ] #3 Follower-Wachstum wird nicht als bewiesene Post-Attribution dargestellt.
+- [ ] #4 Normalisierte Vergleiche legen Nenner, Messfenster, Vergleichsgruppe und fehlende Daten offen; inkompatible Netzwerke und Accountgrößen werden nicht ungeprüft vermischt.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -47,3 +54,9 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /analytics. Account/channel/period filters, post data and topic/format/time groups; separate account baselines, n/missing data and noncausal caveats. Grenze: Synthetic metrics only; no validated account effectiveness or measured score/outcome relationship. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

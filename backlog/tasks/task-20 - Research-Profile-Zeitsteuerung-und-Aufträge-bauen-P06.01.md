@@ -1,10 +1,10 @@
 ---
 id: TASK-20
 title: 'Research-Profile, Zeitsteuerung und Aufträge bauen (P06.01)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p06
   - r2
@@ -50,3 +50,9 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /research — profile/history tabs. Account-scoped research settings, project relevance, topic/audience/language/region/source/exclusion/freshness/count/frequency/budget, pause, mock next/last runs, immutable profile snapshot per local run. Grenze: No scheduled research or external lookup; frequency and next-run display preview configuration only. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

@@ -1,0 +1,18 @@
+# Local provider-test credentials and private key files
+.env.provider-check.local
+*.pem
+
+# Wrangler local state and caches
+.wrangler/
+
+# App dependencies and generated artifacts
+node_modules/
+dist/
+.pnpm-store/
+.cache/
+*.tsbuildinfo
+playwright-report/
+test-results/
+
+# macOS folder metadata
+.DS_Store

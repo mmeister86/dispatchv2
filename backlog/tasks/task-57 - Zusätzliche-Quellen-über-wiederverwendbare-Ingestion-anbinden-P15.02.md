@@ -1,10 +1,10 @@
 ---
 id: TASK-57
 title: Zusätzliche Quellen über wiederverwendbare Ingestion anbinden (P15.02)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p15
   - r8
@@ -53,3 +53,9 @@ Quellen einzeln freigeben: RSS/Artikel zuerst; Linear/Notion nach Nutzungsnachwe
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/sources, /research, /signals. Add/remove/pause RSS/article references, use-right consent and retention; local result/signal presentation. Grenze: No fetching/ingestion. Linear/Notion/Slack/Discord/Product Hunt remain future source integrations rather than fictitious connected accounts. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

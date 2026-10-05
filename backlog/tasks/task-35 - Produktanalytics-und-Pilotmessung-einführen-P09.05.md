@@ -1,18 +1,20 @@
 ---
 id: TASK-35
 title: Produktanalytics und Pilotmessung einführen (P09.05)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p09
   - r3
+  - jev
 milestone: m-3
 dependencies:
   - TASK-26
 references:
   - .docs/dispatch-end-to-end-implementation-plan.md
+  - .docs/JEV_INTEGRATION.md
 priority: medium
 ordinal: 35000
 ---
@@ -31,6 +33,10 @@ Phase: P09 – Sicherheit, Datenschutz, Betrieb und Produktqualität.
 - Session-Replay nur nach passender Produkt-/Datenschutzentscheidung und mit wirksamer Maskierung sensibler Flächen einsetzen.
 
 Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Beginn freigegeben sein. Diese Aufgabe dokumentiert geplante Arbeit; ihre Erstellung ist keine Implementierungsfreigabe.
+
+### JEV-Abgleich vom 18.09.2026
+
+Jev-Produktmetriken umfassen Analyse-Nutzung, Latenz, Erfolg, Fallback, Flag-Deaktivierung und Übernahme/Ablehnung von Empfehlungen. Rybbit erhält keine privaten Drafts, Prompts, vollständigen Provider-State oder Secrets. Technische Token-/Kostenmessung bleibt von Inhaltstelemetrie getrennt.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -38,6 +44,7 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Ereignisse werden bei Wiederholung nicht doppelt gezählt.
 - [ ] #2 kein Prompt, Diff, Token, Textentwurf oder E-Mail-Inhalt wird ungeplant an Analytics übergeben.
 - [ ] #3 Das Pilot-Dashboard beantwortet die Fragen aus Abschnitt 12.
+- [ ] #4 Geprüfte Jev-Analytics-Payloads enthalten nur freigegebene Produktmetriken und keine privaten Entwurfstexte oder Secrets.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -45,3 +52,9 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Pilot-Auswertung. Local draft/review/calendar indicators plus manually entered edit effort, time saving and cost per accepted draft. Grenze: No Rybbit/remote telemetry, automatic time measurement or real pilot results. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

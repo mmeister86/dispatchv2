@@ -1,19 +1,21 @@
 ---
 id: TASK-33.2
 title: 'Wiederaufnehmbare Account- und Workspace-Löschung umsetzen (P09.03, Teil 2)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p09
   - r3
   - teilpaket
+  - jev
 milestone: m-3
 dependencies:
   - TASK-33.1
 references:
   - .docs/dispatch-end-to-end-implementation-plan.md
+  - .docs/JEV_INTEGRATION.md
 parent_task_id: TASK-33
 priority: medium
 ordinal: 74000
@@ -25,6 +27,10 @@ ordinal: 74000
 Teilpaket zu P09.03. Verantwortung: convex/operations/deletion.ts und deletion.test.ts; Ausbau des betreuten R2-Basisbetriebs.
 
 Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P09.03. Der übergeordnete Task bewahrt den vollständigen fachlichen Vertrag. Tenant-/Account-Prüfung, Fehlerfälle und aktuelle Provider-Verträge gelten auch hier. Umsetzung erst nach Freigabe des betroffenen Umfangs.
+
+### JEV-Abgleich vom 18.09.2026
+
+Assessment-/Cache-/Entscheidungsdaten und nutzerbezogene Eval-/Debug-Daten in Account-/Workspace-Löschung aufnehmen. Laufende Analysen beenden oder ihre Antworten verwerfen; Wiederholung und Wiederaufnahme dürfen entfernte Daten nicht reaktivieren.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -32,6 +38,7 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P09.03. Der übergeord
 - [ ] #1 Löschung sperrt neue Arbeit, stoppt Jobs, entfernt Tokens und verhindert späte Neuanlage durch laufende Actions.
 - [ ] #2 R2-Objekte, Metadaten, Agent-Memory, Embeddings und abgeleitete Modelle werden mit dauerhaftem Fortschritt bereinigt; fehlende Objekte sind idempotenter Erfolg.
 - [ ] #3 Account-Löschung entfernt keine fremden gemeinsamen Workspaces; alleinige Owner wählen Übergabe oder bewusste Workspace-Löschung.
+- [ ] #4 Ein während der Löschung laufender Jev-Aufruf kann nachträglich weder Cache noch Assessment neu anlegen; wiederholte Löschung bleibt idempotent.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -39,3 +46,9 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P09.03. Der übergeord
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/data, /team. Owner-only workspace deletion, explicit confirmation; account deletion and owner-transfer path; local failure/retry preview. Grenze: No durable distributed deletion jobs or remote credential/storage cleanup. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

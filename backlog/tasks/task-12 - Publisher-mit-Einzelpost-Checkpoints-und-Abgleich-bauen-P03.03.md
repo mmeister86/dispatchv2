@@ -1,10 +1,10 @@
 ---
 id: TASK-12
 title: Publisher mit Einzelpost-Checkpoints und Abgleich bauen (P03.03)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p03
   - r1
@@ -54,3 +54,9 @@ Großes Paket: Die zugeordneten Unteraufgaben liefern die Implementierung in beg
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /calendar?view=agenda. Immutable publication snapshots, per-post confirmed/unconfirmed thread states, partial/uncertain/error results, mock reconciliation and targeted continuation. Grenze: No external posts, provider retries or crash recovery proof; IDs are explicitly demo IDs. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

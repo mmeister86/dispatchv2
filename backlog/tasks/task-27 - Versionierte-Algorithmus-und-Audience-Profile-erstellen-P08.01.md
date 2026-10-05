@@ -1,19 +1,22 @@
 ---
 id: TASK-27
 title: Versionierte Algorithmus- und Audience-Profile erstellen (P08.01)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p08
-  - r3
-milestone: m-3
+  - jev
+  - r2
+milestone: m-2
 dependencies:
-  - TASK-26
   - TASK-1
+  - TASK-7
 references:
   - .docs/dispatch-end-to-end-implementation-plan.md
+  - .docs/JEV_INTEGRATION.md
+  - .docs/decisions/release-scope.md
 priority: medium
 ordinal: 27000
 ---
@@ -24,14 +27,20 @@ ordinal: 27000
 Planreferenz: .docs/dispatch-end-to-end-implementation-plan.md, P08.01.
 Phase: P08 – Algorithm Intelligence im Composer.
 
-**Abhängigkeit:** P07.03, P00.01. **Dateien:** `convex/intelligence/algorithmProfiles.ts`, `convex/intelligence/audienceProfiles.ts`, `.docs/decisions/analysis-contract.md`; Test `convex/intelligence/profiles.test.ts`.
+**Abhängigkeit:** P00.01, P02.01. Die Profile werden vor der MVP-Abnahme benötigt; keine Abhängigkeit auf P07.03. **Dateien:** `convex/intelligence/algorithmProfiles.ts`, `convex/intelligence/audienceProfiles.ts`, `.docs/decisions/analysis-contract.md`; Test `convex/intelligence/profiles.test.ts`.
 
 - Aussagen der X-Algorithmus-Unterlage gegen konkrete öffentliche Quellstände prüfen; belegte Mechanismen, Interpretation und unbekannte Produktionsdetails trennen.
 - Profilzustände `draft`, `reviewed`, `active`, `retired` mit Quellen-Commit, Gültigkeit und internem Freigabenachweis einführen.
 - Audience-Profile versionieren und Embeddings zusammen mit Modellkennung, Dimension und Erstellungszeit speichern.
-- Die sieben Dimensionen und die beiden Reichweitenperspektiven in einem konsistenten Analysevertrag definieren.
+- Die bisherigen sieben Dimensionen und beiden Reichweitenperspektiven mit dem Jev-Inhaltsmodell abgleichen; unbelegte Reichweitenperspektiven nicht als prognostizierte Zahlen übernehmen.
 
 Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Beginn freigegeben sein. Diese Aufgabe dokumentiert geplante Arbeit; ihre Erstellung ist keine Implementierungsfreigabe.
+
+### JEV-Abgleich vom 18.09.2026
+
+Den bisherigen Intelligence-Vertrag mit JEV §§9–20, 26 und 47–49 abgleichen. Explizit trennen: semantische Inhaltsmerkmale, deterministische Post-Signale, beobachtete Account-Performance und tatsächlich definierte Audience-Passung. Die UI darf aus dem Beispiel-Frageset kein ungemessenes „Good audience fit“ ableiten.
+
+Fragesätze, aufgelöstes Modell soweit verfügbar, Normalisierung, Algorithmus-/Audience-Profil, Scoreformel und Routing-/Verifikationspolicy separat versionieren. Schwellen, Gewichte und Cold-Start-Werte als zu evaluierende Startannahmen dokumentieren. Dimensionen dienen einer Inhaltsheuristik und keiner Vorhersage von Reichweite, Likes oder Umsatz; unbelegte Plattformalgorithmus-Annahmen werden nicht zur Wahrheit erklärt.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -39,6 +48,8 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Eine Analyse referenziert genau einen aktiven Profilstand.
 - [ ] #2 Profilwechsel verändern historische Predictions nicht.
 - [ ] #3 Fehlendes Audience-Profil führt zu ehrlicher unvollständiger Bewertung, nicht zu erfundener Passung.
+- [ ] #4 Eine Zuordnung dokumentiert für jede bisherige Dimension, ob sie Jev, deterministische Logik, ein eigenes Audience-Signal oder spätere gemessene Analytics benötigt.
+- [ ] #5 Frage-/Formel-/Policy-Änderungen erhalten neue Versionen; fehlende Signale und niedrige Confidence besitzen definierte Zustände.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -46,3 +57,11 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+2026-09-19 D04: Nutzer verlangt Intelligence bereits im Dispatch-MVP/R2. Release-Zuordnung aktualisiert; keine Umsetzung oder Provideraktivierung. Maßgeblich: .docs/decisions/release-scope.md.
+
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence, /operations — Algorithmusprofile. Profile/question/formula references, honest missing audience fit and cold-start marker; internal candidate/source review and profile version controls. Grenze: No verified X-algorithm model, embeddings, real audience signal or production profile activation. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

@@ -1,18 +1,20 @@
 ---
 id: TASK-31
 title: 'Betriebsereignisse, Alerts und Wiederherstellung konsolidieren (P09.01)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-04 19:25'
 labels:
   - p09
   - r3
+  - jev
 milestone: m-3
 dependencies:
   - TASK-26
 references:
   - .docs/dispatch-end-to-end-implementation-plan.md
+  - .docs/JEV_INTEGRATION.md
 priority: medium
 ordinal: 31000
 ---
@@ -33,6 +35,10 @@ Phase: P09 – Sicherheit, Datenschutz, Betrieb und Produktqualität.
 Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Beginn freigegeben sein. Diese Aufgabe dokumentiert geplante Arbeit; ihre Erstellung ist keine Implementierungsfreigabe.
 
 Die frühe Grundlage beginnt mit P03. Der Abschluss dieses Konsolidierungspakets liegt nach MVP; das separate R2-Basisbetrieb-Ticket verhindert einen Abhängigkeitszyklus.
+
+### JEV-Abgleich vom 18.09.2026
+
+Jev-Operationen und Fehlerklassen in Betriebsereignisse/Runbooks aufnehmen: Latenz, Erfolg, Modell/Frageversion, Usage, Fallback, Timeouts, Rate Limits und Circuit-Breaker-Zustand ohne Draft-Inhalte oder Secrets. Deaktivierung ohne Deployment, kontrollierte Erholung und Budgetanomalien üben. Analyzer-Ausfall zeigt einen nutzbaren Status; Publishing bleibt unter seinen bestehenden Regeln möglich.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
@@ -40,6 +46,7 @@ Die frühe Grundlage beginnt mit P03. Der Abschluss dieses Konsolidierungspakets
 - [ ] #1 Ein synthetischer Fehler führt zu einem nachvollziehbaren Ereignis und einer passenden Betreiberaktion.
 - [ ] #2 Ein still hängender Job wird erkannt.
 - [ ] #3 Wiederherstellung ist anhand des Runbooks möglich.
+- [ ] #4 Ein Jev-Ausfall und anschließende Erholung sind mit begrenzten Aufrufen, sichtbarem Status und funktionierendem manuellen Publishing geübt.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -47,3 +54,9 @@ Die frühe Grundlage beginnt mit P03. Der Abschluss dieses Konsolidierungspakets
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Systemzustand, /calendar. Mock operational event log, correlation IDs, attention/error/uncertain states, repeat/reconcile previews and publishing next actions. Grenze: No live health monitor, alerts, runbooks exercise or provider recovery evidence. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+<!-- SECTION:NOTES:END -->

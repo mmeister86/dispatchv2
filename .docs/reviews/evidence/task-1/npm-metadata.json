@@ -1,0 +1,736 @@
+[
+  {
+    "package": "convex",
+    "version": "1.46.0",
+    "published": "2026-09-16T20:41:46.150Z",
+    "peerDependencies": {
+      "react": "^18.0.0 || ^19.0.0-0 || ^19.0.0",
+      "@clerk/react": "^6.4.3",
+      "@auth0/auth0-react": "^2.0.1",
+      "@clerk/clerk-react": "^4.12.8 || ^5.0.0"
+    },
+    "peerDependenciesMeta": {
+      "react": {
+        "optional": true
+      },
+      "@clerk/react": {
+        "optional": true
+      },
+      "@auth0/auth0-react": {
+        "optional": true
+      },
+      "@clerk/clerk-react": {
+        "optional": true
+      }
+    },
+    "dependencies": {
+      "ws": "8.21.0",
+      "esbuild": "0.27.0",
+      "prettier": "^3.0.0"
+    },
+    "engines": {
+      "npm": ">=7.0.0",
+      "node": ">=20.0.0"
+    }
+  },
+  {
+    "package": "@convex-dev/better-auth",
+    "version": "0.12.5",
+    "published": "2026-06-27T19:11:29.102Z",
+    "peerDependencies": {
+      "react": "^18.3.1 || ^19.0.0",
+      "convex": "^1.25.0",
+      "better-auth": ">=1.6.11 <1.7.0"
+    },
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "zod": "^4.0.0",
+      "jose": "^6.1.0",
+      "remeda": "^2.32.0",
+      "semver": "^7.7.3",
+      "type-fest": "^5.0.0",
+      "common-tags": "^1.8.2",
+      "convex-helpers": "^0.1.95",
+      "@better-fetch/fetch": "^1.1.18"
+    },
+    "engines": {}
+  },
+  {
+    "package": "better-auth",
+    "version": "1.7.5",
+    "published": "2026-09-14T22:10:52.807Z",
+    "peerDependencies": {
+      "pg": "^8.0.0",
+      "vue": "^3.0.0",
+      "next": "^14.0.0 || ^15.0.0 || ^16.0.0",
+      "react": "^18.0.0 || ^19.0.0",
+      "mysql2": "^3.0.0",
+      "prisma": "^5.0.0 || ^6.0.0 || ^7.0.0",
+      "svelte": "^4.0.0 || ^5.0.0",
+      "vitest": "^2.0.0 || ^3.0.0 || ^4.0.0 || ^5.0.0",
+      "mongodb": "^6.0.0 || ^7.0.0",
+      "solid-js": "^1.0.0",
+      "react-dom": "^18.0.0 || ^19.0.0",
+      "drizzle-kit": ">=0.31.4 || >=1.0.0-beta.1",
+      "drizzle-orm": "^0.45.2 || >=1.0.0-rc.1 <2.0.0",
+      "@sveltejs/kit": "^2.0.0",
+      "@lynx-js/react": "*",
+      "@prisma/client": "^5.0.0 || ^6.0.0 || ^7.0.0",
+      "@tanstack/react-start": "^1.0.0",
+      "@tanstack/solid-start": "^1.0.0"
+    },
+    "peerDependenciesMeta": {
+      "pg": {
+        "optional": true
+      },
+      "vue": {
+        "optional": true
+      },
+      "next": {
+        "optional": true
+      },
+      "react": {
+        "optional": true
+      },
+      "mysql2": {
+        "optional": true
+      },
+      "prisma": {
+        "optional": true
+      },
+      "svelte": {
+        "optional": true
+      },
+      "vitest": {
+        "optional": true
+      },
+      "mongodb": {
+        "optional": true
+      },
+      "solid-js": {
+        "optional": true
+      },
+      "react-dom": {
+        "optional": true
+      },
+      "drizzle-kit": {
+        "optional": true
+      },
+      "drizzle-orm": {
+        "optional": true
+      },
+      "@sveltejs/kit": {
+        "optional": true
+      },
+      "@lynx-js/react": {
+        "optional": true
+      },
+      "@prisma/client": {
+        "optional": true
+      },
+      "@tanstack/react-start": {
+        "optional": true
+      },
+      "@tanstack/solid-start": {
+        "optional": true
+      }
+    },
+    "dependencies": {
+      "zod": "^4.5.4",
+      "defu": "^6.1.4",
+      "jose": "^6.2.3",
+      "kysely": "^0.28.17 || ^0.29.0",
+      "nanostores": "^1.3.0",
+      "better-call": "1.4.0",
+      "@noble/hashes": "^2.2.0",
+      "@noble/ciphers": "^2.2.0",
+      "@better-auth/core": "1.7.5",
+      "@better-auth/utils": "0.4.2",
+      "@better-fetch/fetch": "1.3.2",
+      "@better-auth/telemetry": "1.7.5",
+      "@better-auth/mongo-adapter": "1.7.5",
+      "@better-auth/kysely-adapter": "1.7.5",
+      "@better-auth/memory-adapter": "1.7.5",
+      "@better-auth/prisma-adapter": "1.7.5",
+      "@better-auth/drizzle-adapter": "1.7.5"
+    },
+    "engines": {}
+  },
+  {
+    "package": "better-auth",
+    "version": "1.6.33",
+    "published": "2026-09-14T22:06:43.487Z",
+    "peerDependencies": {
+      "pg": "^8.0.0",
+      "vue": "^3.0.0",
+      "next": "^14.0.0 || ^15.0.0 || ^16.0.0",
+      "react": "^18.0.0 || ^19.0.0",
+      "mysql2": "^3.0.0",
+      "prisma": "^5.0.0 || ^6.0.0 || ^7.0.0",
+      "svelte": "^4.0.0 || ^5.0.0",
+      "vitest": "^2.0.0 || ^3.0.0 || ^4.0.0",
+      "mongodb": "^6.0.0 || ^7.0.0",
+      "solid-js": "^1.0.0",
+      "react-dom": "^18.0.0 || ^19.0.0",
+      "drizzle-kit": ">=0.31.4",
+      "drizzle-orm": "^0.45.2",
+      "@sveltejs/kit": "^2.0.0",
+      "@lynx-js/react": "*",
+      "@prisma/client": "^5.0.0 || ^6.0.0 || ^7.0.0",
+      "better-sqlite3": "^12.0.0",
+      "@tanstack/react-start": "^1.0.0",
+      "@tanstack/solid-start": "^1.0.0"
+    },
+    "peerDependenciesMeta": {
+      "pg": {
+        "optional": true
+      },
+      "vue": {
+        "optional": true
+      },
+      "next": {
+        "optional": true
+      },
+      "react": {
+        "optional": true
+      },
+      "mysql2": {
+        "optional": true
+      },
+      "prisma": {
+        "optional": true
+      },
+      "svelte": {
+        "optional": true
+      },
+      "vitest": {
+        "optional": true
+      },
+      "mongodb": {
+        "optional": true
+      },
+      "solid-js": {
+        "optional": true
+      },
+      "react-dom": {
+        "optional": true
+      },
+      "drizzle-kit": {
+        "optional": true
+      },
+      "drizzle-orm": {
+        "optional": true
+      },
+      "@sveltejs/kit": {
+        "optional": true
+      },
+      "@lynx-js/react": {
+        "optional": true
+      },
+      "@prisma/client": {
+        "optional": true
+      },
+      "better-sqlite3": {
+        "optional": true
+      },
+      "@tanstack/react-start": {
+        "optional": true
+      },
+      "@tanstack/solid-start": {
+        "optional": true
+      }
+    },
+    "dependencies": {
+      "zod": "^4.3.6",
+      "defu": "^6.1.4",
+      "jose": "^6.1.3",
+      "kysely": "^0.28.17 || ^0.29.0",
+      "nanostores": "^1.1.1",
+      "better-call": "1.4.0",
+      "@noble/hashes": "^2.0.1",
+      "@noble/ciphers": "^2.1.1",
+      "@better-auth/core": "1.6.33",
+      "@better-auth/utils": "0.4.2",
+      "@better-fetch/fetch": "1.3.1",
+      "@better-auth/telemetry": "1.6.33",
+      "@better-auth/mongo-adapter": "1.6.33",
+      "@better-auth/kysely-adapter": "1.6.33",
+      "@better-auth/memory-adapter": "1.6.33",
+      "@better-auth/prisma-adapter": "1.6.33",
+      "@better-auth/drizzle-adapter": "1.6.33"
+    },
+    "engines": {}
+  },
+  {
+    "package": "@convex-dev/agent",
+    "version": "0.7.3",
+    "published": "2026-09-14T20:08:56.612Z",
+    "peerDependencies": {
+      "ai": "^7.0.0",
+      "react": "^18.3.1 || ^19.0.0",
+      "convex": "^1.24.8",
+      "convex-helpers": "^0.1.103",
+      "@ai-sdk/provider": "^4.0.0",
+      "@ai-sdk/provider-utils": "^5.0.0"
+    },
+    "peerDependenciesMeta": {
+      "react": {
+        "optional": true
+      }
+    },
+    "dependencies": {},
+    "engines": {
+      "node": ">=22"
+    }
+  },
+  {
+    "package": "@convex-dev/agent",
+    "version": "0.6.4",
+    "published": "2026-06-18T00:22:28.074Z",
+    "peerDependencies": {
+      "ai": "^6.0.35",
+      "react": "^18.3.1 || ^19.0.0",
+      "convex": "^1.24.8",
+      "convex-helpers": "^0.1.103",
+      "@ai-sdk/provider-utils": "^4.0.6"
+    },
+    "peerDependenciesMeta": {
+      "react": {
+        "optional": true
+      }
+    },
+    "dependencies": {},
+    "engines": {}
+  },
+  {
+    "package": "@convex-dev/workflow",
+    "version": "0.4.8",
+    "published": "2026-09-15T05:54:19.152Z",
+    "peerDependencies": {
+      "convex": "^1.36.1",
+      "convex-helpers": "^0.1.99",
+      "@convex-dev/workpool": "^0.4.4"
+    },
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "async-channel": "^0.2.0"
+    },
+    "engines": {}
+  },
+  {
+    "package": "@convex-dev/workpool",
+    "version": "0.4.12",
+    "published": "2026-09-11T23:40:27.052Z",
+    "peerDependencies": {
+      "convex": "^1.36.1",
+      "convex-helpers": "^0.1.94"
+    },
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "@convex-dev/batch-worker": "^0.2.2"
+    },
+    "engines": {}
+  },
+  {
+    "package": "@convex-dev/r2",
+    "version": "0.10.2",
+    "published": "2026-06-16T00:25:48.176Z",
+    "peerDependencies": {
+      "vue": "^3.5.0",
+      "react": "^18 || ^19",
+      "convex": "^1.24.8",
+      "svelte": ">=5.0.0",
+      "react-dom": "^18 || ^19",
+      "convex-vue": "^0.1.5",
+      "convex-svelte": "^0.0.11 || ^0.0.12"
+    },
+    "peerDependenciesMeta": {
+      "vue": {
+        "optional": true
+      },
+      "react": {
+        "optional": true
+      },
+      "svelte": {
+        "optional": true
+      },
+      "react-dom": {
+        "optional": true
+      },
+      "convex-vue": {
+        "optional": true
+      },
+      "convex-svelte": {
+        "optional": true
+      }
+    },
+    "dependencies": {
+      "uuid": "^14.0.0",
+      "file-type": "^21",
+      "convex-helpers": "^0.1.67",
+      "@aws-sdk/client-s3": "^3.1030.0",
+      "@convex-dev/action-retrier": "^0.3.0",
+      "@aws-sdk/s3-request-presigner": "^3.1030.0"
+    },
+    "engines": {}
+  },
+  {
+    "package": "ai",
+    "version": "7.0.106",
+    "published": "2026-09-18T05:00:46.922Z",
+    "peerDependencies": {
+      "zod": "^3.25.76 || ^4.1.8"
+    },
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "@ai-sdk/gateway": "4.0.86",
+      "@ai-sdk/provider": "4.0.17",
+      "@ai-sdk/provider-utils": "5.0.44"
+    },
+    "engines": {
+      "node": ">=22"
+    }
+  },
+  {
+    "package": "ai",
+    "version": "6.0.286",
+    "published": "2026-09-18T04:57:23.434Z",
+    "peerDependencies": {
+      "zod": "^3.25.76 || ^4.1.8"
+    },
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "@ai-sdk/gateway": "3.0.196",
+      "@ai-sdk/provider": "3.0.16",
+      "@opentelemetry/api": "^1.9.0",
+      "@ai-sdk/provider-utils": "4.0.51"
+    },
+    "engines": {
+      "node": ">=18"
+    }
+  },
+  {
+    "package": "@requesty/ai-sdk",
+    "version": "3.6.1",
+    "published": "2026-08-26T09:12:06.027Z",
+    "peerDependencies": {
+      "zod": "^3.25.76 || ^4.0.0",
+      "vite": "^7.1.7"
+    },
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "@ai-sdk/provider": "^3.0.0",
+      "@ai-sdk/provider-utils": "^4.0.41"
+    },
+    "engines": {
+      "node": ">=18"
+    }
+  },
+  {
+    "package": "react",
+    "version": "19.3.0",
+    "published": "2026-09-09T17:21:30.071Z",
+    "peerDependencies": {},
+    "peerDependenciesMeta": {},
+    "dependencies": {},
+    "engines": {
+      "node": ">=0.10.0"
+    }
+  },
+  {
+    "package": "react-dom",
+    "version": "19.3.0",
+    "published": "2026-09-09T17:17:39.744Z",
+    "peerDependencies": {
+      "react": "^19.3.0"
+    },
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "scheduler": "^0.28.0"
+    },
+    "engines": {}
+  },
+  {
+    "package": "vite",
+    "version": "8.3.0",
+    "published": "2026-09-10T11:30:26.283Z",
+    "peerDependencies": {
+      "tsx": "^4.8.1",
+      "jiti": ">=1.21.0",
+      "less": "^4.0.0",
+      "sass": "^1.70.0",
+      "yaml": "^2.4.2",
+      "stylus": ">=0.54.8",
+      "terser": "^5.16.0",
+      "esbuild": "^0.27.0 || ^0.28.0",
+      "sugarss": "^5.0.0",
+      "@types/node": "^20.19.0 || >=22.12.0",
+      "sass-embedded": "^1.70.0",
+      "@vitejs/devtools": "^0.7.1"
+    },
+    "peerDependenciesMeta": {
+      "tsx": {
+        "optional": true
+      },
+      "jiti": {
+        "optional": true
+      },
+      "less": {
+        "optional": true
+      },
+      "sass": {
+        "optional": true
+      },
+      "yaml": {
+        "optional": true
+      },
+      "stylus": {
+        "optional": true
+      },
+      "terser": {
+        "optional": true
+      },
+      "esbuild": {
+        "optional": true
+      },
+      "sugarss": {
+        "optional": true
+      },
+      "@types/node": {
+        "optional": true
+      },
+      "sass-embedded": {
+        "optional": true
+      },
+      "@vitejs/devtools": {
+        "optional": true
+      }
+    },
+    "dependencies": {
+      "postcss": "^8.5.28",
+      "rolldown": "~1.2.6",
+      "picomatch": "^4.0.7",
+      "tinyglobby": "^0.2.17",
+      "lightningcss": "^1.33.0"
+    },
+    "engines": {
+      "node": "^20.19.0 || >=22.12.0"
+    }
+  },
+  {
+    "package": "vite",
+    "version": "7.3.6",
+    "published": "2026-06-25T01:51:49.605Z",
+    "peerDependencies": {
+      "tsx": "^4.8.1",
+      "jiti": ">=1.21.0",
+      "less": "^4.0.0",
+      "sass": "^1.70.0",
+      "yaml": "^2.4.2",
+      "stylus": ">=0.54.8",
+      "terser": "^5.16.0",
+      "sugarss": "^5.0.0",
+      "@types/node": "^20.19.0 || >=22.12.0",
+      "lightningcss": "^1.21.0",
+      "sass-embedded": "^1.70.0"
+    },
+    "peerDependenciesMeta": {
+      "tsx": {
+        "optional": true
+      },
+      "jiti": {
+        "optional": true
+      },
+      "less": {
+        "optional": true
+      },
+      "sass": {
+        "optional": true
+      },
+      "yaml": {
+        "optional": true
+      },
+      "stylus": {
+        "optional": true
+      },
+      "terser": {
+        "optional": true
+      },
+      "sugarss": {
+        "optional": true
+      },
+      "@types/node": {
+        "optional": true
+      },
+      "lightningcss": {
+        "optional": true
+      },
+      "sass-embedded": {
+        "optional": true
+      }
+    },
+    "dependencies": {
+      "fdir": "^6.5.0",
+      "rollup": "^4.43.0",
+      "esbuild": "^0.27.0 || ^0.28.0",
+      "postcss": "^8.5.6",
+      "picomatch": "^4.0.3",
+      "tinyglobby": "^0.2.15"
+    },
+    "engines": {
+      "node": "^20.19.0 || >=22.12.0"
+    }
+  },
+  {
+    "package": "@vitejs/plugin-react",
+    "version": "6.1.1",
+    "published": "2026-08-28T03:30:56.619Z",
+    "peerDependencies": {
+      "vite": "^8.0.0",
+      "oxc-transform-react": "^0.145.0",
+      "@rolldown/plugin-babel": "^0.1.7 || ^0.2.0",
+      "babel-plugin-react-compiler": "^1.0.0"
+    },
+    "peerDependenciesMeta": {
+      "oxc-transform-react": {
+        "optional": true
+      },
+      "@rolldown/plugin-babel": {
+        "optional": true
+      },
+      "babel-plugin-react-compiler": {
+        "optional": true
+      }
+    },
+    "dependencies": {
+      "@rolldown/pluginutils": "^1.0.1"
+    },
+    "engines": {
+      "node": "^20.19.0 || >=22.12.0"
+    }
+  },
+  {
+    "package": "@vitejs/plugin-react",
+    "version": "5.2.0",
+    "published": "2026-03-12T14:27:45.817Z",
+    "peerDependencies": {
+      "vite": "^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0"
+    },
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "@babel/core": "^7.29.0",
+      "react-refresh": "^0.18.0",
+      "@types/babel__core": "^7.20.5",
+      "@rolldown/pluginutils": "1.0.0-rc.3",
+      "@babel/plugin-transform-react-jsx-self": "^7.27.1",
+      "@babel/plugin-transform-react-jsx-source": "^7.27.1"
+    },
+    "engines": {
+      "node": "^20.19.0 || >=22.12.0"
+    }
+  },
+  {
+    "package": "@ai-sdk/provider",
+    "version": "4.0.17",
+    "published": "2026-09-16T21:39:18.465Z",
+    "peerDependencies": {},
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "json-schema": "^0.4.0"
+    },
+    "engines": {
+      "node": ">=22"
+    }
+  },
+  {
+    "package": "@ai-sdk/provider",
+    "version": "3.0.16",
+    "published": "2026-09-09T18:14:17.991Z",
+    "peerDependencies": {},
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "json-schema": "^0.4.0"
+    },
+    "engines": {
+      "node": ">=18"
+    }
+  },
+  {
+    "package": "@ai-sdk/provider-utils",
+    "version": "5.0.44",
+    "published": "2026-09-18T04:59:49.449Z",
+    "peerDependencies": {
+      "zod": "^3.25.76 || ^4.1.8"
+    },
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "undici": "^7.29.0",
+      "@workflow/serde": "4.1.0",
+      "@ai-sdk/provider": "4.0.17",
+      "eventsource-parser": "^3.0.8",
+      "@standard-schema/spec": "^1.1.0"
+    },
+    "engines": {
+      "node": ">=22"
+    }
+  },
+  {
+    "package": "@ai-sdk/provider-utils",
+    "version": "4.0.51",
+    "published": "2026-09-09T18:15:44.169Z",
+    "peerDependencies": {
+      "zod": "^3.25.76 || ^4.1.8"
+    },
+    "peerDependenciesMeta": {},
+    "dependencies": {
+      "undici": "^6.28.0",
+      "@ai-sdk/provider": "3.0.16",
+      "eventsource-parser": "^3.0.8",
+      "@standard-schema/spec": "^1.1.0"
+    },
+    "engines": {
+      "node": ">=18.17"
+    }
+  },
+  {
+    "package": "convex-helpers",
+    "version": "0.1.124",
+    "published": "2026-09-05T15:58:39.019Z",
+    "peerDependencies": {
+      "zod": "^3.25.0 || ^4.0.0",
+      "hono": "^4.0.5",
+      "react": "^17.0.2 || ^18.0.0 || ^19.0.0",
+      "convex": "^1.43.0",
+      "typescript": "^5.5 || ^6.0.0 || ^7.0.0",
+      "@standard-schema/spec": "^1.0.0"
+    },
+    "peerDependenciesMeta": {
+      "zod": {
+        "optional": true
+      },
+      "hono": {
+        "optional": true
+      },
+      "react": {
+        "optional": true
+      },
+      "typescript": {
+        "optional": true
+      },
+      "@standard-schema/spec": {
+        "optional": true
+      }
+    },
+    "dependencies": {},
+    "engines": {}
+  },
+  {
+    "package": "zod",
+    "version": "4.6.5",
+    "published": "2026-09-13T23:25:14.644Z",
+    "peerDependencies": {},
+    "peerDependenciesMeta": {},
+    "dependencies": {},
+    "engines": {}
+  }
+]

@@ -8,14 +8,16 @@
 
 **Geplanter Stack:** Vite, React, TypeScript, TanStack Router, Tailwind CSS, shadcn/ui, Convex Cloud, Cloudflare R2, Better Auth, Convex Agent und Workflows, Vercel AI SDK, Requesty, GitHub App, X API, Resend, Rybbit, Stripe; weitere Plattformen und Quellen folgen über Adapter.
 
-**Stand:** 16. September 2026  
-**Status:** Planungsentwurf zur gemeinsamen Freigabe; keine Implementierung beauftragt oder begonnen  
+**Stand:** 19. September 2026 (D04-/TASK-2-Abgleich; ursprünglicher Plan vom 16.09.2026)
+**Status:** Planungsgrundlage mit laufender P00-Vertragsarbeit. D04 wurde am 19.09.2026 ausdrücklich entschieden; weitere offene Entscheidungen bleiben an ihre Tore gebunden. Keine Anwendungsimplementierung durch diese Dokumentpflege.
 **Bestätigte Speicherentscheidung:** Convex für Produktdaten und Abläufe, Cloudflare R2 für Medien; siehe [ADR-001](decisions/001-convex-domain-r2-media.md)
 
 **Planungshorizont:** Technische Grundlage → Dispatch-MVP → private Beta → kommerzielle Version → lernendes, teamfähiges und kanalübergreifendes Endprodukt  
 **Sprache:** Deutsche Produktplanung; technische Bezeichner auf Englisch
 
 ---
+
+Die TASK-2-Verträge zu [Domain-Regeln](decisions/domain-contracts.md) und [Release-Umfang](decisions/release-scope.md) präzisieren diesen Plan. D04 vom 19.09.2026 ersetzt die frühere Beta-Zuordnung von Intelligence.
 
 ## 1. Grundlage, Verbindlichkeit und Ausgangslage
 
@@ -43,7 +45,7 @@ Es werden keine bestehenden Komponenten, Tests, Deployments oder Provider-Zugän
 | Proaktive Recherche | Eigene Kernverantwortung mit eigenem Agenten, Profilen und Läufen | Ein reiner GitHub-Generator ist noch kein vollständiges Dispatch-MVP |
 | Anzahl der Agenten | Content Agent und Research Agent; gemeinsamer Convex-Unterbau | Die ursprüngliche Beschränkung auf einen einzigen Agenten wird gezielt erweitert |
 | Wochenplanung | Bestandteil des Dispatch-MVP | Die bisherige Bezeichnung als V1.x wird für diese Funktion aufgehoben |
-| Algorithm-MVP | Separate Beta-Ausbaustufe nach funktionierendem Kernloop | Der Scheduler und die Intelligence-Schicht erhalten keine konkurrierenden MVP-Definitionen |
+| Algorithm Intelligence | D04 bestätigt: Analyzer, Dispatch Score und J07 bereits im Dispatch-MVP/R2 | P08.01–P08.03 vor MVP-Abnahme; Messpipeline R3, Kalibrierung R5 |
 | Performance Learning | Nach Erfassung belastbarer eigener Daten | Vorherige Scores bleiben ausdrücklich heuristisch |
 | Freigabe | An Account und konkrete Entwurfsversion gebunden | Ein globaler Draft-Status genügt nicht als Veröffentlichungserlaubnis |
 | Vollautonomie | Freiwillige, eingeschränkte Endprodukt-Funktion mit eigener Freigabe | Standard bleibt menschliche Inhaltsfreigabe |
@@ -323,7 +325,7 @@ Die erste Version nutzt vom Nutzer definierte Zeitfenster. Personalisierte Timin
 
 Der Reach Score ist zunächst eine erklärbare redaktionelle Heuristik von 0–100. Er ist weder eine Reichweitenprognose in Impressionen noch eine Wahrscheinlichkeit oder ein nachgebautes X-Ranking. UI und Marketing dürfen diesen Unterschied nicht verwischen.
 
-Startmodell aus der Spezifikation: Audience Fit 25 %, Share Potential 20 %, Conversation Potential 15 %, Follow Potential 10 %, Dwell Potential 10 %, Discovery Potential 10 %, Content Health 10 %. Alle sieben Komponenten erhalten konsistente technische Namen. Die im bisherigen JSON-Beispiel fehlende Discovery-Komponente wird ergänzt.
+Historisches Startmodell aus der Spezifikation (keine ungeprüfte Formelfreigabe; TASK-27 gleicht es mit den Jev-Signalen zu einem einzigen versionierten Analysevertrag ab): Audience Fit 25 %, Share Potential 20 %, Conversation Potential 15 %, Follow Potential 10 %, Dwell Potential 10 %, Discovery Potential 10 %, Content Health 10 %. Alle sieben Komponenten erhalten konsistente technische Namen. Die im bisherigen JSON-Beispiel fehlende Discovery-Komponente wird ergänzt.
 
 Follower- und Discovery-Eignung bleiben getrennte Heuristiken. Die Anzeige „+8“ bezeichnet ausschließlich die Veränderung des Dispatch-Scores zwischen zwei Versionen unter denselben Analysebedingungen, nicht acht Prozent mehr Reichweite.
 
@@ -358,8 +360,8 @@ Modelländerungen laufen zunächst im Schattenbetrieb gegen die bisherige Heuris
 |---|---|---|
 | R0 – tragfähige Grundlage | P00–P01 | Machbarkeit, Anmeldung, Mandanten und Account-Kontext |
 | R1 – interner Publishing-Alpha | P02–P03 | Manueller X-Loop mit Freigabe, Kalender und Fehlerbehandlung |
-| R2 – Dispatch-MVP | P04–P07, verpflichtende Basismaßnahmen aus P09 | Eigene Arbeit und proaktive Recherche erzeugen gemeinsam planbare Inhalte |
-| R3 – private Beta | P08–P09 | Erklärbare Intelligence, Datenschutz, Zugänglichkeit und belastbarer Betrieb |
+| R2 – Dispatch-MVP | P04–P07, P08.01–P08.03, verpflichtende Basismaßnahmen aus P09 | Eigene Arbeit und Recherche erzeugen planbare Inhalte; Analyzer, Score und bewusste Übernahme sind verfügbar |
+| R3 – private Beta | P08.04, P09 | Messgrundlage, Datenschutz, Zugänglichkeit und belastbarer Betrieb; Intelligence aus R2 wird erneut geprüft |
 | R4 – kommerzielles X-Produkt | P10 und GA-Gate | Abrechnung, Grenzen, Support und produktive Freigabe |
 | R5 – lernendes Produkt | P11–P12 | Performance-Feedback, persönliche Stimme und bessere Planung |
 | R6 – Teamprodukt | P13.01–P13.02 | Zusammenarbeit, Rollen und Freigaberegeln; Kundenräume optional |
@@ -369,7 +371,7 @@ Modelländerungen laufen zunächst im Schattenbetrieb gegen die bisherige Heuris
 
 Datenschutz, Authentifizierung, Kostenkontrolle, Logging und Tests werden in jeder Phase umgesetzt; P09 konsolidiert sie für den Betrieb. P10 darf nach stabilem R3 parallel zur Datensammlung für P11 laufen. Team- und Plattformausbau können nach gemeinsamen Schema-Verträgen getrennt bearbeitet werden. Die veröffentlichte Kernfunktion darf nicht von optionalen Erweiterungen abhängen.
 
-Kritischer Pfad: Provider-Machbarkeit → Tenant/Auth → versionierte Inhalte → zuverlässiges Publishing → Agent-Grundlage → zwei Quellen → gemeinsame Planung → Beta-Betrieb → kommerzielle Freigabe.
+Kritischer Pfad: Provider-Machbarkeit → Tenant/Auth → versionierte Inhalte → zuverlässiges Publishing → Agent-Grundlage → zwei Quellen → gemeinsame Planung und Intelligence → MVP-Abnahme → Beta-Betrieb → kommerzielle Freigabe.
 
 ## 9. Arbeitspakete: Grundlage bis Dispatch-MVP
 
@@ -686,22 +688,24 @@ Jedes Paket enthält Abhängigkeit, geplante Dateien, konkrete Schritte und übe
 
 #### P07.03 – Dispatch-MVP anhand realer Redaktionsarbeit abnehmen
 
-**Abhängigkeit:** P04.03–P07.02 und Basisbetrieb aus P09. **Dateien:** `tests/e2e/core-loop.spec.ts`, `.docs/decisions/mvp-review.md`.
+**Abhängigkeit:** P04.03–P07.02, P08.01–P08.03 und Basisbetrieb aus P09. **Dateien:** `tests/e2e/core-loop.spec.ts`, `.docs/decisions/mvp-review.md`.
 
-- [ ] J01–J06 und J08 mit freigegebenen Testaccounts durchlaufen.
+- [ ] J01–J08 mit freigegebenen Testaccounts durchlaufen.
 - [ ] Eine Woche Content sowohl aus Projektarbeit als auch aus proaktiver Recherche vorbereiten und selektiv veröffentlichen.
 - [ ] Quellenrichtigkeit, persönliche Passung, Editieraufwand und Kalendernutzen dokumentieren.
 - [ ] Kritische Qualitäts- und Zuverlässigkeitsmängel vor Beta-Ausbau beheben.
 
 **Abnahme:** Beide Quellen erzeugen tatsächlich akzeptierte Inhalte, nicht nur technisch gültige AI-Ausgaben. Die Benutzerfreigabe des MVP wird ausdrücklich eingeholt und im Backlog dokumentiert.
 
-## 10. Arbeitspakete: Beta und kommerzielles X-Produkt
+## 10. Arbeitspakete: Intelligence ab MVP, Beta und kommerzielles X-Produkt
 
 ### P08 – Algorithm Intelligence im Composer
 
+D04 vom 19.09.2026 zieht P08.01–P08.03 nach R2 vor. P08.04 bleibt R3. Die Paketnummern bleiben stabil. Der [Release-Vertrag](decisions/release-scope.md) ordnet Jev-Funktionen, Aktivierungstore und Abnahme zu.
+
 #### P08.01 – Versionierte Algorithmus- und Audience-Profile erstellen
 
-**Abhängigkeit:** P07.03, P00.01. **Dateien:** `convex/intelligence/algorithmProfiles.ts`, `convex/intelligence/audienceProfiles.ts`, `.docs/decisions/analysis-contract.md`; Test `convex/intelligence/profiles.test.ts`.
+**Abhängigkeit:** P00.01, P02.01; vor P07.03 umzusetzen. **Dateien:** `convex/intelligence/algorithmProfiles.ts`, `convex/intelligence/audienceProfiles.ts`, `.docs/decisions/analysis-contract.md`; Test `convex/intelligence/profiles.test.ts`.
 
 - [ ] Aussagen der X-Algorithmus-Unterlage gegen konkrete öffentliche Quellstände prüfen; belegte Mechanismen, Interpretation und unbekannte Produktionsdetails trennen.
 - [ ] Profilzustände `draft`, `reviewed`, `active`, `retired` mit Quellen-Commit, Gültigkeit und internem Freigabenachweis einführen.
@@ -1203,9 +1207,9 @@ Niedrige Nutzerzahlen rechtfertigen keine scheinpräzisen statistischen Aussagen
 
 ### 12.6 Abnahmetore
 
-**MVP-Gate:** J01–J06 und J08 funktionieren; GitHub und Research liefern unabhängig nutzbaren Content; menschliche Freigabe ist wirksam; Kosten und Fehler sind sichtbar.
+**MVP-Gate:** J01–J08 funktionieren, einschließlich Analyzer, Dispatch Score und bewusster Empfehlungsübernahme; GitHub und Research liefern unabhängig nutzbaren Content; menschliche Freigabe ist wirksam; Kosten und Fehler sind sichtbar. Jev-Aktivierung und früher J12-/Basisbetrieb sind nachgewiesen. Ein Analyseausfall darf manuelles Publishing nicht blockieren, ersetzt aber keine vollständige Intelligence-Abnahme. Maßgeblich ist die [einzige MVP-Definition im Release-Vertrag](decisions/release-scope.md#2-einzige-definition-des-dispatch-mvp).
 
-**Beta-Gate:** Zusätzlich J07, sichere Datenkontrollen, erste zulässige Messdaten, zugängliche Kernoberflächen, Recovery-Übung und Onboarding ohne ständige Entwicklerhilfe.
+**Beta-Gate:** J01–J08 aus R2 erneut prüfen; zusätzlich vollständiger J12, sichere Datenkontrollen, erste zulässige Messdaten, zugängliche Kernoberflächen, Recovery-Übung und Onboarding ohne ständige Entwicklerhilfe.
 
 **GA-Gate:** Billing-Lebenszyklus, Datenschutz-/Provider-Prüfungen, Support, belastbare Betriebsziele, getrennte Umgebungen und reale Pilotkosten sind abgenommen.
 
@@ -1253,8 +1257,8 @@ Agenten oder Entwickler erhalten klar abgegrenzte Module. Gemeinsame Schema-/Ver
 1. P00 vollständig; danach P01.
 2. P02 und P03 bis zum realen manuellen Durchstich.
 3. GitHub-Verbindung/Ingestion und Agent-Grundlage parallel; anschließend Signal-Anreicherung.
-4. Proaktive Research-Pipeline vollständig, dann gemeinsame Planung und MVP-Abnahme.
-5. Intelligence und Betriebshärtung parallel, mit gemeinsamer Beta-Abnahme.
+4. Proaktive Research-Pipeline, gemeinsame Planung und P08.01–P08.03 (Intelligence) einschließlich Basisbetrieb liefern; dann gemeinsame MVP-Abnahme.
+5. P08.04-Messgrundlage und P09-Betriebshärtung mit gemeinsamer Beta-Abnahme.
 6. Billing/GA und zulässige Performance-Datensammlung; Lernen erst nach ausreichender Beobachtungszeit.
 7. Personalisierung, Teams und Multi-Channel nach den beschriebenen Verträgen ausbauen.
 8. Priorisierte Quellen-/Medienerweiterungen liefern; kontrollierte Autonomie nur nach eigener Entscheidung.
@@ -1318,12 +1322,14 @@ P00 legt vor der ersten Modellverarbeitung in P05/P06 fest, welche Quelldaten an
 
 ### 16.1 Entscheidungen mit Empfehlung und Fälligkeit
 
+Das [Entscheidungsregister in TASK-2](decisions/release-scope.md#6-entscheidungsregister-d01d17) ergänzt Verantwortliche, Status und Tore. Die Modell-/Suchpfadentscheidung D03 ist auf Nutzerwunsch vertagt; EU-only bleibt Voraussetzung. Empfehlungen in dieser Tabelle sind ohne ausdrückliche Bestätigung keine Freigaben.
+
 | ID | Entscheidung | Empfehlung / Default des Plans | Spätestens entscheiden |
 |---|---|---|---|
 | D01 | Erstnutzer und Sprachen | Builder/Indie Hacker zuerst; Content-Sprache pro Account, UI zunächst klar begrenzter Sprachumfang | P01.03 |
 | D02 | Research-Frequenz und Startbudget | Ein bewusst aktivierter täglicher Lauf, manuelle Läufe zusätzlich; Budget aus P00-Messung | P06.01 |
 | D03 | Websuche | Austauschbarer Adapter; native Modellsuche nur mit zuverlässiger Quellenrückgabe | P00.01 |
-| D04 | Rolle der Intelligence im Release | Beta nach funktionierendem Dispatch-MVP | P00.02 |
+| D04 | Rolle der Intelligence im Release | **Bestätigt 19.09.2026:** Analyzer, Dispatch Score und J07 bereits im Dispatch-MVP/R2 | Entscheidung erfolgt in P00.02; Aktivierungstore vor R2 |
 | D05 | Umgang mit privaten Repositories | Zusammengefasster, begrenzter Kontext; Nutzer bestimmt öffentlich kommunizierbare Projekte/Details | P04.01 |
 | D06 | Ein Social Account in mehreren Workspaces | Zunächst ein aktiver Publishing-Workspace je Provider-Account, um Konflikte zu vermeiden; Bedarf für geteilte Verwaltung gesondert entscheiden | P03.01 |
 | D07 | Bearbeitung eines bereits geplanten Posts | Geplante Version bleibt; ausdrücklicher Austausch nach neuer Freigabe | P02.02 |
