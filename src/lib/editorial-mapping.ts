@@ -25,6 +25,22 @@ export const approvalView = (
     ? { revokedAt: new Date(a.revokedAt).toISOString() }
     : {}),
 });
+const recoveryErrors: Record<string, string> = {
+  X_RECONCILIATION_BACKOFF:
+    "X benötigt eine Wartezeit. Den angezeigten Zeitpunkt abwarten; diese Leseanfrage hat nichts veröffentlicht.",
+  X_RECONCILIATION_BUDGET_EXHAUSTED:
+    "Das Abgleichbudget erlaubt drei Leseanfragen pro 15 Minuten. Danach kannst du den Abgleich ausdrücklich erneut autorisieren. Der Ausgang bleibt ungeklärt; nichts erneut senden.",
+  X_RECONCILIATION_IN_PROGRESS:
+    "Für diesen Beitrag läuft bereits ein Abgleich. Ergebnis abwarten.",
+  X_RECONCILIATION_REQUIRED:
+    "Ungeklärte Beiträge müssen zuerst positiv abgeglichen werden. Die Fortsetzung wurde nicht gestartet.",
+  X_CANDIDATE_ID_REQUIRED:
+    "Eine numerische X-Beitrags-ID oder einen vollständigen https://x.com/.../status/... Link ohne Zusätze eingeben.",
+  SCHEDULE_ABORT_REQUESTED:
+    "Der Abbruch bleibt gespeichert. Vorhandene Beiträge können abgeglichen werden; dieser Auftrag kann nicht fortgesetzt werden.",
+  X_POST_PERMANENT_REJECTION:
+    "X hat diesen Inhalt dauerhaft abgelehnt. Bestehende Beiträge behalten; geänderte Inhalte benötigen einen neuen, separat freigegebenen Auftrag.",
+};
 export const publishingError = (code: string | null) =>
   ({
     PUBLISHER_NOT_CONFIGURED:
@@ -50,7 +66,8 @@ export const publishingError = (code: string | null) =>
     FIRST_WRITE_INTENT_EXPIRED:
       "Die bestätigte Erstveröffentlichung ist nach 45 Minuten abgelaufen. Ergebnis und vorhandene Beiträge prüfen, bevor du eine neue Veröffentlichung freigibst.",
     X_POST_RATE_LIMITED:
-      "X hat diese Anfrage wegen eines Limits abgelehnt. Der bestätigte Thread bleibt erhalten. Keine automatische Wiederholung; explizite Fortsetzung ist noch nicht verfügbar.",
+      "X hat diese Anfrage wegen eines Limits abgelehnt. Der bestätigte Thread bleibt erhalten. Nach dem Limit kann der unveränderte Thread ausdrücklich fortgesetzt werden.",
+    ...recoveryErrors,
     CANCEL_AFTER_CLAIM:
       "Storno nach Ausführungsbeginn. Bereits gesendete Anfragen müssen im Provider abgeglichen werden.",
   })[code ?? ""] ??
@@ -136,6 +153,7 @@ export function draftView(b: {
 export function editorialActionError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   const messages: Record<string, string> = {
+    ...recoveryErrors,
     FIRST_WRITE_ACTIVE_JOB:
       "Für diesen Account läuft bereits eine Veröffentlichung oder ein Ergebnis benötigt Abgleich. Vorhandenes Ergebnis im Kalender prüfen.",
     FIRST_WRITE_INTENT_EXPIRED:

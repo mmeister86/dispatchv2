@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { PublishingRecovery } from "./publishing-recovery";
 import { Link } from "react-router-dom";
 import { useStore } from "@/lib/store";
 import { demoMode } from "@/lib/auth-client";
@@ -257,10 +258,10 @@ export function PublishingResults({ schedules }: { schedules: Schedule[] }) {
               </p>
             ))}
             {["uncertain", "partial", "failed"].includes(s.status) && (
-              <p className="mt-3 text-xs muted">
-                Externer Abgleich und explizite Fortsetzung sind noch nicht
-                verfügbar. Bestätigte Beiträge werden nicht wiederholt.
-              </p>
+              <PublishingRecovery
+                key={`${s.id}:${s.workspaceId}`}
+                schedule={s}
+              />
             )}
           </details>
         ))}

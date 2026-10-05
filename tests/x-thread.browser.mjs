@@ -5,11 +5,11 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "@/lib/auth-client": `export const demoMode=false;`,
-  "convex/react": `export const useAction=()=>async()=>null;export const useMutation=()=>async()=>null;export const useQuery=()=>null;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
+  "convex/react": `import {useSyncExternalStore} from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';const noop=async()=>null;const lookup=args=>new Promise(resolve=>window.pending.push({kind:'reconcile',args,resolve})),resume=args=>new Promise(resolve=>window.pending.push({kind:'continue',args,resolve}));export const useAction=ref=>getFunctionName(ref)==='publishing/reconcile:lookup'?lookup:noop;export const useMutation=ref=>getFunctionName(ref)==='publishing/reconcile:continueThread'?resume:getFunctionName(ref)==='publishing/reconcile:finalizeAbort'?args=>new Promise(resolve=>window.pending.push({kind:'abort',args,resolve})):noop;export const useQuery=ref=>useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>getFunctionName(ref)==='publishing/reconcile:inspect'?window.recovery??null:getFunctionName(ref)==='editorial:calendar'?window.calendar??undefined:null);export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
   "@/lib/store": `import {useSyncExternalStore} from 'react';export const useStore=()=>{const state=useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>window.store.state);return {...window.store,state};};`,
 };
-const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {createMemoryRouter,RouterProvider} from 'react-router-dom';import {ComposerPage} from '/src/pages/Drafts.tsx';import {createSeed} from '/src/lib/model.ts';
-window.pending=[];window.listeners=new Set();
+const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {createMemoryRouter,RouterProvider} from 'react-router-dom';import {ComposerPage} from '/src/pages/Drafts.tsx';import {CalendarPage} from '/src/pages/Calendar.tsx';import {createSeed} from '/src/lib/model.ts';
+window.pending=[];window.listeners=new Set();window.recovery={aborted:false,positions:[{position:0,stage:"confirmed",errorCode:null,notBefore:null},{position:1,stage:"unknown",errorCode:null,notBefore:null}]};
 const seed=createSeed(),ws=seed.activeWorkspaceId;
 const account={...seed.accounts.find(a=>a.channel==='X' && a.workspaceId===ws),connection:'connected',capability:{maxText:280,maxThread:100,maxMedia:4,mediaTypes:['image'],publish:false},xEvidence:{scopes:['tweet.write','tweet.read','users.read','media.write'],identityVerifiedAt:1,connectionSequence:1,textScopeEligible:true,mediaScopeEligible:true,liveWrite:'unverified'}};
 const asset={id:'media',workspaceId:ws,name:'Approved image',alt:'Changed library default',type:'image',size:70,status:'ready',origin:'R2',url:'',mime:'image/png'};
@@ -18,8 +18,8 @@ const command=(kind,args)=>new Promise(resolve=>window.pending.push({kind,args,r
 const no=()=>false;
 window.store={state:{...seed,role:'Owner',accounts:[account],media:[asset],drafts:[draft],schedules:[]},approveFirstWrite:d=>command('approve',{versionId:d.versions.at(-1).id,accountId:d.accountId}),confirmFirstWrite:(d,id)=>command('confirm',{versionId:d.versions.at(-1).id,accountId:d.accountId,approvalId:id}),saveDraft:d=>command('save',d),approveVersion:async()=>false,revokeApproval:async()=>false,cancelSchedule:async()=>false,replaceSchedule:async()=>false,createDraft:async()=>'',loadMoreVersions:no,hasMoreVersions:false,loadMoreMedia:no,hasMoreMedia:false,members:[],mutate:no,addComment:async()=>false,resolveComment:async()=>false,assignDraft:async()=>false};
 window.update=(fn)=>{window.store.state=fn(window.store.state);window.listeners.forEach(cb=>cb());};
-const root=ReactDOM.createRoot(document.getElementById('root')),router=createMemoryRouter([{path:'/drafts/:id',element:React.createElement(ComposerPage)}],{initialEntries:['/drafts/thread']});
-root.render(React.createElement(React.StrictMode,null,React.createElement(RouterProvider,{router})));
+const root=ReactDOM.createRoot(document.getElementById('root')),router=createMemoryRouter([{path:'/drafts/:id',element:React.createElement(ComposerPage)},{path:'/calendar',element:React.createElement(CalendarPage)}],{initialEntries:['/drafts/thread']});
+window.router=router;root.render(React.createElement(React.StrictMode,null,React.createElement(RouterProvider,{router})));
 `;
 const server = await createServer({
   root,
@@ -152,11 +152,16 @@ try {
       schedules: [
         {
           id: "job",
+          generation: 1,
           workspaceId: s.activeWorkspaceId,
           draftId: "thread",
           accountId: s.accounts[0].id,
           version: 1,
-          text: ["Exact approved first", "Exact approved second"],
+          text: [
+            "Exact approved first",
+            "Exact approved second",
+            "Exact approved third",
+          ],
           mediaIds: ["media"],
           media: [{ assetId: "media", alt: "Exact approved alt" }],
           at: new Date().toISOString(),
@@ -179,15 +184,198 @@ try {
   await expect(
     page.getByRole("link", { name: "Bestätigter X-Beitrag 123" }),
   ).toHaveAttribute("href", "https://x.com/i/web/status/123");
+  const candidate = page.getByLabel("Kandidaten-ID oder X-Link für Beitrag 2");
+  const resume = page.getByRole("button", {
+    name: "Unveränderten Thread ausdrücklich fortsetzen",
+  });
+  await expect(resume).toBeDisabled();
+  await candidate.fill("https://x.com/fixture/status/124");
+  await page
+    .getByRole("button", { name: "Beitrag 2 nur lesend abgleichen" })
+    .click();
+  await expect(candidate).toBeDisabled();
+  expect(await page.evaluate(() => window.pending.at(-1).args)).toMatchObject({
+    scheduleId: "job",
+    position: 1,
+    candidateId: "https://x.com/fixture/status/124",
+    expectedGeneration: 1,
+  });
   await expect(
-    page.getByText(
-      "Externer Abgleich und explizite Fortsetzung sind noch nicht verfügbar. Bestätigte Beiträge werden nicht wiederholt.",
-      { exact: true },
+    page.getByRole("button", { name: "Befehl wird ausgeführt …" }),
+  ).toBeDisabled();
+  await page.evaluate(() => {
+    window.pending.at(-1).resolve("unknown");
+    window.recovery = {
+      ...window.recovery,
+      positions: window.recovery.positions.map((p) =>
+        p.position === 1 ? { ...p, notBefore: Date.now() + 250 } : p,
+      ),
+    };
+    window.listeners.forEach((cb) => cb());
+  });
+  await expect(
+    page.getByRole("button", { name: "Beitrag 2 nur lesend abgleichen" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Beitrag 2 nur lesend abgleichen" }),
+  ).toBeEnabled();
+  await expect(candidate).toHaveValue("https://x.com/fixture/status/124");
+  await expect(page.getByText(/Ausgang weiterhin ungeklärt/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Beitrag 2 nur lesend abgleichen" })
+    .click();
+  await page.evaluate(() => {
+    window.pending.at(-1).resolve("confirmed");
+    window.recovery = {
+      aborted: false,
+      positions: [
+        { position: 0, stage: "confirmed", errorCode: null, notBefore: null },
+        { position: 1, stage: "confirmed", errorCode: null, notBefore: null },
+        { position: 2, stage: "unsent", errorCode: null, notBefore: null },
+      ],
+    };
+    window.update((s) => ({
+      ...s,
+      schedules: s.schedules.map((s) => ({
+        ...s,
+        status: "partial",
+        publishedCount: 2,
+        externalPosts: [
+          ...s.externalPosts,
+          {
+            position: 1,
+            externalId: "124",
+            url: "https://x.com/i/web/status/124",
+            attemptId: "reconciled",
+            confirmedAt: 1,
+          },
+        ],
+      })),
+    }));
+    window.listeners.forEach((cb) => cb());
+  });
+  await expect(page.getByText(/Dieser Beitrag wurde bestätigt/)).toBeVisible();
+  await expect(resume).toBeDisabled();
+  expect(
+    await page.evaluate(
+      () => window.pending.filter((p) => p.kind === "continue").length,
     ),
+  ).toBe(0);
+  await page
+    .getByRole("checkbox", { name: "Sichtbare Fortsetzung bestätigen" })
+    .check();
+  await resume.click();
+  await expect(
+    page.getByRole("button", { name: "Befehl wird ausgeführt …" }),
+  ).toBeDisabled();
+  expect(await page.evaluate(() => window.pending.at(-1).args)).toMatchObject({
+    scheduleId: "job",
+    expectedGeneration: 1,
+  });
+  await page.evaluate(() => window.pending.at(-1).resolve(null));
+  await expect(
+    page.getByText(/Die unveränderte Snapshot-Version wurde neu freigegeben/),
   ).toBeVisible();
+  await expect(text).toHaveValue("界".repeat(141));
+  await page.evaluate(() => {
+    window.recovery = { ...window.recovery, aborted: true };
+    window.listeners.forEach((cb) => cb());
+  });
+  await expect(page.getByText(/Der Abbruch bleibt gespeichert/)).toBeVisible();
+  await expect(resume).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Abbruch abschließen", exact: true })
+    .click();
+  expect(await page.evaluate(() => window.pending.at(-1))).toMatchObject({
+    kind: "abort",
+    args: { scheduleId: "job", expectedGeneration: 1 },
+  });
+  await page.evaluate(() => window.pending.at(-1).resolve(null));
+  await expect(
+    page.getByText(/Der gespeicherte Abbruch wurde anhand/),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    const s = window.store.state.schedules[0],
+      at = Date.now();
+    window.recovery = {
+      aborted: false,
+      positions: [
+        { position: 0, stage: "confirmed", errorCode: null, notBefore: null },
+        { position: 1, stage: "unknown", errorCode: null, notBefore: null },
+        { position: 2, stage: "unsent", errorCode: null, notBefore: null },
+      ],
+    };
+    window.calendar = {
+      tooDense: false,
+      rows: [
+        {
+          schedule: {
+            _id: s.id,
+            _creationTime: at,
+            workspaceId: s.workspaceId,
+            draftId: s.draftId,
+            versionId: "version-one",
+            versionNumber: 1,
+            accountId: s.accountId,
+            approvalId: "approval",
+            actorId: "owner",
+            generation: 1,
+            at,
+            timezone: "UTC",
+            localTime: new Date(at).toISOString(),
+            state: "reconciliation_required",
+            publishedCount: 1,
+            errorCode: "X_POST_OUTCOME_UNKNOWN",
+            jobId: null,
+            externalPosts: s.externalPosts.slice(0, 1),
+          },
+          version: {
+            _id: "version-one",
+            _creationTime: at,
+            workspaceId: s.workspaceId,
+            draftId: s.draftId,
+            number: 1,
+            content: {
+              title: "Exact calendar snapshot",
+              accountId: s.accountId,
+              text: s.text,
+              media: s.media,
+              pillar: "",
+              strategy: "generic",
+            },
+            authorId: "owner",
+            createdAt: at,
+            reason: "Fixture",
+          },
+        },
+      ],
+    };
+    window.router.navigate("/calendar?view=agenda");
+    window.listeners.forEach((cb) => cb());
+  });
+  await page
+    .getByRole("button", { name: "Änderungen verwerfen", exact: true })
+    .click();
+  await page.getByRole("button", { name: /Exact approved thread/ }).click();
+  const calendarDialog = page.getByRole("dialog");
+  await expect(calendarDialog).toContainText("Exact approved third");
+  await expect(
+    calendarDialog.getByRole("link", { name: "X-Beitrag 123", exact: true }),
+  ).toHaveAttribute("href", "https://x.com/i/web/status/123");
+  await expect(
+    calendarDialog.getByLabel("Kandidaten-ID oder X-Link für Beitrag 2"),
+  ).toBeVisible();
+  await expect(
+    calendarDialog.getByRole("button", {
+      name: "Unveränderten Thread ausdrücklich fortsetzen",
+    }),
+  ).toBeDisabled();
+  await expect(
+    calendarDialog.getByRole("button", { name: "Termin verschieben" }),
+  ).toHaveCount(0);
   expect(errors).toEqual([]);
   console.log(
-    "PASS: real Composer exact snapshot, separate awaited consent, failure buffer, weighted CJK count, remote conflict, confirmed links and unknown result.",
+    "PASS: real Composer exact snapshot, separate awaited consent, failure buffer, weighted CJK count, remote conflict, confirmed links, awaited read-only reconciliation, preserved buffers, separate continuation consent and abort barrier.",
   );
 } finally {
   await browser?.close();

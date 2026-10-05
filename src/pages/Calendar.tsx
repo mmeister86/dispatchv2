@@ -1,3 +1,4 @@
+import { PublishingRecovery } from "@/features/drafts/publishing-recovery";
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -522,10 +523,10 @@ function CalendarContent({
                 ["uncertain", "partial", "failed"].includes(
                   currentDetail.status,
                 ) && (
-                  <p className="text-xs muted">
-                    Externer Abgleich und explizite Fortsetzung sind noch nicht
-                    verfügbar. Bestätigte Beiträge werden nicht wiederholt.
-                  </p>
+                  <PublishingRecovery
+                    key={`${currentDetail.id}:${currentDetail.workspaceId}`}
+                    schedule={currentDetail}
+                  />
                 )}
               <DialogFooter className="flex-wrap gap-2">
                 {currentDetail.status === "scheduled" && (

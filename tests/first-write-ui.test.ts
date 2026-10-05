@@ -2,6 +2,17 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
 vi.mock("../src/lib/auth-client", () => ({ demoMode: false }));
+vi.mock("convex/react", () => ({
+  useQuery: () => ({
+    aborted: false,
+    positions: [
+      { position: 0, stage: "confirmed", errorCode: null, notBefore: null },
+      { position: 1, stage: "unknown", errorCode: null, notBefore: null },
+    ],
+  }),
+  useAction: () => vi.fn(),
+  useMutation: () => vi.fn(),
+}));
 vi.mock("../src/lib/store", () => ({
   useStore: () => ({
     state: {
@@ -68,7 +79,7 @@ test("real first-write entry states visible publishing and separate human approv
   expect(html).toContain("sichtbaren Beitrag");
   expect(html).toContain("Inhalt freigeben");
 });
-test("published result uses confirmed IDs and immutable snapshot; uncertainty names unavailable continuation", () => {
+test("published result uses confirmed IDs and immutable snapshot; uncertainty exposes read-only lookup and blocks continuation", () => {
   const html = renderToStaticMarkup(
     createElement(PublishingResults, {
       schedules: [
@@ -99,6 +110,8 @@ test("published result uses confirmed IDs and immutable snapshot; uncertainty na
   expect(html).toContain("Old approved snapshot");
   expect(html).toContain("https://x.com/i/web/status/123");
   expect(html).toContain("Abgleich erforderlich");
-  expect(html).toContain("noch nicht verfügbar");
+  expect(html).toContain("Kandidaten-ID oder X-Link für Beitrag 2");
+  expect(html).toContain("Sichtbare Fortsetzung bestätigen");
+  expect(html).toContain("Ungeklärte Positionen blockieren");
   expect(html).not.toContain("erfolgreich fortgesetzt");
 });
