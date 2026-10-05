@@ -1,6 +1,6 @@
 # TASK22.2 — Research workflow validation
 
-Status: initial frozen source SPEC requires three corrections; original implementer active, QUALITY pending SPEC PASS. Backlog remains In Progress; no manual/live acceptance or paid activation.
+Status: correction source4170920 frozen; same independent SPEC delta active, QUALITY pending SPEC PASS. Backlog remains In Progress; no manual/live acceptance or paid activation.
 
 Accepted prerequisite baseline: `d06234639086f9514c686007f549ceb37c856710` (evidence source `3e079cef`, SPEC/QUALITY PASS). Implementer: fresh `research_pipeline`, Backend Architect, gpt-6.1-sol/medium. Source milestone: `2670f50c5a5ad5138d83cce346bb89bbe2be0819`, exact34 paths, clean staged diff and working tree. ROOT metadata commits do not change the source baseline.
 
@@ -33,6 +33,18 @@ Final original-source verdict: **Ready No; three Important, no confirmed Critica
 Initial independent five checks at00:33:17:3RED/2PASS `/tmp/dispatch-spec-boundaries.log`. Final seven at00:34:41:the same3RED plus4PASS `/tmp/dispatch-spec-boundaries-final-red.log`; focused repository pipeline23/23 PASS00:33:47 `/tmp/dispatch-spec-existing-pipeline.log`. Unchanged runnable checks/config `/tmp/dispatch-spec-review/`, hashes `/tmp/dispatch-spec-repro-sha256.txt`. Passing controls prove actual two-call funded completion/50µ aggregate, budget-before-generation, authority withdrawal before native I/O, stop/resume fences and actual physical source/Agent cleanup. These controls are not a full-source PASS.
 
 ROOT handed all three confirmed findings to the same original implementer with original source ownership, no scope expansion/staging window. Permanent regressions plus unchanged independent checks and final source freeze are required. The same SPEC reviewer rechecks the correction delta/reproductions before fresh QUALITY. No acceptance criteria checked.
+
+## Original implementer correction — frozen4170920
+
+Exact10-path correction commit `41709200b7c0bd39d598e6d4800b3f0adcc6e2d8`; initial2670f50 preserved, full source baseline d062346..4170920. Shared currentMaterialProof serves Inbox and model-origin manual evidence; finite primary/flattened-secondary source/grant/evidence display horizons leave DB physical retention unchanged. Selection keeps ten refs, uses bounded round-robin, records actual per-operation delivered/selected/omitted counts and propagates prompt/UI gaps/partial. Optional bounded opaque local topicKey supplies explicit new groups; legacy exact declared topic-title is compatible, distinct titles require an explicit group. TopicCount counts unique semantic groups after copy filtering, strict20 output items/10 source refs remain. Independent evidence rows and existing-cluster CAS/replay are retained.
+
+Unchanged reviewer7 firstGREEN00:41:08 `/tmp/task22.2-correction-independent-first-green.log`, finalGREEN00:48:19 `/tmp/task22.2-correction-independent-final.log`; scripts/config hashes remain identical to the initial reviewer manifest. Permanent initial3RED/23PASS00:39:00 `/tmp/task22.2-correction-permanent-red.log`; original independent3RED/4PASS rerun00:37:26 `/tmp/task22.2-correction-initial-red.log`. Related one-topic/two-evidence item-cap defect was separately reproduced `/tmp/task22.2-correction-topiccount-red.log` and fixed consistently in prompt/validation. Final full527/28 PASS00:48:06 `/tmp/task22.2-correction-full-final.log`. Extra cases include primary native/model grant horizons, secondary-only Web horizon on X-primary order, grouped one-topic independent evidence, malformed group refs and actual20→10 balanced coverage.
+
+Type/build/bundle/helper format PASS `/tmp/task22.2-correction-final-{typecheck,build,bundle,fixture-format}.log`; refreshed lintPASS `/tmp/task22.2-correction-final-lint-second.log`. Actual browserPASS `/tmp/task22.2-correction-final-browser-second.log` includes shorter idle authority expiry before physical retention. Initial browserRED `/tmp/task22.2-correction-final-browser.log` was the synthetic fixture using a busy disabled button as proof that asynchronous Viewer rendering had committed; it now awaits actual committed-role effect before the late rejection, retaining existing assertions and production guards.
+
+Official codegen/postgeneration typeEXIT0 `/tmp/task22.2-correction-{codegen,post-codegen-typecheck}.log`, no generated diff. Existing EU Dev--onceEXIT0 functionsready00:55:02local `/tmp/task22.2-correction-eu-dev-once.log`. Source/index/diffcheck clean at22:55:06UTC, own5174closed/user5173PID48521preserved. No paid/live call or policy activation.
+
+Same SPEC reviewer delta active on frozen4170920. Its own unchanged7 rerunPASS00:55:43 `/tmp/dispatch-spec-delta-unchanged-seven.log`; additional independent affected-boundary checks are pending. This preliminary GREEN is not the final SPEC or QUALITY verdict. No AC/Done/manual claim.
 
 ## Open acceptance
 

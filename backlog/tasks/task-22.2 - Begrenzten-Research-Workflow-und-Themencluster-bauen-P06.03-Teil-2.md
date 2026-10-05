@@ -4,7 +4,7 @@ title: 'Begrenzten Research-Workflow und Themencluster bauen (P06.03, Teil 2)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 22:37'
+updated_date: '2026-10-05 22:56'
 labels:
   - p06
   - r2
@@ -67,4 +67,6 @@ Source milestone2670f50c5a5ad5138d83cce346bb89bbe2be0819 committed onmaster in a
 FINAL sourcefreeze2670f50 confirmed afterpostcommit type/lint/newfixtureformat/build/bundle/actualResearchbrowser/officialcodegen/postgentype PASS (/tmp/task22.2-frozen-*.log), nogenerateddiff. ExistingEUDev --once EXIT0 functionsready localOct6 00:29:23 /UTC22:29:23 (/tmp/task22.2-frozen-eu-dev-once.log); officialWorkflow/Workpool/batchWorker mounted withoutprovider/grantactivation.519/28testreceipt remainscommittedsource00:27:11. Own5174closed/user5173PID48521preserved. FreshindependentSPEC research_pipeline_spec (astra/medium) nowactive fullbaseline d062346..2670f50; QUALITYonlyafterSPEC PASS. No AC/Done/manual/livequalityclaim.
 
 FreshSPEC2670f50 ReadyNo:3Important/0Critical/0Minor. Exactreceipt /tmp/dispatch-research-pipeline-spec-receipt.md; unchangedindependent7 at00:34:41=3RED4PASS /tmp/dispatch-spec-boundaries-final-red.log, existingpipeline23/23GREEN. Confirmed: displayedsource-retentionproof outlivesgeneration-grant expiry by60400ms despitefreshserverhiding;20actualdeliveredX+Web sourcesselect10silently/outcomecompleted/nocoveragegap; first-order same-topic independentitems cannotshare anewsemanticcluster. ROOTacceptedfindings/handofftooriginalresearch_pipeline forminimalrootcausecorrections: sharedcurrentdisplayhorizons/allaffectedprojections, boundedactualselectioncoverage, explicitlocalwithin-outputtopicgrouping preservingindependentevidence/CAS/replay. InitialRED/scriptSHA retained; sameSPECdelta thenfreshQUALITY; noAC/Done/paidactivation.
+
+Originalimplementer exact10-path correction41709200b7c0bd39d598e6d4800b3f0adcc6e2d8 frozen. Sharedcurrentdisplayproof acrossprimary/secondary grant-source-evidence horizons/Inbox+manualmodel projection; physicalretentionunchanged. Roundrobin10refs plusactualperopcoverage/prompt/gaps/partial. OpaquelocaltopicKey+exactdeclared-title compatibility group independentrows; topicCount UNIQUEgroups aftercopyfilter,20item/10sourceceilings/CAS/replay preserved. Related1topic2evidence productRED fixed. Full527/28 at00:48:06 andunchanged7 at00:48:19 PASS; type/lint/build/bundle/browser/helperformat/codegen/postgentype PASS. Browserinitialfailure fixtureViewer-committiming only, existingassertions/productionguardsretained. EUDevready00:55:02local /tmp/task22.2-correction-eu-dev-once.log clean source/index. SameSPECdelta nowactive: reviewerOWNunchanged7PASS00:55:43, extraaffectedchecks pending; freshQUALITYonlyafterfinalSPEC PASS. NoAC/Done/paidactivation; allRED/log/SHAhistory retained inROOTreceipt.
 <!-- SECTION:NOTES:END -->
