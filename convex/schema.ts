@@ -1,6 +1,7 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { stateFields, credentialFields } from "./integrations/x/fields";
+import { attemptFields } from "./publishing/postFields";
 import { checkpointFields } from "./publishing/mediaFields";
 
 import {
@@ -33,6 +34,13 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  xPostAttempts: defineTable(attemptFields)
+    .index("by_scheduleId_and_generation_and_position", [
+      "scheduleId",
+      "generation",
+      "position",
+    ])
+    .index("by_workspaceId", ["workspaceId"]),
   xMediaCheckpoints: defineTable(checkpointFields)
     .index("by_scheduleId_and_generation_and_mediaPosition", [
       "scheduleId",
@@ -123,6 +131,12 @@ export default defineSchema({
     .index("by_versionId_and_accountId", ["versionId", "accountId"])
     .index("by_draftId", ["draftId"]),
   schedules: defineTable(scheduleFields)
+    .index("by_approvalId", ["approvalId"])
+    .index("by_workspaceId_and_accountId_and_state", [
+      "workspaceId",
+      "accountId",
+      "state",
+    ])
     .index("by_workspaceId_and_at", ["workspaceId", "at"])
     .index("by_workspaceId_and_accountId_and_at", [
       "workspaceId",

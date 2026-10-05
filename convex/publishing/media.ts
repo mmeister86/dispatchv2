@@ -277,6 +277,7 @@ export const receipt = internalMutation({
     ...claimArgs,
     phase: mediaPhase,
     mediaId: v.optional(v.string()),
+    mediaKey: v.optional(v.string()),
     expiresAt: v.optional(v.number()),
     waitMs: v.number(),
     errorCode: v.optional(v.string()),
@@ -304,6 +305,7 @@ export const receipt = internalMutation({
       phase: allowed ? a.phase : "blocked",
       errorCode: allowed ? a.errorCode : "X_SCHEDULE_CHANGED",
       ...(a.mediaId ? { mediaId: a.mediaId } : {}),
+      ...(a.mediaKey ? { mediaKey: a.mediaKey } : {}),
       ...(a.expiresAt
         ? { expiresAt: Math.min(c.expiresAt ?? a.expiresAt, a.expiresAt) }
         : {}),
@@ -356,7 +358,11 @@ export const receipt = internalMutation({
 export const ready = internalMutation({
   args: mediaJob,
   returns: v.union(
-    v.object({ mediaId: v.string(), expiresAt: v.number() }),
+    v.object({
+      mediaId: v.string(),
+      expiresAt: v.number(),
+      mediaKey: v.optional(v.string()),
+    }),
     v.null(),
   ),
   handler: async (ctx, a) => {
@@ -383,7 +389,11 @@ export const ready = internalMutation({
       c.mediaId &&
       c.expiresAt &&
       c.expiresAt > Date.now() + EXPIRY_MARGIN_MS
-      ? { mediaId: c.mediaId, expiresAt: c.expiresAt }
+      ? {
+          mediaId: c.mediaId,
+          expiresAt: c.expiresAt,
+          ...(c.mediaKey ? { mediaKey: c.mediaKey } : {}),
+        }
       : null;
   },
 });

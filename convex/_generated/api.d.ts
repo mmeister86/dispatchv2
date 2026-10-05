@@ -29,8 +29,11 @@ import type * as media_uploads from "../media/uploads.js";
 import type * as media_validation from "../media/validation.js";
 import type * as preferences from "../preferences.js";
 import type * as publishing from "../publishing.js";
+import type * as publishing_attempts from "../publishing/attempts.js";
 import type * as publishing_media from "../publishing/media.js";
 import type * as publishing_mediaFields from "../publishing/mediaFields.js";
+import type * as publishing_postFields from "../publishing/postFields.js";
+import type * as publishing_workflows from "../publishing/workflows.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -62,8 +65,11 @@ declare const fullApi: ApiFromModules<{
   "media/validation": typeof media_validation;
   preferences: typeof preferences;
   publishing: typeof publishing;
+  "publishing/attempts": typeof publishing_attempts;
   "publishing/media": typeof publishing_media;
   "publishing/mediaFields": typeof publishing_mediaFields;
+  "publishing/postFields": typeof publishing_postFields;
+  "publishing/workflows": typeof publishing_workflows;
   users: typeof users;
   workspaces: typeof workspaces;
 }>;

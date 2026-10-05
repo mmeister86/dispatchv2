@@ -26,6 +26,10 @@ import { internal } from "./_generated/api";
 import { assetDoc } from "./media/assets";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { textWithinLimit } from "../shared/xText";
+import { requireR2Binding } from "./media/binding";
+import { mimeLimit } from "./media/limits";
+import { FIRST_WRITE_MS } from "./publishing/postFields";
 import { resolveLocalTime } from "../src/lib/time";
 const draftDoc = v.object({
   _id: v.id("drafts"),
@@ -414,7 +418,7 @@ export async function validateContent(
     const caps = account.capability;
     if (
       c.text.length > caps.maxThread ||
-      c.text.some((t) => t.length > caps.maxText) ||
+      c.text.some((t) => !textWithinLimit(t, account.provider, caps.maxText)) ||
       c.media.length > caps.maxMedia ||
       assets.some((a) => !caps.mediaTypes.includes(a.type)) ||
       (assets.some((a) => a.type === "video" || a.mime === "image/gif") &&
@@ -532,7 +536,10 @@ export const approve = workspaceMutation({
         )
         .order("desc")
         .take(100)
-    ).find((x) => x.revokedAt === null);
+    ).find(
+      (x) =>
+        x.revokedAt === null && (x.purpose ?? "publishing") === "publishing",
+    );
     if (existing) return existing._id;
     const id = await ctx.db.insert("approvals", {
       workspaceId: ctx.workspace._id,
@@ -550,6 +557,245 @@ export const approve = workspaceMutation({
       ver.draftId,
       "VERSION_APPROVED",
       ctx.user._id,
+    );
+    return id;
+  },
+});
+async function firstWriteContent(
+  ctx: QueryCtx,
+  workspaceId: Id<"workspaces">,
+  ver: Doc<"draftVersions">,
+) {
+  const account = await validateContent(ctx, workspaceId, ver.content);
+  if (
+    !account ||
+    account.provider !== "X" ||
+    account.connection !== "connected" ||
+    !account.xEvidence?.connectionSequence ||
+    ver.content.text.some((t) => !t.trim())
+  )
+    throw new ConvexError("X_FIRST_WRITE_ACCOUNT_REQUIRED");
+  const credential = await ctx.db
+    .query("xCredentials")
+    .withIndex("by_accountId", (q) => q.eq("accountId", account._id))
+    .unique();
+  const binding = await ctx.db
+    .query("xBindings")
+    .withIndex("by_providerIdentity", (q) =>
+      q.eq("providerIdentity", account.providerIdentity),
+    )
+    .unique();
+  if (
+    !credential?.envelope ||
+    credential.workspaceId !== workspaceId ||
+    credential.leaseUntil ||
+    credential.expiresAt <= Date.now() + 30000 ||
+    !binding ||
+    binding.accountId !== account._id ||
+    binding.workspaceId !== workspaceId
+  )
+    throw new ConvexError("X_REAUTH_REQUIRED");
+  if (
+    !["tweet.write", "tweet.read", "users.read"].every((scope) =>
+      credential.scopes.includes(scope),
+    ) ||
+    (ver.content.media.length > 0 && !credential.scopes.includes("media.write"))
+  )
+    throw new ConvexError("X_SCOPE_REQUIRED");
+  await immutableMedia(ctx, ver);
+  for (const ref of ver.content.media) {
+    const asset = requireReference(
+      workspaceId,
+      await ctx.db.get(ref.assetId),
+    ) as Doc<"mediaAssets">;
+    const session = asset.uploadSessionId
+      ? await ctx.db.get(asset.uploadSessionId)
+      : null;
+    if (
+      !session ||
+      session.workspaceId !== workspaceId ||
+      session.assetId !== asset._id ||
+      session.state !== "ready"
+    )
+      throw new ConvexError("MEDIA_NOT_READY");
+    requireR2Binding(asset);
+    requireR2Binding(session);
+    if (
+      asset.objectKey !== `final/${workspaceId}/${asset._id}` ||
+      session.finalKey !== asset.objectKey ||
+      session.expectedSize !== asset.size ||
+      session.expectedMime !== asset.mime ||
+      !/^[a-f0-9]{64}$/.test(asset.checksum) ||
+      !Number.isInteger(asset.size) ||
+      asset.size < 1 ||
+      asset.size > mimeLimit(asset.mime ?? "")
+    )
+      throw new ConvexError("MEDIA_SOURCE_CHANGED");
+  }
+  return account;
+}
+export const approveFirstWrite = workspaceMutation({
+  args: { versionId: v.id("draftVersions"), accountId: v.id("socialAccounts") },
+  returns: v.id("approvals"),
+  handler: async (ctx, a) => {
+    requireRole(ctx.membership, ["Owner", "Admin"]);
+    const ver = requireReference(
+      ctx.workspace._id,
+      await ctx.db.get(a.versionId),
+    ) as Doc<"draftVersions">;
+    const draft = requireReference(
+      ctx.workspace._id,
+      await ctx.db.get(ver.draftId),
+    ) as Doc<"drafts">;
+    if (
+      ver.content.accountId !== a.accountId ||
+      draft.currentVersionId !== ver._id
+    )
+      throw new ConvexError("APPROVAL_ACCOUNT_MISMATCH");
+    const account = await firstWriteContent(ctx, ctx.workspace._id, ver);
+    if (account.capability.publish)
+      throw new ConvexError("X_WRITE_ALREADY_VERIFIED");
+    const existing = (
+      await ctx.db
+        .query("approvals")
+        .withIndex("by_versionId_and_accountId", (q) =>
+          q.eq("versionId", ver._id).eq("accountId", a.accountId),
+        )
+        .order("desc")
+        .take(100)
+    ).find(
+      (x) =>
+        x.purpose === "first_write_verification" &&
+        x.actorId === ctx.user._id &&
+        x.revokedAt === null &&
+        (x.expiresAt ?? 0) > Date.now() &&
+        x.accountConnectionSequence === account.xEvidence!.connectionSequence,
+    );
+    if (existing) return existing._id;
+    const id = await ctx.db.insert("approvals", {
+      workspaceId: ctx.workspace._id,
+      draftId: ver.draftId,
+      versionId: ver._id,
+      accountId: a.accountId,
+      actorId: ctx.user._id,
+      createdAt: Date.now(),
+      revokedAt: null,
+      revokedBy: null,
+      purpose: "first_write_verification",
+      accountConnectionSequence: account.xEvidence!.connectionSequence,
+      expiresAt: Date.now() + FIRST_WRITE_MS,
+      mediaPlacement: "first_post",
+    });
+    await event(
+      ctx,
+      ctx.workspace._id,
+      ver.draftId,
+      "FIRST_WRITE_VERSION_APPROVED",
+      ctx.user._id,
+    );
+    return id;
+  },
+});
+export const confirmFirstWrite = workspaceMutation({
+  args: {
+    versionId: v.id("draftVersions"),
+    accountId: v.id("socialAccounts"),
+    approvalId: v.id("approvals"),
+  },
+  returns: v.id("schedules"),
+  handler: async (ctx, a) => {
+    requireRole(ctx.membership, ["Owner", "Admin"]);
+    const approval = requireReference(
+      ctx.workspace._id,
+      await ctx.db.get(a.approvalId),
+    ) as Doc<"approvals">;
+    const ver = requireReference(
+      ctx.workspace._id,
+      await ctx.db.get(a.versionId),
+    ) as Doc<"draftVersions">;
+    const draft = requireReference(
+      ctx.workspace._id,
+      await ctx.db.get(ver.draftId),
+    ) as Doc<"drafts">;
+    if (
+      approval.purpose !== "first_write_verification" ||
+      approval.actorId !== ctx.user._id ||
+      approval.accountId !== a.accountId ||
+      approval.versionId !== ver._id ||
+      approval.revokedAt !== null ||
+      draft.currentVersionId !== ver._id
+    )
+      throw new ConvexError("APPROVAL_PURPOSE_MISMATCH");
+    const existing = await ctx.db
+      .query("schedules")
+      .withIndex("by_approvalId", (q) => q.eq("approvalId", approval._id))
+      .first();
+    if (existing) return existing._id; // Separate confirmation is idempotent; never create a second proof job.
+    for (const state of [
+      "scheduled",
+      "publishing",
+      "reconciliation_required",
+      "partially_published",
+    ] as const) {
+      const active = await ctx.db
+        .query("schedules")
+        .withIndex("by_workspaceId_and_accountId_and_state", (q) =>
+          q
+            .eq("workspaceId", ctx.workspace._id)
+            .eq("accountId", a.accountId)
+            .eq("state", state),
+        )
+        .first();
+      if (active) throw new ConvexError("FIRST_WRITE_ACTIVE_JOB");
+    }
+    const now = Date.now(),
+      fields = {
+        workspaceId: ctx.workspace._id,
+        draftId: ver.draftId,
+        versionId: ver._id,
+        versionNumber: ver.number,
+        accountId: a.accountId,
+        approvalId: approval._id,
+        actorId: ctx.user._id,
+        accountConnectionSequence: approval.accountConnectionSequence,
+        generation: 1,
+        at: now,
+        timezone: "UTC",
+        localTime: new Date(now).toISOString(),
+        state: "scheduled" as const,
+        publishedCount: 0,
+        errorCode: null,
+        jobId: null,
+        purpose: "first_write_verification" as const,
+        intentExpiresAt: Math.min(
+          approval.expiresAt ?? 0,
+          now + FIRST_WRITE_MS,
+        ),
+        confirmedAt: now,
+        mediaPlacement: "first_post" as const,
+      };
+    const id = await ctx.db.insert("schedules", fields);
+    await checkApproval(
+      ctx,
+      ctx.workspace._id,
+      ver._id,
+      a.accountId,
+      approval._id,
+      (await ctx.db.get(id))!,
+    );
+    const jobId = await ctx.scheduler.runAfter(
+      0,
+      internal.publishing.dispatch,
+      { scheduleId: id, generation: 1 },
+    );
+    await ctx.db.patch(id, { jobId });
+    await event(
+      ctx,
+      ctx.workspace._id,
+      ver.draftId,
+      "FIRST_WRITE_CONFIRMED",
+      ctx.user._id,
+      id,
     );
     return id;
   },
@@ -596,6 +842,7 @@ export async function checkApproval(
   versionId: Id<"draftVersions">,
   accountId: Id<"socialAccounts">,
   approvalId: Id<"approvals">,
+  schedule?: Doc<"schedules">,
 ) {
   const ver = requireReference(
     workspaceId,
@@ -621,7 +868,41 @@ export async function checkApproval(
     .unique();
   if (!member || !["Owner", "Admin"].includes(member.role))
     throw new ConvexError("APPROVER_AUTHORITY_CHANGED");
-  await validateContent(ctx, workspaceId, ver.content, true);
+  const proof =
+    (approval.purpose ?? "publishing") === "first_write_verification";
+  if (proof) {
+    if (
+      !schedule ||
+      schedule.purpose !== "first_write_verification" ||
+      schedule.approvalId !== approval._id ||
+      schedule.versionId !== versionId ||
+      schedule.accountId !== accountId ||
+      schedule.workspaceId !== workspaceId ||
+      schedule.actorId !== approval.actorId ||
+      !schedule.confirmedAt ||
+      schedule.mediaPlacement !== "first_post" ||
+      approval.mediaPlacement !== "first_post"
+    )
+      throw new ConvexError("APPROVAL_PURPOSE_MISMATCH");
+    if (
+      !schedule.intentExpiresAt ||
+      !approval.expiresAt ||
+      Date.now() >= schedule.intentExpiresAt ||
+      Date.now() >= approval.expiresAt
+    )
+      throw new ConvexError("FIRST_WRITE_INTENT_EXPIRED");
+    const account = await firstWriteContent(ctx, workspaceId, ver);
+    if (
+      approval.accountConnectionSequence !==
+        account.xEvidence?.connectionSequence ||
+      schedule.accountConnectionSequence !== approval.accountConnectionSequence
+    )
+      throw new ConvexError("ACCOUNT_CONNECTION_CHANGED");
+  } else {
+    if (schedule?.purpose === "first_write_verification")
+      throw new ConvexError("APPROVAL_PURPOSE_MISMATCH");
+    await validateContent(ctx, workspaceId, ver.content, true);
+  }
   await immutableMedia(ctx, ver);
   return ver;
 }
@@ -719,7 +1000,8 @@ export const reschedule = workspaceMutation({
     ) as Doc<"schedules">;
     if (s.generation !== a.expectedGeneration)
       throw new ConvexError("SCHEDULE_CONFLICT");
-    if (s.state !== "scheduled") throw new ConvexError("SCHEDULE_NOT_MOVABLE");
+    if (s.state !== "scheduled" || s.purpose === "first_write_verification")
+      throw new ConvexError("SCHEDULE_NOT_MOVABLE");
     validateTime(a.at, a.timezone, a.localTime);
     const versionId = a.versionId ?? s.versionId,
       approvalId = a.approvalId ?? s.approvalId;
@@ -905,7 +1187,7 @@ async function mediaSnapshot(
     }),
   );
 }
-async function immutableMedia(ctx: QueryCtx, ver: Doc<"draftVersions">) {
+export async function immutableMedia(ctx: QueryCtx, ver: Doc<"draftVersions">) {
   if (ver.content.media.length !== (ver.mediaChecksums ?? []).length)
     throw new ConvexError("MEDIA_SNAPSHOT_CHANGED");
   for (const ref of ver.mediaChecksums ?? []) {

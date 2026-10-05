@@ -6,6 +6,14 @@ export const envelope = v.object({
   ciphertext: v.string(),
 });
 export const xEvidence = v.object({
+  writeProof: v.optional(
+    v.object({
+      externalId: v.string(),
+      attemptId: v.id("xPostAttempts"),
+      confirmedAt: v.number(),
+      connectionSequence: v.number(),
+    }),
+  ),
   scopes: v.array(v.string()),
   identityVerifiedAt: v.number(),
   connectionSequence: v.optional(v.number()),

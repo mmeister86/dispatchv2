@@ -52,6 +52,7 @@ export const checkpointFields = {
   ),
   credentialGeneration: v.optional(v.number()),
   mediaId: v.optional(v.string()),
+  mediaKey: v.optional(v.string()),
   nextSegment: v.number(),
   expiresAt: v.optional(v.number()),
   nextCheckAt: v.number(),

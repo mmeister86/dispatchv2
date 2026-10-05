@@ -7,10 +7,10 @@ import {
 import { internal, components } from "./_generated/api";
 import { checkApproval, checkAccountConnection, event } from "./editorial";
 import { content } from "./lib/editorialFields";
-import type { MutationCtx } from "./_generated/server";
+import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 const job = { scheduleId: v.id("schedules"), generation: v.number() };
-export async function preflight(ctx: MutationCtx, s: Doc<"schedules">) {
+export async function preflight(ctx: QueryCtx, s: Doc<"schedules">) {
   const actor = await ctx.db
     .query("memberships")
     .withIndex("by_userId_and_workspaceId", (q) =>
@@ -20,15 +20,28 @@ export async function preflight(ctx: MutationCtx, s: Doc<"schedules">) {
   if (!actor || !["Owner", "Admin"].includes(actor.role))
     throw new ConvexError("SCHEDULER_AUTHORITY_CHANGED");
   await checkAccountConnection(ctx, s);
-  return checkApproval(
+  const version = await checkApproval(
     ctx,
     s.workspaceId,
     s.versionId,
     s.accountId,
     s.approvalId,
+    s,
   );
+  const draft = await ctx.db.get(s.draftId);
+  if (
+    !draft ||
+    draft.workspaceId !== s.workspaceId ||
+    version.draftId !== s.draftId
+  )
+    throw new ConvexError("X_SCHEDULE_CHANGED");
+  return version;
 }
-async function failure(ctx: MutationCtx, s: Doc<"schedules">, code: string) {
+export async function failure(
+  ctx: MutationCtx,
+  s: Doc<"schedules">,
+  code: string,
+) {
   await ctx.db.patch(s._id, {
     state: s.publishedCount ? "partially_published" : "failed",
     errorCode: code,
@@ -127,7 +140,7 @@ export const dispatch = internalAction({
   returns: v.null(),
   handler: async (ctx, a) => {
     const claimed = await ctx.runMutation(internal.publishing.claim, a);
-    if (claimed) await ctx.runMutation(internal.publishing.unavailable, a);
+    if (claimed) await ctx.runAction(internal.publishing.workflows.step, a);
     return null;
   },
 });
@@ -215,4 +228,10 @@ export const notify = internalAction({
     });
     return null;
   },
+});
+
+export const version = internalQuery({
+  args: { versionId: v.id("draftVersions") },
+  returns: v.union(content, v.null()),
+  handler: async (ctx, a) => (await ctx.db.get(a.versionId))?.content ?? null,
 });

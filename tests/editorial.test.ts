@@ -628,7 +628,7 @@ test("list only current snapshot, composer fetch beyond first page and paged his
   ).rejects.toThrow("WORKSPACE_ACCESS_DENIED");
 });
 
-test("real registered scheduler job executes once and stores unavailable notification without network", async () => {
+test("real registered scheduler job executes once and stores missing credential notification without network", async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-06T12:00:00Z"));
   vi.stubEnv("AUTH_EMAIL_FROM", "");
@@ -637,7 +637,7 @@ test("real registered scheduler job executes once and stores unavailable notific
   await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
   const row = await f.t.run((ctx) => ctx.db.get(scheduleId));
   expect(row!.state).toBe("failed");
-  expect(row!.errorCode).toBe("PUBLISHER_NOT_CONFIGURED");
+  expect(row!.errorCode).toBe("X_REAUTH_REQUIRED");
   const events = await f.t.run((ctx) =>
     ctx.db
       .query("editorialEvents")

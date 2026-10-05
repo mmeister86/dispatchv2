@@ -114,3 +114,23 @@ test("fixed HTTPS requests use approved nested alt and no redirects; POST timeou
     mediaRequest("status", "fixture-token", "123"),
   ).rejects.toThrow();
 });
+
+test("media key preserves only actual initialized provider evidence, never inferred from an ID", () => {
+  expect(
+    uploadResult({
+      data: { id: "123", media_key: "3_123", expires_after_secs: 3600 },
+    }).mediaKey,
+  ).toBe("3_123");
+  expect(
+    uploadResult({ data: { id: "123", expires_after_secs: 3600 } }).mediaKey,
+  ).toBeUndefined();
+  expect(() =>
+    uploadResult({
+      data: {
+        id: "123",
+        media_key: "https://foreign.test",
+        expires_after_secs: 3600,
+      },
+    }),
+  ).toThrow();
+});

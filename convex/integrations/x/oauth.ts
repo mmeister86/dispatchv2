@@ -578,13 +578,17 @@ export const scheduleSource = internalQuery({
       s.versionId,
       s.accountId,
       s.approvalId,
+      s,
     );
     await checkAccountConnection(ctx, s);
     const c = await gate(ctx, s.workspaceId, s.accountId);
     if (
-      !c.scopes.includes(
-        a.operation === "media" ? "media.write" : "tweet.write",
-      )
+      ![
+        "tweet.write",
+        "tweet.read",
+        "users.read",
+        ...(a.operation === "media" ? ["media.write"] : []),
+      ].every((scope) => c.scopes.includes(scope))
     )
       throw new ConvexError("X_SCOPE_REQUIRED");
     if (c.leaseUntil || c.expiresAt <= Date.now() + 30000)

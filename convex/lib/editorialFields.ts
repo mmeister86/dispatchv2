@@ -108,7 +108,15 @@ export const versionFields = {
   createdAt: v.number(),
   reason: v.string(),
 };
+export const purpose = v.union(
+  v.literal("publishing"),
+  v.literal("first_write_verification"),
+);
 export const approvalFields = {
+  purpose: v.optional(purpose),
+  accountConnectionSequence: v.optional(v.number()),
+  expiresAt: v.optional(v.number()),
+  mediaPlacement: v.optional(v.literal("first_post")),
   workspaceId: v.id("workspaces"),
   draftId: v.id("drafts"),
   versionId: v.id("draftVersions"),
@@ -119,6 +127,21 @@ export const approvalFields = {
   revokedBy: v.union(v.id("users"), v.null()),
 };
 export const scheduleFields = {
+  purpose: v.optional(purpose),
+  intentExpiresAt: v.optional(v.number()),
+  confirmedAt: v.optional(v.number()),
+  mediaPlacement: v.optional(v.literal("first_post")),
+  externalPosts: v.optional(
+    v.array(
+      v.object({
+        position: v.number(),
+        externalId: v.string(),
+        url: v.string(),
+        attemptId: v.id("xPostAttempts"),
+        confirmedAt: v.number(),
+      }),
+    ),
+  ),
   workspaceId: v.id("workspaces"),
   draftId: v.id("drafts"),
   versionId: v.id("draftVersions"),

@@ -82,6 +82,12 @@ export function uploadResult(
   )
     throw new Error("X_MEDIA_RESPONSE_INVALID");
   const mediaId = id(data.id);
+  const mediaKey = data.media_key;
+  if (
+    mediaKey !== undefined &&
+    (typeof mediaKey !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(mediaKey))
+  )
+    throw new Error("X_MEDIA_RESPONSE_INVALID");
   if (expectedId && mediaId !== expectedId)
     throw new Error("X_MEDIA_RESPONSE_INVALID");
   const expiresAt =
@@ -105,7 +111,13 @@ export function uploadResult(
     else if (info.state !== "succeeded")
       throw new Error("X_MEDIA_RESPONSE_INVALID");
   }
-  return { mediaId, expiresAt, state, waitMs };
+  return {
+    mediaId,
+    expiresAt,
+    state,
+    waitMs,
+    ...(mediaKey ? { mediaKey: mediaKey as string } : {}),
+  };
 }
 type Operation = "initialize" | "append" | "finalize" | "status" | "metadata";
 export async function mediaRequest(
@@ -325,11 +337,13 @@ export const prepare = internalAction({
           | "failed"
           | "expired",
         mediaId = c.mediaId,
+        mediaKey = c.mediaKey,
         expiresAt = c.expiresAt,
         waitMs = 0;
       if (operation === "initialize") {
         const result = uploadResult(response);
         mediaId = result.mediaId;
+        mediaKey = result.mediaKey;
         expiresAt = result.expiresAt;
         phase = "append";
       } else if (operation === "append") {
@@ -351,6 +365,7 @@ export const prepare = internalAction({
         ...claim,
         phase,
         mediaId,
+        ...(mediaKey ? { mediaKey } : {}),
         expiresAt,
         waitMs,
         bytesRead: 0,
@@ -410,3 +425,97 @@ export const prepare = internalAction({
     return null;
   },
 });
+
+export class PostRequestError extends Error {
+  constructor(
+    public outcome: "unknown" | "rejected",
+    public code: string,
+    public httpStatus?: number,
+    public rateResetAt?: number,
+  ) {
+    super(code);
+  }
+}
+export async function postRequest(
+  token: string,
+  text: string,
+  mediaIds: string[],
+  parentId?: string,
+) {
+  if (
+    typeof text !== "string" ||
+    !text.trim() ||
+    mediaIds.length > 4 ||
+    mediaIds.some((m) => !/^[0-9]{1,19}$/.test(m)) ||
+    (parentId !== undefined && !/^[0-9]{1,19}$/.test(parentId))
+  )
+    throw new PostRequestError("rejected", "X_POST_BODY_INVALID");
+  const controller = new AbortController(),
+    timer = setTimeout(() => controller.abort(), 15000);
+  let httpStatus: number | undefined, rateResetAt: number | undefined;
+  try {
+    const response = await fetch("https://api.x.com/2/tweets", {
+      method: "POST",
+      redirect: "error",
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        text,
+        ...(mediaIds.length ? { media: { media_ids: mediaIds } } : {}),
+        ...(parentId ? { reply: { in_reply_to_tweet_id: parentId } } : {}),
+      }),
+    });
+    httpStatus = response.status;
+    const reset = response.headers.get("x-rate-limit-reset");
+    if (reset && /^\d{1,12}$/.test(reset)) rateResetAt = Number(reset) * 1000;
+    // These statuses prove a rejected request. Server errors and other statuses may have executed it.
+    if ([400, 401, 403, 422, 429].includes(response.status)) {
+      await response.body?.cancel();
+      throw new PostRequestError(
+        "rejected",
+        response.status === 401 || response.status === 403
+          ? "X_REAUTH_OR_CAPABILITY_REQUIRED"
+          : response.status === 429
+            ? "X_POST_RATE_LIMITED"
+            : "X_POST_REJECTED",
+        httpStatus,
+        rateResetAt,
+      );
+    }
+    if (response.status !== 201) {
+      await response.body?.cancel();
+      throw new Error("X_POST_RESPONSE_INVALID");
+    }
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error("X_POST_RESPONSE_INVALID");
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      size += value.byteLength;
+      if (size > 32768) {
+        await reader.cancel();
+        throw new Error("X_POST_RESPONSE_INVALID");
+      }
+      chunks.push(value);
+    }
+    const result = object(JSON.parse(Buffer.concat(chunks).toString("utf8"))),
+      data = object(result.data);
+    // A real ID is confirmed even when the provider also returns partial errors; never repeat a confirmed write.
+    return { externalId: id(data.id), rateResetAt };
+  } catch (e) {
+    if (e instanceof PostRequestError) throw e;
+    throw new PostRequestError(
+      "unknown",
+      "X_POST_OUTCOME_UNKNOWN",
+      httpStatus,
+      rateResetAt,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+}
