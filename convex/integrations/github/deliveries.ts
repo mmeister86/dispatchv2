@@ -36,13 +36,18 @@ async function closeRepository(
 ) {
   if (
     (r.verifiedSequence ?? 0) >= sequence ||
-    (!r.access && !r.monitoring && !r.content && !r.proofExpiresAt)
+    (!r.access &&
+      !r.monitoring &&
+      !r.content &&
+      !r.contextRead &&
+      !r.proofExpiresAt)
   )
     return;
   await ctx.db.patch(r._id, {
     access: false,
     monitoring: false,
     content: false,
+    contextRead: false,
     proofExpiresAt: 0,
     generation: r.generation + 1,
     updatedAt: Date.now(),

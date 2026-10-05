@@ -6,6 +6,7 @@ import {
   send,
   push,
   release,
+  installation,
 } from "../../../tests/github-fixture";
 import { modelFixture } from "../../../tests/model-fixture";
 import { base64 } from "../../lib/crypto";
@@ -603,4 +604,123 @@ test("explicit later perspective reuses approved actual excerpts and shared cont
       executionKey: "synthetic-followup",
     }),
   ).rejects.toThrow("CONTEXT_CHANGED");
+});
+
+const closures = [
+  {
+    name: "installation deleted",
+    event: "installation",
+    payload: { action: "deleted", installation },
+  },
+  {
+    name: "installation suspended",
+    event: "installation",
+    payload: { action: "suspend", installation },
+  },
+  {
+    name: "selected repository removed",
+    event: "installation_repositories",
+    payload: {
+      action: "removed",
+      installation,
+      repository_selection: "selected",
+      repositories_added: [],
+      repositories_removed: [{ id: 101 }],
+    },
+  },
+  {
+    name: "last selected repository removed",
+    event: "installation_repositories",
+    payload: {
+      action: "removed",
+      installation,
+      repository_selection: "selected",
+      repositories_added: [],
+      repositories_removed: [],
+    },
+  },
+  {
+    name: "user authorization revoked",
+    event: "github_app_authorization",
+    payload: { action: "revoked", sender: { id: 7, type: "User" } },
+  },
+];
+test.each(closures)(
+  "signed $name resets patch consent in shared closure and replay cannot advance its generation again",
+  async ({ event, payload }) => {
+    const f = await ready();
+    await approve(f);
+    const guid = crypto.randomUUID();
+    expect((await send(f, payload, event, guid)).status).toBe(202);
+    const receipt = await f.t.run((ctx) =>
+      ctx.db
+        .query("githubDeliveryGuids")
+        .withIndex("by_guid", (q) => q.eq("guid", guid))
+        .unique(),
+    );
+    await f.t.mutation(internal.integrations.github.deliveries.process, {
+      receiptId: receipt!.receiptId,
+    });
+    const closed = await f.t.run((ctx) => ctx.db.get(f.repositories[0]));
+    expect(closed).toMatchObject({
+      access: false,
+      monitoring: false,
+      content: false,
+      contextRead: false,
+      proofExpiresAt: 0,
+      generation: 3,
+    });
+    const sources = await f.signed.query(
+      api.integrations.github.repositories.settings,
+      { workspaceId: f.workspaceId },
+    );
+    expect(
+      sources.repositories.find((r) => r._id === f.repositories[0]),
+    ).toMatchObject({ contextRead: false, authorized: false });
+    expect(
+      await f.signed.query(api.integrations.github.context.latest, {
+        workspaceId: f.workspaceId,
+        signalId: f.signal._id,
+      }),
+    ).toEqual([]);
+    await expect(approve(f)).rejects.toThrow("SOURCE_DISABLED");
+    expect(await f.t.run((ctx) => ctx.db.get(f.signal._id))).toEqual(f.signal);
+    expect((await send(f, payload, event, guid)).status).toBe(202);
+    await f.t.mutation(internal.integrations.github.deliveries.process, {
+      receiptId: receipt!.receiptId,
+    });
+    expect(await f.t.run((ctx) => ctx.db.get(f.repositories[0]))).toEqual(
+      closed,
+    );
+  },
+);
+test("signed closure clears a stale context flag even when old access/content/proof fields are already closed", async () => {
+  const f = await ready();
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.repositories[0], {
+      access: false,
+      monitoring: false,
+      content: false,
+      proofExpiresAt: 0,
+    }),
+  );
+  const guid = crypto.randomUUID();
+  expect(
+    (await send(f, { action: "deleted", installation }, "installation", guid))
+      .status,
+  ).toBe(202);
+  const receipt = await f.t.run((ctx) =>
+    ctx.db
+      .query("githubDeliveryGuids")
+      .withIndex("by_guid", (q) => q.eq("guid", guid))
+      .unique(),
+  );
+  await f.t.mutation(internal.integrations.github.deliveries.process, {
+    receiptId: receipt!.receiptId,
+  });
+  expect(await f.t.run((ctx) => ctx.db.get(f.repositories[0]))).toMatchObject({
+    contextRead: false,
+    generation: 3,
+  });
+  expect(await f.t.run((ctx) => ctx.db.get(f.signal._id))).toEqual(f.signal);
 });
