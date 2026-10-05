@@ -4,7 +4,7 @@ title: 'Begrenzten Research-Workflow und Themencluster bauen (P06.03, Teil 2)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 23:19'
+updated_date: '2026-10-05 23:20'
 labels:
   - p06
   - r2
@@ -79,4 +79,6 @@ FINALindependentSPEC f92d2ee PASS/ReadyYes noCritical/Important/Minor remaining 
 Fresh whole-delta QUALITY f92d2ee With fixes: 2 Important/0 Critical/0 Minor. Actual delayed bindModel/provider gives120000ms with immutable order1000ms remaining; actual clearSource/purge cancellation leaves public outcome pending even after stale-generation Workflow completion. Focused130PASS; independent4RED/1PASS /tmp/dispatch-pipeline-quality-f92/confirmed-red.log; full /tmp/dispatch-research-pipeline-quality-receipt.md. ROOT handed both to original implementer: atomic persisted research deadline clamp, active cancellation terminal disposition across real sibling writers, preserve historical terminal outcomes/rights/unknown holds/late finance. Narrow researchTools/pipeline/registered regressions ownership; unchanged RED/scripts/hash preserved, local checks then freeze, same SPEC delta then same QUALITY delta. No AC/Done/provider activation.
 
 Original implementer QUALITY correction exact5 source paths frozen3b518074bc2fb0bc6b5360ff5c00a23b90467318. Atomic persisted research deadline clamp; active pipeline source/retention, profile pause/delete and native-budget cancellation terminalized, historical completed/partial/empty outcomes preserved. First unchangedQUALITY5=4RED1PASS01:15:26/permanent4RED32PASS; direct expiry purge exposed genuine later stale snapshot overwriting cancelled outcome, fixed local normalized snapshot. Focused43PASS01:17:37; full539/28 and unchangedQUALITY5+SPEC7+11+branches4PASS01:17:48. Type/lint/build/bundlePASS; initial test-only branded WorkflowId TS error retained separately. All8 reviewer scripts/configSHA unchanged /tmp/task22.2-quality-correction-reviewer-sha.txt. No UIchange, prior fresh browser reuse explicit. Commit windowclosed; codegen/posttype/Dev then SAME SPECdelta→SAME QUALITYdelta pending; no AC/Done/activation.
+
+FINAL QUALITY correction sourcefreeze3b51807 confirmed: officialcodegen/postgentype/existingEUDev--once EXIT0 /tmp/task22.2-quality-correction-{codegen,post-codegen-typecheck,eu-dev-once}.log no generatedchanges; EUfunctionsready01:19:24local, source/index/diffclean23:19:28Z/user5173PID48521preserved/5174absent. Same independentSPECdelta nowactive; sameQUALITYdelta awaitsPASS. NoAC/Done/activation.
 <!-- SECTION:NOTES:END -->
