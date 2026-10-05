@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 10:48'
+updated_date: '2026-10-05 10:50'
 labels:
   - p02
   - r1
@@ -82,4 +82,6 @@ Three SPEC defects corrected and source frozen atf381e39 for independent re-revi
 Independent SPEC PASS atf381e39:20 committed targetedchecks plus2 updated original counterexamples passed. Reviewer confirmed PNG limits beforedecode, paginated first-attachment inventory and authorized bounded historical descriptors with exact-alt restoration. Fresh independent QUALITY review nowrunning, including an unverified StrictMode mounted-ref concern; no next provider implementer until QUALITY passes. Actual live/manual acceptance unchanged and statusInProgress.
 
 Independent QUALITY review reproduced P2 in actual MediaLibrary under ReactStrictMode: effect cleanup marks mountedfalse without setup reset, so successful delete suppresses feedback/finally and remains busy. Isolated5174 browser fixture and screenshot captured without source or real provider writes; serverclosed. Review continues on frozenf381e39 before scoped correction and re-review. No automatic Done.
+
+Partial QUALITY review also reproduced P1 MP4 predecode-bound gap with two small safe fixtures: opaque dref entries are recursively parsed by MP4Box, bypassing advertised child sample-count/depth limits. Worker assigned strict supported self-contained entry validation before library parsing and negative regressions, plus confirmed StrictMode correction. Review agent was interrupted by an automated content filter; no completed QUALITY/PASS claimed. Fresh full independent review required after corrections; no large exhaustion fixtures or real provider writes.
 <!-- SECTION:NOTES:END -->

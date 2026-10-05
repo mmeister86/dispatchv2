@@ -32,7 +32,11 @@ Four committed targeted files: 20/20 checks passed independently. The original s
 
 The reviewer reproduced a P2 StrictMode bug in the actual MediaLibrary using an isolated Vite/Playwright fixture on port5174, with production source unchanged. Its mounted-ref effect cleanup sets `mounted.current=false`, but setup does not restore true. React StrictMode's setup/cleanup/setup cycle therefore suppresses successful command notifications and the `finally` busy reset. An initially enabled delete button remains disabled after successful completion.
 
-Temporary evidence: `/tmp/dispatch-r2-quality-browser.mjs` and `/tmp/dispatch-r2-strictmode-success.png`. The fixture server was closed. Remaining parser, lifecycle and asynchronous-UI review continues on the frozen source before the implementer fixes the confirmed findings. The next provider implementer starts only after QUALITY passes too.
+Temporary evidence: `/tmp/dispatch-r2-quality-browser.mjs` and `/tmp/dispatch-r2-strictmode-success.png`. The fixture server was closed.
+
+The reviewer also reproduced a P1 MP4 predecode-validation gap using two small bounded fixtures: the Vorscan treats `dref` entries as opaque while MP4Box parses their children. An unsupported table child exceeds the advertised sample-count ceiling, and a nested child exceeds the advertised depth ceiling, yet both are accepted. The supported self-contained data-reference structure must be validated before library parsing. Safe temporary checks: `/tmp/dispatch-r2-quality.test.ts` and `/tmp/dispatch-r2-quality.config.mts`,2/2 passed as counterexamples. No large resource-exhaustion fixture was run or requested.
+
+The review agent was interrupted by an automated content filter after reporting these two findings; the full QUALITY review did not complete and no PASS is claimed. The implementer is assigned scoped defensive corrections plus small negative regressions. A fresh independent reviewer will inspect the complete corrected unit, including remaining UI/lifecycle paths. The next provider implementer starts only after QUALITY passes too.
 
 ## Actual acceptance still open
 
