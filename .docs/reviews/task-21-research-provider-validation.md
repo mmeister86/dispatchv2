@@ -1,6 +1,6 @@
 # TASK-21 native source provider validation
 
-Whole-unit baseline `4c50535`, backend checkpoint `f50fc59`, initial final source `215b94c04de4626a66d14a2652306c1d59e12902`. Later ROOT metadata commits do not change reviewed source. Independent SPEC currently **NEEDS FIXES**; QUALITY has not started. This is no live provider or human acceptance.
+Whole-unit baseline `4c50535`, backend checkpoint `f50fc59`, initial final source `215b94c04de4626a66d14a2652306c1d59e12902`, latest correction source `5521672ca3f23e407d7bba5da10644921f72b91f`. Later ROOT metadata commits do not change reviewed source. Independent corrected SPEC is pending; QUALITY has not started. This is no live provider or human acceptance.
 
 ## Implementer evidence
 
@@ -31,3 +31,11 @@ Additional effective-intent SPEC **NEEDS FIXES**: ROOT actual-handler X recent f
 All TASK21 AC remain unchecked until independent corrected SPEC and fresh QUALITY pass. Status remains In Progress until explicit human confirmation after manual testing. Actual capability/auth/protocol compatibility, source rights and lifecycle/compliance coverage, full processing chain, real pricing/currency/invoices, Requesty internal-search-inclusive hard total bound, unreserved native allocation and combined external-credit/publishing-reserve measurements remain live gates. No TASK22 evidence/Research Agent/clusters, TASK23 Inbox, export/erasure/restore or production release is claimed.
 
 ROOT current-coverage counterexample22:24:23 (intent correction WIP; coverage helper unchanged from82): actual old Web unknown100hold, new independent X reservation100, then actual late Web settlement1200 leaves shared workspace/account above their1000limits. Current funded `native.context`, used immediately before physical I/O, still returns policy/order. One own actual-handler test fails; this proves the reauthorization boundary miss, not an observed external fetch. `/tmp/task21-root-overage.test.ts` and `-red.log` retain it. Minimal correction checks aggregate held+spent for the selected operation's actual own reservation at that physical context boundary. Immutable late finance must still book expense once, and free authorized cache/history/source material must not be falsely erased or called removed because money is over limit. Same independent SPEC will verify the final intent/compatibility/coverage correction before fresh QUALITY.
+
+## Final correction checkpoint
+
+Frozen `5521672` changes seven approved paths: canonical v2 actual operation inputs, optional receipt intent version and one exact bounded legacy sent/unknown index, one unchanged-snapshot legacy known-cache fallback, and selected own funded-cache/receipt/current-generation graph plus current aggregate coverage immediately before physical I/O. Current source rights, free cache/material and immutable late finance remain separate.
+
+Implementer reports462 tests/27 files, native64, affected210/7, type/lint/build/bundle/diff, actual Research browser and official codegen PASS; existing EU Dev ready22:33:43. Initial official codegen rejected a70-character index name against the64-character ceiling; the same fields/query now use `by_native_legacy_intent`, and the failed log is preserved. No paid request or grant/source activation.
+
+ROOT reran three unchanged independent negatives at22:35:07: X effective-intent unknown barrier, current funded-context overage and native foreign-workspace finance projection each PASS (one own case/two copied cases skipped per file). Logs are `/tmp/task21-root-intent-green.log`, `/tmp/task21-root-overage-green.log`, `/tmp/task21-root-native-projection-final-green.log`. Same SPEC delta is independently checking sibling effective-input/legacy/current coverage cases before fresh QUALITY; no AC acceptance yet.

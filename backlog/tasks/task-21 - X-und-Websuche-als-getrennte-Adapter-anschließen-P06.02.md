@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 20:29'
+updated_date: '2026-10-05 20:35'
 labels:
   - p06
   - r2
@@ -87,4 +87,6 @@ Correction source frozen at82e9ff75f6c79a772c4df6319b97b39db5284641: validated m
 Four original finding families re-SPEC PASS82e9ff7:99registered/3 plus5distinctindependenthandlercases and actual isolated/full React fixtures; ROOTnativeprojection negativePASS. This historical PASS is superseded overall by additional effective-intent NEEDS FIXES before QUALITY. ROOT actual X freshness30→90 sends second EXACTidentical physical URL despite first unknown hold; independent SPEC confirms and adds Web freshness changes identicalURL/body plus WOEID query changes identicalURL. Raw/unused operation-agnostic identity inputs bypass unknown barrier. /tmp/dispatch-research-provider-spec-intent-receipt.md and ROOTredlog retained. Originalworker minimal source-specific effective canonicalization plus bounded current-scope legacy raw-identity unknown compatibility; changing algorithm/deploy/restore cannot drop old sent/unknown liability. No absolute time or new wrapper paid-retry bypass. Same SPEC intent delta then fresh QUALITY only after PASS; no AC/Done.
 
 ROOT current-coverage RED22:24:23: actual oldWebunknown100hold/newXreserved100, then actuallateWeb1200settlement puts sharedWS/account above1000limits; currentfunded native.context pre-I/O reauth wrongly resolves. /tmp/task21-root-overage.test.ts/red.log oneownhandlerfailed/twocopiedskip. Actual reauth-boundary miss, notclaimexternalfetchexecuted. Originalworker minimal own-reservation held+spent coverage at physicalcontext; immutablelatefinancialgraph still books1200once/keepsnew100hold, freecurrent-authorized cache/history/partialsource material stays separate from source deletion. Include in canonicalintent/legacyunknown final correctiveunit; same independent SPECintentdelta before freshQUALITY. NoAC/Done/activation.
+
+Final correction source frozen5521672ca3f23e407d7bba5da10644921f72b91f, seven approved paths. Canonical v2 effective inputs plus optional version/exact bounded legacy sent-unknown index preserve previous unknown liability; one known legacy cache probe. Own funded actual cache/receipt/current generation and aggregate coverage checked before I/O; free authorized material/cache and immutable late accounting preserved. Implementer462/27 native64 affected210/7 type/lint/build/bundle/browser/codegenPASS; EUDev22:33:43. Initial70-character index-name codegen rejection preserved and same fields/query renamed by_native_legacy_intent. ROOT unchanged independent intent/overage/nativeprojection negatives each PASS22:35:07 (one own/two copiedskip each). Same SPEC delta pending before fresh QUALITY; no AC/Done/activation.
 <!-- SECTION:NOTES:END -->
