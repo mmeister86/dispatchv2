@@ -1,6 +1,6 @@
 # TASK22.2 — Research workflow validation
 
-Status: final SPEC PASS at f92d2ee, fresh whole-delta QUALITY active. Backlog remains In Progress; no manual/live acceptance or paid activation.
+Status: final SPEC PASS at f92d2ee; fresh whole-delta QUALITY requires two corrections. Original implementer active. Backlog remains In Progress; no manual/live acceptance or paid activation.
 
 Accepted prerequisite baseline: `d06234639086f9514c686007f549ceb37c856710` (evidence source `3e079cef`, SPEC/QUALITY PASS). Implementer: fresh `research_pipeline`, Backend Architect, gpt-6.1-sol/medium. Source milestone: `2670f50c5a5ad5138d83cce346bb89bbe2be0819`, exact34 paths, clean staged diff and working tree. ROOT metadata commits do not change the source baseline.
 
@@ -65,6 +65,15 @@ Officialcodegen/postgeneration type/ existingEUDev--once EXIT0, functionsready01
 Same independent SPEC final verdict **PASS / ReadyYes**, no confirmed remaining Critical/Important/Minor, `/tmp/dispatch-research-pipeline-spec-final-receipt.md`. Fresh unchanged7PASS01:03:06 `/tmp/dispatch-spec-final-original-seven.log`, unchanged11PASS01:03:07 `/tmp/dispatch-spec-final-delta-eleven.log`, four independent neighboring disposition controlsPASS01:03:32 `/tmp/dispatch-spec-final-branches.log`, focused32PASS01:03:34 `/tmp/dispatch-spec-final-pipeline.log`. All four original reviewer script/config hashes still match. Actual controls preserve nontruncated semanticempty=empty, genuine native outage=failed+unknownhold, missing native config=configuration_required/zeroI/O, semantic503=failed/noextra retry, and prior combined-cap budget outcome. Original/correction REDs preserved. Browser4170920 reuse explicitly remains bounded to unchanged UI; no new server by final recheck.
 
 ROOT dispatched fresh independent whole-delta QUALITY `research_pipeline_quality`, Application Security Engineer, gpt-6-astra/medium. It reviews d062346..f92d2ee and owns `/tmp` evidence only; prior reviewers' narration is not proof. No implementer is active and source remains frozen. No code AC or final task acceptance until that verdict; no Done without explicit manual user confirmation.
+
+## Fresh QUALITY — two confirmed corrections
+
+Independent whole-delta QUALITY verdict **With fixes**, two Important, no confirmed Critical/Minor: `/tmp/dispatch-research-pipeline-quality-receipt.md`. Focused pipeline/providers130PASS01:08:08 `/tmp/dispatch-research-pipeline-quality-focused.log`. Own actual registered Workflow/Agent and intercepted physical provider checks reproduce **4RED/1PASS**: `/tmp/dispatch-pipeline-quality-f92/confirmed-red.log`, unchanged runnable scripts and frozen manifest in that directory. No source/browser/Dev changes by reviewer.
+
+- Q1: delayed bindModel creates a fresh120000ms generation deadline when immutable research order has1000ms remaining; actual provider constructs120000ms AbortSignal timeout. Clamp persisted research deadline atomically at binding so shared provider consumers inherit the order ceiling, leaving ordinary generation defaults unchanged.
+- Q2: clearSource/purge cancel active orders and fence generation but leave public pipeline outcome pending. Actual stale-generation Workflow completion correctly refuses repair, so presentation stays pending and offers a resume which rejects. Set terminal disposition/metadata atomically with active cancellation; trace sibling writers, preserve historical completed outcomes when only material is purged, and retain finance/authority fences.
+
+ROOT handed both confirmed findings to the original implementer with narrow researchTools/pipeline/permanent-regression ownership. First unchanged independent and permanent REDs, then minimal shared fixes and GREEN; same SPEC delta precedes the same QUALITY delta. Existing final SPEC verdict describes f92d2ee only. No code AC checked or Done; prior receipts/REDs remain intact.
 
 ## Open acceptance
 
