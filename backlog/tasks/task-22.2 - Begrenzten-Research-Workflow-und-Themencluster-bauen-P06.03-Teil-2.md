@@ -4,7 +4,7 @@ title: 'Begrenzten Research-Workflow und Themencluster bauen (P06.03, Teil 2)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 23:15'
+updated_date: '2026-10-05 23:19'
 labels:
   - p06
   - r2
@@ -77,4 +77,6 @@ Narrowexacttwo-path correctionf92d2eed2cb12163bd8519911c56eb3a221febb9 frozen: s
 FINALindependentSPEC f92d2ee PASS/ReadyYes noCritical/Important/Minor remaining /tmp/dispatch-research-pipeline-spec-final-receipt.md. Reviewerfreshunchanged7PASS01:03:06/unchanged11PASS01:03:07/fourneighboringdispositioncontrolsPASS01:03:32/focused32PASS01:03:34; all4originalscript/config hashes unchanged. Original/correctionRED+limits preserved, actualnontruncatedempty/nativeunknownoutage/config0IO/semantic503/budgetprecedence verified. ROOTfreshWHOLEdeltaQUALITY research_pipeline_quality (AppSec/astra/medium) nowactive d062346..f92d2ee, only/tmp independent artifacts, noimplementer sourceedits. NoAC/Done/paidactivation/manualclaim untilreviewandexplicitmanualuserconfirmation.
 
 Fresh whole-delta QUALITY f92d2ee With fixes: 2 Important/0 Critical/0 Minor. Actual delayed bindModel/provider gives120000ms with immutable order1000ms remaining; actual clearSource/purge cancellation leaves public outcome pending even after stale-generation Workflow completion. Focused130PASS; independent4RED/1PASS /tmp/dispatch-pipeline-quality-f92/confirmed-red.log; full /tmp/dispatch-research-pipeline-quality-receipt.md. ROOT handed both to original implementer: atomic persisted research deadline clamp, active cancellation terminal disposition across real sibling writers, preserve historical terminal outcomes/rights/unknown holds/late finance. Narrow researchTools/pipeline/registered regressions ownership; unchanged RED/scripts/hash preserved, local checks then freeze, same SPEC delta then same QUALITY delta. No AC/Done/provider activation.
+
+Original implementer QUALITY correction exact5 source paths frozen3b518074bc2fb0bc6b5360ff5c00a23b90467318. Atomic persisted research deadline clamp; active pipeline source/retention, profile pause/delete and native-budget cancellation terminalized, historical completed/partial/empty outcomes preserved. First unchangedQUALITY5=4RED1PASS01:15:26/permanent4RED32PASS; direct expiry purge exposed genuine later stale snapshot overwriting cancelled outcome, fixed local normalized snapshot. Focused43PASS01:17:37; full539/28 and unchangedQUALITY5+SPEC7+11+branches4PASS01:17:48. Type/lint/build/bundlePASS; initial test-only branded WorkflowId TS error retained separately. All8 reviewer scripts/configSHA unchanged /tmp/task22.2-quality-correction-reviewer-sha.txt. No UIchange, prior fresh browser reuse explicit. Commit windowclosed; codegen/posttype/Dev then SAME SPECdelta→SAME QUALITYdelta pending; no AC/Done/activation.
 <!-- SECTION:NOTES:END -->

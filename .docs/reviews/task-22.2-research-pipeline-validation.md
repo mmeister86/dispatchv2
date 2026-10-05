@@ -1,6 +1,6 @@
 # TASK22.2 — Research workflow validation
 
-Status: final SPEC PASS at f92d2ee; fresh whole-delta QUALITY requires two corrections. Original implementer active. Backlog remains In Progress; no manual/live acceptance or paid activation.
+Status: QUALITY correction frozen at 3b51807; same SPEC then same QUALITY delta pending. Backlog remains In Progress; no manual/live acceptance or paid activation.
 
 Accepted prerequisite baseline: `d06234639086f9514c686007f549ceb37c856710` (evidence source `3e079cef`, SPEC/QUALITY PASS). Implementer: fresh `research_pipeline`, Backend Architect, gpt-6.1-sol/medium. Source milestone: `2670f50c5a5ad5138d83cce346bb89bbe2be0819`, exact34 paths, clean staged diff and working tree. ROOT metadata commits do not change the source baseline.
 
@@ -74,6 +74,14 @@ Independent whole-delta QUALITY verdict **With fixes**, two Important, no confir
 - Q2: clearSource/purge cancel active orders and fence generation but leave public pipeline outcome pending. Actual stale-generation Workflow completion correctly refuses repair, so presentation stays pending and offers a resume which rejects. Set terminal disposition/metadata atomically with active cancellation; trace sibling writers, preserve historical completed outcomes when only material is purged, and retain finance/authority fences.
 
 ROOT handed both confirmed findings to the original implementer with narrow researchTools/pipeline/permanent-regression ownership. First unchanged independent and permanent REDs, then minimal shared fixes and GREEN; same SPEC delta precedes the same QUALITY delta. Existing final SPEC verdict describes f92d2ee only. No code AC checked or Done; prior receipts/REDs remain intact.
+
+## Original implementer QUALITY correction — frozen3b51807
+
+Exactfive-path source commit `3b518074bc2fb0bc6b5360ff5c00a23b90467318`: researchTools persisted deadline clamp; pipeline active source/retention cancellation; existing profiles pause/delete and cache native-budget-overrun atomic cancellation; registered pipeline regressions. No generic helper, shared generation default, new store, UI or contract change.
+
+First unchanged QUALITY5 reproduced4RED/1PASS01:15:26 `/tmp/task22.2-quality-correction-independent-red.log`; permanent4RED/32PASS retained. Direct expiry-purge regression revealed a later cleanup patch spreading the pre-cancellation outcome back into the order: genuine RED `/tmp/task22.2-quality-correction-focused-final.log`, diagnostic `/tmp/task22.2-quality-correction-retention-harness.log`. Normalizing the existing local pipeline snapshot once preserves the cancellation through both patches. Actual provider timeout, stale Workflow callback, pause/delete, budget-overrun late settlement once and historical completed/partial/empty purge controls now pass. Partial historical control seeds the disposition after actual successful evidence creation; it checks purge preservation, not an independently generated partial result.
+
+Focused43PASS01:17:37. Full539/28PASS01:17:48; unchanged QUALITY5, SPEC7+11 and four final neighboring controls PASS. `/tmp/task22.2-quality-correction-{quality5,spec7,spec11,branches4,full,typecheck-final,lint,build,bundle}.log`. Initial TypeScript test-only branded WorkflowId cast error remains in `...-typecheck.log`; final type check passes. All eight frozen reviewer script/config hashes unchanged `/tmp/task22.2-quality-correction-reviewer-sha.txt`. Prior fresh actual browser explicitly reused for unchanged UI; backend registered checks cover this delta. Scoped window closed, no broad WIP staged. Official codegen/posttype/existing EU Dev update pending, then same SPEC and same QUALITY independent delta. No code AC or Done.
 
 ## Open acceptance
 
