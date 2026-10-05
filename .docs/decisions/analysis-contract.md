@@ -32,4 +32,12 @@ Die semantische Eingabe umfasst den gesamten geordneten Thread mit eindeutigen S
 
 Analyzer, Routing, Verifikation und Network Fit haben getrennte standardmäßig ausgeschaltete Betriebsflags. Der tatsächliche EU-/Datenschutznachweis ist ein unabhängiges Tor. Analysefehler blockieren gültiges menschliches Publishing nicht. Annahme einer Empfehlung erzeugt eine neue Version ohne alte Freigabe und ohne Austausch eines bestehenden Termins.
 
-Vor Produktabnahme bleiben tatsächlicher SDK-/Runtime-Durchstich, versionierte menschlich geprüfte Eval-Beispiele, Quellenprüfung des Algorithmusprofils und zulässiger Provider-Datenpfad erforderlich. Keine dieser Prüfungen wird durch diese Implementierungsentscheidung behauptet.
+## Geprüfter öffentlicher Quellenkontext
+
+Der Quellenbericht [TASK-27/44](../reviews/task-27-44-public-x-source-review.md) wurde am 2026-10-05 unter der übertragenen Entscheidungsfreiheit geprüft. Der Startkontext `x-public-context-v1` verwendet ausschließlich öffentliche Codebelege aus `xai-org/x-algorithm` bei Commit `b412112d03f27acbfd668e0cc040abcafa1080c1` vom 2026-10-03, mit unveränderlichen Quellenlinks und Datei-Prüfsummen im Bericht. Die Primärquelle hat sich gegenüber dem historischen Repository `twitter/the-algorithm` geändert.
+
+Entscheidung: Diesen Snapshot als geprüften Informationskontext übernehmen (`sourceScope=public_code`, `productionState=unknown`, `scoringInfluence=none`). Öffentliche Rankinggewichte werden nicht in `dispatch-score-v1` kopiert. Dies aktiviert weder den Analyzer noch einen Provider-Datenpfad; die technische Speicherung und Auswahl des Profil-Datensatzes folgt erst in TASK-27/44.
+
+Eine erneute Quellenprüfung bis 2026-10-12 ist eine betriebliche Startannahme, keine belegte Plattformregel. Änderungen erzeugen einen deduplizierten Reviewvorschlag; Aktivierung und Rollback bleiben explizite, protokollierte Entscheidungen und ändern historische Bewertungen nicht.
+
+Vor Produktabnahme bleiben tatsächlicher SDK-/Runtime-Durchstich, versionierte menschlich geprüfte Eval-Beispiele, technische Profilvalidierung und zulässiger Provider-Datenpfad erforderlich. Die öffentliche Quellenprüfung ersetzt keinen dieser Nachweise.
