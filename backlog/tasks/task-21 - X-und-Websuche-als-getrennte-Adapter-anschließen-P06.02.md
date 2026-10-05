@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 18:04'
+updated_date: '2026-10-05 19:03'
 labels:
   - p06
   - r2
@@ -56,4 +56,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 Read-only future provider preparation: /tmp/dispatch-research-provider-implementation-brief.md plus /tmp/dispatch-requesty-search-current-docs.md (three current Context7 commands, official docs, no provider call). Native SSE retains supplied URL/title metadata and actual usage; sources do not establish exact claim attribution/temporal trend, and provider-drop error/EOF cannot become completed evidence. ChatCompletions has no proved internal search max_uses bound; EU routing snippet does not prove complete processing chain. Future21 must reuse reviewed17/20, independent X/Web failures, scoped authorized cache and source-removal barriers; no21 implementation/AC or paid/customer-data activation.
 
 Read-only preparation /tmp/dispatch-research-funding-code-map.md traces every actual generation finance caller and X read credential loader after frozen TASK19 source f6cb20e. Existing aiBudgets/aiAttempts transaction ownership remains central, but current runId/thread/model/token/literal-provider validators cannot represent native X/search unchanged. Future concrete order/step/pricing-unit extension must fund before physical I/O, preserve same-logical-step unknown liabilities and late settlement, and enforce cumulative actual-currency order limits from reviewed TASK20. Never create dummy Agent/model calls, fictitious X tokens or a parallel financial ledger. Native Requesty search requires separately evidenced finite cover for internal search charges; generation token estimates alone do not establish it. No provider/source activation, TASK21 code or acceptance evidence from this preparation.
+
+Current X documentation preparation completed: /tmp/dispatch-x-research-current-docs.md, Context7 library-first /websites/x_x-api plus two docs commands outside sandbox; supplemental official docs because retrieval omitted exact spec/pricing. Current generated recent-search spec post.fields/repost_count/referenced_posts and query max4096 differs from guide tweetFields/512; conservative query ceiling and explicit operation/account compatibility proof required, no guessed fields or absent-to-zero metrics. Trends authorization docs also differ; actual access mode evidence remains mandatory. Current reference pricing is resource/request based and daily dedupe expressly soft, not actual configured price or permission. Batch compliance async upload/download URLs and delete/rehydrate/scrub events documented; no live calls, job, token read, settings, pricing, budget or provider activation. Final20 independent review still prerequisite.
 <!-- SECTION:NOTES:END -->
