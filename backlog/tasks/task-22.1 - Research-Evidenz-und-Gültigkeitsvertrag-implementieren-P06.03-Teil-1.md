@@ -4,7 +4,7 @@ title: 'Research-Evidenz und Gültigkeitsvertrag implementieren (P06.03, Teil 1)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 21:36'
+updated_date: '2026-10-05 21:39'
 labels:
   - p06
   - r2
@@ -71,4 +71,6 @@ Frozen implementation49a9b9971e95f4e39629261e407dc10df83436bd exact13paths; inde
 FreshSPEC49a9b99 NEEDSFIXES oneconfirmedreviewer-only read visibility defect: separateAdmin demotedViewer removeseligibility butcopiedpayload/assessmentreason exposed; expired/nullassessment skipsreviewercheck. Currentreviewer mustguardcontentproof independentlyof validity; reviewedlineage nullpayload/source/assessment proof0 onwithdrawal, originalauthorizedannotationstillreadable. Originalimplementer releasedonlyevidence.ts/providers.test.ts/contract, scopedcommitpending; sameSPECdelta thenfreshQUALITY. Independent5:4PASS1RED;registered95PASS;actual205copycallbackcleanup→0/replay/ownexpiry andsyntheticReactbrowser+dirtybufferpreservationPASS. /tmp/dispatch-research-evidence-spec-receipt.md actualrunnableproof; fake-timernesting anddisabledbrowserbuffer harnesscorrections preserved. NoAC/manualDone.
 
 Reviewervisibility correctionfrozen3e079cef4d9e9ba0d1a274aa629bebd6816f868b exact3paths/index/treeclean. SharedcurrentReviewercheck nowcontentproof ALLassessments beforecopyprojection; immutableauditrow andauthorizedoriginalannotation preserved. Permanentdistinctreviewer future/null/expired98suite95PASS3RED23:29:43→98PASS23:30:14; originalindependent5GREEN23:30:16 originalREDlogpreserved. Full496/27/type/lint/build/bundle/diff/postgenerationtypePASS; officialcodegen23:32:16 unchangedbindings/existingEUDevReady23:33:03. SameSPECdeltaactive beforefreshQUALITY, ACunchecked. NoUI/ledger/source/retentionchange/paidactivation/manualDone. Detailedreceiptsreviewdoc.
+
+SameindependentSPEC deltaPASS3e079cef: unchangedown5/registered98 +3newown actualrole/membership/userwithdrawal cases future/expired/nullassessments, allcopiedfields hidden/proof0/originalannotation+rawrows+budgets+attempts unchanged. InitialREDlogs retained /tmp/dispatch-research-evidence-spec-delta-receipt.md. FreshQUALITY nowfullbaseline0a5533c..3e079source review; noACchecked/manualDone. UnchangedactualUI/syntheticbrowser proof applies.
 <!-- SECTION:NOTES:END -->
