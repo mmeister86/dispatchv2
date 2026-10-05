@@ -461,6 +461,20 @@ try {
     .check();
   await expect(calendarContinue).toBeEnabled();
   await page.evaluate(() => {
+    window.recovery = {
+      aborted: false,
+      positions: [
+        { position: 0, stage: "confirmed", errorCode: null, notBefore: null },
+        { position: 1, stage: "confirmed", errorCode: null, notBefore: null },
+        { position: 2, stage: "unknown", errorCode: null, notBefore: null },
+      ],
+    };
+    window.listeners.forEach((cb) => cb());
+  });
+  await calendarDialog
+    .getByLabel("Kandidaten-ID oder X-Link für Beitrag 3")
+    .fill("999");
+  await page.evaluate(() => {
     const posts = [123, 124, 125].map((id, position) => ({
       position,
       externalId: String(id),

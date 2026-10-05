@@ -59,6 +59,7 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
   const execute = async (
     position?: number,
     abort: "request" | "finalize" | false = false,
+    confirmedId?: string,
   ) => {
     if (pending) return;
     const expectedGeneration = schedule.generation!;
@@ -86,6 +87,7 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
           ...target,
           position,
           candidateId:
+            confirmedId ??
             candidates[position] ??
             schedule.externalPosts?.find((p) => p.position === position)
               ?.externalId ??
@@ -194,7 +196,10 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
         <Button
           variant="outline"
           disabled={pending || !allowed}
-          onClick={() => void execute(schedule.externalPosts!.at(-1)!.position)}
+          onClick={() => {
+            const post = schedule.externalPosts!.at(-1)!;
+            void execute(post.position, false, post.externalId);
+          }}
         >
           Gespeichertes Ergebnis bestätigen
         </Button>
