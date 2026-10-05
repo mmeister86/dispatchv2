@@ -9,9 +9,12 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as editorial from "../editorial.js";
 import type * as http from "../http.js";
 import type * as lib_authorization from "../lib/authorization.js";
+import type * as lib_editorialFields from "../lib/editorialFields.js";
 import type * as preferences from "../preferences.js";
+import type * as publishing from "../publishing.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -23,9 +26,12 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  editorial: typeof editorial;
   http: typeof http;
   "lib/authorization": typeof lib_authorization;
+  "lib/editorialFields": typeof lib_editorialFields;
   preferences: typeof preferences;
+  publishing: typeof publishing;
   users: typeof users;
   workspaces: typeof workspaces;
 }>;
