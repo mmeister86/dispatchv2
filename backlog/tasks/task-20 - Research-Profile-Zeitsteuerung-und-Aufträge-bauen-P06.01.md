@@ -4,7 +4,7 @@ title: 'Research-Profile, Zeitsteuerung und Aufträge bauen (P06.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 16:56'
+updated_date: '2026-10-05 17:29'
 labels:
   - p06
   - r2
@@ -61,4 +61,6 @@ Read-only future preparation /tmp/dispatch-research-profile-implementation-brief
 Read-only official Workflow runtime preparation /tmp/dispatch-workflow-runtime-current-docs.md: three Context7 commands plus published workflow0.4.8/workpool0.4.13 archives and peer metadata inspected without installation/scripts. Declared peers match current Convex/helpers, but complete joint compilation/through-component runtime still required. Concrete step.runAction retry:false and retryActionsByDefault:false prevent layered paid retries; in-flight Actions can finish after Workflow cancellation, so current domain stop/source/grant fences remain mandatory. Actual published workflow/test helper registers nested workpool and batchWorker; inventory/retention and stable bounded journal IDs are required once mounted. No TASK20 code/activation or acceptance from this preparation.
 
 Root formal D02 initial implementation rule recorded under delegated decisions: real profiles manual-only/inactive schedule with no seeded paid budget; periodic starts require explicit current activation and the same processing/pricing/three-scope coverage as manual orders. Finite user order cap uses actual approved pricing currency, with no fictional EUR conversion or demo-derived quota/start amount; at most one active profile order and exact scheduler occurrence dedupe. This decides initial product behavior, not actual provider activation, measured operating budget or20 code acceptance. Final19/16 shared contracts and root assignment remain prerequisite for implementation.
+
+Read-only explorer actual map complete /tmp/dispatch-research-profile-code-map.md: ResearchPage has no real/Demo split and displays daily2EUR/seed completedrun/sampleInbox although real local setter is unavailable; no actual create/save/delete/timezone controls. Reuse existing workspace/reference/currentactor guards, immutable Ideas CAS/version/operation receipt, native editorial scheduler generation/cancel and IANA time helpers. Proposed minimum3 domain stores with one embedded schedule, immutable profileversions and unifiedorders; names are proposals notschema claims. CurrentVersion change alone mustnotcancel immutable oldrunning snapshot; livepause/stop/role/account/source guards independent. Root delegated recurrence rule nowformal: explicit savedIANA/localclock/weekday; gap skips thatlocaloccurrence, overlap earlierinstantonly, exactUTC+generationdedupe, no automatic missed-period batch and zonechange onlyfuture explicitreplan. No20source/AC acceptance; wait reviewed19 before freshimplementation.
 <!-- SECTION:NOTES:END -->
