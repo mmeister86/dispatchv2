@@ -4,7 +4,7 @@ title: Publisher mit Einzelpost-Checkpoints und Abgleich bauen (P03.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:53'
+updated_date: '2026-10-05 12:19'
 labels:
   - p03
   - r1
@@ -71,4 +71,6 @@ Großes Paket: Die zugeordneten Unteraufgaben liefern die Implementierung in beg
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /calendar?view=agenda. Immutable publication snapshots, per-post confirmed/unconfirmed thread states, partial/uncertain/error results, mock reconciliation and targeted continuation. Grenze: No external posts, provider retries or crash recovery proof; IDs are explicitly demo IDs. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Delegatedfirst-write setup decision recorded .docs/decisions/first-write-verification.md for TASK12.2: freshOAuth scopes/identity do notprovewrite, normalcap remainsfalse; avoidcircularrequirement with explicitimmediate exactversion/account human approval+separateconfirmation of visible publishing toverifyaccess. Reusepurpose-boundapproval/schedule/checkpoints, no generalbypass/modelauthority/fakeproof; onlymatchingcurrentconnection confirmedAPIwrite enablesstandardcap, unknownoutcomepause/reconcile. TASK12.1 mediaenginefirst behindguards,12.2 ownsbootstrapintegration. No rootliveprobe/publicpostauthorized/performed; manualaccount/content/providergatesopen.
+
+Clarified first-write evidence: capability activation requires validated actual Dispatch credentialed POST response/current connection. A later read-only exact candidate lookup can reconcile an existing piece but cannot prove it used those API credentials (manual samecontent possible), and never enables publishing capability. Explicit approved remaining position/newproofjob may later supply actualwriteevidence. Decision .docs/decisions/first-write-verification.md; no provider calls performed.
 <!-- SECTION:NOTES:END -->

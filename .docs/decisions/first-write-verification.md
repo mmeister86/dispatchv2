@@ -10,6 +10,8 @@ Reuse existing approval, schedule and attempt records with a small typed purpose
 
 Persist the same per-position intent and outcome checkpoints as normal publishing. A confirmed provider write ID is evidence for that credentialed account and current connection. Only a still-current connection may acquire standard publishing capability from the result. This does not prove premium lengths, quote posts, metrics or research access. Unknown outcomes never enable capability or trigger blind retries; TASK-12.3 reconciles them. Late results preserve external outcome evidence without reactivating disconnected accounts or cancelled jobs.
 
+Capability evidence must come from the validated response to Dispatch's credentialed write. A later read-only lookup can identify an existing matching post for reconciliation, but cannot prove it was created using those API credentials; the same content could have been posted manually. Such a lookup does not enable publishing capability. A later expressly approved remaining position or new verification job can provide the required actual write response.
+
 The consented thread may continue through its remaining positions under the same exact approval and guards. Confirmed positions are never resent. Future contents still require their own human approvals, and old scheduled connection sequences remain blocked after reconnect.
 
 TASK-12.1 supplies the guarded media engine first; TASK-12.2 adds this concrete parent integration and reviews affected guards. Isolated tests can prove domain behavior. Registered client, human target account/content authorization, real write/runtime/processing evidence and manual acceptance remain open; root does not execute a live verification during this coding task without that authorization.
