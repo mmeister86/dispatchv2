@@ -4,7 +4,7 @@ title: GitHub-App und Repository-Auswahl anbinden (P04.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 14:38'
+updated_date: '2026-10-05 14:45'
 labels:
   - p04
   - r2
@@ -39,9 +39,9 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Nur freigegebene Repositories sind sichtbar.
-- [ ] #2 deaktivierte Quellen erzeugen keine neuen Content-Aufträge.
-- [ ] #3 GitHub-Login bleibt unabhängig.
+- [x] #1 Nur freigegebene Repositories sind sichtbar.
+- [x] #2 deaktivierte Quellen erzeugen keine neuen Content-Aufträge.
+- [x] #3 GitHub-Login bleibt unabhängig.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -85,4 +85,12 @@ Fresh SPEC NEEDS WORK aa6e021: ein P2-UI-Freshness-Befund. Date.now in gecachter
 Expiry correction frozen c0944f0: shared concrete proof deadline/visibility hook updates idle Settings and Signals; dirty source context survives expiry/renewal, backend guards unchanged. Permanent actual browser expiry/renewal/visibility/StrictMode cleanup passes;216 full tests and type/lint/build/bundle/diff PASS, existing EU Dev activated16:33:57. Independent SPEC delta running before fresh QUALITY; no AC or status closure.
 
 Independent SPEC PASS c0944f0:16 targeted registered checks, actual expanded browser and separate staggered-expiry/renewal/remaining-source/unmount checks pass without DB updates/actions. Original idle-expiry P2 resolved; no missing/excessive scope. Fresh independent QUALITY now running. Provider/manual gates remain open; status In Progress.
+
+Independent QUALITY NEEDS WORK c0944f0, importantP2: own missing-installation closure bumps all-source snapshot and blocks resync of still-entitled installation; repeat attempts close already-disabled source again and never recover. Saved two-attempt regression /tmp/dispatch-github-app-quality-negative.test.ts;16 registered checks pass, no other blocker. Original implementer fixing concrete inventory update/CAS scope and idempotent closed evidence, preserving immediate revoke and concurrency guards. SPECdelta+QUALITY re-review required, noACclosure.
+
+Multi-installation correction freeze ad9d395:13-line production fix scopes snapshot to requested installation plus explicit target, makes alreadyclosed missing-source revocation idempotent. Permanent RED-to-GREEN twoAresyncs/Bblockedstablegeneration and concurrent remove/config/role/disconnect negatives pass.220 full tests/18GitHub/type/lint/build/bundle/diff PASS; existing EU Dev16:42:59. Public UI unchanged, c094browser receipt retained. Independent SPECdelta running before QUALITYre-review; status In Progress/noACclosure.
+
+Final independent SPEC PASS ad9d395:22checks incl originalQUALITYrepro, two surviving-installationresyncs, sameinstallation repo-removal-idempotence and deletionduringinventory; all changedcallers/guards traced, no missing/excessive scope. PublicUI/hook unchanged, priorbrowserreceipt carries. Reusable /tmp/dispatch-github-app-spec-scoped-discovery.test.ts, production/provider/index untouched. QUALITY re-review now running.
+
+Final code freeze ad9d395 independently SPEC PASS22 and QUALITY PASS22 (20registered+2 ownregressions), no remaining findings. AC1–3 checked as isolated source-selection/purposeguard/login-separation code evidence only; actual GitHub OAuth/installations/privatekey/revocation/refresh/metadata token and human authenticated UI acceptance remain open.220 implementer checks, retained actualUI/rootauth3/full checks, existingEUDev16:42:59. Status stays In Progress; never Done without explicit user confirmation after manual testing. TASK15 fresh factual-ingestion unit next.
 <!-- SECTION:NOTES:END -->

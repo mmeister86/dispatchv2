@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 14:42'
 labels:
   - p06
   - r2
@@ -52,4 +52,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /research, /operations. Supporting empty/partial/source-failure/budget-result scenarios and transparent source/capability information. Grenze: No X/Web search adapters, live trends, provider cache or source-removal synchronization. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Read-only future provider preparation: /tmp/dispatch-research-provider-implementation-brief.md plus /tmp/dispatch-requesty-search-current-docs.md (three current Context7 commands, official docs, no provider call). Native SSE retains supplied URL/title metadata and actual usage; sources do not establish exact claim attribution/temporal trend, and provider-drop error/EOF cannot become completed evidence. ChatCompletions has no proved internal search max_uses bound; EU routing snippet does not prove complete processing chain. Future21 must reuse reviewed17/20, independent X/Web failures, scoped authorized cache and source-removal barriers; no21 implementation/AC or paid/customer-data activation.
 <!-- SECTION:NOTES:END -->
