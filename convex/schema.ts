@@ -1,6 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import { stateFields, credentialFields } from "./integrations/x/fields";
+import {
+  connectionFields as githubConnectionFields,
+  stateFields as githubStateFields,
+  repoFields as githubRepoFields,
+} from "./integrations/github/fields";
 import { attemptFields } from "./publishing/postFields";
 import { checkpointFields } from "./publishing/mediaFields";
 
@@ -34,6 +39,20 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  githubConnections: defineTable(githubConnectionFields)
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_leaseUntil", ["leaseUntil"]),
+  githubOAuthStates: defineTable(githubStateFields)
+    .index("by_digest", ["digest"])
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_expiresAt", ["expiresAt"]),
+  githubRepositories: defineTable(githubRepoFields)
+    .index("by_workspaceId_and_providerId", ["workspaceId", "providerId"])
+    .index("by_workspaceId_and_selected", ["workspaceId", "selected"])
+    .index("by_workspaceId_and_installationId", [
+      "workspaceId",
+      "installationId",
+    ]),
   xPostAttempts: defineTable(attemptFields)
     .index("by_scheduleId_and_generation_and_position", [
       "scheduleId",
