@@ -226,3 +226,103 @@ test("PNG metadata cannot replace the bounded header or violate chunk order/leng
     validateBytes(withMetadata, withMetadata.length, "image/png"),
   ).toMatchObject({ width: 1, height: 1 });
 });
+
+function mp4Box(type: string, payload: Buffer) {
+  const box = Buffer.alloc(payload.length + 8);
+  box.writeUInt32BE(box.length);
+  box.write(type, 4);
+  payload.copy(box, 8);
+  return box;
+}
+function replaceDrefEntry(entry: Buffer) {
+  const bytes = readFileSync(
+    new URL("../../tests/fixtures/media-h264.mp4", import.meta.url),
+  );
+  const delta = entry.length - 12;
+  // Ancestor sizes and the chunk's media offset in this tiny fixed fixture.
+  for (const offset of [32, 148, 284, 369, 397, 405])
+    bytes.writeUInt32BE(bytes.readUInt32BE(offset) + delta, offset);
+  bytes.writeUInt32BE(bytes.readUInt32BE(892) + delta, 892);
+  return Buffer.concat([bytes.subarray(0, 421), entry, bytes.subarray(433)]);
+}
+test("MP4 dref cannot hide sample counts, recursive containers or external data references", () => {
+  const table = Buffer.alloc(12);
+  table.writeUInt32BE(1, 4);
+  table.writeUInt32BE(20001, 8);
+  let nested = mp4Box("free", Buffer.alloc(0));
+  for (let i = 0; i < 12; i++) nested = mp4Box("moov", nested);
+  const valid = mp4Box("url ", Buffer.from([0, 0, 0, 1]));
+  for (const entry of [
+    mp4Box("stsz", table),
+    nested,
+    mp4Box("url ", Buffer.from([0, 0, 0, 0])),
+    mp4Box("url ", Buffer.from([0, 0, 0, 1, 0])),
+    mp4Box("url ", Buffer.from([1, 0, 0, 1])),
+  ]) {
+    const bytes = replaceDrefEntry(entry);
+    expect(() => validateBytes(bytes, bytes.length, "video/mp4")).toThrow(
+      "MEDIA_VALIDATION_FAILED",
+    );
+  }
+  const bytes = replaceDrefEntry(valid);
+  expect(validateBytes(bytes, bytes.length, "video/mp4")).toMatchObject({
+    width: 64,
+    height: 64,
+    duration: 1,
+  });
+});
+
+function descriptor(tag: number, payload: Buffer) {
+  let size = payload.length;
+  const length = [size & 127];
+  while ((size >>>= 7) > 0) length.unshift((size & 127) | 128);
+  return Buffer.concat([Buffer.from([tag, ...length]), payload]);
+}
+function replaceAudioEsds(esds: Buffer) {
+  const bytes = readFileSync(
+    new URL("../../tests/fixtures/media-h264-aac.mp4", import.meta.url),
+  );
+  const delta = esds.length - 54;
+  for (const offset of [32, 1164, 1300, 1385, 1445, 1453, 1469])
+    bytes.writeUInt32BE(bytes.readUInt32BE(offset) + delta, offset);
+  for (const offset of [1052, 1995]) {
+    const count = bytes.readUInt32BE(offset + 12);
+    for (let i = 0; i < count; i++) {
+      const p = offset + 16 + 4 * i;
+      bytes.writeUInt32BE(bytes.readUInt32BE(p) + delta, p);
+    }
+  }
+  return Buffer.concat([bytes.subarray(0, 1505), esds, bytes.subarray(1559)]);
+}
+test("MP4 keeps valid H264/AAC-LC support while rejecting recursive esds metadata before parsing", () => {
+  const valid = readFileSync(
+    new URL("../../tests/fixtures/media-h264-aac.mp4", import.meta.url),
+  );
+  expect(validateBytes(valid, valid.length, "video/mp4")).toMatchObject({
+    width: 64,
+    height: 64,
+    duration: 1,
+  });
+  const specific = descriptor(5, Buffer.from([0x12, 0x08, 0x56, 0xe5, 0]));
+  let nested = descriptor(6, Buffer.from([2]));
+  for (let i = 0; i < 12; i++)
+    nested = descriptor(3, Buffer.concat([Buffer.from([0, 2, 0]), nested]));
+  const decoder = Buffer.alloc(13);
+  decoder[0] = 0x40;
+  decoder[1] = 0x15;
+  const config = descriptor(4, Buffer.concat([decoder, specific, nested]));
+  const root = descriptor(
+    3,
+    Buffer.concat([
+      Buffer.from([0, 2, 0]),
+      config,
+      descriptor(6, Buffer.from([2])),
+    ]),
+  );
+  const bytes = replaceAudioEsds(
+    mp4Box("esds", Buffer.concat([Buffer.alloc(4), root])),
+  );
+  expect(() => validateBytes(bytes, bytes.length, "video/mp4")).toThrow(
+    "MEDIA_VALIDATION_FAILED",
+  );
+});
