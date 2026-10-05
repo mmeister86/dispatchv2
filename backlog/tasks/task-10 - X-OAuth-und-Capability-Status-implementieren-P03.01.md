@@ -4,7 +4,7 @@ title: X-OAuth und Capability-Status implementieren (P03.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:35'
+updated_date: '2026-10-05 11:44'
 labels:
   - p03
   - r1
@@ -71,4 +71,6 @@ D06-Implementierungsentscheidung innerhalb der vom Nutzer übertragenen Freiheit
 Implementation starts after TASK-9 independentSPEC/QUALITY PASSfe3af37. Fresh unit implementer owns X OAuth/PKCE, separateencrypted credentials, generation-safe refresh/disconnect and concrete authenticated settings/callback. Root owns Backlog. Current X primary docs prepared; D06 explicitdisconnect/freshOAuth crossworkspace and D16 evidence-only capability apply. Missing configuration visible, no publicposts/realOAuth/manual evidence claimed. One fresh implementer, sequential SPEC and QUALITY before publisher subunits.
 
 CLI clarification verified via current Context7 and installed Convex1.46 primary source: codegen may upload bundles for deployment-side analysis/type generation but does not activate running functions (runCodegen has no finishPush). Initial provisional activation interpretation corrected. Full tests/typecheck then convex dev --once performs actual existing-Dev activation. No credentials/provider effects from this read-only verification; receipt /tmp/dispatch-convex-cli-receipt.md.
+
+Review head49d9402 frozen (production9b31e50, lasttests-only). Worker reportsfull89unit/final19OAuth checks/type/lint/build/seededbundle and actualtest:x-oauth StrictMode/denial/workspace/unmount/config/awaitedcommands PASS. ExistingDev accurate-lion-749 activated13:40:59 afterchecks; no liveOAuth/refresh/providerwrite/revoke/envsecretsread/set. SeparatexOAuthStates/xCredentials/xBindings/xOAuthFence inventory and key-ID/previouspair/manualgates documented in .docs/x-oauth-domain-contract.md. NewOAuthconnectionsequence pins schedules/internalcredentialgate, refreshretainssequence. IndependentSPEC nowrunning, QUALITY afterPASS; rootauthbrowserregression separatelyrunning5175 withemailsintercepted. No Done.
 <!-- SECTION:NOTES:END -->
