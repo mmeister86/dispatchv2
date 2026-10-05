@@ -4,7 +4,7 @@ title: 'Research-Evidenz und Gültigkeitsvertrag implementieren (P06.03, Teil 1)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 21:24'
+updated_date: '2026-10-05 21:29'
 labels:
   - p06
   - r2
@@ -67,4 +67,6 @@ ROOT concrete D08 choice: manualsourcebound creation now, nofundedmodelbridge/ar
 OfficialcodegenUploadmessage clarified BEFORE runtimeclaim: currentContext7library-first2commands plusinstalledConvex1.46components.ts runCodegen callsstartComponentsPushAndCodegen analysis/bindings, notfinishPush; runtimefinishPush onlyrunComponentsPush/dev. Officialdocs saycodegenconfigurationevaluation doesnotmodifyrunningcode. /tmp/dispatch-codegen-analysis-current-docs.md. Preliminaryofficialbindingsgenerationneededforcompile mayprecedelocalgreen; actualDev--once remainsaftergreen. No accidentalWIPdeployment/provideractivationclaim/no rollback. Workerhumanrule minimum immutablelineage + currentOwnerAdminreview; event/sourcepublication earliestrelevantbasis needed, unknowneventtimingReview.
 
 Frozen implementation49a9b9971e95f4e39629261e407dc10df83436bd exact13paths; index/treeclean. FreshSPEC active, QUALITY notstarted and ACunchecked. Implementer493/27 and95 native/evidence checks plus type/lint/build/bundle/diff and actualResearchPage synthetic-providerbrowser PASS. Officialcodegen23:16:31 / existingEUDevReady23:17:15 afterlocalgreen, no activation/model/provider/liveclaim. Preserved original90case88PASS2RED: genuineinvalidate asynchronouscopycleanup fixed sharedsynchronousfirstbatch; rawsourceexpiryCASfixture corrected independently, notproductexpirybug. Later93/95/full493 progression retained actualtooltranscript (no fabricated initial log). Full pendingreview record .docs/reviews/task-22.1-research-evidence-validation.md. Humanvalidity limited research-context + exactISOeventexcerpt; metadata/unknown/corroboration gaps remainReview, no full22.2workflow/23handoff/manualDone.
+
+FreshSPEC49a9b99 NEEDSFIXES oneconfirmedreviewer-only read visibility defect: separateAdmin demotedViewer removeseligibility butcopiedpayload/assessmentreason exposed; expired/nullassessment skipsreviewercheck. Currentreviewer mustguardcontentproof independentlyof validity; reviewedlineage nullpayload/source/assessment proof0 onwithdrawal, originalauthorizedannotationstillreadable. Originalimplementer releasedonlyevidence.ts/providers.test.ts/contract, scopedcommitpending; sameSPECdelta thenfreshQUALITY. Independent5:4PASS1RED;registered95PASS;actual205copycallbackcleanup→0/replay/ownexpiry andsyntheticReactbrowser+dirtybufferpreservationPASS. /tmp/dispatch-research-evidence-spec-receipt.md actualrunnableproof; fake-timernesting anddisabledbrowserbuffer harnesscorrections preserved. NoAC/manualDone.
 <!-- SECTION:NOTES:END -->
