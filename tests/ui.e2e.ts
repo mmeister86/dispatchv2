@@ -467,3 +467,36 @@ test("dark design persists across routes with readable core and public screens",
   }
   expect(violations).toEqual([]);
 });
+
+test("deferred onboarding remains incomplete and can resume from profile settings", async ({
+  page,
+}) => {
+  await page.goto("/onboarding?returnTo=%2Fsettings%2Fprofile");
+  await page
+    .getByLabel("Was macht dein Projekt?")
+    .fill("Saved project context");
+  await page.getByRole("button", { name: "Weiter", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Wie klingt deine Stimme?" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Später einrichten" }).click();
+  await expect(page).toHaveURL(/\/settings\/profile$/);
+  const saved = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("dispatch-demo-v1")!),
+  );
+  expect(saved.preferences.onboardingDone).toBe(false);
+  expect(
+    saved.workspaces.find(
+      (w: { id: string }) => w.id === saved.activeWorkspaceId,
+    ).description,
+  ).toBe("Saved project context");
+  await page.getByRole("link", { name: "Einrichtung fortsetzen" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Wie klingt deine Stimme?" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Später einrichten" }).click();
+  await page.goto("/overview");
+  await expect(
+    page.getByRole("link", { name: "Einrichtung fortsetzen" }),
+  ).toBeVisible();
+});

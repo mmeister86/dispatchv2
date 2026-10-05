@@ -87,8 +87,9 @@ export function OverviewPage() {
                 Mach Dispatch zu deinem Workspace
               </strong>
               <p className="mt-1 mb-0 text-xs text-[#687054] dark:text-muted-foreground">
-                Zielgruppe, Schreibstil und Accounts in wenigen Schritten
-                einrichten.
+                {demoMode
+                  ? "Zielgruppe, Schreibstil und Accounts in wenigen Schritten einrichten."
+                  : "Projekt, Zielgruppe und Schreibstil einrichten. Quellen und Kanäle kannst du später ergänzen."}
               </p>
             </div>
           </div>

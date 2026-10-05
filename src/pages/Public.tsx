@@ -18,6 +18,7 @@ import {
   demoMode,
   backendConfigured,
   returnPath,
+  authPath,
 } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -326,7 +327,7 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
       return;
     }
     setBusy(true);
-    const callbackURL = `${import.meta.env.VITE_SITE_URL}/onboarding?returnTo=${encodeURIComponent(destination)}`;
+    const callbackURL = `${import.meta.env.VITE_SITE_URL}${authPath("/onboarding", destination)}`;
     try {
       const result =
         mode === "signup"
@@ -346,7 +347,7 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
               : mode === "reset"
                 ? await authClient.requestPasswordReset({
                     email,
-                    redirectTo: `${import.meta.env.VITE_SITE_URL}/reset-password`,
+                    redirectTo: `${import.meta.env.VITE_SITE_URL}${authPath("/reset-password", destination)}`,
                   })
                 : await authClient.sendVerificationEmail({
                     email,
@@ -360,8 +361,7 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
         return;
       }
       if (mode === "login") navigate(destination);
-      else if (mode === "signup")
-        navigate(`/verify?returnTo=${encodeURIComponent(destination)}`);
+      else if (mode === "signup") navigate(authPath("/verify", destination));
       else setSuccess(true);
     } catch {
       setError("Der Server ist nicht erreichbar. Bitte erneut versuchen.");
@@ -415,7 +415,7 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
           ...s,
           preferences: { ...s.preferences, onboardingDone: false },
         }));
-        navigate("/verify");
+        navigate(authPath("/verify", destination));
       } else
         navigate(
           state.preferences.onboardingDone ? "/overview" : "/onboarding",
@@ -521,7 +521,10 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
               </p>
               <Button asChild>
                 <Link
-                  to={!demoMode || mode === "reset" ? "/login" : "/onboarding"}
+                  to={authPath(
+                    !demoMode || mode === "reset" ? "/login" : "/onboarding",
+                    destination,
+                  )}
                 >
                   {!demoMode || mode === "reset"
                     ? "Zur Anmeldung"
@@ -579,7 +582,7 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
               )}
               {mode === "login" && (
                 <Link
-                  to="/reset-password"
+                  to={authPath("/reset-password", destination)}
                   className="text-xs font-semibold text-right -mt-2"
                 >
                   Passwort vergessen?
@@ -737,12 +740,18 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
             {mode === "login" ? (
               <>
                 Noch kein Profil?{" "}
-                <Link className="font-semibold text-foreground" to="/signup">
+                <Link
+                  className="font-semibold text-foreground"
+                  to={authPath("/signup", destination)}
+                >
                   {demoMode ? "Demo starten" : "Konto anlegen"}
                 </Link>
               </>
             ) : (
-              <Link className="font-semibold text-foreground" to="/login">
+              <Link
+                className="font-semibold text-foreground"
+                to={authPath("/login", destination)}
+              >
                 Zur Anmeldung
               </Link>
             )}
@@ -818,17 +827,26 @@ export function OnboardingPage() {
   const finish = async () => {
     if (await persist(0, true)) navigate(returnPath(params.get("returnTo")));
   };
+  const defer = async () => {
+    if (await persist(step, false))
+      navigate(returnPath(params.get("returnTo")));
+  };
   const steps = [
     "Dein Projekt",
     "Deine Stimme",
-    "Deine Quellen",
-    "Dein erster Kanal",
+    demoMode ? "Deine Quellen" : "Deine Quellen (optional)",
+    demoMode ? "Dein erster Kanal" : "Dein erster Kanal (optional)",
   ];
   return (
     <div className="min-h-screen max-w-4xl mx-auto px-5 sm:px-10 py-8">
       <header className="flex gap-4 justify-between items-center mb-12">
         <Brand />
-        <Button variant="ghost" size="sm" onClick={finish}>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={defer}
+          disabled={busy || !editable}
+        >
           {busy ? "Wird gespeichert…" : "Später einrichten"}
           <ArrowRight size={14} />
         </Button>
@@ -842,7 +860,11 @@ export function OnboardingPage() {
                 <span
                   className={`h-7 w-7 flex items-center justify-center rounded-full text-xs ${i === step ? "bg-primary text-primary-foreground" : i < step ? "bg-[#e8f0e5] text-[#30613e]" : "bg-secondary muted"}`}
                 >
-                  {i < step ? <Check size={13} /> : i + 1}
+                  {i < step && (demoMode || i < 2) ? (
+                    <Check size={13} />
+                  ) : (
+                    i + 1
+                  )}
                 </span>
                 <span
                   className={`text-sm ${i === step ? "font-semibold" : "muted"}`}
@@ -1161,7 +1183,7 @@ export function OnboardingPage() {
                     type="button"
                     variant="ghost"
                     onClick={() =>
-                      step === 3 ? void finish() : void persist(3)
+                      step === 3 ? void defer() : void persist(3)
                     }
                   >
                     Überspringen

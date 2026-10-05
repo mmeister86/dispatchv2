@@ -22,14 +22,7 @@ export const convexClientInstance =
   !demoMode && backendConfigured
     ? new ConvexReactClient(import.meta.env.VITE_CONVEX_URL)
     : null;
-export function returnPath(value: string | null) {
-  return value?.startsWith("/") &&
-    !value.startsWith("//") &&
-    !value.includes("\\") &&
-    !/^\/(login|signup|verify|reset-password)([/?#]|$)/.test(value)
-    ? value
-    : "/overview";
-}
+export { authPath, returnPath } from "./navigation";
 
 // Component 0.12.5's generic plugin union erases getSession under Better Auth 1.6.33.
 // Keep the concrete client methods; remove these boundary casts when upstream fixes the declaration.

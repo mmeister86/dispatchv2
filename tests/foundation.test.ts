@@ -228,7 +228,8 @@ test("real Better Auth handlers verify email, reset passwords and revoke session
       name: "Auth test",
       email,
       password,
-      callbackURL: "http://localhost:5173/onboarding",
+      callbackURL:
+        "http://localhost:5173/onboarding?returnTo=%2Fsettings%2Fprofile",
     });
     expect(signup.status).toBe(200);
     expect(emails).toHaveLength(1);
@@ -237,6 +238,9 @@ test("real Better Auth handlers verify email, reset passwords and revoke session
     const verification = new URL(emails[0].text.split("\n\n")[1]);
     const verified = await t.fetch(verification.pathname + verification.search);
     expect(verified.status).toBe(302);
+    expect(
+      new URL(verified.headers.get("location")!).searchParams.get("returnTo"),
+    ).toBe("/settings/profile");
     const signedIn = await post("sign-in/email", { email, password });
     expect(signedIn.status).toBe(200);
     const signedSession = await signedIn.json();
@@ -261,14 +265,17 @@ test("real Better Auth handlers verify email, reset passwords and revoke session
     expect(payload.sessionId).toBeTruthy();
     const reset = await post("request-password-reset", {
       email,
-      redirectTo: "http://localhost:5173/reset-password",
+      redirectTo:
+        "http://localhost:5173/reset-password?returnTo=%2Fsettings%2Fprofile",
     });
     expect(reset.status).toBe(200);
     const link = new URL(emails.at(-1)!.text.split("\n\n")[1]);
     const callback = await t.fetch(link.pathname + link.search);
-    const token = new URL(callback.headers.get("location")!).searchParams.get(
-      "token",
+    const resetDestination = new URL(callback.headers.get("location")!);
+    expect(resetDestination.searchParams.get("returnTo")).toBe(
+      "/settings/profile",
     );
+    const token = resetDestination.searchParams.get("token");
     expect(token).toBeTruthy();
     expect(
       (

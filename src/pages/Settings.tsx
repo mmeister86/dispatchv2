@@ -279,6 +279,18 @@ function ProfileSettings() {
         Sprache und Zeitzone sind Profileinstellungen. Die Oberfläche bleibt
         vorerst auf Deutsch.
       </DemoNote>
+      <Section
+        title="Projekt & Einrichtung"
+        description="Projektbeschreibung und restliche Einrichtung kannst du jederzeit im Setup bearbeiten. Quellen und Kanäle bleiben optional."
+      >
+        <Button variant="outline" asChild>
+          <Link to="/onboarding">
+            {state.preferences.onboardingDone
+              ? "Projekt und Einrichtung bearbeiten"
+              : "Einrichtung fortsetzen"}
+          </Link>
+        </Button>
+      </Section>
     </>
   );
 }
