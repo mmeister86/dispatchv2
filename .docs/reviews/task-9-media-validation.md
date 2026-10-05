@@ -38,6 +38,12 @@ The reviewer also reproduced a P1 MP4 predecode-validation gap using two small b
 
 The review agent was interrupted by an automated content filter after reporting these two findings; the full QUALITY review did not complete and no PASS is claimed. The implementer is assigned scoped defensive corrections plus small negative regressions. A fresh independent reviewer will inspect the complete corrected unit, including remaining UI/lifecycle paths. The next provider implementer starts only after QUALITY passes too.
 
+## Corrections frozen at a51f9ed — renewed reviews pending
+
+Tests-first commit `1e494b1` reproduces the two findings with bounded inputs and the actual React component. `a51f9ed` corrects mounted lifecycle handling and validates the supported MP4 data-reference/recursive AAC descriptor forms before MP4Box. Only two production files change; schema, jobs and dependencies are unchanged. Supported forms and inventory are recorded in the media contract.
+
+Implementer evidence:64 unit checks, eight targeted media-byte checks, actual `pnpm test:media-lifecycle` browser checks for success/failure/unmount/workspace change, typecheck, formatting, build and seeded bundle checks passed. The valid small H.264/AAC fixture also decodes with FFmpeg. Configured Dev updated at12:58:28. Renewed SPEC review is running; the fresh complete QUALITY review follows only after its PASS. No final quality/release claim is made yet.
+
 ## Actual acceptance still open
 
 An approved existing private bucket with actual EU jurisdiction and restricted S3 access, browser-origin CORS, live signature/size enforcement, conditional-write/runtime/race probes, late-PUT cleanup and authenticated manual upload/abort/preview-refresh/replacement evidence remain open. No bucket, public post or test email was created. An EU location hint or a passing synthetic test does not satisfy those checks.
