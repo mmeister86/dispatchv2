@@ -1,6 +1,6 @@
 # TASK-21 native source provider validation
 
-Whole-unit baseline `4c50535`, backend checkpoint `f50fc59`, initial final source `215b94c04de4626a66d14a2652306c1d59e12902`, latest correction source `e5e1c1e51de025bd8f63f1bc55e893cc42b66138`. Later ROOT metadata commits do not change reviewed source. Independent intent/coverage SPEC **PASS** at `5521672`; its fresh QUALITY required one parser fix. The correction now awaits same SPEC and QUALITY deltas. This is no live provider or human acceptance.
+Whole-unit baseline `4c50535`, backend checkpoint `f50fc59`, initial final source `215b94c04de4626a66d14a2652306c1d59e12902`, final reviewed source `e5e1c1e51de025bd8f63f1bc55e893cc42b66138`. Later ROOT metadata commits do not change reviewed source. Final independent SPEC and QUALITY **PASS** after preserved ownership, intent/coverage and streamed-byte corrections. This is code acceptance, not live provider or human acceptance.
 
 ## Implementer evidence
 
@@ -49,3 +49,11 @@ Consolidated fresh QUALITY **WITH FIXES** on `5521672`: exactly one Important pa
 The final consolidated independent suite adds one precision case for raw UTF8 octets held in the decoder:65,536 ASCII bytes plus pending `0xc3` currently fails at invalid EOF instead of detecting the preceding wire ceiling. It already retains unknown finance, so this is no additional settlement exploit. Final11 distinct cases9 RED/2 PASS at22:44:12, `/tmp/task21-quality-final-red.log`; initial4 and intermediate10 logs retained.
 
 Parser correction frozen at `e5e1c1e51de025bd8f63f1bc55e893cc42b66138`, exactly three approved paths. It checks extracted logical-line bytes before dispatch, tracks raw unfinished-line octets including decoder-held bytes and one possible framing CR, and counts pending data fragment/newline bytes while retaining the completed-event guard. Valid complete prefix sources are processed before an oversized unfinished tail. No new dependency/helper framework/schema/UI change. Implementer475/27 (native77, affected223/7), type/full lint/build/bundle/diff, original independent11 rerun, official codegen PASS; existing EU Dev ready22:50:21. Initial cancel-fixture autoprefetch/closed-stream assumption was corrected with highWaterMark0 to inspect actual cancellation; no product fix inferred from that harness change. Same SPEC byte delta is pending before same QUALITY rerun; no AC/live/manual acceptance yet.
+
+## Final independent acceptance
+
+Same SPEC byte delta **PASS** on `e5e1c1e`: unchanged11 QUALITY cases,77 registered native cases and3 new own cases. The new cases prove exact65,536/65,537-byte emoji lines across intra-UTF8/CRLF splits and actual delivered source plus decoder-held overflow in same/separate chunks, with reader cancellation before another read and all three100-micro holds retained as unknown/null estimate. Receipt `/tmp/dispatch-research-provider-spec-byte-delta-receipt.md`.
+
+Same QUALITY delta **PASS** on `e5e1c1e` at22:54:16: unchanged own11 and77 registered native cases, complete actual three-path diff reviewed. No remaining confirmed required finding; previous full-range review and generation/chat49 cases apply to unchanged files. Receipt `/tmp/dispatch-research-provider-quality-delta-receipt.md`. Historical initial/final REDs, harness distinctions, ownership and intent receipts remain intact; overlapping counts are not added as unique coverage.
+
+ROOT checks isolated TASK21 AC1–3 as code criteria: independent X/Web isolation and unchanged publishing, truthful missing trend permission, scoped current-authorized cache/finite budget/unknown liability limits. Backlog stays In Progress until explicit user manual confirmation. The live capability/protocol/rights/processing/lifecycle/invoice/total-charge/allocation/external-credit/publishing-reserve gates described above remain open. Old prepared schedules stay inert. TASK22.1 is released next; no evidence/Agent/Inbox acceptance from this unit.

@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 20:51'
+updated_date: '2026-10-05 20:56'
 labels:
   - p06
   - r2
@@ -37,9 +37,9 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 X-Ausfall blockiert weder Webrecherche noch Publishing.
-- [ ] #2 fehlende Trendberechtigung wird sichtbar und niemals als vorhandene Live-Trendfunktion ausgegeben.
-- [ ] #3 Cache und Budgetgrenzen werden nachweislich eingehalten.
+- [x] #1 X-Ausfall blockiert weder Webrecherche noch Publishing.
+- [x] #2 fehlende Trendberechtigung wird sichtbar und niemals als vorhandene Live-Trendfunktion ausgegeben.
+- [x] #3 Cache und Budgetgrenzen werden nachweislich eingehalten.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -97,4 +97,6 @@ Fresh QUALITY confirmed Important parser byte-limit failure webSearch.ts163-185:
 Consolidated fresh QUALITY WITH FIXES552, exactlyoneImportantSSEbyteboundaryfamily/nootherconfirmedfindings. 113registeredPASS;10distinctowncases8RED2PASS /tmp/dispatch-research-provider-quality-receipt.md: samewirepartition, multibytependingline/event, exact65536ASCIIvalid but splitCRLFwronglyrejected, actualpartialsource wronglysettled20/hold0; positiveidentitywithdrawal latefinancePASS. Originalimplementerreleasedonly webSearch/providers.test/providercontract minimal logical-line/pending-event bytebounds retainingframingCR/partialholds. SameSPECdelta then sameQUALITYrerun required beforeAC/next22.1; noDone/activation.
 
 Parser correction frozene5e1c1e51de025bd8f63f1bc55e893cc42b66138 exactlywebSearch/providers.test/providercontract. Extractedlogicallinebyteguard/rawresidualoctets incldecoderpending/oneframingCR/pendingfragment+newlinecounter retainfinaleventguard andpartialprefixbeforeoversizedtail. Nohelperframework/dependency/schema/UIchange. FinalQUALITYinitial11distinct9RED2PASS preserved; rawpendingprecision alreadyunknownfinance,noextrasettlementexploit. Implementer475/27 native77 affected223/7 type/lint/build/bundle/diff original11rerun/codegenPASS; EUDev22:50:21. Streamcancelautoprefetchclosed harness correctedhighWaterMark0 separately. SameSPECbytedelta pending then sameQUALITYonlyafterPASS/noAC/Done/activation.
+
+Final independent SPEC and QUALITY PASS e5e1c1e51de025bd8f63f1bc55e893cc42b66138. SPECunchangedQUALITY11+native77+3freshUnicode/partialrawdecoder/cancel/durableholds cases allPASS; QUALITYownunchanged11/native77PASS22:54:16 andcomplete3pathdiff. Historicalfullrange552 review/generation-chat49 unchanged; originalREDs preserved. Finalimplementer475/27/fullchecks/codegen/EUDev22:50:21. IsolatedAC1-3 codechecked independentXWeb/unchangedpublishing/missingtrendtruth/cachebudgetunknownlimits. RemainsInProgress pendingexplicitmanualuserconfirmation; actualcapability/protocol/rights/lifecycle/fullprocessing/invoices/totalcharge/allocation/globalcredit/publishingreserve gatesopen. ROOTreview .docs/reviews/task-21-research-provider-validation.md. Release22.1 next, nofullResearchAgent/Inbox/Done/activation.
 <!-- SECTION:NOTES:END -->
