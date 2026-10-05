@@ -4,7 +4,7 @@ title: 'Research-Profile, Zeitsteuerung und Aufträge bauen (P06.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 19:00'
+updated_date: '2026-10-05 19:16'
 labels:
   - p06
   - r2
@@ -40,8 +40,8 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Recherche läuft ohne GitHub-Ereignis.
-- [ ] #2 Pause verhindert neue Läufe.
-- [ ] #3 doppelte Scheduler-Aufrufe erzeugen keinen doppelten Auftrag.
+- [x] #2 Pause verhindert neue Läufe.
+- [x] #3 doppelte Scheduler-Aufrufe erzeugen keinen doppelten Auftrag.
 - [ ] #4 ein Profilwechsel verändert laufende Jobs nicht rückwirkend.
 <!-- AC:END -->
 
@@ -80,4 +80,6 @@ Implementation released after TASK19 final re-SPEC/QUALITY PASS8e5a6b4. Read fin
 Root D02 clarification formalized in domain-contracts: prepared native schedule before researchpipeline mayonly produce visible configuration-blocked callback receipts. Generation prerequisites are NOTnativeX/Web approval. Later adapterdeployment cannot automaticallyactivatepaidsearch; explicit reactivation captures currentnativeprovider/processing/pricing/budgetproof. Blocked oldorders cannotbecome newpaidattempts. Minimal20 localreadonlyeligibilitycheck approved (notreservation/secondledger), existingvalidPolicy+3indexedgrants/currentapprovers/fullcapcoverage reused, actual21paidledgerextension separatelylater. Profileedit/save usefulwithoutprovideractivation.
 
 Fresh SPEC at frozen 6f1d062 reproduced a P2 lost-ACK UI defect in actual React: failed pause/activation/delete closures can become unreachable after reactive profile state changes; a later same-kind toggle replays an obsolete successful receipt without applying current intent. Registered 19 and own 9 native cases pass, but independent browser counterexample is red. Root verified shared command callers; minimal explicit retry/new-command correction assigned to original implementer before re-SPEC. No acceptance criterion checked or Done transition from initial implementation.
+
+Final code source c300fa4 (backend32ed459 / initial6f1d062); independent re-SPEC and fresh QUALITY PASS. Review .docs/reviews/task-20-research-profile-validation.md preserves original P2 lost-ACK browser RED and corrected visible exact-retry/fresh-intent path. Initial implementer387/26 and full checks/codegen/EU Dev20:52:14 remain separate; UI-only correction actual browser/type/lint/build/bundle/diff passed, no backend/Dev rerun. Initial SPEC19+9own backend/browser RED; delta six own actual UI groups+registered browser PASS. QUALITY23 registered+7own native+3own actual UI+registered browser PASS, harness role-render correction explicit. AC2 pause and AC3 exact native occurrence checked as code criteria. AC1 real independent research and full AC4 running downstream research remain unchecked for21/22; immutable queued snapshot proof is not paid running execution. Actual search funding/rights/processing/pricing/invoice/Content-Agent caller/lifecycle/manual gates remain open. No provider/grant activation or Done; In Progress pending explicit manual user confirmation.
 <!-- SECTION:NOTES:END -->
