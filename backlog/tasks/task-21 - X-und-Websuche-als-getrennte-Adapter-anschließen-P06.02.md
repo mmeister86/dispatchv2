@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 20:35'
+updated_date: '2026-10-05 20:43'
 labels:
   - p06
   - r2
@@ -89,4 +89,8 @@ Four original finding families re-SPEC PASS82e9ff7:99registered/3 plus5distincti
 ROOT current-coverage RED22:24:23: actual oldWebunknown100hold/newXreserved100, then actuallateWeb1200settlement puts sharedWS/account above1000limits; currentfunded native.context pre-I/O reauth wrongly resolves. /tmp/task21-root-overage.test.ts/red.log oneownhandlerfailed/twocopiedskip. Actual reauth-boundary miss, notclaimexternalfetchexecuted. Originalworker minimal own-reservation held+spent coverage at physicalcontext; immutablelatefinancialgraph still books1200once/keepsnew100hold, freecurrent-authorized cache/history/partialsource material stays separate from source deletion. Include in canonicalintent/legacyunknown final correctiveunit; same independent SPECintentdelta before freshQUALITY. NoAC/Done/activation.
 
 Final correction source frozen5521672ca3f23e407d7bba5da10644921f72b91f, seven approved paths. Canonical v2 effective inputs plus optional version/exact bounded legacy sent-unknown index preserve previous unknown liability; one known legacy cache probe. Own funded actual cache/receipt/current generation and aggregate coverage checked before I/O; free authorized material/cache and immutable late accounting preserved. Implementer462/27 native64 affected210/7 type/lint/build/bundle/browser/codegenPASS; EUDev22:33:43. Initial70-character index-name codegen rejection preserved and same fields/query renamed by_native_legacy_intent. ROOT unchanged independent intent/overage/nativeprojection negatives each PASS22:35:07 (one own/two copiedskip each). Same SPEC delta pending before fresh QUALITY; no AC/Done/activation.
+
+Same final independent SPEC PASS5521672:113registered/3 incl64native plus7distinctactualhandlercases. OriginalX/Web/trends identical-request and fundedoverage negativesPASSunchanged; new normalizedlanguage/time vs genuinequery, exactoldknowncache through lateoverage then rightswithdrawal, pre-v2sent throughprofile/lease then lateonce afterwithdrawal. Boundedlegacyoverflow registeredPASS. /tmp/dispatch-research-provider-spec-intent-delta-receipt.md preserves originalREDs. Fresh independent QUALITY now whole4c50535..5521672; noAC until verdict/noDone/activation.
+
+Fresh QUALITY confirmed Important parser byte-limit failure webSearch.ts163-185: complete70KB comment/id/event lines consumed before residual check can produce completed/settled; multibyte residual countedUTF16 notbytes. Threeownactualexecute/fetchcases inspectdurableorder/sentattempt/all3holds plusoneownparsercase allRED /tmp/task21-quality-independent.test.ts and initial-red.log. ROOT inspectedactualsource/fixtures and confirms. Source frozen until consolidatedQUALITY; originalimplementer minimal sharedparser bytecheck then sameSPECdelta/reQUALITY. NoAC/Done.
 <!-- SECTION:NOTES:END -->
