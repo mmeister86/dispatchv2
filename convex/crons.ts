@@ -7,4 +7,10 @@ crons.interval(
   internal.media.cleanup.sweep,
   {},
 );
+crons.interval(
+  "X secret expiry cleanup",
+  { minutes: 15 },
+  internal.integrations.x.oauth.cleanup,
+  {},
+);
 export default crons;

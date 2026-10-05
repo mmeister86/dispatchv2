@@ -15,6 +15,16 @@ export interface Account {
   handle: string;
   channel: Channel;
   connected: boolean;
+  connection?: "connected" | "reauth_required" | "disconnected";
+  xEvidence?: {
+    scopes: string[];
+    identityVerifiedAt: number;
+    textScopeEligible: boolean;
+    mediaScopeEligible: boolean;
+    liveWrite: "unverified" | "verified" | "blocked";
+    errorCode?: string;
+    remoteRevocation?: "not_attempted";
+  };
   color: string;
   capability?: {
     maxText: number;

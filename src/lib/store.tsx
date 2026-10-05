@@ -547,6 +547,8 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
       handle: a.handle,
       channel: a.provider,
       connected: a.connection === "connected",
+      connection: a.connection,
+      xEvidence: a.xEvidence,
       color: "#6b7c5d",
       capability: a.capability,
     })),

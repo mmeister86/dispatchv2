@@ -292,7 +292,18 @@ export const resources = workspaceQuery({
     };
     result.resourcesLimited =
       result.accounts.length > 100 || result.assets.length > 100;
-    result.accounts = result.accounts.slice(0, 100);
+    result.accounts = result.accounts.slice(0, 100).map((a) => ({
+      _id: a._id,
+      _creationTime: a._creationTime,
+      workspaceId: a.workspaceId,
+      provider: a.provider,
+      providerIdentity: a.providerIdentity,
+      name: a.name,
+      handle: a.handle,
+      connection: a.connection,
+      capability: a.capability,
+      ...(a.xEvidence ? { xEvidence: a.xEvidence } : {}),
+    }));
     result.assets = result.assets.slice(0, 100);
     return result;
   },

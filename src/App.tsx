@@ -117,6 +117,11 @@ const RepurposePage = lazy(() =>
 const TrendsPage = lazy(() =>
   import("@/pages/Explore").then((m) => ({ default: m.TrendsPage })),
 );
+const XOAuthCallback = lazy(() =>
+  import("@/features/settings/social-accounts").then((m) => ({
+    default: m.XOAuthCallback,
+  })),
+);
 const SettingsPage = lazy(() =>
   import("@/pages/Settings").then((m) => ({ default: m.SettingsPage })),
 );
@@ -815,6 +820,14 @@ export function App() {
           element={
             <ProtectedRoute>
               <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/integrations/x/callback"
+          element={
+            <ProtectedRoute>
+              <XOAuthCallback />
             </ProtectedRoute>
           }
         />

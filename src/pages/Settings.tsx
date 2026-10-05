@@ -43,6 +43,7 @@ import { disconnectAccount, uid, now, type Channel } from "@/lib/model";
 import { demoMode } from "@/lib/auth-client";
 import { EmptyState } from "@/components/shared";
 import { toast } from "sonner";
+import { SocialAccounts } from "@/features/settings/social-accounts";
 
 export function Field({
   label,
@@ -173,52 +174,9 @@ export function SettingsPage() {
 function IntegrationGuidance() {
   const { state } = useStore();
   const readiness = useQuery(api.auth.capabilities, {});
-  const connected = state.accounts.filter(
-    (a) =>
-      a.workspaceId === state.activeWorkspaceId &&
-      a.channel === "X" &&
-      a.connected,
-  );
   return (
     <>
-      <Section
-        title="X & Publishing"
-        description="Die bestätigte Provider-Verbindung und der echte Publisher folgen in den separaten Provider-Einheiten."
-      >
-        <Status tone="orange">Publishing noch nicht aktiviert</Status>
-        <p className="mt-4 text-sm">
-          {connected.length
-            ? `${connected.length} bestätigte X-Verbindung vorhanden. Der Publisher ist noch nicht aktiviert.`
-            : "Kein bestätigter X-Account in diesem Workspace verfügbar."}{" "}
-          Entwürfe können ohne Account geschrieben werden. Freigabe und Planung
-          benötigen einen verifiziert verbundenen Account.
-        </p>
-        <ol className="list-decimal space-y-2 pl-5 text-sm">
-          <li>
-            Owner/Admin richtet die X-Anwendung mit User-OAuth und den
-            erforderlichen Schreibberechtigungen ein. Serverseitig werden
-            X_CLIENT_ID, X_CLIENT_SECRET und INTEGRATION_ENCRYPTION_KEY
-            benötigt; SITE_URL bestimmt die App-Adresse.
-          </li>
-          <li>
-            Nach Implementierung des Verbindungsflows dessen Callback bei X
-            registrieren und den Ziel-Account ausdrücklich autorisieren. Ein
-            App-Bearer allein ersetzt keine User-Publishing-Berechtigung;
-            X_APP_BEARER_TOKEN ist eine getrennte Serverkonfiguration.
-          </li>
-          <li>
-            Bestätigte Account-Fähigkeiten prüfen und den echten Publisher
-            aktivieren. Danach eine konkrete Version freigeben und separat
-            planen. Fehlgeschlagene oder unklare Termine werden dadurch nicht
-            automatisch erneut gesendet.
-          </li>
-        </ol>
-        <p className="mt-4 mb-0 text-xs muted">
-          Hier werden keine Secrets angezeigt oder eingegeben und keine Accounts
-          simuliert. Die Einrichtung erfolgt serverseitig durch die zuständige
-          Administration.
-        </p>
-      </Section>
+      <SocialAccounts key={state.activeWorkspaceId} />
       <Section
         title="Kritische E-Mail-Benachrichtigungen"
         description="Zustellprobleme bleiben im Kalender und Überblick sichtbar."

@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { xEvidence } from "../integrations/x/fields";
 export const capability = v.object({
   maxText: v.number(),
   maxThread: v.number(),
@@ -48,6 +49,7 @@ export const accountFields = {
     v.literal("disconnected"),
   ),
   capability,
+  xEvidence: v.optional(xEvidence),
 };
 export const assetFields = {
   workspaceId: v.id("workspaces"),

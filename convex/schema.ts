@@ -1,5 +1,6 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import { stateFields, credentialFields } from "./integrations/x/fields";
 
 import {
   accountFields,
@@ -31,6 +32,25 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  xOAuthFence: defineTable({ key: v.string(), sequence: v.number() }).index(
+    "by_key",
+    ["key"],
+  ),
+  xOAuthStates: defineTable(stateFields)
+    .index("by_digest", ["digest"])
+    .index("by_workspaceId_and_userId", ["workspaceId", "userId"])
+    .index("by_expiresAt", ["expiresAt"]),
+  xCredentials: defineTable(credentialFields)
+    .index("by_accountId", ["accountId"])
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_cleanAfter", ["cleanAfter"]),
+  xBindings: defineTable({
+    providerIdentity: v.string(),
+    accountId: v.optional(v.id("socialAccounts")),
+    workspaceId: v.optional(v.id("workspaces")),
+    changedAt: v.number(),
+    changedSequence: v.optional(v.number()),
+  }).index("by_providerIdentity", ["providerIdentity"]),
   mediaUploadSessions: defineTable({
     workspaceId: v.id("workspaces"),
     assetId: v.id("mediaAssets"),
@@ -74,9 +94,12 @@ export default defineSchema({
   editorialComments: defineTable(commentFields).index("by_draftId", [
     "draftId",
   ]),
-  socialAccounts: defineTable(accountFields).index("by_workspaceId", [
-    "workspaceId",
-  ]),
+  socialAccounts: defineTable(accountFields)
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_provider_and_providerIdentity", [
+      "provider",
+      "providerIdentity",
+    ]),
   mediaAssets: defineTable(assetFields)
     .index("by_workspaceId", ["workspaceId"])
     .index("by_workspaceId_and_state", ["workspaceId", "state"]),

@@ -5,6 +5,7 @@ const serverNames = [
   "BETTER_AUTH_SECRET",
   "RESEND_API_KEY",
   "INTEGRATION_ENCRYPTION_KEY",
+  "INTEGRATION_ENCRYPTION_PREVIOUS_KEY",
   "X_CLIENT_SECRET",
   "GITHUB_CLIENT_SECRET",
   "REQUESTY_API_KEY",
@@ -14,6 +15,7 @@ const serverNames = [
 ];
 // Settings names required setup keys as prose, without reading their values.
 const guidanceNames = new Set([
+  "INTEGRATION_ENCRYPTION_PREVIOUS_KEY",
   "RESEND_API_KEY",
   "INTEGRATION_ENCRYPTION_KEY",
   "X_CLIENT_SECRET",
@@ -37,7 +39,9 @@ for (const name of assets) {
   const source = readFileSync(`dist/assets/${name}`, "utf8");
   assert(!source.includes(marker), `${name} leaks a server secret value`);
   assert(
-    !/S3Client|SignatureV4|cloudflarestorage\.com|jpeg-js|mp4box/.test(source),
+    !/S3Client|SignatureV4|cloudflarestorage\.com|jpeg-js|mp4box|AES-GCM|api\.x\.com\/2\/oauth2\/token/.test(
+      source,
+    ),
     `${name} imports server media SDK/validation`,
   );
   // Better Auth includes an inert env name. Settings may show setup key names;
@@ -47,7 +51,7 @@ for (const name of assets) {
   ))
     assert(
       !source.includes(secret) ||
-        (/^(Settings|Media|Drafts|shared)-/.test(name) &&
+        (/^(Settings|Media|Drafts|shared|social-accounts)-/.test(name) &&
           guidanceNames.has(secret)),
       `${name} imports server-only configuration ${secret}`,
     );

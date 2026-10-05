@@ -8,7 +8,11 @@ const readiness = vi.hoisted(() => ({
   githubLogin: false,
 }));
 vi.mock("../src/lib/auth-client", () => ({ demoMode: false }));
-vi.mock("convex/react", () => ({ useQuery: () => readiness }));
+vi.mock("convex/react", () => ({
+  useQuery: () => readiness,
+  useAction: () => async () => ({ configured: false, redirectUri: null }),
+  useMutation: () => async () => null,
+}));
 vi.mock("../src/lib/store", () => ({
   useStore: () => ({
     state: { role: "Owner", activeWorkspaceId: "workspace", accounts: [] },
