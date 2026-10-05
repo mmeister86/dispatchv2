@@ -4,7 +4,7 @@ title: 'Recherchequalität und Angriffsresistenz evaluieren (P06.03, Teil 3)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 23:24'
+updated_date: '2026-10-05 23:44'
 labels:
   - p06
   - r2
@@ -53,4 +53,6 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P06.03. Der übergeord
 
 <!-- SECTION:NOTES:BEGIN -->
 ROOT implementationrelease after independently accepted22.2 source3b51807, prerequisites22.1/21 acceptedcode. Fixed pre-candidate draft /tmp/dispatch-research-evaluation-reference-oracles.md (AI-prepared contract-derived, humanreviewopen) and /tmp/dispatch-research-evaluation-implementation-brief.md. Reference text hashes separate actual source material hashes; fixed synthetic labels are not factual truth/modelsemanticquality. Ownership evaluate.ts/tests/evals/research plus concreteexistingfixture extraction onlywithtwoactualconsumers; no evalplatform/publicreportAPI/newledger/paidprovideractivation. Existing InProgress tasks remain manualpending; no Done.
+
+Implementationevidence WIP: original AI-draft oracle SHA573de70530be4b404be4d57938ceed746a44b7888dbab5f07ce2c5d2fdd979e6 and9text hashes frozen BEFORE controlledcandidate. Actualadapterlimits explicit: Webmetadataonly, Xrecent rejects oldpub; newpub/oldevent remainsseparate. Registered12cases/32probes, 61 interceptedphysicalinvocations with actualfunded/sent-admission checks; no externalrequests. Controlled intentionallyunsupported S2 bakingquote+pilotclaim persistsASUNVERIFIEDReview: declaredsemantic-support FAIL0/1 retained as limitation, no lexicalfactchecker/factualtruthclaim or livequality metric. ROOTapprovedhonestdiagnosticratherthanspeculativeproductionsemanticengine; future23mustpreserveReview/sourcechain/noautoverify/approve/publication. Initial historyfixture prepared vsactualpreparing stage was harness error. Genuine localcostprojection unknownestimate0→requiredNULL RED corrected. Freshfull542/29/type/lint/newpathformat/build/bundle andofficialcodegen/postgentypePASS reported; api.d.ts only2linepuremodule diff; no runtimeAPI/UIchange/Devpush/browserrerun, finalfreeze/reviews pending. Rootfuture23.1→23.2→23.3 ToDo created viaCLI, no parallelimplementation.
 <!-- SECTION:NOTES:END -->
