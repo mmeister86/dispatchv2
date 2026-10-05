@@ -424,3 +424,80 @@ test("temporary grants are session-bound and sign exact length/type; ready previ
     (await f.t.run((ctx) => ctx.db.get(f.workspaceId)))!.mediaReservedBytes,
   ).toBe(140);
 });
+
+test("paginated historical versions include authorized descriptors and restore exact per-version alt", async () => {
+  const f = await mediaFixture();
+  await f.t.run(async (ctx) => {
+    for (let i = 0; i < 105; i++)
+      await ctx.db.insert("mediaAssets", {
+        workspaceId: f.workspaceId,
+        storageProvider: "r2",
+        objectKey: `old/${i}`,
+        checksum: "old",
+        name: `Old ${i}`,
+        type: "image",
+        size: 1,
+        state: "ready",
+      });
+  });
+  const s = await f.ready();
+  const content = {
+    title: "Historical medium",
+    text: ["Text"],
+    media: [{ assetId: s.assetId, alt: "Exact V1 alt" }],
+    accountId: null,
+    pillar: "",
+    strategy: "",
+  };
+  const draftId = await f.signed.mutation(api.editorial.create, {
+    workspaceId: f.workspaceId,
+    content,
+    source: "test",
+  });
+  await f.signed.mutation(api.media.assets.setAlt, {
+    workspaceId: f.workspaceId,
+    assetId: s.assetId,
+    alt: "New library default",
+  });
+  for (let i = 1; i <= 21; i++)
+    await f.signed.mutation(api.editorial.save, {
+      workspaceId: f.workspaceId,
+      draftId,
+      expectedRevision: i,
+      content: { ...content, media: [] },
+      reason: "Remove medium",
+    });
+  const detail = await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId,
+  });
+  expect(detail!.assets).toHaveLength(0);
+  const first = await f.signed.query(api.editorial.history, {
+    workspaceId: f.workspaceId,
+    draftId,
+    paginationOpts: { cursor: null, numItems: 20 },
+  });
+  const second = await f.signed.query(api.editorial.history, {
+    workspaceId: f.workspaceId,
+    draftId,
+    paginationOpts: { cursor: first.continueCursor, numItems: 20 },
+  });
+  const v1 = second.page.find((v) => v.number === 1)!;
+  expect(v1).toMatchObject({
+    assets: [{ _id: s.assetId, defaultAlt: "New library default" }],
+  });
+  expect(v1.content.media).toEqual(content.media);
+  await f.signed.mutation(api.editorial.save, {
+    workspaceId: f.workspaceId,
+    draftId,
+    expectedRevision: 22,
+    content: v1.content,
+    reason: "Restore V1",
+  });
+  const restored = await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId,
+  });
+  expect(restored!.versions.at(-1)!.content.media).toEqual(content.media);
+  expect(restored!.assets.map((a) => a._id)).toEqual([s.assetId]);
+});

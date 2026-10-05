@@ -23,6 +23,7 @@ import {
   commentFields,
 } from "./lib/editorialFields";
 import { internal } from "./_generated/api";
+import { assetDoc } from "./media/assets";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import { resolveLocalTime } from "../src/lib/time";
@@ -47,13 +48,7 @@ export const scheduleDoc = v.object({
   ...scheduleFields,
 });
 const bundle = v.object({
-  assets: v.array(
-    v.object({
-      _id: v.id("mediaAssets"),
-      _creationTime: v.number(),
-      ...assetFields,
-    }),
-  ),
+  assets: v.array(assetDoc),
   draft: draftDoc,
   versions: v.array(versionDoc),
   approvals: v.array(approvalDoc),
@@ -83,6 +78,26 @@ async function activeDraftSchedules(ctx: QueryCtx, draftId: Id<"drafts">) {
       ),
     )
   ).flat();
+}
+async function versionAssets(
+  ctx: QueryCtx,
+  workspaceId: Id<"workspaces">,
+  versions: Doc<"draftVersions">[],
+) {
+  return (
+    await Promise.all(
+      [
+        ...new Set(
+          versions.flatMap((ver) =>
+            ver.content.media.map((ref) => ref.assetId),
+          ),
+        ),
+      ].map((id) => ctx.db.get(id)),
+    )
+  ).filter(
+    (asset): asset is Doc<"mediaAssets"> =>
+      asset !== null && asset.workspaceId === workspaceId,
+  );
 }
 export async function draftBundle(
   ctx: QueryCtx,
@@ -146,20 +161,7 @@ export async function draftBundle(
         .take(101);
   const commentsLimited = comments.length > 100;
   if (commentsLimited) comments.pop();
-  const assets = (
-    await Promise.all(
-      [
-        ...new Set(
-          versions.flatMap((ver) =>
-            ver.content.media.map((ref) => ref.assetId),
-          ),
-        ),
-      ].map((id) => ctx.db.get(id)),
-    )
-  ).filter(
-    (asset): asset is Doc<"mediaAssets"> =>
-      asset !== null && asset.workspaceId === draft.workspaceId,
-  );
+  const assets = await versionAssets(ctx, draft.workspaceId, versions);
   return {
     assets,
     draft,
@@ -890,10 +892,12 @@ async function immutableMedia(ctx: QueryCtx, ver: Doc<"draftVersions">) {
 
 export const history = workspaceQuery({
   args: { draftId: v.id("drafts"), paginationOpts: paginationOptsValidator },
-  returns: paginationResultValidator(versionDoc),
+  returns: paginationResultValidator(
+    v.object({ ...versionDoc.fields, assets: v.array(assetDoc) }),
+  ),
   handler: async (ctx, a) => {
     requireReference(ctx.workspace._id, await ctx.db.get(a.draftId));
-    return ctx.db
+    const result = await ctx.db
       .query("draftVersions")
       .withIndex("by_draftId_and_number", (q) => q.eq("draftId", a.draftId))
       .order("desc")
@@ -901,6 +905,16 @@ export const history = workspaceQuery({
         ...a.paginationOpts,
         numItems: Math.min(20, Math.max(1, a.paginationOpts.numItems)),
       });
+    const assets = await versionAssets(ctx, ctx.workspace._id, result.page);
+    return {
+      ...result,
+      page: result.page.map((version) => ({
+        ...version,
+        assets: assets.filter((asset) =>
+          version.content.media.some((ref) => ref.assetId === asset._id),
+        ),
+      })),
+    };
   },
 });
 

@@ -351,20 +351,79 @@ export function validateBytes(
         .subarray(0, 8)
         .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
     ) {
-      ensure(bytes.length >= 33 && bytes.toString("ascii", 12, 16) === "IHDR");
+      // pngjs accepts replacement IHDR metadata and allocates palette/transparency
+      // from chunk lengths. Validate every metadata-changing chunk before decoding.
+      ensure(
+        bytes.length >= 33 &&
+          bytes.readUInt32BE(8) === 13 &&
+          bytes.toString("ascii", 12, 16) === "IHDR",
+      );
       dimensions(bytes.readUInt32BE(16), bytes.readUInt32BE(20));
-      ensure(bytes[28] === 0); // pngjs interlaced inflate is unbounded; only the bounded non-interlaced path is supported.
-      // Reject APNG; treating its first frame as the whole image would lose publishing semantics.
-      let p = 8;
+      const depth = bytes[24],
+        color = bytes[25];
+      const depths: Record<number, number[]> = {
+        0: [1, 2, 4, 8, 16],
+        2: [8, 16],
+        3: [1, 2, 4, 8],
+        4: [8, 16],
+        6: [8, 16],
+      };
+      ensure(
+        depths[color]?.includes(depth) &&
+          bytes[26] === 0 &&
+          bytes[27] === 0 &&
+          bytes[28] === 0,
+      );
+      // Interlacing enters pngjs's unbounded inflate path; APNG is unsupported.
+      let p = 8,
+        paletteEntries = 0,
+        dataSeen = false,
+        dataEnded = false,
+        endSeen = false;
+      const metadata = new Set<string>();
       while (p < bytes.length) {
         ensure(p + 12 <= bytes.length);
-        const length = bytes.readUInt32BE(p);
+        const length = bytes.readUInt32BE(p),
+          type = bytes.toString("ascii", p + 4, p + 8);
         ensure(
           p + 12 + length <= bytes.length &&
-            bytes.toString("ascii", p + 4, p + 8) !== "acTL",
+            /^[A-Za-z]{4}$/.test(type) &&
+            !["acTL", "fcTL", "fdAT"].includes(type),
         );
+        if (type === "IHDR") ensure(p === 8 && length === 13);
+        if (["PLTE", "tRNS", "gAMA"].includes(type)) {
+          ensure(!dataSeen && !metadata.has(type));
+          metadata.add(type);
+          if (type === "PLTE") {
+            ensure(
+              color !== 0 &&
+                color !== 4 &&
+                length > 0 &&
+                length <= 768 &&
+                length % 3 === 0 &&
+                !metadata.has("tRNS"),
+            );
+            paletteEntries = length / 3;
+            if (color === 3) ensure(paletteEntries <= 2 ** depth);
+          } else if (type === "tRNS") {
+            ensure(
+              (color === 0 && length === 2) ||
+                (color === 2 && length === 6) ||
+                (color === 3 && length > 0 && length <= paletteEntries),
+            );
+          } else ensure(length === 4 && !metadata.has("PLTE"));
+        }
+        if (type === "IDAT") {
+          ensure(!dataEnded && (color !== 3 || paletteEntries > 0));
+          dataSeen = true;
+        } else if (dataSeen) dataEnded = true;
+        if (type === "IEND") {
+          ensure(dataSeen && length === 0 && p + 12 === bytes.length);
+          endSeen = true;
+        }
         p += 12 + length;
       }
+      ensure(endSeen);
       const image = PNG.sync.read(bytes, { checkCRC: true });
       mime = "image/png";
       width = image.width;

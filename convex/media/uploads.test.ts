@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { test, expect } from "vitest";
+import { createRequire } from "node:module";
+import { test, expect, vi } from "vitest";
 import { PNG } from "pngjs";
 import jpeg from "jpeg-js";
 import { GifWriter } from "omggif";
@@ -142,4 +143,86 @@ test("supported bounded MP4 parses actual container/sample metadata and rejects 
   expect(() =>
     validateBytes(truncated, truncated.length, "video/mp4"),
   ).toThrow();
+});
+
+// Tiny valid-CRC chunks exercise parser metadata changes without allocating a bomb.
+const crc32 = createRequire(import.meta.url)("pngjs/lib/crc.js").crc32 as (
+  bytes: Buffer,
+) => number;
+function pngChunk(type: string, data: Buffer) {
+  const chunk = Buffer.alloc(data.length + 12);
+  chunk.writeUInt32BE(data.length, 0);
+  chunk.write(type, 4, "ascii");
+  data.copy(chunk, 8);
+  chunk.writeInt32BE(
+    crc32(chunk.subarray(4, 8 + data.length)),
+    8 + data.length,
+  );
+  return chunk;
+}
+test("PNG metadata cannot replace the bounded header or violate chunk order/length", () => {
+  const original = png();
+  const header = Buffer.from(original.subarray(16, 29));
+  const interlaced = Buffer.from(header);
+  interlaced[12] = 1;
+  const insert = (...chunks: Buffer[]) =>
+    Buffer.concat([original.subarray(0, 33), ...chunks, original.subarray(33)]);
+  const invalid = [
+    insert(pngChunk("IHDR", interlaced)),
+    insert(pngChunk("IHDR", header)),
+    Buffer.concat([
+      original.subarray(0, 8),
+      pngChunk("IHDR", Buffer.concat([header, Buffer.from([0])])),
+      original.subarray(33),
+    ]),
+    insert(pngChunk("PLTE", Buffer.alloc(771))),
+    insert(
+      pngChunk("PLTE", Buffer.alloc(3)),
+      pngChunk("PLTE", Buffer.alloc(3)),
+    ),
+    insert(pngChunk("tRNS", Buffer.alloc(2))), // RGBA cannot carry tRNS.
+    insert(pngChunk("gAMA", Buffer.alloc(8))),
+    insert(
+      pngChunk("PLTE", Buffer.alloc(3)),
+      pngChunk("gAMA", Buffer.alloc(4)),
+    ),
+    insert(
+      pngChunk("gAMA", Buffer.alloc(4)),
+      pngChunk("gAMA", Buffer.alloc(4)),
+    ),
+    Buffer.concat([
+      original.subarray(0, original.length - 12),
+      pngChunk("PLTE", Buffer.alloc(3)),
+      original.subarray(original.length - 12),
+    ]),
+    Buffer.concat([
+      original.subarray(0, original.length - 12),
+      pngChunk("IEND", Buffer.alloc(1)),
+    ]),
+  ];
+  expect(validateBytes(original, original.length, "image/png").width).toBe(1);
+  const decode = vi.spyOn(PNG.sync, "read");
+  try {
+    for (const bytes of invalid)
+      expect(() => validateBytes(bytes, bytes.length, "image/png")).toThrow(
+        "MEDIA_VALIDATION_FAILED",
+      );
+    expect(decode).not.toHaveBeenCalled();
+  } finally {
+    decode.mockRestore();
+  }
+  const rgb = PNG.sync.write(
+    { width: 1, height: 1, data: Buffer.from([200, 100, 50, 255]) } as PNG,
+    { colorType: 2 },
+  );
+  const withMetadata = Buffer.concat([
+    rgb.subarray(0, 33),
+    pngChunk("gAMA", Buffer.from([0, 0, 177, 143])),
+    pngChunk("PLTE", Buffer.alloc(3)),
+    pngChunk("tRNS", Buffer.alloc(6)),
+    rgb.subarray(33),
+  ]);
+  expect(
+    validateBytes(withMetadata, withMetadata.length, "image/png"),
+  ).toMatchObject({ width: 1, height: 1 });
 });

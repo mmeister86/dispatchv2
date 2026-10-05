@@ -90,6 +90,8 @@ const Context = createContext<{
   selectAccount: (id: string) => boolean;
   loadMoreVersions: () => void;
   hasMoreVersions: boolean;
+  loadMoreMedia: () => void;
+  hasMoreMedia: boolean;
   loadMoreDrafts: () => void;
   resourcesLimited: boolean;
   hasMoreDrafts: boolean;
@@ -309,6 +311,8 @@ function DemoStoreProvider({ children }: { children: ReactNode }) {
         selectAccount: (id) => setState((s) => ({ ...s, activeAccountId: id })),
         loadMoreVersions: () => {},
         hasMoreVersions: false,
+        loadMoreMedia: () => {},
+        hasMoreMedia: false,
         loadMoreDrafts: () => {},
         hasMoreDrafts: false,
         resourcesLimited: false,
@@ -398,6 +402,8 @@ const emptyContext = {
   selectAccount: unavailable,
   loadMoreVersions: () => {},
   hasMoreVersions: false,
+  loadMoreMedia: () => {},
+  hasMoreMedia: false,
   loadMoreDrafts: () => {},
   hasMoreDrafts: false,
   resourcesLimited: false,
@@ -489,9 +495,15 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
       : "skip",
     { initialNumItems: 20 },
   );
+  const mediaInventory = usePaginatedQuery(
+    api.media.assets.list,
+    workspaceId && routeId ? { workspaceId } : "skip",
+    { initialNumItems: 50 },
+  );
   const fullDetail = detail
     ? {
         ...detail,
+        assets: [...detail.assets, ...history.results.flatMap((v) => v.assets)],
         versions: [
           ...new Map(
             [...detail.versions, ...history.results].map((v) => [v._id, v]),
@@ -542,6 +554,7 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
       ...new Map(
         [
           ...(resources?.assets ?? []),
+          ...mediaInventory.results,
           ...list.results.flatMap((b) => b.assets),
           ...(fullDetail?.assets ?? []),
         ].map((a) => [a._id, a]),
@@ -605,6 +618,8 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
         onboardingStep,
         loadMoreVersions: () => history.loadMore(20),
         hasMoreVersions: history.status === "CanLoadMore",
+        loadMoreMedia: () => mediaInventory.loadMore(50),
+        hasMoreMedia: mediaInventory.status === "CanLoadMore",
         loadMoreDrafts: () => list.loadMore(25),
         hasMoreDrafts: list.status === "CanLoadMore",
         resourcesLimited: resources?.resourcesLimited ?? false,

@@ -356,6 +356,8 @@ export function ComposerPage() {
     cancelSchedule,
     loadMoreVersions,
     hasMoreVersions,
+    loadMoreMedia,
+    hasMoreMedia,
     members,
     addComment,
     resolveComment,
@@ -1969,6 +1971,11 @@ export function ComposerPage() {
                 </label>
               ))}
           </div>
+          {hasMoreMedia && (
+            <Button variant="outline" onClick={loadMoreMedia}>
+              Weitere Medien laden
+            </Button>
+          )}
           <DialogFooter>
             <Button variant="outline" asChild>
               <Link to="/media">Medienbibliothek</Link>
