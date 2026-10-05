@@ -4,7 +4,7 @@ title: Versionierte Algorithmus- und Audience-Profile erstellen (P08.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 09:41'
 labels:
   - p08
   - jev
@@ -58,10 +58,18 @@ Fragesätze, aufgelöstes Modell soweit verfügbar, Normalisierung, Algorithmus-
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Prüfe öffentliche Quellstände und definiere genau einen Analysevertrag. 2. Implementiere versionierte Profilstände und ehrliche fehlende Signale. 3. Verifiziere Zuordnung, historische Stabilität und Cache-/Versionsgrenzen.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 2026-09-19 D04: Nutzer verlangt Intelligence bereits im Dispatch-MVP/R2. Release-Zuordnung aktualisiert; keine Umsetzung oder Provideraktivierung. Maßgeblich: .docs/decisions/release-scope.md.
 
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence, /operations — Algorithmusprofile. Profile/question/formula references, honest missing audience fit and cold-start marker; internal candidate/source review and profile version controls. Grenze: No verified X-algorithm model, embeddings, real audience signal or production profile activation. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Delegierte Implementierungsentscheidung vor Score-Code in .docs/decisions/analysis-contract.md dokumentiert: genau dispatch-score-v1 nach TASK-28.2, Cold-Start 0.5 ausdrücklich angenommener Standard, keine erfundene Audience-/Reach-Messung. Menschliche Evals, aktuelle Quellenprüfung und EU-Datenpfad bleiben tatsächliche Abnahmetore.
 <!-- SECTION:NOTES:END -->
