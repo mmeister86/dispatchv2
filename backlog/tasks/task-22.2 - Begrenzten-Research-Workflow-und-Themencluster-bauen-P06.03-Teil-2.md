@@ -4,7 +4,7 @@ title: 'Begrenzten Research-Workflow und Themencluster bauen (P06.03, Teil 2)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 22:16'
+updated_date: '2026-10-05 22:28'
 labels:
   - p06
   - r2
@@ -61,4 +61,6 @@ Implementation released byROOT after final22.1source3e079cefSPEC/QUALITYPASS; so
 Implementerresearch_pipeline active BASEd062346. Concreteownership approved actualpipeline/Agent/tools/clusters/currentnative-generation-source helpers/officialbindings/UI/tests/contract plus schedules/access/profiles ifnewexplicitworkflowactivation needsreuseoccurrenceengine. OfficialWorkflow0.4.8 installedpinned inWIP, currentContext7library→docs outside sandbox; runtimecompile/review/Devnotyetclaimed. Chosen1snapshotquery/separateops/1semanticfundedcall/retryfalse/order→stableAgentbinding outsideattemptowner; actualnativecache.begin initialreserves+sameorder native-generationcap/currentpreIOcoverage. Minimaltechnicalclusters store evidenceIDs(no rawsource), justified indexedresearchSourceBindings captures ALLsecondarysources+promptdeps; actualcopyreadfences/totalboundedcleanup/nativecomponentisDone inventoryrequired. NativeAgentbody insidefundedaction protecteddomainpayload; Workflowjournal onlyIDs/hash/count/status notrawmodel/source/history. InitialmissingresearchTools module RED issetup/harness, notgenuinebusinessregression. Old20callbacks/blockedordersinert; autoHandofffalseuntilactual23bridge, no modelhumanattestation/publishingactivation. WIPonly no ACCEPT/Done. Futureoperations acceptedbaselineinventory /tmp/dispatch-research-current-operations-inventory.md excludesWIP andrecords currentnonchatpurge/missedexpire-restore gaps for33/36.
 
 2026-10-06 local implementer milestone: 515 tests across28 files, TypeScript and actual synthetic Research browser PASS; not final source/review/Dev acceptance. Remaining pre-freeze corrections: flatten prior cluster evidence source dependencies into bounded current bindings/read-pre-post-I/O fences/cleanup (total10-source ceiling with explicit incomplete coverage), and prevent arbitrary model dynamics prose from becoming a displayed growth assertion when no time series was delivered. Existing Workflow+Agent registered runtime full-path checks use intercepted physical HTTP, not live provider calls. No staging window yet; source remains WIP, no AC checked or Done.
+
+Source milestone2670f50c5a5ad5138d83cce346bb89bbe2be0819 committed onmaster in an exact34-path window; index/workingtree clean aftercommit. Finalprecommit519 tests/28files PASS local2026-10-06 00:27:11 (/tmp/task22.2-final-cluster-tests.log). Includes actual registered Workflow+Agent full/empty/cleanup/crashpending, sourcecluster/history withdrawal, controlled no-time-series dynamics, Xfailure/Websuccess and multi-item existingcluster CAS/concurrentstage replay. Resume is status-aware and preserves durableIDs. Finalpostcommit checks/codegen/existingEUDev and frozen freshSPEC→QUALITY stillpending; no AC checked/manualDone/provideractivation. ROOT receipt .docs/reviews/task-22.2-research-pipeline-validation.md preserves intermediate/RED/harness distinctions.
 <!-- SECTION:NOTES:END -->
