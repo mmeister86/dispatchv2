@@ -4,7 +4,7 @@ title: Webhooks und Signal-Ingestion idempotent umsetzen (P04.02)
 status: To Do
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 13:08'
+updated_date: '2026-10-05 14:21'
 labels:
   - p04
   - r2
@@ -63,4 +63,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 <!-- SECTION:NOTES:BEGIN -->
 Read-only preparation while TASK12.3 active; no implementation. Current official Context7 library-first /github/docs plus2docs (3commands/noquota), independently verified primary guides in /tmp/dispatch-github-webhook-current-docs.md. Raw-byte SHA256 HMAC/fast10sec2xx afterdurable receipt; GUID stable acrossredelivery; no automaticredelivery; App-global JWT-only delivery endpoints cursor<=100 and202redelivery notcompletion. Body-only signature means headers alone are not authenticated event/tenant proof; signed-body identity and per-workspace dedupe required. Missing privatekey/webhooksecret remains visibleguidance; actual TASK14 interfaces supplied afterreviews.
+
+Weitere Read-only-Prep während TASK14: Context7 library-first offizielles /github/docs plus docs (zwei Befehle/keine Quota), direkt aktuelle GitHub- und Octokit-Payload-Verträge geprüft. Receipt /tmp/dispatch-github-revocation-webhook-current-docs.md: github_app_authorization.revoked hat sender ohne installation und beendet User-Zugriff, nicht Deinstallation; volle Installation enthält app_id/IDs, Aktionen deleted/suspend/unsuspend/new_permissions_accepted. Repository-Auswahl all→selected kann leere removed-Arrays liefern: vorhandene breite Proofs dann konservativ invalidieren und konkret resyncen; added/unsuspend erteilt keine lokale Purpose-Aktivierung. Signierter Body plus diskriminative Form/Digest schützt vor Header-/GUID-Replay, sender/ghost ist keine Human-Autorität. Native WebCrypto auf unveränderten begrenzten Bytes; tatsächliche14-Gates werden nach Freeze übernommen. Keine Implementierung/Provider-/Webhook-/manuelle Abnahme.
 <!-- SECTION:NOTES:END -->

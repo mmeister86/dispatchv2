@@ -4,7 +4,7 @@ title: GitHub-App und Repository-Auswahl anbinden (P04.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 14:08'
+updated_date: '2026-10-05 14:27'
 labels:
   - p04
   - r2
@@ -75,4 +75,8 @@ Read-only future implementation prep after TASK-10 settles: separate source GitH
 Additional read-only current App OAuth/JWT prep: Context7 library-first official /github/docs plus2docs (3commands, no quota error), independently verified primary App-user-token/JWT/refresh guides. App-user flow supports S256 PKCE; fine-grained app/user intersection has empty traditional scope; clientID differsAppID. Expiring access8h/refresh6months and refresh invalidates old pair require lease/CAS/unknown-safe reauth. Current examples API header2026-03-10; native RS256 JWT iat-60s/exp<=600s/clientIDpreferred. Receipt /tmp/dispatch-github-oauth-jwt-current-docs.md. No implementation/provider/private-repo call; TASK12.3 still active, TASK14 awaits publishing reviews.
 
 Fresh SDD TASK14 implementation starts on master after finalTASK12.3 source7734008 independent SPEC/QUALITY PASS, ROOT metadata4744ad8. Scoped complete brief /tmp/dispatch-github-app-implementation-brief.md; current official receipts /tmp/dispatch-github-authorization-docs.md and /tmp/dispatch-github-oauth-jwt-current-docs.md. Global AppID/installationID never tenant proof; separate human App OAuth intersection/purposes required. Real Signals seed leak belongs this unit; genuine event ingestion follows TASK15, AI after17/18. Missing privatekey/sourceOAuthconfiguration remains visible guidance per user instruction. No actual provider/private-repository/model call or manual acceptance claimed.
+
+Initialer Source-Freeze aa6e021 (Backend753a7e6) auf master: Implementer215/215 Unit-Checks (14 GitHub), Type/Format/Build/Bundle-/Diff-Prüfungen und tatsächliche Callback-/Settings-/Signals-Fixture PASS. Scope separates App-UserOAuth/S256, Mensch/App/Repository-Intersection, verschlüsselte unknown-safe Credentials, ausdrückliche Quellen/Purposes, aktuelle15min-Proofs und Source-/Discovery-Generationen. One-repo metadata:read-Installationstoken intern mit Source-Recheck; Hintergrundrechte unabhängig UI-Workspace. Native Cleanup, drei Tabellen/abgefragte Indizes inventarisiert, ungenutzter Validator/Index entfernt. Eager Guidance-Import-Bundle-Befund ohne Abschwächen vorhandener Prüfungen korrigiert. Bestehende EU-Dev final16:25:19 aktiviert,5174frei/5173erhalten. Fresh SPEC läuft, QUALITY erst nach PASS; ROOT Auth-/Onboarding-Regressionsprüfung läuft. Nachweis .docs/reviews/task-14-github-app-validation.md. Keine Live-/manuelle Abnahme, kein Done.
+
+ROOT unabhängig pnpm test:e2e:auth PASS: drei abgefangene Auth-Ziel-/Formularregressionen in4,4Sekunden; Fixture5175geschlossen, kein tatsächlicher Email-/Provider-Call. Fresh SPEC weiterhin in Prüfung, keine QUALITY-/Live-/manuelle Abnahme.
 <!-- SECTION:NOTES:END -->
