@@ -4,7 +4,7 @@ title: Messgrundlage bereits in der Beta schaffen (P08.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 16:21'
 labels:
   - p08
   - r3
@@ -63,4 +63,6 @@ Das beim Publish tatsächlich verfügbare Assessment unveränderlich mit publizi
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /analytics, /drafts/:id. Supporting missing-metric/unknown-value displays, local metric collection pause/delete and versioned composer analysis display. Grenze: No actual 24/48-hour metric snapshots or provider/publish-time assessment joins. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Read-only current metrics receipt prepared at /tmp/dispatch-x-metrics-current-docs.md: exactly three Context7 commands (library first, official X API v2 /websites/x_x-api) plus primary official page verification, no live provider or activation. Current metrics guide documents own user-context private metrics within30days and distinct repeated impressions/video aggregation, but current lookup reference differs in post.fields/repost_count versus guide tweet.fields/retweet_count. Future collector must version and explicitly verify the configured dialect, field eligibility and missing/partial states; this discrepancy is not silently normalized into measured zeros. No TASK30 code or acceptance is claimed; D12 collection-purpose/window/budget decision remains before activation.
 <!-- SECTION:NOTES:END -->

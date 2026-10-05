@@ -4,7 +4,7 @@ title: Ideen und Content Agent aufbauen (P05.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 16:15'
+updated_date: '2026-10-05 16:28'
 labels:
   - p05
   - r2
@@ -66,4 +66,6 @@ Der Content Agent bleibt die generative Schicht. Atomare Intent-Entscheidungen u
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /ideas, /signals, /agent, /drafts/:id. Create/archive/accept local ideas with perspective/source; hand off note, signal or chat proposal into editable draft. Grenze: No Content Agent generation or factual verification. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Read-only preparation /tmp/dispatch-content-agent-implementation-brief.md now includes actual TASK17 source928b26c interfaces and four-store/component inventory. TASK17 independent reviews are still pending; no TASK18 implementation or acceptance is claimed. The existing provider.execute returns only a run receipt; a concrete task18 caller must narrowly reuse its funded fixed-provider path for validated content results rather than adding a second model engine. Manual idea operations remain usable without model/account-generation readiness.
+
+TASK17 final code dependency now reviewed at89e1cfa: SPEC44PASS/QUALITY41PASS, actual browserPASS, four-store/official component contract .docs/model-run-contract.md and root .docs/reviews/task-17-model-budget-validation.md. Root now releases TASK18 implementation under the original backend/UI authorization and delegated decisions. Start manual ideas/feedback/atomic editorial handoff without requiring model activation; bounded generative path reuses actual reviewed middleware and current grants/source guards. No new engine/history, automatic approval/schedule/publishing or paid probes. Fresh implementer then independent SPEC/QUALITY; real J03/model/manual acceptance remains separate.
 <!-- SECTION:NOTES:END -->
