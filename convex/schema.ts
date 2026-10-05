@@ -1,5 +1,11 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
+import {
+  policyFields,
+  budgetFields,
+  runFields,
+  attemptFields as aiAttemptFields,
+} from "./ai/fields";
 import { stateFields, credentialFields } from "./integrations/x/fields";
 import {
   connectionFields as githubConnectionFields,
@@ -44,6 +50,15 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  aiPolicies: defineTable(policyFields).index("by_key", ["key"]),
+  aiBudgets: defineTable(budgetFields).index("by_key", ["key"]),
+  agentRuns: defineTable(runFields).index("by_workspaceId_and_createdAt", [
+    "workspaceId",
+    "createdAt",
+  ]),
+  aiAttempts: defineTable(aiAttemptFields)
+    .index("by_runId_and_key", ["runId", "key"])
+    .index("by_runId_and_state", ["runId", "state"]),
   githubAdmissionOrder: defineTable({ sequence: v.number() }),
   githubRevocationBarriers: defineTable({
     key: v.string(),

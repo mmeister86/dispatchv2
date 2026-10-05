@@ -1,4 +1,5 @@
 import { GithubSources } from "@/features/settings/github";
+import { ModelConfiguration } from "@/features/settings/models";
 import {
   cloneElement,
   isValidElement,
@@ -179,6 +180,7 @@ function IntegrationGuidance() {
     <>
       <SocialAccounts key={state.activeWorkspaceId} />
       <GithubSources key={`github:${state.activeWorkspaceId}`} />
+      <ModelConfiguration key={`models:${state.activeWorkspaceId}`} />
       <Section
         title="Kritische E-Mail-Benachrichtigungen"
         description="Zustellprobleme bleiben im Kalender und Überblick sichtbar."

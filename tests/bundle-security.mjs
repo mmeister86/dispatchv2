@@ -18,6 +18,7 @@ const serverNames = [
 ];
 // Settings names required setup keys as prose, without reading their values.
 const guidanceNames = new Set([
+  "REQUESTY_API_KEY",
   "GITHUB_CLIENT_SECRET",
   "GITHUB_APP_CLIENT_SECRET",
   "GITHUB_APP_PRIVATE_KEY",
@@ -46,7 +47,7 @@ for (const name of assets) {
   const source = readFileSync(`dist/assets/${name}`, "utf8");
   assert(!source.includes(marker), `${name} leaks a server secret value`);
   assert(
-    !/S3Client|SignatureV4|cloudflarestorage\.com|jpeg-js|mp4box|AES-GCM|api\.x\.com\/2\/oauth2\/token|createPrivateKey|RSA-SHA256|github\.com\/login\/oauth\/access_token/.test(
+    !/S3Client|SignatureV4|cloudflarestorage\.com|jpeg-js|mp4box|AES-GCM|api\.x\.com\/2\/oauth2\/token|createPrivateKey|RSA-SHA256|github\.com\/login\/oauth\/access_token|router\.eu\.requesty\.ai|wrapLanguageModel|rawRequestResponseHandler/.test(
       source,
     ),
     `${name} imports server media SDK/validation`,
@@ -58,7 +59,9 @@ for (const name of assets) {
   ))
     assert(
       !source.includes(secret) ||
-        (/^(Settings|Media|Drafts|shared|social-accounts|github)-/.test(name) &&
+        (/^(Settings|Media|Drafts|Agent|models|shared|social-accounts|github)-/.test(
+          name,
+        ) &&
           guidanceNames.has(secret)),
       `${name} imports server-only configuration ${secret}`,
     );
