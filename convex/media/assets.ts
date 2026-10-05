@@ -11,6 +11,7 @@ import {
   requireRole,
 } from "../lib/authorization";
 import { internalQuery } from "../_generated/server";
+import { requireR2Binding } from "./binding";
 import { assetFields } from "../lib/editorialFields";
 import type { Doc } from "../_generated/dataModel";
 export const assetDoc = v.object({
@@ -40,6 +41,7 @@ export const previewSource = workspaceInternalQuery({
   returns: v.object({
     objectKey: v.string(),
     bucket: v.string(),
+    r2AccountId: v.string(),
     mime: v.string(),
   }),
   handler: async (ctx, a) => {
@@ -47,11 +49,13 @@ export const previewSource = workspaceInternalQuery({
       ctx.workspace._id,
       await ctx.db.get(a.assetId),
     ) as Doc<"mediaAssets">;
-    if (asset.state !== "ready" || !asset.bucket || !asset.mime)
+    if (asset.state !== "ready" || !asset.mime)
       throw new ConvexError("MEDIA_NOT_READY");
+    requireR2Binding(asset);
     return {
       objectKey: asset.objectKey,
-      bucket: asset.bucket,
+      bucket: asset.bucket!,
+      r2AccountId: asset.r2AccountId!,
       mime: asset.mime,
     };
   },

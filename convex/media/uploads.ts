@@ -10,12 +10,13 @@ import {
 import { internalMutation } from "../_generated/server";
 import type { Doc } from "../_generated/dataModel";
 import {
-  MIME_LIMITS,
+  mimeLimit,
   ASSET_LIMIT,
   QUOTA_BYTES,
   GRANT_MS,
   LEASE_MS,
 } from "./limits";
+import { configuredR2Binding, requireR2Binding } from "./binding";
 const sessionFields = {
   _id: v.id("mediaUploadSessions"),
   _creationTime: v.number(),
@@ -26,6 +27,7 @@ const sessionFields = {
   temporaryKey: v.string(),
   finalKey: v.string(),
   bucket: v.string(),
+  r2AccountId: v.optional(v.string()),
   expectedSize: v.number(),
   expectedMime: v.string(),
   expiresAt: v.number(),
@@ -67,12 +69,11 @@ export const reserve = workspaceInternalMutation({
       a.alt.length > 1000 ||
       !Number.isSafeInteger(a.size) ||
       a.size < 1 ||
-      a.size > (MIME_LIMITS[a.mime] ?? 0)
+      a.size > mimeLimit(a.mime)
     )
       throw new ConvexError("INVALID_MEDIA_UPLOAD");
     // Bucket is resolved from server configuration; no client bucket or object key is accepted.
-    const bucket = process.env.R2_MEDIA_BUCKET;
-    if (!bucket) throw new ConvexError("MEDIA_CONFIGURATION_REQUIRED");
+    const binding = configuredR2Binding();
     const existing = await ctx.db
       .query("mediaUploadSessions")
       .withIndex("by_workspaceId_and_requestId", (q) =>
@@ -80,6 +81,10 @@ export const reserve = workspaceInternalMutation({
       )
       .unique();
     if (existing) {
+      requireR2Binding(existing, binding);
+      const asset = await ctx.db.get(existing.assetId);
+      if (!asset) throw new ConvexError("UPLOAD_SESSION_CLOSED");
+      requireR2Binding(asset, binding);
       if (
         existing.userId !== ctx.user._id ||
         existing.expectedSize !== a.size ||
@@ -117,7 +122,7 @@ export const reserve = workspaceInternalMutation({
       size: a.size,
       state: "uploading",
       defaultAlt: a.alt.trim(),
-      bucket,
+      ...binding,
     });
     const expiresAt = Date.now() + GRANT_MS;
     const sessionId = await ctx.db.insert("mediaUploadSessions", {
@@ -127,7 +132,7 @@ export const reserve = workspaceInternalMutation({
       requestId: a.requestId,
       temporaryKey: `temporary/${ctx.workspace._id}/${assetId}`,
       finalKey: `final/${ctx.workspace._id}/${assetId}`,
-      bucket,
+      ...binding,
       expectedSize: a.size,
       expectedMime: a.mime,
       expiresAt,
@@ -159,6 +164,8 @@ export const claim = workspaceInternalMutation({
     )
       throw new ConvexError("ROLE_ACCESS_DENIED");
     const asset = await ctx.db.get(s.assetId);
+    requireR2Binding(s);
+    if (asset) requireR2Binding(asset);
     if (s.state === "ready" && asset?.state === "ready") return s;
     if (
       !asset ||
@@ -213,6 +220,8 @@ export const complete = internalMutation({
     if (!s) throw new ConvexError("UPLOAD_SESSION_CLOSED");
     requireActiveWorkspace(await ctx.db.get(s.workspaceId));
     const asset = await ctx.db.get(s.assetId);
+    requireR2Binding(s);
+    if (asset) requireR2Binding(asset);
     if (s.state === "ready" && asset?.state === "ready") return s.assetId;
     if (
       s.state !== "validating" ||

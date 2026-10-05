@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAction, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { MIME_LIMITS } from "../../../convex/media/limits";
+import { mimeLimit } from "../../../convex/media/limits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -63,6 +63,7 @@ export function MediaUploader({
   const active = useRef<
     { controller: AbortController; assetId?: Id<"mediaAssets"> } | undefined
   >(undefined);
+  const input = useRef<HTMLInputElement>(null);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -127,8 +128,11 @@ export function MediaUploader({
         sessionId: s.sessionId,
       });
       if (mounted.current && !job.controller.signal.aborted) {
-        setFile(null);
-        setAlt("");
+        if (input.current?.files?.[0] === file) {
+          input.current.value = "";
+          setFile(null);
+          setAlt("");
+        }
         setPhase("Datei geprüft und gespeichert.");
       }
     } catch (e) {
@@ -150,14 +154,13 @@ export function MediaUploader({
     }
   }
   const busy = !!active.current;
-  const valid =
-    file && file.size > 0 && file.size <= (MIME_LIMITS[file.type] ?? 0);
+  const valid = file && file.size > 0 && file.size <= mimeLimit(file.type);
   return (
     <div className="space-y-3">
       <label className="block">
         <span className="field-label">Datei auswählen</span>
         <Input
-          key={file?.name ?? "empty"}
+          ref={input}
           type="file"
           accept="image/jpeg,image/png,image/gif,video/mp4"
           disabled={disabled || busy}

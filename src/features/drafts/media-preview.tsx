@@ -10,6 +10,8 @@ export function mediaError(error: unknown) {
   const messages: Record<string, string> = {
     MEDIA_CONFIGURATION_REQUIRED:
       "EU-R2 ist noch nicht konfiguriert. In der Medienbibliothek findest du die erforderliche EU-Bucket-Bindung und Browser-CORS-Einrichtung.",
+    MEDIA_BINDING_RECONCILIATION_REQUIRED:
+      "Für dieses ältere Medium fehlt die Account-/Bucket-Bindung. Vor Vorschau, Finalisierung oder Bereinigung muss die ursprüngliche EU-R2-Zuordnung manuell abgeglichen werden.",
     MEDIA_VALIDATION_FAILED:
       "Die gespeicherten Bytes sind ungültig oder überschreiten Format-, Größen- oder Dimensionsgrenzen. Datei prüfen und neu hochladen.",
     MEDIA_VALIDATION_IN_PROGRESS:

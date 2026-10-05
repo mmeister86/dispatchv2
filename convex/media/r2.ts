@@ -12,26 +12,23 @@ import type { Id } from "../_generated/dataModel";
 import { api, internal } from "../_generated/api";
 import { PREVIEW_SECONDS } from "./limits";
 import { validateBytes, MediaValidationError } from "./validation";
+import { configuredR2Binding, requireR2Binding } from "./binding";
 export function configuration() {
-  const account = process.env.CLOUDFLARE_ACCOUNT_ID;
-  const bucket = process.env.R2_MEDIA_BUCKET;
+  const binding = configuredR2Binding();
   const accessKeyId = process.env.R2_ACCESS_KEY_ID,
     secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
   if (
-    !account ||
-    !/^[a-f0-9]{32}$/i.test(account) ||
-    !bucket ||
     !accessKeyId ||
     !secretAccessKey ||
     process.env.R2_MEDIA_EU_CONFIRMED !== "true"
   )
     throw new ConvexError("MEDIA_CONFIGURATION_REQUIRED");
   return {
-    bucket,
+    ...binding,
     client: new S3Client({
       region: "auto",
       forcePathStyle: true,
-      endpoint: `https://${account}.eu.r2.cloudflarestorage.com`,
+      endpoint: `https://${binding.r2AccountId}.eu.r2.cloudflarestorage.com`,
       credentials: { accessKeyId, secretAccessKey },
       maxAttempts: 1,
       requestChecksumCalculation: "WHEN_REQUIRED",
@@ -79,8 +76,10 @@ export const prepare = action({
     await ctx.runQuery(api.media.uploads.authorize, {
       workspaceId: a.workspaceId,
     });
-    const { client } = configuration();
+    const config = configuration();
+    const { client } = config;
     const s = await ctx.runMutation(internal.media.uploads.reserve, a);
+    requireR2Binding(s, config);
     // ContentLength is part of the signed request; server streamed-byte checks remain authoritative.
     const uploadUrl = await getSignedUrl(
       client,
@@ -184,11 +183,14 @@ export const finish = action({
   },
   returns: v.id("mediaAssets"),
   handler: async (ctx, a): Promise<Id<"mediaAssets">> => {
+    await ctx.runQuery(api.media.uploads.authorize, {
+      workspaceId: a.workspaceId,
+    });
+    const config = configuration();
+    const { client, bucket } = config;
     const s = await ctx.runMutation(internal.media.uploads.claim, a);
+    requireR2Binding(s, config);
     if (s.state === "ready") return s.assetId;
-    const { client, bucket } = configuration();
-    if (s.bucket !== bucket)
-      throw new ConvexError("MEDIA_CONFIGURATION_REQUIRED");
     try {
       const metadata = await finalizeObject(
         s,
@@ -233,9 +235,9 @@ export const preview = action({
   returns: v.object({ url: v.string(), expiresAt: v.number() }),
   handler: async (ctx, a): Promise<{ url: string; expiresAt: number }> => {
     const s = await ctx.runQuery(internal.media.assets.previewSource, a);
-    const { client, bucket } = configuration();
-    if (s.bucket !== bucket)
-      throw new ConvexError("MEDIA_CONFIGURATION_REQUIRED");
+    const config = configuration();
+    const { client, bucket } = config;
+    requireR2Binding(s, config);
     const url = await getSignedUrl(
       client,
       new GetObjectCommand({

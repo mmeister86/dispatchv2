@@ -1,7 +1,8 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { internalMutation, internalQuery } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { sessionDoc } from "./uploads";
+import { requireR2Binding } from "./binding";
 export const due = internalQuery({
   args: {},
   returns: v.array(sessionDoc),
@@ -25,6 +26,23 @@ export const claim = internalMutation({
       return null;
     const asset = await ctx.db.get(s.assetId);
     if (!asset) return null;
+    try {
+      requireR2Binding(s);
+      requireR2Binding(asset);
+    } catch (e) {
+      // Leave object state/quota untouched; surface reconciliation and defer so one
+      // misbound namespace cannot monopolize the bounded cleanup batch.
+      const errorCode =
+        e instanceof ConvexError
+          ? String(e.data)
+          : "MEDIA_CONFIGURATION_REQUIRED";
+      await ctx.db.patch(s._id, {
+        errorCode,
+        cleanAfter: Date.now() + 86400000,
+      });
+      await ctx.db.patch(asset._id, { errorCode });
+      return null;
+    }
     if (s.state === "validating") {
       // A crashed finalization remains explicitly resumable for 24h before abandoned-object deletion.
       if (Date.now() < s.expiresAt + 86400000) {
@@ -61,6 +79,10 @@ export const receipt = internalMutation({
   handler: async (ctx, a) => {
     const s = await ctx.db.get(a.sessionId);
     if (!s) return null;
+    const boundAsset = await ctx.db.get(s.assetId);
+    requireR2Binding(s);
+    if (!boundAsset) return null;
+    requireR2Binding(boundAsset);
     // ponytail: permanent tombstones catch late PUTs; 20 sessions/15min. Purge only after verified bucket lifecycle/TASK-36 retention.
     await ctx.db.patch(s._id, {
       cleanAfter:

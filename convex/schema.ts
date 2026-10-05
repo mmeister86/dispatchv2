@@ -39,6 +39,7 @@ export default defineSchema({
     temporaryKey: v.string(),
     finalKey: v.string(),
     bucket: v.string(),
+    r2AccountId: v.optional(v.string()),
     expectedSize: v.number(),
     expectedMime: v.string(),
     expiresAt: v.number(),

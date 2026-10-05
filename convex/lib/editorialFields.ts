@@ -77,6 +77,7 @@ export const assetFields = {
   defaultAlt: v.optional(v.string()),
   errorCode: v.optional(v.string()),
   bucket: v.optional(v.string()),
+  r2AccountId: v.optional(v.string()),
 };
 export const draftFields = {
   workspaceId: v.id("workspaces"),

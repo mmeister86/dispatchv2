@@ -3,6 +3,7 @@ import { internalAction } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { v } from "convex/values";
 import { configuration, deleteObject } from "./r2";
+import { requireR2Binding } from "./binding";
 export const run = internalAction({
   args: {},
   returns: v.null(),
@@ -15,11 +16,12 @@ export const run = internalAction({
     }
     const sessions = await ctx.runQuery(internal.media.cleanup.due, {});
     for (const row of sessions) {
-      const s = await ctx.runMutation(internal.media.cleanup.claim, {
-        sessionId: row._id,
-      });
-      if (!s || s.bucket !== config.bucket) continue;
       try {
+        const s = await ctx.runMutation(internal.media.cleanup.claim, {
+          sessionId: row._id,
+        });
+        if (!s) continue;
+        requireR2Binding(s, config);
         await deleteObject(config.client, s.bucket, s.temporaryKey);
         const finalDeleted = s.state !== "ready";
         if (finalDeleted)

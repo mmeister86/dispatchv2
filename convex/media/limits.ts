@@ -4,6 +4,9 @@ export const MIME_LIMITS: Record<string, number> = {
   "image/gif": 15 * 1024 * 1024,
   "video/mp4": 32 * 1024 * 1024,
 };
+export function mimeLimit(mime: string): number {
+  return Object.hasOwn(MIME_LIMITS, mime) ? MIME_LIMITS[mime] : 0;
+}
 export const QUOTA_BYTES = 512 * 1024 * 1024;
 export const ASSET_LIMIT = 500;
 export const GRANT_MS = 10 * 60 * 1000;

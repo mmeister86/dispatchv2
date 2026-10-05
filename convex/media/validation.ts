@@ -4,7 +4,7 @@ import { PNG } from "pngjs";
 import jpeg from "jpeg-js";
 import { GifReader } from "omggif";
 import { createFile, type MP4BoxBuffer } from "mp4box";
-import { MIME_LIMITS } from "./limits";
+import { mimeLimit } from "./limits";
 export class MediaValidationError extends Error {}
 function ensure(condition: unknown): asserts condition {
   if (!condition) throw new MediaValidationError("MEDIA_VALIDATION_FAILED");
@@ -82,7 +82,26 @@ function gifFrame(
 function mp4(bytes: Buffer) {
   // Bound nested structure/table counts before MP4Box allocates sample lists.
   const mediaRanges: { start: number; end: number }[] = [];
-  let boxes = 0;
+  let boxes = 0,
+    tracks = 0,
+    moovs = 0,
+    samples = 0,
+    tableEntries = 0;
+  const sampleTables = new Set([
+    "stsd",
+    "stts",
+    "ctts",
+    "stss",
+    "stsc",
+    "stsz",
+    "stco",
+    "co64",
+    "sdtp",
+  ]);
+  function allocation(count: number) {
+    tableEntries += count;
+    ensure(tableEntries <= 100000);
+  }
   const containers = new Set([
     "moov",
     "trak",
@@ -165,7 +184,13 @@ function mp4(bytes: Buffer) {
       sl.end === es.end && sl.end - sl.start === 1 && bytes[sl.start] === 2,
     );
   }
-  function scan(start: number, end: number, depth = 0) {
+  function scan(
+    start: number,
+    end: number,
+    depth = 0,
+    parent = "",
+    tables?: Set<string>,
+  ) {
     ensure(depth <= 8);
     let offset = start;
     while (offset < end) {
@@ -192,11 +217,23 @@ function mp4(bytes: Buffer) {
         ensure(depth === 0);
         mediaRanges.push({ start: p, end: limit });
       }
-      if (containers.has(type)) scan(p, limit, depth + 1);
+      if (type === "moov") ensure(depth === 0 && ++moovs === 1);
+      if (type === "trak") ensure(parent === "moov" && ++tracks <= 2);
+      if (type === "stbl") {
+        ensure(parent === "minf" && !!tables && !tables.has("stbl"));
+        tables!.add("stbl");
+      }
+      if (sampleTables.has(type)) {
+        const slot = type === "stco" || type === "co64" ? "chunkOffsets" : type;
+        ensure(parent === "stbl" && !!tables && !tables.has(slot));
+        tables!.add(slot);
+      }
+      if (containers.has(type))
+        scan(p, limit, depth + 1, type, type === "trak" ? new Set() : tables);
       if (type === "meta") {
         // Full ISO header only; do not let MP4Box choose a different QT child offset.
         ensure(p + 4 <= limit && bytes.readUInt32BE(p) === 0);
-        scan(p + 4, limit, depth + 1);
+        scan(p + 4, limit, depth + 1, type, tables);
       }
       if (type === "esds") {
         ensure(p + 4 <= limit && bytes.readUInt32BE(p) === 0);
@@ -206,6 +243,7 @@ function mp4(bytes: Buffer) {
         ensure(p + 8 <= limit);
         const count = bytes.readUInt32BE(p + 4);
         ensure(count <= 100);
+        allocation(count);
         let q = p + 8;
         for (let i = 0; i < count; i++) {
           ensure(q + 4 <= limit);
@@ -230,6 +268,7 @@ function mp4(bytes: Buffer) {
           q += length;
         }
         ensure(q === limit);
+        allocation(entries);
       }
       if (
         [
@@ -247,6 +286,7 @@ function mp4(bytes: Buffer) {
         ensure(p + 8 <= limit);
         const count = bytes.readUInt32BE(p + 4);
         ensure(count <= 20000);
+        allocation(count);
         if (type === "stsd") {
           ensure(count <= 2);
           let entry = p + 8;
@@ -265,7 +305,7 @@ function mp4(bytes: Buffer) {
             );
             // Version0 audio has the fixed header scanned here; QT extensions are unsupported.
             if (kind === "mp4a") ensure(bytes.readUInt16BE(entry + 16) === 0);
-            scan(entry + fixed, entry + size, depth + 2);
+            scan(entry + fixed, entry + size, depth + 2, kind, tables);
             entry += size;
           }
           ensure(entry === limit);
@@ -303,18 +343,30 @@ function mp4(bytes: Buffer) {
           );
         }
       }
+      if (type === "sdtp") {
+        ensure(p + 4 <= limit && bytes.readUInt32BE(p) === 0);
+        const count = limit - p - 4;
+        ensure(count <= 20000);
+        allocation(count * 4); // MP4Box builds four dependency arrays per byte.
+      }
       if (type === "stsz") {
         ensure(p + 12 <= limit);
         const size = bytes.readUInt32BE(p + 4),
           count = bytes.readUInt32BE(p + 8);
-        ensure(count <= 20000 && (size !== 0 || p + 12 + count * 4 === limit));
+        samples += count;
+        allocation(count);
+        ensure(
+          bytes.readUInt32BE(p) === 0 &&
+            samples <= 20000 &&
+            p + 12 + (size === 0 ? count * 4 : 0) === limit,
+        );
       }
       offset += size;
     }
     ensure(offset === end);
   }
   scan(0, bytes.length);
-  ensure(mediaRanges.length > 0);
+  ensure(mediaRanges.length > 0 && tracks >= 1);
   const file = createFile();
   let parseError = false;
   file.onError = () => {
@@ -410,7 +462,7 @@ export function validateBytes(
   ensure(
     bytes.length === expectedSize &&
       bytes.length > 0 &&
-      bytes.length <= (MIME_LIMITS[expectedMime] ?? 0),
+      bytes.length <= mimeLimit(expectedMime),
   );
   let mime: string, width: number, height: number, duration: number | undefined;
   try {
