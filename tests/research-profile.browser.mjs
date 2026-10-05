@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='research/profiles:get')return window.profile;if(name==='research/profiles:configuration')return window.configuration;if(name==='research/runs:history')return window.orderHistory;if(name==='research/native:availability')return window.sourceAvailability??[];if(name==='research/native:results')return window.sourceResults??[];};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
+  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='research/profiles:get')return window.profile;if(name==='research/profiles:configuration')return window.configuration;if(name==='research/runs:history')return window.orderHistory;if(name==='research/native:availability')return window.sourceAvailability??[];if(name==='research/native:results')return window.sourceResults??[];if(name==='research/evidence:list')return window.evidenceRows??[];};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';`,
   "@/lib/store": `import {useState} from 'react';export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:window.account,workspaceId:window.workspace,name:'Synthetic',channel:'X'}],drafts:[],ideas:[]},createDraft:()=>{throw new Error('No fake real draft');},mutate:()=>{}});`,
 };
@@ -766,6 +766,7 @@ try {
         truncated: false,
         sources: [
           {
+            materialHash: "synthetic-material-1",
             sourceId: "source-one",
             operation: "web-search",
             url: "https://example.test/actual",
@@ -859,13 +860,189 @@ try {
   await expect(
     page.getByRole("button", { name: "Quellensuche ausdrücklich starten" }),
   ).toBeDisabled();
+  await acknowledgedProfile();
+  await page.evaluate(() => {
+    window.orderHistory = {
+      page: [
+        {
+          _id: "evidence-order",
+          createdAt: Date.now(),
+          occasion: "manual",
+          state: "completed",
+          config: { topics: "Evidence topics" },
+          reason: null,
+        },
+      ],
+      isDone: true,
+      continueCursor: "",
+    };
+    window.sourceResults = [
+      {
+        operation: "x-recent",
+        state: "completed",
+        cacheHit: false,
+        query: "Evidence source",
+        language: "de",
+        provider: "x",
+        protocol: "x-post-fields-v2",
+        policyVersion: "synthetic-v1",
+        model: null,
+        reason: null,
+        windowStart: Date.now() - 60000,
+        windowEnd: Date.now(),
+        truncated: false,
+        estimatedMicros: null,
+        currency: "USD",
+        usagePending: true,
+        sources: [
+          {
+            materialHash: "material-first",
+            sourceId: "evidence-source",
+            operation: "x-recent",
+            title: "Evidence delivered source",
+            text: "Actual delivered excerpt",
+            url: "https://example.test/evidence",
+            publishedAt: Date.now() - 60000,
+            observedAt: Date.now(),
+            count: null,
+            usableUntil: Date.now() + 60000,
+          },
+        ],
+      },
+    ];
+    window.render();
+  });
+  await page.getByRole("button", { name: "Quellenbelege anzeigen" }).click();
+  await page
+    .getByText("Evidenz und menschliche Prüfung", { exact: true })
+    .click();
+  await page
+    .getByLabel("Quellenaussage (ungeprüft)", { exact: true })
+    .fill("Human source assertion");
+  await page
+    .getByLabel("Exaktes Zitat aus geliefertem Text (optional)")
+    .fill("Actual delivered excerpt");
+  await page
+    .getByLabel("Eigene Interpretation")
+    .fill("Separate interpretation");
+  await page
+    .getByLabel("Begründete Accountrelevanz")
+    .fill("Relevant to builders");
+  await page.getByLabel("Begründete Neuheit").fill("New to this order");
+  await page
+    .getByLabel("Unsicherheit", { exact: true })
+    .fill("No independent confirmation");
+  await page
+    .getByLabel("Begründung der zeitlichen Gültigkeit")
+    .fill("Review needed");
+  await page.getByRole("button", { name: "Als Review speichern" }).click();
+  const evidenceIntent = await page.evaluate(() => window.commands[0].args);
+  expect(evidenceIntent.expectedMaterialHash).toBe("material-first");
+  expect(evidenceIntent.annotation.claim).toBe("Human source assertion");
+  await expect(page.getByLabel("Eigene Interpretation")).toBeDisabled();
+  await page.evaluate(() => {
+    window.commands[0].reject(new Error("lost evidence ACK"));
+  });
+  await expect(page.getByLabel("Eigene Interpretation")).toBeDisabled();
+  await retry.click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(
+    evidenceIntent,
+  );
+  await page.evaluate((annotation) => {
+    window.evidenceRows = [
+      {
+        evidenceId: "evidence-one",
+        createdAt: Date.now(),
+        state: "review",
+        reason: null,
+        payload: {
+          annotation,
+          perspective: {
+            profileVersionId: "snapshot",
+            audience: "Builders",
+            topics: "Saved topics",
+            project: "Saved project",
+          },
+        },
+        source: window.sourceResults[0].sources[0],
+        proofUntil: Date.now() + 60000,
+        automaticEligible: false,
+        validityUntil: null,
+        assessment: null,
+      },
+    ];
+    window.commands[1].resolve("evidence-one");
+    window.render();
+  }, evidenceIntent.annotation);
+  await expect(
+    page.getByText("Review · keine aktuelle automatische Eignung"),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Interpretation: Separate interpretation"),
+  ).toBeVisible();
+  await page.getByLabel("Gültig bis (lokale Zeit)").fill("2030-01-01T12:00");
+  await page
+    .getByLabel("Regelbegründung")
+    .fill("Explicit publication-age rule");
+  await page
+    .getByLabel(
+      "Ich habe die tatsächliche inhaltliche Unterstützung der Aussage geprüft.",
+    )
+    .check();
+  await page
+    .getByRole("button", { name: "Neue menschliche Prüfung speichern" })
+    .click();
+  expect(await page.evaluate(() => window.commands[2].name)).toBe(
+    "research/evidence:review",
+  );
+  await page.evaluate(() => {
+    window.commands[2].resolve("reviewed-evidence");
+    window.evidenceRows[0] = {
+      ...window.evidenceRows[0],
+      automaticEligible: true,
+      validityUntil: Date.now() + 1200,
+    };
+    window.render();
+  });
+  await expect(
+    page.getByText("Menschlich geprüft · für Research-Kontext gültig"),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Review · keine aktuelle automatische Eignung"),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    window.sourceResults[0].sources[0] = {
+      ...window.sourceResults[0].sources[0],
+      materialHash: "material-replacement",
+    };
+    window.evidenceRows = [];
+    window.render();
+  });
+  await expect(
+    page.getByRole("status").filter({ hasText: "Quellenstand aktualisiert" }),
+  ).toContainText("Quellenstand aktualisiert");
+  await page
+    .getByText("Evidenz und menschliche Prüfung", { exact: true })
+    .click();
+  await expect(page.getByLabel("Eigene Interpretation")).toHaveValue("");
+  await page.evaluate(() => {
+    window.sourceResults[0].sources[0].usableUntil = Date.now() + 500;
+    window.render();
+  });
+  await expect(
+    page.getByText("Quelle abgelaufen; Inhalt ausgeblendet."),
+  ).toBeVisible();
+  await expect(page.getByLabel("Eigene Interpretation")).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Evidence delivered source" }),
+  ).toHaveCount(0);
   await page.goto("http://127.0.0.1:5174/research-fixture?demo=1");
   await expect(
     page.getByText("Weniger Funktionen. Mehr Produkt.").first(),
   ).toBeVisible();
   expect(errors).toEqual([]);
   console.log(
-    "Actual ResearchPage real/Demo PASS: empty/manual/no cap, saved ACK/error/CAS/currency/dirty buffers, exact explicit retries after lost pause/activation/delete/start/stop ACKs, fresh intent keys/revisions after retry or discard, Viewer/late role/account/workspace/unmount fences, actual order/paging; no provider call.",
+    "Actual ResearchPage real/Demo PASS: empty/manual/no cap, saved ACK/error/CAS/currency/dirty buffers, exact explicit retries after lost pause/activation/delete/start/stop ACKs, fresh intent keys/revisions after retry or discard, Viewer/late role/account/workspace/unmount fences, actual order/paging; evidence creation/review, immutable snapshot/retry/material reset and idle validity/source expiry; no provider call.",
   );
 } finally {
   await browser?.close();

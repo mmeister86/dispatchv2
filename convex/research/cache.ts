@@ -1,3 +1,4 @@
+import { clearSourceCopies, materialHash } from "./evidence";
 import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalMutation } from "../_generated/server";
@@ -428,7 +429,11 @@ export const commit = internalMutation({
       const id = old
         ? old._id
         : await ctx.db.insert("researchSources", payload);
-      if (old) await ctx.db.patch(id, payload);
+      if (old) {
+        await ctx.db.patch(id, payload);
+        // ponytail: a 20-source fill clears 10 copies per source here; bounded continuations drain the rest.
+        await clearSourceCopies(ctx, id, await materialHash(old), 10);
+      }
       ids.push(id);
       await ctx.scheduler.runAt(
         payload.usableUntil,
@@ -479,6 +484,7 @@ export const invalidate = workspaceMutation({
       publishedAt: null,
       count: null,
     });
+    await clearSourceCopies(ctx, s!._id);
     return null;
   },
 });
@@ -512,6 +518,7 @@ export const expire = internalMutation({
       publishedAt: null,
       count: null,
     });
+    await clearSourceCopies(ctx, s._id);
     return null;
   },
 });

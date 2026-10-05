@@ -1,3 +1,4 @@
+import { evidenceFields } from "./research/evidenceFields";
 import {
   policyFields as researchSourcePolicyFields,
   sourceFields as researchSourceFields,
@@ -68,6 +69,18 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  researchEvidence: defineTable(evidenceFields)
+    .index("by_orderId_and_createdAt", ["orderId", "createdAt"])
+    .index("by_orderId_and_actorId_and_commandKey", [
+      "orderId",
+      "actorId",
+      "commandKey",
+    ])
+    .index("by_sourceId_and_state_and_materialHash", [
+      "sourceId",
+      "state",
+      "materialHash",
+    ]),
   researchProfiles: defineTable(researchProfileFields).index(
     "by_workspaceId_and_accountId",
     ["workspaceId", "accountId"],

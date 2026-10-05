@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { Evidence } from "./evidence";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
@@ -63,12 +64,41 @@ export function SourceSearch({
       })),
     ),
   );
+  const priorMaterial = useRef({
+    orderId: selectedId,
+    hashes: new Map<string, string>(),
+  });
+  const [changedMaterial, setChangedMaterial] = useState<string[]>([]);
+  const materialSnapshot = JSON.stringify(
+    (results ?? []).flatMap((r) =>
+      r.sources.map((s) => [s.sourceId, s.materialHash]),
+    ),
+  );
+  useEffect(() => {
+    const pairs: [string, string][] = JSON.parse(materialSnapshot);
+    if (priorMaterial.current.orderId !== selectedId) {
+      setChangedMaterial([]);
+    } else {
+      const changed = pairs
+        .filter(
+          ([id, hash]) =>
+            priorMaterial.current.hashes.has(id) &&
+            priorMaterial.current.hashes.get(id) !== hash,
+        )
+        .map(([id]) => id);
+      if (changed.length)
+        setChangedMaterial((previous) => [
+          ...new Set([...previous, ...changed]),
+        ]);
+    }
+    priorMaterial.current = { orderId: selectedId, hashes: new Map(pairs) };
+  }, [selectedId, materialSnapshot]);
   return (
     <Section title="Quellensuche">
       <p>
         Neue ausdrückliche Quellensuche mit gespeichertem Profil und
-        Auftragslimit. Evidenzprüfung, Themencluster und Inbox-Übergabe bleiben
-        nicht verfügbar.
+        Auftragslimit. Evidenz kann manuell erfasst und menschlich geprüft
+        werden; Themencluster und Inbox-Übergabe bleiben nicht verfügbar.
       </p>
       {availability?.map((a) => (
         <p className="mt-2 text-sm" key={a.operation}>
@@ -191,7 +221,8 @@ export function SourceSearch({
                 {r.sources.map((s) =>
                   s.usableUntil <= clock ? (
                     <p key={s.sourceId}>
-                      Quelle abgelaufen; Inhalt ausgeblendet.
+                      Quelle abgelaufen; Inhalt ausgeblendet. Ungespeicherte
+                      Evidenztexte wurden verworfen.
                     </p>
                   ) : (
                     <div key={s.sourceId} className="my-3">
@@ -208,6 +239,13 @@ export function SourceSearch({
                         <p>{s.title}</p>
                       )}
                       {s.text && <p>{s.text}</p>}
+                      {changedMaterial.includes(s.sourceId) && (
+                        <p role="status">
+                          Quellenstand aktualisiert. Ungespeicherte Evidenztexte
+                          wurden verworfen; fehlgeschlagene Anfragen behalten
+                          ihren ursprünglichen Quellenstand.
+                        </p>
+                      )}
                       <p className="text-sm">
                         Beobachtet {new Date(s.observedAt).toISOString()};{" "}
                         {s.publishedAt === null
@@ -219,6 +257,16 @@ export function SourceSearch({
                           : `Snapshotzählung ${s.count}; kein Wachstumsnachweis`}
                         . Quellenmetadaten bestätigen keine Aussage.
                       </p>
+                      <Evidence
+                        key={`${selectedId}:${s.sourceId}:${s.materialHash}`}
+                        workspaceId={workspaceId}
+                        orderId={selectedId}
+                        sourceId={s.sourceId}
+                        materialHash={s.materialHash}
+                        disabled={disabled}
+                        canReview={canInvalidate}
+                        command={command}
+                      />
                       {canInvalidate && (
                         <Button
                           variant="outline"

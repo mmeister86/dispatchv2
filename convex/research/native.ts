@@ -1,3 +1,4 @@
+import { materialHash } from "./evidence";
 import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalMutation, internalQuery } from "../_generated/server";
@@ -375,6 +376,7 @@ export const results = workspaceQuery({
               s.title !== null
             )
               sources.push({
+                materialHash: await materialHash(s),
                 sourceId: s._id,
                 operation: s.operation,
                 url: s.url,

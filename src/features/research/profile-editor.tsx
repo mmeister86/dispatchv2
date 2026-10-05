@@ -682,7 +682,7 @@ function ResearchAccount({
                         (o.state === "completed"
                           ? "Quellensuche beendet; Belege separat prüfen"
                           : "Auftrag wartet auf Prüfung")}{" "}
-                      · Evidenz und Research-Auswertung nicht verfügbar
+                      · Themencluster und Inbox-Übergabe nicht verfügbar
                     </p>
                   </div>
                   <Button

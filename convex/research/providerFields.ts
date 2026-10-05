@@ -129,6 +129,7 @@ export const delivered = v.object({
   count: v.union(v.number(), v.null()),
 });
 export const publicSource = v.object({
+  materialHash: v.string(),
   sourceId: v.id("researchSources"),
   operation,
   url: v.union(v.string(), v.null()),
