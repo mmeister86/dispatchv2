@@ -4,7 +4,7 @@ title: 'Modellzugang, Budgets und sichere Tool-Verträge implementieren (P05.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 14:56'
+updated_date: '2026-10-05 15:39'
 labels:
   - p05
   - r2
@@ -59,6 +59,12 @@ SDK-spezifischer Jev-Code bleibt ausschließlich unter convex/ai/jev. Domain-Cod
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Read final reviewed14/15 source/lifecycle contracts and exact official SDK matrix receipts; verify compatible joint packages. 2. Register only actually used official Agent/runtime and exercise published component test helper with scoped context and embeddings off. 3. Implement concrete durable run/attempt funding and idempotent usage ledger with unknown holds, current-authority and stop barriers before each actual paid call. 4. Add strict bounded tools/structured outputs, fixed generation purposes and independent semantic boundary, retry0 and no fallback. 5. Wire actual configuration/run availability guidance and preserve real-vs-demo states; no paid/provider activation. 6. Verify concurrency, per-attempt settlement, loop/time/token/cost limits, injection/foreign refs and late-stop receipts through actual component/model mock paths plus fullchecks/affectedbrowser. 7. Scoped commits and existingEUDev only afterPASS, selfreview/freeze then independentSPEC andQUALITY; retain manual/fullEU/provider acceptance and noDone.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
@@ -71,4 +77,6 @@ Nur Read-only-Vorbereitung während TASK14, keine AI-Implementierung/Aktivierung
 Additional read-only exact paid-call boundary receipt /tmp/dispatch-ai-sdk6-budget-middleware-current-docs.md:3currentContext7commands identify latestV4 docs, exact official ai6.0.300/provider3.0.18 archives prove V3 wrapGenerate/wrapStream awaiting preflight before actual underlying request. Native concrete middleware can fund own durableattemptID before call; Agent post-result usageHandler still insufficient. Candidate matrix metadata compatible declaredAgent0.6.4 AI6, but finaljointcompile/mockedcomponent required. Noinstall/provider/customerdata activation;17notstarted.
 
 Pinned officialAgent0.6.4 further read-only source evidence: @convex-dev/agent/test exports register(t,name=agent) for real component schema/modules through current convex-test; future matrix must actually run these through-component tests. Generation-only embeddingModel absent prevents automatic message embeddings; searchOtherThreads defaults false and must remain explicit false unless scoped retrieval authorized. Component userId is not workspace/account authority; sharedhuman crossworkspace context needs concrete mapping checks. Receipt /tmp/dispatch-agent-budget-hooks-current-docs.md updated, no17code/paid/embedding/data call.
+
+Implementation authorized now after final reviewedTASK15 source1706c05 SPEC49/QUALITY40PASS. Brief /tmp/dispatch-model-budget-implementation-brief.md and actual .docs/github-signal-domain-contract.md; historicalSignals readability is not model/content purpose authority. Compatible candidate officialAgent0.6.4/ai6.0.300/openai-compatible2.0.81 must jointly compile and run actual published component tests, generation-only embeddings absent/searchOtherThreads:false. Customer generation/search/semantic remain purpose/pricing/fullprocessing-gated; existingkeypresence does not activate. Each actual attempted call requires durable fresh funding/ownattemptID before SDKdoGenerate/doStream; post-result hooks alone insufficient, no paidSDKretry/fallback. No17code beforethisstart or realpaid/manualproof.
 <!-- SECTION:NOTES:END -->

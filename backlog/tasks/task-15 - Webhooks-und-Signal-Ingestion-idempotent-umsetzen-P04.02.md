@@ -4,7 +4,7 @@ title: Webhooks und Signal-Ingestion idempotent umsetzen (P04.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 15:33'
+updated_date: '2026-10-05 15:39'
 labels:
   - p04
   - r2
@@ -36,10 +36,10 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Ein Event erzeugt höchstens ein Signal je berechtigtem Workspace und Ereignis.
-- [ ] #2 Eine globale External-ID-Prüfung unterdrückt nicht versehentlich andere Mandanten.
-- [ ] #3 Ungültige Signaturen erzeugen keine Domain-Daten.
-- [ ] #4 Ein während des Empfängerausfalls gesendeter Push/Release kann nachträglich ohne doppelte Signale verarbeitet werden.
+- [x] #1 Ein Event erzeugt höchstens ein Signal je berechtigtem Workspace und Ereignis.
+- [x] #2 Eine globale External-ID-Prüfung unterdrückt nicht versehentlich andere Mandanten.
+- [x] #3 Ungültige Signaturen erzeugen keine Domain-Daten.
+- [x] #4 Ein während des Empfängerausfalls gesendeter Push/Release kann nachträglich ohne doppelte Signale verarbeitet werden.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -79,4 +79,8 @@ Independent SPEC reproduced a required correction at05ebfd8: disable monitoring 
 Initial independent SPEC verdict NEEDS WORK: one P2 same-millisecond purpose-admission defect. 26 existing checks PASS, six own negatives fivePASS/oneFAIL; real native Fetch stalled-body abort at15sec PASS/no deadline finding. Reproduction /tmp/dispatch-github-signals-spec-negative.test.ts, receipt /tmp/dispatch-github-signals-spec-receipt.md. Fresh focused correction implementer github_signals_fix assigned; automatic admission needs monotone proven ordering, current explicit local recovery/timestamps remain. Independent browser and final SPEC/QUALITY pending. No AC/Done/live claim.
 
 Focused correction frozen1706c05: concrete singleton admission counter, optional receipt/source order, actualeventKey index retaining first admission across semantic reserialization; both purposewriters/common automaticguard. No clock-based ordering, securitysequence remains separate, unknownlegacy requires explicit currentlocalrecovery. 32TASK15/252full checks PASS, fulltype/lint/build/bundle/diff/codegen. ActualReactfixture unknownorderguidance PASS, observed completion17:31:48–approx17:31:55; existingEUDev ready17:31:48. Fresh independentSPEC re-review github_signals_spec_delta underway; QUALITY still gated. No AC/Done/liveclaim.
+
+Final independent SPEC PASS1706c05:49/49 checks=32registeredTASK15+17ownnegatives/delta; savedmillisecondrepro, rollback/semanticcopies/bothwriters/positive2tenant/legacyexplicit/currentauthority PASS. OwnactualReactfixture PASS unknownorderguidance/currentlocalrecovery/pending/provenance/idleexpiry/lateworkspacecleanup; temporaryrepo files/5174closed, user5173retained. Receipt /tmp/dispatch-github-signals-spec-delta-receipt.md. Fresh independentQUALITY github_signals_quality nowstarted; no finalAC/live/manual/Done claim.
+
+Final isolated code acceptance at1706c05: independentSPEC49+ownactualReactPASS and freshQUALITY40(32registered+8own)PASS/nofindings. QUALITY17:38:09 actual beforecleanupdeleted/suspend barrier31tenantfanout, userrevokerefreshfence, delayedcurrentauth andscanlease/header negatives. All4AC checked ONLY synthetic actualHTTP/domain/interceptedrecovery code evidence; realGitHubregistration/signature/wire/outage/redelivery/retention/privacy/manual gates remain open. Review .docs/reviews/task-15-github-signal-validation.md, domain actualinventory includes seventh nativegithubAdmissionOrder plus optionalorderfields/eventindex. Status InProgress, noDone. Next17boundedmodels then18content precede16enrichment.
 <!-- SECTION:NOTES:END -->

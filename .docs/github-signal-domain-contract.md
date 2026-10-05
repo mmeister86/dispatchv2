@@ -80,3 +80,7 @@ The independent SPEC finding was reproduced as two permanent RED tests: disable 
 - Existing EU development activation reports17:31:48 CEST functions ready (3.68s). Optional fields preserve existing schema rows; no fabricated chronology or unbounded tenant snapshot/backfill. No live GitHub/model/provider calls, secret/configuration creation, production or new deployment.
 
 This correction implementer receipt is evidence for the frozen patch, not independent SPEC/QUALITY acceptance. Manual live acceptance and user confirmation remain open; no task status is set Done.
+
+## Independent final review receipt
+
+Final source freeze1706c05 independently passes SPEC49 checks plus its actual affected React fixture and QUALITY40 checks, including eight own before-cleanup revocation/31-tenant continuation, current-role/generation/lifecycle, credential-refresh fence, scan-lease and signed-header discrimination negatives. The initial millisecond purpose-order finding was corrected and independently rechecked. Details and isolated-versus-live scope: `.docs/reviews/task-15-github-signal-validation.md`. This code acceptance does not establish genuine provider delivery/outage/permission/privacy, manual acceptance or Backlog Done.
