@@ -8,6 +8,7 @@
  * @module
  */
 
+import type * as ai_accounting from "../ai/accounting.js";
 import type * as ai_conversationAccess from "../ai/conversationAccess.js";
 import type * as ai_conversations from "../ai/conversations.js";
 import type * as ai_fields from "../ai/fields.js";
@@ -37,6 +38,7 @@ import type * as integrations_x_client from "../integrations/x/client.js";
 import type * as integrations_x_fields from "../integrations/x/fields.js";
 import type * as integrations_x_oauth from "../integrations/x/oauth.js";
 import type * as integrations_x_publish from "../integrations/x/publish.js";
+import type * as integrations_x_research from "../integrations/x/research.js";
 import type * as lib_authorization from "../lib/authorization.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_editorialFields from "../lib/editorialFields.js";
@@ -57,11 +59,18 @@ import type * as publishing_postFields from "../publishing/postFields.js";
 import type * as publishing_reconcile from "../publishing/reconcile.js";
 import type * as publishing_workflows from "../publishing/workflows.js";
 import type * as research_access from "../research/access.js";
+import type * as research_cache from "../research/cache.js";
+import type * as research_execute from "../research/execute.js";
 import type * as research_fields from "../research/fields.js";
+import type * as research_native from "../research/native.js";
 import type * as research_profiles from "../research/profiles.js";
+import type * as research_providerAccess from "../research/providerAccess.js";
+import type * as research_providerFields from "../research/providerFields.js";
 import type * as research_runs from "../research/runs.js";
 import type * as research_schedules from "../research/schedules.js";
 import type * as research_time from "../research/time.js";
+import type * as research_transport from "../research/transport.js";
+import type * as research_webSearch from "../research/webSearch.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -72,6 +81,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  "ai/accounting": typeof ai_accounting;
   "ai/conversationAccess": typeof ai_conversationAccess;
   "ai/conversations": typeof ai_conversations;
   "ai/fields": typeof ai_fields;
@@ -101,6 +111,7 @@ declare const fullApi: ApiFromModules<{
   "integrations/x/fields": typeof integrations_x_fields;
   "integrations/x/oauth": typeof integrations_x_oauth;
   "integrations/x/publish": typeof integrations_x_publish;
+  "integrations/x/research": typeof integrations_x_research;
   "lib/authorization": typeof lib_authorization;
   "lib/crypto": typeof lib_crypto;
   "lib/editorialFields": typeof lib_editorialFields;
@@ -121,11 +132,18 @@ declare const fullApi: ApiFromModules<{
   "publishing/reconcile": typeof publishing_reconcile;
   "publishing/workflows": typeof publishing_workflows;
   "research/access": typeof research_access;
+  "research/cache": typeof research_cache;
+  "research/execute": typeof research_execute;
   "research/fields": typeof research_fields;
+  "research/native": typeof research_native;
   "research/profiles": typeof research_profiles;
+  "research/providerAccess": typeof research_providerAccess;
+  "research/providerFields": typeof research_providerFields;
   "research/runs": typeof research_runs;
   "research/schedules": typeof research_schedules;
   "research/time": typeof research_time;
+  "research/transport": typeof research_transport;
+  "research/webSearch": typeof research_webSearch;
   users: typeof users;
   workspaces: typeof workspaces;
 }>;

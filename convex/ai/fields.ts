@@ -36,7 +36,7 @@ export const budgetFields = {
   ),
   workspaceId: v.optional(v.id("workspaces")),
   accountId: v.optional(v.id("socialAccounts")),
-  purposes: v.array(generationPurpose),
+  purposes: v.array(v.union(generationPurpose, v.literal("native-search"))),
   approvedBy: v.optional(v.id("users")),
   expiresAt: v.number(),
   limitMicros: v.number(),
@@ -75,6 +75,9 @@ export const runFields = {
   errorCode: v.union(v.string(), v.null()),
 };
 export const attemptFields = {
+  owner: v.optional(v.literal("generation")),
+  researchOrderId: v.optional(v.id("researchOrders")),
+  logicalIntent: v.optional(v.string()),
   runId: v.id("agentRuns"),
   workspaceId: v.id("workspaces"),
   key: v.string(),

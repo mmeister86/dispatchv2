@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { nativeOrder } from "./providerFields";
 export const configFields = {
   topics: v.string(),
   project: v.string(),
@@ -61,6 +62,7 @@ export const versionFields = {
   createdAt: v.number(),
 };
 export const orderFields = {
+  native: v.optional(nativeOrder),
   approval,
   workspaceId: v.id("workspaces"),
   accountId: v.id("socialAccounts"),
@@ -88,6 +90,7 @@ export const orderFields = {
     v.literal("running"),
     v.literal("blocked"),
     v.literal("cancelled"),
+    v.literal("completed"),
   ),
   generation: v.number(),
   createdAt: v.number(),
@@ -113,6 +116,7 @@ export const versionDoc = v.object({
   ...versionFields,
 });
 const {
+  native: _native,
   approval: _orderApproval,
   actorId: _orderActor,
   accountSequence: _orderSequence,

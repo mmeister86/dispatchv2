@@ -1,3 +1,4 @@
+import { changeLiability } from "./accounting";
 import {
   conversationAccess,
   conversationAuthority,
@@ -394,12 +395,7 @@ export const fund = internalMutation({
       p.inputMicrosPerMillion,
       p.outputMicrosPerMillion,
     );
-    for (const id of r.budgetIds) {
-      const b = (await ctx.db.get(id))!;
-      if (b.spentMicros + b.heldMicros + reservedMicros > b.limitMicros)
-        throw new ConvexError("MODEL_BUDGET_EXHAUSTED");
-      await ctx.db.patch(id, { heldMicros: b.heldMicros + reservedMicros });
-    }
+    await changeLiability(ctx, r.budgetIds, reservedMicros, 0, true);
     await ctx.db.patch(r._id, { attempts: r.attempts + 1 });
     return ctx.db.insert("aiAttempts", {
       runId: r._id,
@@ -447,6 +443,15 @@ export const settle = internalMutation({
   handler: async (ctx, a) => {
     const attempt = await ctx.db.get(a.attemptId);
     if (!attempt) throw new ConvexError("MODEL_ATTEMPT_NOT_FOUND");
+    if (
+      attempt.owner === "native-search" ||
+      attempt.researchOrderId ||
+      attempt.logicalIntent
+    )
+      throw new ConvexError("MODEL_ATTEMPT_OWNER_INVALID");
+    const ownerRun = await ctx.db.get(attempt.runId);
+    if (!ownerRun || ownerRun.workspaceId !== attempt.workspaceId)
+      throw new ConvexError("MODEL_ATTEMPT_OWNER_INVALID");
     const newCostEvidence =
       (!!a.reportedCostInvalid && !attempt.reportedCostInvalid) ||
       (a.reportedCost !== undefined &&
@@ -476,11 +481,7 @@ export const settle = internalMutation({
         attempt.reservedMicros,
         attempt.estimatedMicros ?? 0,
       );
-      for (const id of attempt.budgetIds) {
-        const b = await ctx.db.get(id);
-        if (!b) throw new ConvexError("MODEL_BUDGET_RECEIPT_MISSING");
-        await ctx.db.patch(id, { heldMicros: b.heldMicros + heldMicros });
-      }
+      await changeLiability(ctx, attempt.budgetIds, heldMicros);
       await ctx.db.patch(attempt._id, {
         state: "unknown",
         heldMicros,
@@ -540,13 +541,11 @@ export const settle = internalMutation({
       attempt.reportedCostInvalid
     ) {
       const heldMicros = Math.max(attempt.reservedMicros, estimatedMicros);
-      for (const id of attempt.budgetIds) {
-        const b = await ctx.db.get(id);
-        if (!b) throw new ConvexError("MODEL_BUDGET_RECEIPT_MISSING");
-        await ctx.db.patch(id, {
-          heldMicros: b.heldMicros + heldMicros - attempt.heldMicros,
-        });
-      }
+      await changeLiability(
+        ctx,
+        attempt.budgetIds,
+        heldMicros - attempt.heldMicros,
+      );
       await ctx.db.patch(attempt._id, {
         state: "unknown",
         inputTokens: a.inputTokens,
@@ -557,14 +556,12 @@ export const settle = internalMutation({
       });
       return null;
     }
-    for (const id of attempt.budgetIds) {
-      const b = await ctx.db.get(id);
-      if (!b) throw new ConvexError("MODEL_BUDGET_RECEIPT_MISSING");
-      await ctx.db.patch(id, {
-        heldMicros: b.heldMicros - attempt.heldMicros,
-        spentMicros: b.spentMicros + estimatedMicros,
-      });
-    }
+    await changeLiability(
+      ctx,
+      attempt.budgetIds,
+      -attempt.heldMicros,
+      estimatedMicros,
+    );
     await ctx.db.patch(attempt._id, {
       state: "settled",
       settledAt: Date.now(),

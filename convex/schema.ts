@@ -1,4 +1,10 @@
 import {
+  policyFields as researchSourcePolicyFields,
+  sourceFields as researchSourceFields,
+  cacheFields as researchCacheFields,
+  nativeAttemptFields,
+} from "./research/providerFields";
+import {
   profileFields as researchProfileFields,
   versionFields as researchVersionFields,
   orderFields as researchOrderFields,
@@ -82,6 +88,18 @@ export default defineSchema({
       "occasion",
       "operationKey",
     ]),
+  researchSourcePolicies: defineTable(researchSourcePolicyFields).index(
+    "by_workspaceId_and_accountId_and_operation",
+    ["workspaceId", "accountId", "operation"],
+  ),
+  researchCaches: defineTable(researchCacheFields).index(
+    "by_workspaceId_and_accountId_and_key",
+    ["workspaceId", "accountId", "key"],
+  ),
+  researchSources: defineTable(researchSourceFields).index(
+    "by_workspaceId_and_accountId_and_operation_and_providerIdentity",
+    ["workspaceId", "accountId", "operation", "providerIdentity"],
+  ),
   conversations: defineTable({
     workspaceId: v.id("workspaces"),
     accountId: v.id("socialAccounts"),
@@ -165,9 +183,13 @@ export default defineSchema({
     "workspaceId",
     "createdAt",
   ]),
-  aiAttempts: defineTable(aiAttemptFields)
+  aiAttempts: defineTable(
+    v.union(v.object(aiAttemptFields), v.object(nativeAttemptFields)),
+  )
     .index("by_runId_and_key", ["runId", "key"])
-    .index("by_runId_and_state", ["runId", "state"]),
+    .index("by_runId_and_state", ["runId", "state"])
+    .index("by_researchOrderId_and_key", ["researchOrderId", "key"])
+    .index("by_logicalIntent", ["logicalIntent"]),
   githubContexts: defineTable(contextFields)
     .index("by_workspaceId_and_actorId_and_operationKey", [
       "workspaceId",

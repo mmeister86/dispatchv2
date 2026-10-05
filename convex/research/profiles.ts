@@ -17,6 +17,7 @@ import {
 } from "./access";
 import { sha256 } from "../lib/crypto";
 import { validPolicy } from "../ai/runs";
+import { policy as nativePolicy } from "./providerAccess";
 import { cancelSchedule, planSchedule } from "./schedules";
 const editable = ["Owner", "Admin", "Editor"] as const;
 export const get = workspaceQuery({
@@ -50,16 +51,36 @@ export const get = workspaceQuery({
   },
 });
 export const configuration = workspaceQuery({
-  args: {},
+  args: { accountId: v.optional(v.id("socialAccounts")) },
   returns: v.object({
+    currencies: v.optional(v.array(v.string())),
     currency: v.union(v.string(), v.null()),
     downstreamAvailable: v.literal(false),
   }),
-  handler: async (ctx) => {
+  handler: async (ctx, a) => {
     const p = await pricing(ctx);
+    const currencies =
+      validPolicy(p) && p!.purposes.includes("research") ? [p!.currency] : [];
+    if (a.accountId) {
+      await account(ctx, ctx.workspace._id, a.accountId);
+      for (const op of ["x-recent", "x-trends", "web-search"] as const) {
+        try {
+          const native = await nativePolicy(
+            ctx,
+            ctx.workspace._id,
+            a.accountId,
+            op,
+          );
+          if (!currencies.includes(native.currency))
+            currencies.push(native.currency);
+        } catch {
+          /* Missing native permission stays unavailable. */
+        }
+      }
+    }
     return {
-      currency:
-        validPolicy(p) && p!.purposes.includes("research") ? p!.currency : null,
+      currencies,
+      currency: currencies.length === 1 ? currencies[0] : null,
       downstreamAvailable: false as const,
     };
   },
@@ -176,7 +197,7 @@ export const change = workspaceMutation({
       (nextConfig.cap?.currency !== version.config.cap?.currency ||
         nextConfig.cap?.limitMicros !== version.config.cap?.limitMicros)
     )
-      await validateCurrency(ctx, nextConfig);
+      await validateCurrency(ctx, nextConfig, p.workspaceId, p.accountId);
     let approval = null,
       sequence = null;
     if (a.action.kind === "activate") {

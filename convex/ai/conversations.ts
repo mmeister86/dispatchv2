@@ -636,10 +636,21 @@ export const status = query({
         const runs = await Promise.all(
           [...op.runIds].reverse().map(async (id) => ({
             r: (await ctx.db.get(id))!,
-            attempts: await ctx.db
-              .query("aiAttempts")
-              .withIndex("by_runId_and_key", (q) => q.eq("runId", id))
-              .take(10),
+            attempts: (
+              await ctx.db
+                .query("aiAttempts")
+                .withIndex("by_runId_and_key", (q) => q.eq("runId", id))
+                .take(10)
+            ).map((attempt) => {
+              if (
+                attempt.owner === "native-search" ||
+                attempt.researchOrderId ||
+                attempt.logicalIntent ||
+                attempt.workspaceId !== c.workspaceId
+              )
+                throw new ConvexError("MODEL_ATTEMPT_OWNER_INVALID");
+              return attempt;
+            }),
           })),
         );
         const operationUsagePending = runs.some((x) =>

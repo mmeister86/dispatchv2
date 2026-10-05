@@ -8,6 +8,7 @@ import {
 } from "../lib/authorization";
 import { validPolicy } from "../ai/runs";
 import { sha256 } from "../lib/crypto";
+import { policy as nativePolicy } from "./providerAccess";
 import { validateClock } from "./time";
 export function operationKey(k: string) {
   if (!/^[A-Za-z0-9_-]{8,100}$/.test(k))
@@ -117,15 +118,30 @@ export async function pricing(ctx: QueryCtx) {
 export async function validateCurrency(
   ctx: QueryCtx,
   c: Doc<"researchProfileVersions">["config"],
+  ws?: Id<"workspaces">,
+  accountId?: Id<"socialAccounts">,
 ) {
   if (!c.cap) return;
   const p = await pricing(ctx);
   if (
-    !validPolicy(p) ||
-    !p!.purposes.includes("research") ||
-    p!.currency !== c.cap.currency
+    validPolicy(p) &&
+    p!.purposes.includes("research") &&
+    p!.currency === c.cap.currency
   )
-    throw new ConvexError("RESEARCH_PRICING_CONFIGURATION_REQUIRED");
+    return;
+  if (ws && accountId)
+    for (const op of ["x-recent", "x-trends", "web-search"] as const) {
+      try {
+        if (
+          (await nativePolicy(ctx, ws, accountId, op)).currency ===
+          c.cap.currency
+        )
+          return;
+      } catch {
+        /* A missing source never grants pricing. */
+      }
+    }
+  throw new ConvexError("RESEARCH_PRICING_CONFIGURATION_REQUIRED");
 }
 // Reads existing generation grants only. This is neither search permission nor a reservation.
 export async function prerequisites(

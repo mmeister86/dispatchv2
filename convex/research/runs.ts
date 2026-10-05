@@ -214,6 +214,7 @@ export const history = workspaceQuery({
     return {
       page: result.page.map(
         ({
+          native,
           approval,
           actorId,
           accountSequence,
