@@ -1484,6 +1484,62 @@ test("actual combined source selection records omitted per-operation coverage in
   expect(JSON.stringify(messages.page)).toContain("sourceCoverage");
   expect(globalThis.fetch).toHaveBeenCalledTimes(2);
 });
+test("successful empty semantic output with bounded source omissions remains partial", async () => {
+  const f = await pipelineFixture(20000, ["x-recent", "web-search"]);
+  const calls = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async (url, init) => {
+      if (String(url).startsWith("https://api.x.com/"))
+        return Response.json({
+          data: Array.from({ length: 10 }, (_, i) => ({
+            id: String(4000 + i),
+            text: `Independent X source ${i}`,
+            created_at: new Date(Date.now() - 1000).toISOString(),
+          })),
+          meta: { result_count: 10 },
+        });
+      const body = JSON.parse(String(init?.body));
+      if (body.tools?.[0]?.type === "web_search")
+        return streamResponse(
+          Array.from({ length: 10 }, (_, i) => ({
+            url: `https://empty-coverage${i}.test/news`,
+            title: `Independent Web ${i}`,
+          })),
+        );
+      return Response.json({
+        id: "empty-semantic",
+        object: "chat.completion",
+        model: "synthetic/model",
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: JSON.stringify({ text: '{"items":[]}' }),
+            },
+            finish_reason: "stop",
+          },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+      });
+    });
+  const id = await f.start();
+  await driveUntil(f, id, (o) => o.state === "completed");
+  const o = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  const run = (await f.t.run((ctx) => ctx.db.get(o.pipeline!.runId!)))!;
+  const row = (await f.signed.query(api.research.pipeline.results, {
+    workspaceId: f.workspaceId,
+    orderId: id,
+  }))!;
+  expect(calls).toHaveBeenCalledTimes(3);
+  expect(o.native!.outcomes.every((x) => x.state === "completed")).toBe(true);
+  expect(run.state).toBe("completed");
+  expect(row.results).toEqual([]);
+  expect(row.sourceCoverage!.reduce((n, c) => n + c.omitted, 0)).toBe(10);
+  expect(row.historyIncomplete).toBe(true);
+  expect(row.outcome).toBe("partial");
+  expect(o.reason).toBe("RESEARCH_PARTIAL");
+});
 test("new topic identifiers are bounded local declarations and cannot also select an existing or foreign cluster", () => {
   const s = {
       sourceId: "source" as Id<"researchSources">,

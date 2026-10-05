@@ -855,14 +855,14 @@ export const finish = internalMutation({
     const incomplete = (o.pipeline!.sourceCoverage ?? []).some(
       (c) => c.omitted > 0,
     );
-    const failed =
-      incomplete ||
-      outcomes.some((x) => !["completed", "empty"].includes(x.state));
+    const failed = outcomes.some(
+      (x) => !["completed", "empty"].includes(x.state),
+    );
     const outcome =
       o.pipeline!.outcome !== "pending"
         ? o.pipeline!.outcome
         : o.pipeline!.evidenceIds.length
-          ? failed
+          ? failed || incomplete
             ? "partial"
             : "completed"
           : outcomes.some((x) => x.state === "budget_exhausted")
@@ -871,7 +871,9 @@ export const finish = internalMutation({
               ? outcomes.every((x) => x.state === "configuration_required")
                 ? "configuration_required"
                 : "failed"
-              : "empty";
+              : incomplete
+                ? "partial"
+                : "empty";
     const p = await ctx.db.get(o.profileId);
     await ctx.db.patch(o._id, {
       state: "completed",
