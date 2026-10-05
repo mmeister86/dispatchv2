@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 19:03'
+updated_date: '2026-10-05 19:06'
 labels:
   - p06
   - r2
@@ -47,6 +47,17 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Read final reviewed TASK20 profile/order contract, TASK17 finance ownership, TASK10 credential guards and current X/Requesty primary documentation; derive concrete stable order/step identity and actual operation pricing rather than generation-token fiction.
+2. Implement independent bounded native X recent-search/trend and Requesty source-stream adapters with current tenant/actor/account/purpose/capability/processing/pricing evidence, no retries or unverified fallback; extend existing aiBudgets/aiAttempts accounting for concrete paid search operations and cumulative actual-currency order limits.
+3. Add minimum current-authorized scoped cache/fill ownership and actual source lifecycle/invalidation barriers, preserving partial/empty/failed/unknown distinctions; old prepared schedules and historical blocked orders never become paid work without explicit native reactivation.
+4. Connect actual Research availability, capabilities and source results to the existing real UI, preserving dirty inputs/receipts and truthful unknown usage/trends. Research evidence/clustering and Inbox handoff remain TASK22/23.
+5. Verify actual funded state inside intercepted physical I/O, no duplicate cache fills or erased unknown liabilities, cumulative cap/three-scope races, late settlement, source-removal and authority changes, SSE corruption/EOF/limits, independent source failures and current real UI; run affected regressions/type/lint/build/bundle/official codegen and existing EU Dev sync only after green checks.
+6. Scoped commits and source freeze, fresh SPEC then fresh QUALITY and corrections/re-review. Record isolated code acceptance only after proof; no provider/policy/budget activation, live invoice/rights claim or Backlog Done without manual user confirmation.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
