@@ -4,7 +4,7 @@ title: Persistenten Chat und nachvollziehbare Agent-Arbeit liefern (P05.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 18:18'
+updated_date: '2026-10-05 18:30'
 labels:
   - p05
   - r2
@@ -35,10 +35,10 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Reload erhält Gespräch und erzeugte Objekte.
-- [ ] #2 auch eine nach Abbruch fertig werdende Action darf keine neuen Content-/Planungsobjekte anlegen.
-- [ ] #3 Ergebnis-, Fehler- und Verbrauchsabgleich bleiben zulässig.
-- [ ] #4 Ein Nutzer kann einen anderen Component-Thread nicht über erratene IDs lesen.
+- [x] #1 Reload erhält Gespräch und erzeugte Objekte.
+- [x] #2 auch eine nach Abbruch fertig werdende Action darf keine neuen Content-/Planungsobjekte anlegen.
+- [x] #3 Ergebnis-, Fehler- und Verbrauchsabgleich bleiben zulässig.
+- [x] #4 Ein Nutzer kann einen anderen Component-Thread nicht über erratene IDs lesen.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -79,4 +79,6 @@ Fresh QUALITY confirmed P2 authorization bypass at convex/ai/runs.ts public stop
 Initial full QUALITY frozen NEEDS FIXES: exactlyone confirmed P2 common-stop personal actor bypass, no additional actionable finding.109 registered/5files pass, own9PASS/1RED, both affected real-component browser fixtures pass; no own native-hook browser claim. Full /tmp/dispatch-chat-quality-receipt.md preserves red source/log, all-caller tracing and actual clarified human draft handoff after harness API-name correction. Original implementer authorized minimal shared guard plus exact-old-run native abort, before state returns, retaining nonchat behavior and late liability. Newsource will freeze for re-SPEC then QUALITY re-review; no code AC/manual/Done claim.
 
 Minimal correction frozen8e5a6b44bd50ce4bb6104b33b4d3604655ed7524 exact3files: shared runs.stop verifies personal conversation/account/actor plus run mapping before terminal returns, then domainfence+existing nativeabort expectedRunID. Financial recent/nonchat behavior unchanged. Seven registeredcases reproducedsix failures then pass; full368/25(28chat), targeted38/2/type/lint/build/bundle/diff/officialcodegen pass. ExistingEUDev ready20:16:55/4.44s; UI unchanged/prior browser receipts separate, inventory unchanged. Independent re-SPEC nowrunning; QUALITY re-review onlyafterPASS. Originalredreceipts retained/no AC or Done until bothreviews/manualapproval asapplicable.
+
+Final independent re-SPEC and QUALITY PASS at8e5a6b44bd50ce4bb6104b33b4d3604655ed7524. Both116 affected/5 files;33 SPECown and26 QUALITYown actual auth/component/native/physical cases, countsnotcombined acrossoverlap. InitialSPECmissedalternate publicstop acknowledged; initialQUALITYP2/redsource/log retained. Correctedpersonalactor/accountmapping precedesALLstate returns; exactoldnativeabort; originalownerhalt afterprivateprocessingwithdrawal; legacy nonchatstop/current lateusage/unknownhold preserved. .docs/reviews/task-19-agent-chat-validation.md finalcodeevidence and exactreviewreceipts. AC1–4 checked CODEonly afterbothreviews: persistence/actualobjects, stalecontentfences, independentresult/error/usage receipts, foreignnativeID denial. Liveprovider/model/processing/pricing/invoice/currency/manualJ03 and later31/33/36 remainopen. Status InProgress/DoDhumanapproval unchanged; noDone. TASK20 codeimplementation next under formalD02.
 <!-- SECTION:NOTES:END -->
