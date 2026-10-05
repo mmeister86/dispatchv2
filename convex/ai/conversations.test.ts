@@ -951,3 +951,146 @@ test("actual continuation receives completed idea receipt and cannot offer creat
   expect(page.page.filter((m) => m.role === "user")).toHaveLength(1);
   expect(page.page.some((m) => m.text.includes("vorherige Idee"))).toBe(true);
 });
+test.each(["ready", "running", "stopped", "completed", "failed"] as const)(
+  "generic stop denies a second real Editor for another actor's %s personal chat",
+  async (state) => {
+    const f = await fixture(),
+      runId = await f.send();
+    const identity = await f.t.run(async (ctx) => {
+      const user = await ctx.runMutation(components.betterAuth.adapter.create, {
+        input: {
+          model: "user",
+          data: {
+            name: "Second Editor",
+            email: "second-chat-editor@example.test",
+            emailVerified: true,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          },
+        },
+      });
+      const session = await ctx.runMutation(
+        components.betterAuth.adapter.create,
+        {
+          input: {
+            model: "session",
+            data: {
+              userId: user._id,
+              token: crypto.randomUUID(),
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              expiresAt: Date.now() + 86400000,
+            },
+          },
+        },
+      );
+      return { subject: user._id, sessionId: session._id };
+    });
+    const other = f.t.withIdentity(identity),
+      userId = await other.mutation(api.users.bootstrap, {});
+    await f.t.run(async (ctx) => {
+      await ctx.db.insert("memberships", {
+        userId,
+        workspaceId: f.workspaceId,
+        role: "Editor",
+      });
+      await ctx.db.patch(runId, { state });
+    });
+    expect(
+      (
+        await other.query(api.ai.runs.recent, { workspaceId: f.workspaceId })
+      ).some((r) => r.runId === runId),
+    ).toBe(true);
+    await expect(
+      other.mutation(api.ai.conversations.stop, f.target),
+    ).rejects.toThrow("CHAT_ACCESS_DENIED");
+    await expect(
+      other.mutation(api.ai.runs.stop, { workspaceId: f.workspaceId, runId }),
+    ).rejects.toThrow("CHAT_ACCESS_DENIED");
+    expect((await f.t.run((ctx) => ctx.db.get(runId)))!).toMatchObject({
+      state,
+      generation: 1,
+    });
+  },
+);
+test("authorized generic chat stop fences the run and aborts actual native streaming without losing late usage", async () => {
+  const f = await fixture(),
+    runId = await f.send(),
+    control = await claim(f, runId);
+  const c = (await f.t.run((ctx) => ctx.db.get(f.conversationId)))!;
+  const streamId = await f.t.mutation(components.agent.streams.create, {
+    threadId: c.threadId,
+    order: 0,
+    stepOrder: 0,
+    format: "TextStreamPart",
+  });
+  const attemptId = await f.t.mutation(internal.ai.runs.fund, {
+    ...control,
+    key: "generic-stop-late-usage",
+  });
+  await f.signed.mutation(api.ai.runs.stop, {
+    workspaceId: f.workspaceId,
+    runId,
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(runId)))!).toMatchObject({
+    state: "stopped",
+    generation: 2,
+  });
+  const abort = (
+    await f.t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect(),
+    )
+  ).find((job) => job.name.includes("conversations:abortStreams"));
+  expect(abort?.args[0]).toEqual({
+    conversationId: c._id,
+    expectedRunId: runId,
+  });
+  await f.t.mutation(internal.ai.conversations.abortStreams, abort!.args[0]);
+  const streams = await f.t.query(components.agent.streams.list, {
+    threadId: c.threadId,
+    statuses: ["aborted"],
+  });
+  expect(streams.some((s) => s.streamId === streamId)).toBe(true);
+  await f.t.mutation(internal.ai.runs.settle, {
+    attemptId,
+    inputTokens: 10,
+    outputTokens: 20,
+    errorCode: null,
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(attemptId)))!).toMatchObject({
+    state: "settled",
+    estimatedMicros: 30,
+    heldMicros: 0,
+  });
+});
+test("delayed generic-stop abort cannot abort the newer actual continuation", async () => {
+  const f = await fixture(),
+    runId = await f.send();
+  await f.signed.mutation(api.ai.runs.stop, {
+    workspaceId: f.workspaceId,
+    runId,
+  });
+  const op = (await f.t.run((ctx) => ctx.db.query("chatOperations").first()))!;
+  const resumed = await f.signed.mutation(api.ai.conversations.resume, {
+    ...f.target,
+    operationId: op._id,
+    expectedRunId: runId,
+  });
+  const c = (await f.t.run((ctx) => ctx.db.get(f.conversationId)))!;
+  const streamId = await f.t.mutation(components.agent.streams.create, {
+    threadId: c.threadId,
+    order: 0,
+    stepOrder: 0,
+    format: "TextStreamPart",
+  });
+  await f.t.mutation(internal.ai.conversations.abortStreams, {
+    conversationId: c._id,
+    expectedRunId: runId,
+  });
+  const streams = await f.t.query(components.agent.streams.list, {
+    threadId: c.threadId,
+    statuses: ["streaming"],
+  });
+  expect(streams.some((s) => s.streamId === streamId)).toBe(true);
+  expect((await f.t.run((ctx) => ctx.db.get(resumed)))!.state).toBe("ready");
+});

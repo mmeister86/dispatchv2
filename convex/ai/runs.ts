@@ -1,4 +1,7 @@
-import { conversationAuthority } from "./conversationAccess";
+import {
+  conversationAccess,
+  conversationAuthority,
+} from "./conversationAccess";
 import { currentContext } from "../integrations/github/contextAccess";
 import { ConvexError, v } from "convex/values";
 import { createThread, saveMessage } from "@convex-dev/agent";
@@ -10,7 +13,7 @@ import {
   type QueryCtx,
   type MutationCtx,
 } from "../_generated/server";
-import { components } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   requireActiveWorkspace,
@@ -648,10 +651,28 @@ export const stop = mutation({
     requireRole(membership, ["Owner", "Admin", "Editor"]);
     const r = await ctx.db.get(a.runId);
     requireReference(a.workspaceId, r);
+    if (r!.conversationId || r!.purpose === "chat") {
+      if (!r!.conversationId || !r!.accountId)
+        throw new ConvexError("CHAT_RUN_CHANGED");
+      const { c } = await conversationAccess(
+        ctx,
+        a.workspaceId,
+        r!.accountId,
+        r!.conversationId,
+        true,
+      );
+      if (c.actorId !== r!.actorId || c.threadId !== r!.threadId)
+        throw new ConvexError("CHAT_RUN_CHANGED");
+    }
     if (r!.state === "ready" || r!.state === "running")
       await ctx.db.patch(r!._id, {
         state: "stopped",
         generation: r!.generation + 1,
+      });
+    if (r!.conversationId)
+      await ctx.scheduler.runAfter(0, internal.ai.conversations.abortStreams, {
+        conversationId: r!.conversationId,
+        expectedRunId: r!._id,
       });
     return null;
   },
