@@ -4,7 +4,7 @@ title: Webhooks und Signal-Ingestion idempotent umsetzen (P04.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 15:24'
+updated_date: '2026-10-05 15:33'
 labels:
   - p04
   - r2
@@ -73,4 +73,10 @@ Resolved security occurrence ambiguity with implementer: App-user revoked body h
 Implementation scope clarification: a fresh explicit Owner/Admin local recovery command may consume an already durable signed receipt after renewed current source proof, with exact source generation, actor/lifecycle/purpose and observed provider/installation/repository/privacy checks. It does not rebind old background work automatically, invent original timestamps, send another provider POST or reset cumulative GUID attempt/cooldown limits. Known delivery-GUID repeats remain idempotent; indistinguishable new-GUID security occurrences conservatively close authority again. Independent reviews verify these boundaries after source freeze. No live/manual acceptance or Done.
 
 Implementer frozen on master05ebfd8 (backend22f4f70), commit window closed/index empty. 246 registered checks/20 files PASS, 26 new TASK15 checks15webhook+11recovery; type/lint/build/bundle/diff PASS. Actual affected Chrome/React fixture completed17:22:17 CEST; existing EU Dev officially activated17:22:59 CEST. Separate tenant signals, immediate monotone barriers, global GUID cooldown/max3 and explicit local admission with current source authority verified synthetically. Fresh independent SPEC started; QUALITY follows acceptance. Review .docs/reviews/task-15-github-signal-validation.md; no live/manual/provider/privacy acceptance or Done.
+
+Independent SPEC reproduced a required correction at05ebfd8: disable monitoring generation2, accept signed Push202, enable generation3 with identical Date.now, actual automatic processor produces a signal despite later purpose grant. Wallclock equality must not grant retroactive automatic authority; explicit authorized local recovery remains separate. Independent deadline negatives still being completed. Acceptance criteria remain unchecked until correction/re-review; no manual/provider acceptance or Done.
+
+Initial independent SPEC verdict NEEDS WORK: one P2 same-millisecond purpose-admission defect. 26 existing checks PASS, six own negatives fivePASS/oneFAIL; real native Fetch stalled-body abort at15sec PASS/no deadline finding. Reproduction /tmp/dispatch-github-signals-spec-negative.test.ts, receipt /tmp/dispatch-github-signals-spec-receipt.md. Fresh focused correction implementer github_signals_fix assigned; automatic admission needs monotone proven ordering, current explicit local recovery/timestamps remain. Independent browser and final SPEC/QUALITY pending. No AC/Done/live claim.
+
+Focused correction frozen1706c05: concrete singleton admission counter, optional receipt/source order, actualeventKey index retaining first admission across semantic reserialization; both purposewriters/common automaticguard. No clock-based ordering, securitysequence remains separate, unknownlegacy requires explicit currentlocalrecovery. 32TASK15/252full checks PASS, fulltype/lint/build/bundle/diff/codegen. ActualReactfixture unknownorderguidance PASS, observed completion17:31:48–approx17:31:55; existingEUDev ready17:31:48. Fresh independentSPEC re-review github_signals_spec_delta underway; QUALITY still gated. No AC/Done/liveclaim.
 <!-- SECTION:NOTES:END -->
