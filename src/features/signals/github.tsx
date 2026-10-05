@@ -1,3 +1,4 @@
+import { SignalContext } from "./context";
 import { SignalIdeaHandoff } from "@/features/ideas/signal-handoff";
 import { useAction, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
@@ -37,6 +38,7 @@ export function GithubSignals() {
       workspaceId={state.activeWorkspaceId as Id<"workspaces">}
       manage={["Owner", "Admin"].includes(state.role)}
       write={state.role !== "Viewer"}
+      accountId={(state.activeAccountId || null) as Id<"socialAccounts"> | null}
     />
   );
 }
@@ -44,10 +46,12 @@ function GithubSignalWorkspace({
   workspaceId,
   manage,
   write,
+  accountId,
 }: {
   workspaceId: Id<"workspaces">;
   manage: boolean;
   write: boolean;
+  accountId: Id<"socialAccounts"> | null;
 }) {
   const [cursor, setCursor] = useState<string | null>(null),
     [recoveryCursor, setRecoveryCursor] = useState<string | null>(null);
@@ -139,10 +143,11 @@ function GithubSignalWorkspace({
           </p>
         )}
         <p className="text-xs muted">
-          Nur begrenzte Ereignismetadaten werden gespeichert. Dateien, Diffs und
-          Release-Texte werden nicht übernommen. Dateien-/Diff-Anreicherung ist
-          noch nicht verfügbar. Aktuell freigegebene Originalfakten lassen sich
-          ausdrücklich als Idee übernehmen.
+          Signierte Originalfakten bleiben unabhängig von KI erhalten. Separate
+          Patch-Lese-Freigabe erlaubt ausgewählte begrenzte Push-Auszüge;
+          Modellweitergabe benötigt anschließend deine konkrete Hash-Freigabe
+          und nachgewiesene Konfiguration. Release-Texte und vollständige
+          Dateien werden nicht geladen.
         </p>
       </Section>
       {!signals ? (
@@ -192,6 +197,26 @@ function GithubSignalWorkspace({
                 </p>
               )}
               <p className="text-xs muted">Zustellung: {s.guid}</p>
+              <SignalContext
+                key={s._id}
+                workspaceId={workspaceId}
+                signalId={s._id}
+                generation={
+                  current.find((r) => r._id === s.repositoryId)?.generation ?? 0
+                }
+                allowed={
+                  write &&
+                  current.some(
+                    (r) =>
+                      r._id === s.repositoryId &&
+                      r.fullName === s.fullName &&
+                      r.private === s.private &&
+                      r.content &&
+                      r.contextRead,
+                  )
+                }
+                accountId={accountId}
+              />
               <SignalIdeaHandoff
                 workspaceId={workspaceId}
                 signalId={s._id}

@@ -9,7 +9,7 @@ const mocks = {
  const status=async()=>({configured:window.configured,installationConfigured:false,redirectUri:'https://dispatch.example/integrations/github/callback'});
  const command=args=>new Promise((resolve,reject)=>window.commands.push({resolve,reject,args}));
  export const useAction=ref=>getFunctionName(ref).endsWith(':callback')?callback:getFunctionName(ref).endsWith(':status')?status:command;
- export const useMutation=()=>command; export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);if(name==='content/signals:list')return args.paginationOpts.cursor?window.olderSignals:window.signals;if(name==='content/signals:recoveries')return window.recoveries;if(name.endsWith(':scanStatus'))return window.scan;return window.sources;};`,
+ export const useMutation=()=>command; export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);if(name==='integrations/github/context:latest')return [];if(name==='content/signals:list')return args.paginationOpts.cursor?window.olderSignals:window.signals;if(name==='content/signals:recoveries')return window.recoveries;if(name.endsWith(':scanStatus'))return window.scan;return window.sources;};`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';`,
   "@/lib/store": `import {useState} from 'react'; export const useStore=()=>({state:{activeWorkspaceId:window.workspace,role:window.role,accounts:[],ideas:[]},setState:()=>false}); export const useWorkspaceLocalState=(key,initial)=>useState(initial);`,
 };
@@ -177,6 +177,11 @@ try {
     .getByRole("checkbox", { name: "Redaktionelle Content-Aufträge erlauben" })
     .check();
   await page
+    .getByRole("checkbox", {
+      name: "Ausdrücklich ausgewählte Patch-Auszüge lesen (GitHub Contents-read nötig)",
+    })
+    .check();
+  await page
     .getByRole("textbox", {
       name: "Ausdrücklich kommunizierbarer Projektkontext",
     })
@@ -184,6 +189,9 @@ try {
   await page.getByRole("button", { name: "Einstellungen speichern" }).click();
   await page.waitForFunction(() => window.commands.length === 1);
   expect(await page.evaluate(() => window.commands[0].args.content)).toBe(true);
+  expect(await page.evaluate(() => window.commands[0].args.contextRead)).toBe(
+    true,
+  );
   await expect(
     page.getByRole("button", { name: "Einstellungen speichern" }),
   ).toBeDisabled();

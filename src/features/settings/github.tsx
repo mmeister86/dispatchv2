@@ -71,6 +71,7 @@ function RepositorySettings({
   const [access, setAccess] = useState(source.access),
     [monitoring, setMonitoring] = useState(source.monitoring),
     [content, setContent] = useState(source.content),
+    [contextRead, setContextRead] = useState(source.contextRead ?? false),
     [context, setContext] = useState(source.communicableContext);
   return (
     <article className="border rounded-lg p-4 stack">
@@ -98,6 +99,7 @@ function RepositorySettings({
             if (!v) {
               setMonitoring(false);
               setContent(false);
+              setContextRead(false);
             }
           }}
         />
@@ -109,7 +111,10 @@ function RepositorySettings({
           disabled={busy || !access || !source.authorized}
           onCheckedChange={(v) => {
             setMonitoring(Boolean(v));
-            if (!v) setContent(false);
+            if (!v) {
+              setContent(false);
+              setContextRead(false);
+            }
           }}
         />
         Ereignismetadaten überwachen
@@ -118,9 +123,21 @@ function RepositorySettings({
         <Checkbox
           checked={content}
           disabled={busy || !access || !monitoring || !source.authorized}
-          onCheckedChange={(v) => setContent(Boolean(v))}
+          onCheckedChange={(v) => {
+            setContent(Boolean(v));
+            if (!v) setContextRead(false);
+          }}
         />
         Redaktionelle Content-Aufträge erlauben
+      </label>
+      <label className="flex items-center gap-2">
+        <Checkbox
+          checked={contextRead}
+          disabled={busy || !content || !source.authorized}
+          onCheckedChange={(v) => setContextRead(Boolean(v))}
+        />
+        Ausdrücklich ausgewählte Patch-Auszüge lesen (GitHub Contents-read
+        nötig)
       </label>
       <label>
         <span className="field-label">
@@ -135,8 +152,9 @@ function RepositorySettings({
         />
       </label>
       <p className="text-xs muted">
-        {source.private ? "Private Dateien und Diffs bleiben gesperrt. " : ""}
-        Diese Freigabe betrifft nur Ereignismetadaten und deinen Projektkontext.
+        Ausgewählte Patch-Auszüge benötigen die separate Lese-Freigabe und vor
+        jeder Modellweitergabe deine Prüfung des konkreten Kontext-Hashes. Es
+        werden keine vollständigen Dateien oder Repositories geladen.
         Modellverarbeitung benötigt gesonderte Zustimmung und einen
         nachgewiesenen zulässigen Verarbeitungsweg. Signierte Push- und
         Release-Metadaten werden bei aktueller Monitoring-Freigabe eingelesen;
@@ -157,6 +175,7 @@ function RepositorySettings({
                   access,
                   monitoring,
                   content,
+                  contextRead,
                   communicableContext: context,
                 }),
               "Quellen-Einstellungen gespeichert.",

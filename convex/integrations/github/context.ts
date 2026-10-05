@@ -220,7 +220,11 @@ export const commit = internalMutation({
 export const latest = workspaceQuery({
   args: { signalId: v.id("githubSignals") },
   returns: v.array(
-    v.object({ ...doc.fields, runState: v.union(runFields.state, v.null()) }),
+    v.object({
+      ...doc.fields,
+      runState: v.union(runFields.state, v.null()),
+      canApprove: v.boolean(),
+    }),
   ),
   handler: async (ctx, a) => {
     requireReference(ctx.workspace._id, await ctx.db.get(a.signalId));
@@ -236,6 +240,9 @@ export const latest = workspaceQuery({
         const run = c.runId ? await ctx.db.get(c.runId) : null;
         visible.push({
           ...c,
+          canApprove:
+            c.actorId === ctx.user._id &&
+            write.includes(ctx.membership.role as (typeof write)[number]),
           runState:
             run &&
             run.workspaceId === c.workspaceId &&
@@ -398,15 +405,7 @@ export const commitSummary = internalMutation({
       throw new ConvexError("GITHUB_SUMMARY_INVALID");
     const outputHash = await sha256(a.output);
     if (c.decision !== "pending") {
-      if (
-        c.outputHash !== outputHash ||
-        c.summary !== p.summary ||
-        c.rationale !== p.rationale ||
-        c.novelty !== p.novelty ||
-        c.uncertainty !== p.uncertainty ||
-        JSON.stringify(c.references) !== JSON.stringify(p.references) ||
-        c.decision !== p.decision
-      )
+      if (c.outputHash !== outputHash)
         throw new ConvexError("GITHUB_SUMMARY_CONFLICT");
       return true;
     }

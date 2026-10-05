@@ -238,7 +238,9 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                 Version {row.version.number} · Quelle:{" "}
                 {row.version.source.kind === "signal"
                   ? "Signiertes GitHub-Ereignis"
-                  : "Manuelle Notiz"}
+                  : row.version.source.kind === "context"
+                    ? "Signierter Push mit menschlich freigegebenen Patch-Auszügen"
+                    : "Manuelle Notiz"}
               </p>
               {row.version.originals.map((o, i) => (
                 <p key={i} className="text-sm">
@@ -526,7 +528,9 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                   <p className="text-xs muted">
                     {v.source.kind === "signal"
                       ? "Signiertes Ereignis"
-                      : "Manuelle Notiz"}{" "}
+                      : v.source.kind === "context"
+                        ? "Freigegebene Patch-Auszüge"
+                        : "Manuelle Notiz"}{" "}
                     ·{" "}
                     {v.runId
                       ? "Modellinterpretation, Klärung erforderlich"

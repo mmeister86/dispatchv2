@@ -227,6 +227,14 @@ test("exact historical signed signal gets separate current admission, native con
   const f = await ready();
   const c = await row(f);
   expect(c.state).toBe("ready");
+  expect(
+    (
+      await f.signed.query(api.integrations.github.context.latest, {
+        workspaceId: f.workspaceId,
+        signalId: f.signal._id,
+      })
+    )[0],
+  ).toMatchObject({ canApprove: true, runState: null });
   expect(c.generation).toBe(2);
   expect(c.excerpts[0].patch).toBe(patch);
   expect(c.hash).toMatch(/^[A-Za-z0-9_-]{43}$/);
@@ -555,4 +563,44 @@ test("fabricated evidence and forbidden publish field are rejected despite a val
     expect((await f.t.run((ctx) => ctx.db.get(f.runId)))!.state).toBe("failed");
     vi.restoreAllMocks();
   }
+});
+
+test("explicit later perspective reuses approved actual excerpts and shared context fence; it never pretends a hash label is file evidence", async () => {
+  const f = await generative();
+  await model(f);
+  const c = await row(f);
+  const runId = await f.signed.mutation(api.content.ideas.generate, {
+    workspaceId: f.workspaceId,
+    ideaId: c.resultIdeaId!,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    intent: "Ask a follow-up about the approved patch",
+    operationKey: "context-followup",
+  });
+  const run = await f.t.run((ctx) => ctx.db.get(runId));
+  expect(run!.sources).toEqual([
+    { repositoryId: f.repositories[0], generation: 2, contextId: c._id },
+  ]);
+  const messages = await f.t.query(
+    components.agent.messages.listMessagesByThreadId,
+    {
+      threadId: run!.threadId,
+      paginationOpts: { cursor: null, numItems: 10 },
+      order: "asc",
+    },
+  );
+  expect(JSON.stringify(messages)).toContain("approvedPatchEvidence");
+  expect(JSON.stringify(messages)).toContain("export const name");
+  await f.signed.mutation(api.integrations.github.context.approve, {
+    workspaceId: f.workspaceId,
+    contextId: c._id,
+    expectedHash: c.hash,
+    approved: false,
+  });
+  await expect(
+    f.t.mutation(internal.ai.runs.claim, {
+      runId,
+      executionKey: "synthetic-followup",
+    }),
+  ).rejects.toThrow("CONTEXT_CHANGED");
 });
