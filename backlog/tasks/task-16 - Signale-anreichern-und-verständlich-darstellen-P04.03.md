@@ -4,7 +4,7 @@ title: Signale anreichern und verständlich darstellen (P04.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 17:09'
+updated_date: '2026-10-05 17:19'
 labels:
   - p04
   - r2
@@ -74,4 +74,8 @@ Concrete caller minimizes retrieval to compare patch/path/blob-SHA for at most3 
 Backend intermediate017d0b0 committed with98 targeted tests/5suites,27 new context regressions, typecheck/diff PASS; source commit window closed/index empty. Implementer actual SignalContext browser fixture PASS covers pending/stable key/error-buffer/hash approval/late source-account-workspace/config-stop/maintenance noDraft/actual idea navigation; owned5174 closed. Existing affected GitHub Settings/Signals compatibility, full checks, final contract and existing EU Dev remain pending before sourcefreeze and independent SPEC/QUALITY. No final16 acceptance or Done from this intermediate receipt.
 
 Final implementer source frozen77ba114b603446bcf7a77cc7178ec727a0417e9c (backend017d0b0, base5c99601), index empty/source window closed. Full333 tests/24files,28 context cases, type/lint/build/bundle/codegen/diff and actual SignalContext plus GitHub Settings/Signals browsers PASS; owned5174 closed/user5173 preserved. Existing EU Dev ready19:08:07/4.75s. Exactly one new githubContexts store with concrete indexes/pins/hash approval/summary/result, existing repository contextRead defaultOFF and typed contextId in existing idea/run sources. Follow-up Ideas.generate receives actual currently approved excerpts with shared fences. Fresh independent SPEC reviewing full source and own actual boundaries; separate QUALITY only after PASS. No policy/grant activation, private/paid/provider probe/manual acceptance or final16 AC/Done claimed.
+
+Independent SPEC at77ba114 NEEDS WORK, one reproducedP2: shared deliveries.closeRepository omits contextRead reset and already-closed predicate. Actual signed installation.deleted leaves access/monitoring/content false and proof0/newgeneration but contextRead true; Settings retains checked withdrawn flag. Existing source/barrier/generation denies old work, no immediate bypass claimed. Registered131 tests/7files PASS, own9PASS/1 closureFAIL, both affected actual browsers PASS. Receipt /tmp/dispatch-enrichment-spec-receipt.md and runnable isolated test/config. Original implementer assigned verify/reproduce then minimal shared-writer correction and actual signed caller regressions. No criteria accepted; re-SPEC then freshQUALITY required before19.
+
+Confirmed SPEC correction source5ae8da30b93345d051a69fc693d74c492582219e frozen, minimal shared closeRepository fully-closed predicate plus contextRead:false reset; originalsource77ba114 retained in history. Implementer reproduced original9PASS/1FAIL first, then original10/10PASS and added6 actual signed closure regressions across both shared fanout paths, staleflag and replay. Affected66/3 and full339/24 including34context, type/lint/build/bundle/codegen/diff and affected actualGitHubSettings/Signals browserPASS; EUDev19:17:28/5.13s, own5174closed/user5173preserved. Same independent SPEC reviewer now rechecking correction and own cases; freshQUALITY only after re-PASS. Initialfailure remains documented, no codecriteria orDone accepted yet.
 <!-- SECTION:NOTES:END -->
