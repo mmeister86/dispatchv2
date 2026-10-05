@@ -4,7 +4,7 @@ title: 'Research-Profile, Zeitsteuerung und Aufträge bauen (P06.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 14:41'
+updated_date: '2026-10-05 16:38'
 labels:
   - p06
   - r2
@@ -57,4 +57,6 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /research — profile/history tabs. Account-scoped research settings, project relevance, topic/audience/language/region/source/exclusion/freshness/count/frequency/budget, pause, mock next/last runs, immutable profile snapshot per local run. Grenze: No scheduled research or external lookup; frequency and next-run display preview configuration only. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Read-only future preparation /tmp/dispatch-research-profile-implementation-brief.md: actual profile/history UI uses local daily2EUR/sample/timer data. Real20 requires immutable profile snapshots, bounded unified manual/scheduled/ContentAgent orders, pause/generation/idempotence and server IANA occurrence state reusing final17 budget/stop authority. D02 activation remains versioned and gated by actual processing/pricing/funded limits; demo values are not measured approved defaults. No20 implementation/AC evidence; downstream21/22 must produce actual research before integratedAC1 acceptance.
+
+Read-only official Workflow runtime preparation /tmp/dispatch-workflow-runtime-current-docs.md: three Context7 commands plus published workflow0.4.8/workpool0.4.13 archives and peer metadata inspected without installation/scripts. Declared peers match current Convex/helpers, but complete joint compilation/through-component runtime still required. Concrete step.runAction retry:false and retryActionsByDefault:false prevent layered paid retries; in-flight Actions can finish after Workflow cancellation, so current domain stop/source/grant fences remain mandatory. Actual published workflow/test helper registers nested workpool and batchWorker; inventory/retention and stable bounded journal IDs are required once mounted. No TASK20 code/activation or acceptance from this preparation.
 <!-- SECTION:NOTES:END -->
