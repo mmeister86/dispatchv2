@@ -527,3 +527,185 @@ test("strict manual fields, page limits and changed generation operation cannot 
     }),
   ).rejects.toThrow("PAGE_LIMIT");
 });
+test("repeat proposal commit creates once; different result under the same run is rejected", async () => {
+  const f = await generative(),
+    executionKey = "one-execution";
+  await f.t.mutation(internal.ai.runs.claim, { runId: f.runId, executionKey });
+  const model = new MockLanguageModelV3({ doGenerate: async () => response() });
+  const output = await f.t.action((ctx) =>
+    generateForRun(ctx, f.runId, executionKey, model),
+  );
+  const commit = () =>
+    f.t.mutation(internal.content.ideas.commitProposal, {
+      runId: f.runId,
+      executionKey,
+      output,
+    });
+  const [a, b] = await Promise.all([commit(), commit()]);
+  expect(a).toBe(b);
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toHaveLength(
+    2,
+  );
+  await expect(
+    f.t.mutation(internal.content.ideas.commitProposal, {
+      runId: f.runId,
+      executionKey,
+      output: JSON.stringify({ ...proposal, title: "Different output" }),
+    }),
+  ).rejects.toThrow("OUTPUT_CONFLICT");
+});
+test("actual transport failure makes one funded request, keeps unknown liabilities and preserves the idea", async () => {
+  const f = await generative();
+  vi.stubEnv("REQUESTY_API_KEY", "synthetic-provider-secret");
+  let calls = 0;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+    calls++;
+    throw new Error("synthetic-provider-secret");
+  });
+  await f.t.action(internal.ai.provider.execute, { runId: f.runId });
+  expect(calls).toBe(1);
+  const run = await f.t.run((ctx) => ctx.db.get(f.runId));
+  expect(run).toMatchObject({ state: "failed", errorCode: "MODEL_RUN_FAILED" });
+  const [attempt] = await f.t.run((ctx) =>
+    ctx.db.query("aiAttempts").collect(),
+  );
+  expect(attempt.state).toBe("unknown");
+  expect(attempt.heldMicros).toBeGreaterThan(0);
+  expect(JSON.stringify(attempt)).not.toContain("synthetic-provider-secret");
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toHaveLength(
+    1,
+  );
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("contentRequests").first()))!
+      .resultIdeaId,
+  ).toBeNull();
+});
+test("idea revision changed after valid model return is rechecked before domain commit", async () => {
+  const f = await generative(),
+    executionKey = "late-change";
+  await f.t.mutation(internal.ai.runs.claim, { runId: f.runId, executionKey });
+  const output = await f.t.action((ctx) =>
+    generateForRun(
+      ctx,
+      f.runId,
+      executionKey,
+      new MockLanguageModelV3({ doGenerate: async () => response() }),
+    ),
+  );
+  await f.signed.mutation(api.content.ideas.edit, {
+    workspaceId: f.workspaceId,
+    ideaId: f.ideaId,
+    expectedRevision: 1,
+    title: "Changed",
+    note: input.note,
+    perspective: input.perspective,
+    priority: input.priority,
+    feedback: "Changed after response",
+  });
+  await expect(
+    f.t.mutation(internal.content.ideas.commitProposal, {
+      runId: f.runId,
+      executionKey,
+      output,
+    }),
+  ).rejects.toThrow("IDEA_SOURCE_CHANGED");
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toHaveLength(
+    1,
+  );
+});
+test("source withdrawal during actual generation settles usage but cannot derive a new idea", async () => {
+  const source = await sourceFixture();
+  const f = await modelFixture(source);
+  await f.t.run((ctx) =>
+    ctx.db.patch(source.repositories[0], { content: true }),
+  );
+  await send(f);
+  const receipt = await f.t.run((ctx) =>
+    ctx.db.query("githubWebhookReceipts").first(),
+  );
+  await f.t.mutation(internal.integrations.github.deliveries.process, {
+    receiptId: receipt!._id,
+  });
+  const signal = await f.t.run((ctx) => ctx.db.query("githubSignals").first());
+  const ideaId = await f.signed.mutation(api.content.ideas.create, {
+    workspaceId: f.workspaceId,
+    ...input,
+    source: { kind: "signal", signalId: signal!._id },
+    operationKey: "signal-one",
+  });
+  const runId = await f.signed.mutation(api.content.ideas.generate, {
+      workspaceId: f.workspaceId,
+      ideaId,
+      expectedRevision: 1,
+      accountId: f.accountId,
+      intent: "Explore original only",
+      operationKey: "source-generate",
+    }),
+    executionKey = "source-execution";
+  await f.t.mutation(internal.ai.runs.claim, { runId, executionKey });
+  await expect(
+    f.t.action((ctx) =>
+      generateForRun(
+        ctx,
+        runId,
+        executionKey,
+        new MockLanguageModelV3({
+          doGenerate: async () => {
+            await f.t.run((ctx) =>
+              ctx.db.patch(source.repositories[0], {
+                content: false,
+                generation: 2,
+              }),
+            );
+            return response();
+          },
+        }),
+      ),
+    ),
+  ).rejects.toThrow("MODEL_PROVIDER_UNAVAILABLE");
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("aiAttempts").first()))!
+      .estimatedMicros,
+  ).toBe(30);
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toHaveLength(
+    1,
+  );
+});
+test("same linked revision cannot silently change own account, intent or text", async () => {
+  const f = await manual();
+  await f.signed.mutation(api.content.ideas.handoff, handoffArgs(f));
+  const model = await modelFixture(f);
+  for (const delta of [
+    { accountId: model.accountId },
+    { intent: "Different intent" },
+    { draftText: "Different text" },
+  ])
+    await expect(
+      f.signed.mutation(api.content.ideas.handoff, {
+        ...handoffArgs(f),
+        ...delta,
+      }),
+    ).rejects.toThrow("ALREADY_BOUND");
+  expect(await f.t.run((ctx) => ctx.db.query("drafts").collect())).toHaveLength(
+    1,
+  );
+});
+test("manual trust boundary rejects control text and forged actor fields", async () => {
+  const f = await manual();
+  await expect(
+    f.signed.mutation(api.content.ideas.create, {
+      workspaceId: f.workspaceId,
+      ...input,
+      title: "bad\u0000title",
+      operationKey: "invalid-text",
+    }),
+  ).rejects.toThrow("INPUT_INVALID");
+  await expect(
+    f.signed.mutation(api.content.ideas.create, {
+      workspaceId: f.workspaceId,
+      ...input,
+      operationKey: "forged-actor",
+      actorId: f.userId,
+    } as never),
+  ).rejects.toThrow("Unexpected field");
+});

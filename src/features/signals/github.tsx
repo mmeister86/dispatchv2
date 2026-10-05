@@ -1,3 +1,4 @@
+import { SignalIdeaHandoff } from "@/features/ideas/signal-handoff";
 import { useAction, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
@@ -35,15 +36,18 @@ export function GithubSignals() {
       key={state.activeWorkspaceId}
       workspaceId={state.activeWorkspaceId as Id<"workspaces">}
       manage={["Owner", "Admin"].includes(state.role)}
+      write={state.role !== "Viewer"}
     />
   );
 }
 function GithubSignalWorkspace({
   workspaceId,
   manage,
+  write,
 }: {
   workspaceId: Id<"workspaces">;
   manage: boolean;
+  write: boolean;
 }) {
   const [cursor, setCursor] = useState<string | null>(null),
     [recoveryCursor, setRecoveryCursor] = useState<string | null>(null);
@@ -136,8 +140,9 @@ function GithubSignalWorkspace({
         )}
         <p className="text-xs muted">
           Nur begrenzte Ereignismetadaten werden gespeichert. Dateien, Diffs und
-          Release-Texte werden nicht übernommen. KI-Anreicherung und
-          Ideen-Übergabe sind noch nicht verfügbar.
+          Release-Texte werden nicht übernommen. Dateien-/Diff-Anreicherung ist
+          noch nicht verfügbar. Aktuell freigegebene Originalfakten lassen sich
+          ausdrücklich als Idee übernehmen.
         </p>
       </Section>
       {!signals ? (
@@ -187,6 +192,24 @@ function GithubSignalWorkspace({
                 </p>
               )}
               <p className="text-xs muted">Zustellung: {s.guid}</p>
+              <SignalIdeaHandoff
+                workspaceId={workspaceId}
+                signalId={s._id}
+                title={
+                  s.kind === "push"
+                    ? `Push in ${s.fullName}`
+                    : `Release ${s.tag} in ${s.fullName}`
+                }
+                allowed={
+                  write &&
+                  current.some(
+                    (r) =>
+                      r._id === s.repositoryId &&
+                      r.generation === s.generation &&
+                      r.content,
+                  )
+                }
+              />
               {s.url && (
                 <a
                   className="text-sm underline"

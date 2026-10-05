@@ -1,3 +1,6 @@
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -139,10 +142,18 @@ export function OverviewPage() {
           },
           {
             label: "Neue Ideen",
-            value: ideas.length,
+            value: demoMode ? (
+              ideas.length
+            ) : (
+              <RecentIdeaCount
+                workspaceId={state.activeWorkspaceId as Id<"workspaces">}
+              />
+            ),
             icon: Lightbulb,
             to: "/ideas",
-            detail: "Aus deinen Quellen",
+            detail: demoMode
+              ? "Aus deinen Quellen"
+              : "Neue unter den 25 zuletzt bearbeiteten Ideen",
           },
           {
             label: "Aufmerksamkeit nötig",
@@ -413,5 +424,17 @@ export function OverviewPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+function RecentIdeaCount({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
+  const ideas = useQuery(api.content.ideas.list, {
+    workspaceId,
+    paginationOpts: { numItems: 25, cursor: null },
+  });
+  return ideas ? (
+    <>{ideas.page.filter((r) => r.idea.status === "new").length}</>
+  ) : (
+    <span aria-label="Ideenzahl wird geladen">…</span>
   );
 }

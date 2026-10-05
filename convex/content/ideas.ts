@@ -529,7 +529,14 @@ export const commitProposal = internalMutation({
       r.accountId !== request.accountId
     )
       throw new ConvexError("IDEA_RUN_CHANGED");
-    if (request.resultIdeaId) return request.resultIdeaId;
+    if (a.output.length > 8000) throw new ConvexError("IDEA_OUTPUT_INVALID");
+    if (request.resultIdeaId) {
+      const prior = await ctx.db.get(request.resultIdeaId);
+      requireReference(request.workspaceId, prior);
+      if (prior!.fingerprint !== (await sha256(a.output)))
+        throw new ConvexError("IDEA_OUTPUT_CONFLICT");
+      return request.resultIdeaId;
+    }
     const { idea, version } = await current(
       ctx,
       request.workspaceId,
@@ -539,7 +546,6 @@ export const commitProposal = internalMutation({
     if (version._id !== request.inputVersionId || idea.status === "archived")
       throw new ConvexError("IDEA_SOURCE_CHANGED");
     await currentIdeaSource(ctx, request.workspaceId, version.source);
-    if (a.output.length > 8000) throw new ConvexError("IDEA_OUTPUT_INVALID");
     const p = proposal.parse(JSON.parse(a.output));
     validate({ title: p.title, perspective: p.perspective, note: "" });
     text(p.rationale, 1000, true);

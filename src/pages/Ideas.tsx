@@ -39,7 +39,19 @@ import {
 } from "@/components/shared";
 import { useStore, useWorkspaceLocalState } from "@/lib/store";
 import { uid, type Idea } from "@/lib/model";
+const RealIdeas = lazy(() =>
+  import("@/features/ideas/ideas").then((m) => ({ default: m.RealIdeas })),
+);
 export function IdeasPage() {
+  return demoMode ? (
+    <DemoIdeasPage />
+  ) : (
+    <Suspense fallback={<p role="status">Ideen werden geladen …</p>}>
+      <RealIdeas />
+    </Suspense>
+  );
+}
+function DemoIdeasPage() {
   const { state, setState, ideaToDraft } = useStore();
   const nav = useNavigate();
   const [query, setQuery] = useState("");
