@@ -1,5 +1,6 @@
 # Local provider-test credentials and private key files
 .env.provider-check.local
+.env.local
 *.pem
 
 # Wrangler local state and caches
