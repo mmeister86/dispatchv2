@@ -75,6 +75,7 @@ export const claim = internalMutation({
       !s ||
       s.generation !== a.generation ||
       s.state !== "scheduled" ||
+      s.abortRequestedAt !== undefined ||
       s.at > Date.now()
     )
       return null;

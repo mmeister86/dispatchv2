@@ -844,6 +844,8 @@ export async function checkApproval(
   approvalId: Id<"approvals">,
   schedule?: Doc<"schedules">,
 ) {
+  if (schedule?.abortRequestedAt !== undefined)
+    throw new ConvexError("SCHEDULE_ABORT_REQUESTED");
   const ver = requireReference(
     workspaceId,
     await ctx.db.get(versionId),
@@ -1000,7 +1002,11 @@ export const reschedule = workspaceMutation({
     ) as Doc<"schedules">;
     if (s.generation !== a.expectedGeneration)
       throw new ConvexError("SCHEDULE_CONFLICT");
-    if (s.state !== "scheduled" || s.purpose === "first_write_verification")
+    if (
+      s.state !== "scheduled" ||
+      s.purpose === "first_write_verification" ||
+      s.abortRequestedAt !== undefined
+    )
       throw new ConvexError("SCHEDULE_NOT_MOVABLE");
     validateTime(a.at, a.timezone, a.localTime);
     const versionId = a.versionId ?? s.versionId,
@@ -1053,18 +1059,29 @@ export const cancel = workspaceMutation({
       ctx.workspace._id,
       await ctx.db.get(a.scheduleId),
     ) as Doc<"schedules">;
+    if (s.abortRequestedAt !== undefined) return null;
     if (s.generation !== a.expectedGeneration)
       throw new ConvexError("SCHEDULE_CONFLICT");
     if (s.state === "published") throw new ConvexError("PUBLISHED_IMMUTABLE");
-    if (s.state === "cancelled") return null;
+    const attempts = await ctx.db
+      .query("xPostAttempts")
+      .withIndex("by_scheduleId_and_generation_and_position", (q) =>
+        q.eq("scheduleId", s._id),
+      )
+      .take(101);
+    const unresolved =
+      s.state === "publishing" ||
+      s.state === "reconciliation_required" ||
+      attempts.length > 100 ||
+      attempts.some((c) => c.stage === "sending" || c.stage === "unknown");
+    if (s.state === "cancelled" && !unresolved) return null;
     if (s.jobId) await ctx.scheduler.cancel(s.jobId);
     await ctx.db.patch(s._id, {
       generation: s.generation + 1,
-      state:
-        s.state === "publishing" || s.publishedCount > 0
-          ? "reconciliation_required"
-          : "cancelled",
-      errorCode: s.state === "publishing" ? "CANCEL_AFTER_CLAIM" : null,
+      abortRequestedAt: Date.now(),
+      abortRequestedBy: ctx.user._id,
+      state: unresolved ? "reconciliation_required" : "cancelled",
+      errorCode: s.errorCode ?? (unresolved ? "CANCEL_AFTER_CLAIM" : null),
     });
     await event(
       ctx,

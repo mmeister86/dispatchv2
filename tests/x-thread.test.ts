@@ -971,3 +971,190 @@ test.each(["finalize", "processing"] as const)(
     ).toBeNull();
   },
 );
+
+test("public abort of an unknown first POST retains outcome and blocks another first-write job", async () => {
+  const f = await fixture(true);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  const before = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+  expect(before.state).toBe("reconciliation_required");
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: before.generation,
+  });
+  const after = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+  expect(after).toMatchObject({
+    state: "reconciliation_required",
+    errorCode: before.errorCode,
+    abortRequestedBy: f.actorId,
+  });
+  expect(after.abortRequestedAt).toBeDefined();
+  const draftId = await f.signed.mutation(api.editorial.create, {
+    workspaceId: f.workspaceId,
+    content: { ...f.content, title: "Another proof" },
+    source: "Fixture",
+  });
+  const versionId = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId,
+  }))!.versions[0]._id;
+  const approvalId = await f.signed.mutation(api.editorial.approveFirstWrite, {
+    workspaceId: f.workspaceId,
+    versionId,
+    accountId: f.accountId,
+  });
+  await expect(
+    f.signed.mutation(api.editorial.confirmFirstWrite, {
+      workspaceId: f.workspaceId,
+      versionId,
+      accountId: f.accountId,
+      approvalId,
+    }),
+  ).rejects.toThrow("FIRST_WRITE_ACTIVE_JOB");
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(60000));
+  expect(fetch).toHaveBeenCalledTimes(1);
+});
+
+test.each(["confirmed", "unknown", "rejected"] as const)(
+  "repeated public abort during sending preserves barrier after late %s receipt",
+  async (outcome) => {
+    const f = await fixture(true),
+      c = (await f.t.mutation(internal.publishing.attempts.claim, f.job))!;
+    const fetch = vi.spyOn(globalThis, "fetch");
+    await f.t.mutation(internal.publishing.attempts.beforeSend, {
+      attemptId: c._id,
+      claimSequence: c.claimSequence,
+      credentialGeneration: 1,
+      mediaIds: [],
+    });
+    const args = {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    };
+    await f.signed.mutation(api.editorial.cancel, args);
+    const once = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+    expect(once.state).toBe("reconciliation_required");
+    await f.signed.mutation(api.editorial.cancel, {
+      ...args,
+      expectedGeneration: once.generation,
+    });
+    await expect(
+      f.signed.mutation(api.editorial.cancel, args),
+    ).resolves.toBeNull();
+    expect(await f.t.run((ctx) => ctx.db.get(f.scheduleId))).toEqual(once);
+    await f.t.mutation(internal.publishing.attempts.receipt, {
+      attemptId: c._id,
+      claimSequence: c.claimSequence,
+      outcome,
+      ...(outcome === "confirmed"
+        ? { externalId: "101", httpStatus: 201 }
+        : { errorCode: "X_POST_OUTCOME_UNKNOWN" }),
+      durationMs: 1,
+    });
+    const after = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+    expect(after).toMatchObject({
+      state: "reconciliation_required",
+      generation: once.generation,
+      abortRequestedAt: once.abortRequestedAt,
+      abortRequestedBy: f.actorId,
+      publishedCount: outcome === "confirmed" ? 1 : 0,
+    });
+    if (outcome === "confirmed")
+      expect(after.externalPosts?.[0].externalId).toBe("101");
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(f.accountId)))!.capability.publish,
+    ).toBe(false);
+    await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(60000));
+    expect(fetch).not.toHaveBeenCalled();
+  },
+);
+
+test("public abort of a resolved stopped prefix preserves IDs and cannot be resumed", async () => {
+  const f = await fixture();
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(response("101"))
+    .mockResolvedValueOnce(new Response("rejected", { status: 400 }));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.state).toBe(
+    "partially_published",
+  );
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+  });
+  const after = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+  expect(after).toMatchObject({
+    state: "cancelled",
+    publishedCount: 1,
+    abortRequestedBy: f.actorId,
+  });
+  expect(after.externalPosts?.[0].externalId).toBe("101");
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(60000));
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+test("persisted abort fences all send paths and repeated abort still checks owner and role", async () => {
+  const f = await fixture();
+  const args = {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+  };
+  await f.signed.mutation(api.editorial.cancel, args);
+  const after = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+  // A future reconciliation state change must never silently remove the persisted send fence.
+  await f.t.run((ctx) => ctx.db.patch(f.scheduleId, { state: "publishing" }));
+  const job = { scheduleId: f.scheduleId, generation: after.generation };
+  expect(
+    await f.t.mutation(internal.publishing.attempts.claim, job),
+  ).toBeNull();
+  await expect(
+    f.t.query(internal.integrations.x.oauth.scheduleSource, {
+      ...job,
+      operation: "text",
+    }),
+  ).rejects.toThrow("SCHEDULE_ABORT_REQUESTED");
+  await expect(
+    f.t.mutation(internal.publishing.media.ready, { ...job, mediaPosition: 0 }),
+  ).rejects.toThrow("SCHEDULE_ABORT_REQUESTED");
+  await f.t.run((ctx) => ctx.db.patch(f.scheduleId, { state: "scheduled" }));
+  expect(await f.t.mutation(internal.publishing.claim, job)).toBeNull();
+  await expect(
+    f.signed.mutation(api.editorial.reschedule, {
+      ...args,
+      expectedGeneration: after.generation,
+      at: Date.now() + 60000,
+      timezone: "UTC",
+      localTime: "2026-10-06T12:02",
+    }),
+  ).rejects.toThrow("SCHEDULE_NOT_MOVABLE");
+  const otherWorkspaceId = await f.signed.mutation(api.workspaces.create, {
+    name: "Other",
+    description: "Fixture",
+  });
+  await expect(
+    f.signed.mutation(api.editorial.cancel, {
+      ...args,
+      workspaceId: otherWorkspaceId,
+    }),
+  ).rejects.toThrow("REFERENCE_ACCESS_DENIED");
+  await f.t.run(async (ctx) => {
+    const m = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId_and_workspaceId", (q) =>
+        q.eq("userId", f.actorId).eq("workspaceId", f.workspaceId),
+      )
+      .unique();
+    await ctx.db.patch(m!._id, { role: "Viewer" });
+  });
+  await expect(f.signed.mutation(api.editorial.cancel, args)).rejects.toThrow(
+    "ROLE_ACCESS_DENIED",
+  );
+});

@@ -127,6 +127,8 @@ export const approvalFields = {
   revokedBy: v.union(v.id("users"), v.null()),
 };
 export const scheduleFields = {
+  abortRequestedAt: v.optional(v.number()),
+  abortRequestedBy: v.optional(v.id("users")),
   purpose: v.optional(purpose),
   intentExpiresAt: v.optional(v.number()),
   confirmedAt: v.optional(v.number()),

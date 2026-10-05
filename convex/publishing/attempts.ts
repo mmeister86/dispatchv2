@@ -39,7 +39,12 @@ export const claim = internalMutation({
   returns: v.union(attemptDoc, v.null()),
   handler: async (ctx, a) => {
     const s = await ctx.db.get(a.scheduleId);
-    if (!s || s.generation !== a.generation || s.state !== "publishing")
+    if (
+      !s ||
+      s.generation !== a.generation ||
+      s.state !== "publishing" ||
+      s.abortRequestedAt !== undefined
+    )
       return null;
     const rows = await ctx.db
       .query("xPostAttempts")
