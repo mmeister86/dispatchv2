@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 20:10'
+updated_date: '2026-10-05 20:16'
 labels:
   - p06
   - r2
@@ -83,4 +83,6 @@ Independent initial SPEC NEEDS FIXES at215b94c: valid X data plus errors loses s
 Additional ROOT actual-handler RED22:00:59: native.results projects20microUSD finance even after its native receipt workspaceId alone is changed to another actual workspace. Native settlement validates owner graph; native result projection does not. Same malformed-record boundary as SPEC3, not a public writer exploit. Runnable /tmp/task21-root-native-projection.test.ts and red receipt retained; one own test failed/two copied SPEC cases skipped. Held correction staging window for minimal native projection/settlement shared graph guard. Legitimate cache-hit attachment to prior filling order must remain valid. Initial three-fix437/27/native41/codegen/Dev22:00:40 not final fourth-fix proof. No AC or QUALITY/Done.
 
 Correction source frozen at82e9ff75f6c79a772c4df6319b97b39db5284641: validated mixed X partial data retained with uncertain usage hold; fresh UI displayed/submitted language aligned without altering frozen retries; shared concrete generationAttempt/nativeAttempt guards cover actual financial projections, admission/history/cap/settlement consumers with captured ownership/scope/currency. Legitimate previous-order cache hit and once-only late finance after expiry/withdrawal remain valid. Implementer final448/27/native50 plus196affected/7, actual Research browser/type/lint/build/bundle/diff/officialcodegen passed; existing EU Dev ready22:08:19, no activation/paid I/O. ROOT original native projection negative rerun unchanged22:10:11 PASS one own actual-handler case/two copied SPEC cases skipped, /tmp/task21-root-native-projection-green.log. Same independent SPEC delta now checking original failures and sibling boundaries; fresh QUALITY follows only after PASS. No AC or manual/Done acceptance yet.
+
+Four original finding families re-SPEC PASS82e9ff7:99registered/3 plus5distinctindependenthandlercases and actual isolated/full React fixtures; ROOTnativeprojection negativePASS. This historical PASS is superseded overall by additional effective-intent NEEDS FIXES before QUALITY. ROOT actual X freshness30→90 sends second EXACTidentical physical URL despite first unknown hold; independent SPEC confirms and adds Web freshness changes identicalURL/body plus WOEID query changes identicalURL. Raw/unused operation-agnostic identity inputs bypass unknown barrier. /tmp/dispatch-research-provider-spec-intent-receipt.md and ROOTredlog retained. Originalworker minimal source-specific effective canonicalization plus bounded current-scope legacy raw-identity unknown compatibility; changing algorithm/deploy/restore cannot drop old sent/unknown liability. No absolute time or new wrapper paid-retry bypass. Same SPEC intent delta then fresh QUALITY only after PASS; no AC/Done.
 <!-- SECTION:NOTES:END -->
