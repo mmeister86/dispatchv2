@@ -167,7 +167,9 @@ Research-Item-Verarbeitungsstatus und redaktionelle Behandlung bleiben unabhäng
 
 **Übernommen:** Mindestens eine belastbare Quelle; bei umstrittenen oder folgenreichen Aussagen unabhängige Bestätigung suchen und verbleibende Unsicherheit sichtbar halten. Frischekritische Themen werden vor Versand erneut geprüft oder in redaktionellen Review zurückgestellt. Freigabe allein überstimmt keine abgelaufene Recherchegültigkeit.
 
-**Offen – D08, TASK-22.1/24/25:** Gültigkeitsklassen und Dauern, maßgeblicher Zeitbezug, automatische versus menschliche Nachprüfung, Verhalten bei unerreichbaren Quellen und zulässige Verschiebefenster sind noch zu entscheiden. Bis zu einer festgelegten Regel ist ein Zweifel kein automatischer Versandnachweis. Keine universelle 24-/48-Stunden-Frist aus Beispielen oder X-Ranking-Annahmen ableiten.
+**Implementierungsentscheidung D08, 2026-10-05, TASK-22.1/24/25:** Ergebnisse unterscheiden zeitkritische, kontextabhängige und zeitunabhängige Aussagen sowie unbekannte Frische. Veröffentlichungs-, Ereignis- und Beobachtungszeit bleiben getrennt; erneutes Abrufen verschiebt kein altes Ereignisdatum. Eine begründete endliche Gültigkeit benötigt den tatsächlichen Quellenbezug und die versionierte, für diesen Zweck geltende Frischeregel; ein Modellvorschlag allein aktiviert oder verlängert sie nicht. Fehlt diese Grundlage, bleibt das Ergebnis prüfbedürftig und ist kein automatischer Versandnachweis. Es gilt keine universelle 24-/48-Stunden-Frist und keine aus dem Suchzeitfenster abgeleitete Restgültigkeit.
+
+Zeitkritische oder inzwischen abgelaufene Aussagen benötigen vor Versand eine erneute begrenzte Prüfung der konkreten Evidenz. Entfernte, gesperrte, unerreichbare oder nicht überprüfbare Quellen liefern keine erfolgreiche Erneuerung; die Lücke bleibt sichtbar und betroffene Inhalte gehen in Review. Eine bestätigte unveränderte Aussage erhält einen eigenen nachvollziehbaren Prüfnachweis mit Quellenstand, tatsächlicher Person oder zulässigem Prüfpfad und neuer begründeter Gültigkeit. Eine geänderte Aussage erzeugt eine neue Ergebnis-/Inhaltsversion und neue menschliche Freigabe. Weder Terminverschiebung noch wiederhergestellte Daten, Quellenkopien oder alte Freigaben erneuern die Frische. Die Anfangsregel nutzt die delegierte Entscheidung; konkrete gemessene Klassengrenzen und zulässige Providerprüfung bleiben Aktivierungsnachweise.
 
 | Beispiel | Erwartetes Verhalten |
 |---|---|
@@ -177,7 +179,7 @@ Research-Item-Verarbeitungsstatus und redaktionelle Behandlung bleiben unabhäng
 | Budget endet nach zwei brauchbaren Themen | Vorgeschlagene Vorrangregel: `budget_exhausted`, zwei Ergebnisse bleiben erhalten |
 | Quelle hat beispielhaft `expiresAt` Dienstag 12:00; Versand auf Mittwoch verschoben | Neue Frischeprüfung/Review erforderlich; diese Beispielzeit legt keine allgemeine TTL fest |
 | Frischeprüfung korrigiert eine Tatsachenbehauptung im Post | Neue Inhaltsversion und neue Freigabe; bestehenden freigegebenen Text nicht verändern |
-| Frischeprüfung bestätigt unveränderte Aussage | Prüfnachweis speichern; Details der Erneuerung gemäß noch zu beschließender D08-Regel |
+| Frischeprüfung bestätigt unveränderte Aussage | Eigenen Prüfnachweis und begründete endliche Gültigkeit am tatsächlichen Quellenstand speichern; alten Nachweis nicht überschreiben |
 
 ## 8. Medien-Lifecycle
 

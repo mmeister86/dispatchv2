@@ -4,7 +4,7 @@ title: 'Research-Evidenz und Gültigkeitsvertrag implementieren (P06.03, Teil 1)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 17:27'
 labels:
   - p06
   - r2
@@ -44,4 +44,6 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P06.03. Der übergeord
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /research — inbox/detail. Source URLs, source claim, interpretation, confidence and freshness warning remain visible in local content handoff. Grenze: Demo URLs are marked example sources. No real evidence validity/expiry enforcement or removed-source feed. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Root formal D08 initial rule recorded in domain-contracts/release-scope under delegated choices: time-sensitive/context-dependent/time-independent/unknown freshness distinct; publication/event/observation times never conflated. Actualsource+versionedpurpose rule and finite justified validity required for automaticeligibility; model expiry or searchwindow alone cannotgrant. Expired/unknown/removed/blocked/unreachable evidence stays Review, no universal24/48h TTL. Recheck creates separate actual-source proof; changedclaims newresult/contentversion and humanapproval. Initialdecision establishes no measuredlimits/provideractivation/sourceverification or22.1code; futureimplementation after final19/20/21 and rootassignment.
 <!-- SECTION:NOTES:END -->
