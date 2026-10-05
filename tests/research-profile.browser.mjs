@@ -102,7 +102,10 @@ try {
   ).toHaveValue("Buffered topics");
   await expect(page.getByRole("alert")).toContainText("nicht bestätigt");
   await page
-    .getByRole("button", { name: "Profil speichern", exact: true })
+    .getByRole("button", {
+      name: "Ursprüngliche Anfrage wiederholen",
+      exact: true,
+    })
     .click();
   expect(await page.evaluate(() => window.commands[1].args)).toEqual(original);
   await page.evaluate(() => {
@@ -145,6 +148,9 @@ try {
     page.getByRole("textbox", { name: "Themen", exact: true }),
   ).toHaveValue("Changed dirty buffer");
   await page.getByRole("button", { name: "Bearbeitung schließen" }).click();
+  await page
+    .getByRole("button", { name: "Wiederholungsoption verwerfen" })
+    .click();
   await page.getByRole("button", { name: "Auftrag anlegen" }).click();
   await expect(
     page.getByRole("button", { name: "Auftrag anlegen" }),
@@ -156,7 +162,10 @@ try {
   });
   await page.evaluate(() => {
     window.commands[3].resolve("actual-order");
-    window.profile.profile.activeOrderId = "actual-order";
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, activeOrderId: "actual-order" },
+    };
     window.orderHistory = {
       page: [
         {
@@ -186,12 +195,26 @@ try {
     window.commands[4].reject(new Error("stop denied")),
   );
   await expect(page.getByRole("alert")).toBeVisible();
-  await page.getByRole("button", { name: "Auftrag stoppen" }).click();
+  await page
+    .getByRole("button", {
+      name: "Ursprüngliche Anfrage wiederholen",
+      exact: true,
+    })
+    .click();
   await page.evaluate(() => {
     window.commands[5].resolve(null);
-    window.orderHistory.page[0].state = "cancelled";
-    window.orderHistory.page[0].reason = "RESEARCH_STOPPED";
-    window.profile.profile.activeOrderId = null;
+    window.orderHistory = {
+      ...window.orderHistory,
+      page: window.orderHistory.page.map((o) => ({
+        ...o,
+        state: "cancelled",
+        reason: "RESEARCH_STOPPED",
+      })),
+    };
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, activeOrderId: null },
+    };
     window.render();
   });
   await expect(
@@ -210,6 +233,9 @@ try {
     window.role = "Viewer";
     window.render();
   });
+  await expect(
+    page.getByRole("button", { name: "Aktuelle Version öffnen" }),
+  ).toBeDisabled();
   await page.evaluate(() =>
     window.commands[6].reject(new Error("late role failure")),
   );
@@ -221,6 +247,9 @@ try {
     window.role = "Owner";
     window.render();
   });
+  await page
+    .getByRole("button", { name: "Wiederholungsoption verwerfen" })
+    .click();
   await page.getByRole("button", { name: "Aktuelle Version öffnen" }).click();
   await page
     .getByRole("textbox", { name: "Themen", exact: true })
@@ -320,11 +349,17 @@ try {
     .getByRole("textbox", { name: "Themen", exact: true })
     .fill("New buffer after failure");
   await page.evaluate(() => {
-    window.profile.profile.revision = 5;
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, revision: 5 },
+    };
     window.render();
   });
   await page
-    .getByRole("button", { name: "Profil speichern", exact: true })
+    .getByRole("button", {
+      name: "Ursprüngliche Anfrage wiederholen",
+      exact: true,
+    })
     .click();
   expect(await page.evaluate(() => window.commands[1].args)).toEqual(priced);
   await page.evaluate(() => window.commands[1].resolve(5));
@@ -349,6 +384,9 @@ try {
   );
   await page.getByRole("button", { name: "Bearbeitung schließen" }).click();
   await page
+    .getByRole("button", { name: "Wiederholungsoption verwerfen" })
+    .click();
+  await page
     .getByRole("button", { name: "Zeitplan ausdrücklich aktivieren" })
     .click();
   expect((await page.evaluate(() => window.commands[3].args)).action).toEqual({
@@ -360,13 +398,279 @@ try {
     ),
   );
   await expect(page.getByRole("alert")).toContainText("Accountdeckung");
+  async function acknowledgedProfile() {
+    await page.goto("http://127.0.0.1:5174/research-fixture");
+    await page.evaluate(() => {
+      window.profile = {
+        profile: {
+          _id: "ack-profile",
+          revision: 3,
+          paused: false,
+          deleted: false,
+          scheduleActive: false,
+          nextAt: null,
+          activeOrderId: null,
+        },
+        version: {
+          config: {
+            topics: "ACK profile",
+            project: "",
+            audience: "Builders",
+            languages: ["de"],
+            regions: [],
+            preferredSources: [],
+            exclusions: "",
+            freshnessDays: 7,
+            topicCount: 5,
+            frequency: "daily",
+            timeZone: "Europe/Berlin",
+            clock: "09:00",
+            weekday: 1,
+            cap: null,
+            autoHandoff: false,
+          },
+        },
+      };
+      window.render();
+    });
+  }
+  const retry = page.getByRole("button", {
+    name: "Ursprüngliche Anfrage wiederholen",
+    exact: true,
+  });
+  await acknowledgedProfile();
+  await page.getByRole("button", { name: "Pausieren", exact: true }).click();
+  const firstPause = await page.evaluate(() => window.commands[0].args);
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, revision: 4, paused: true },
+    };
+    window.commands[0].reject(new Error("lost pause ACK"));
+    window.render();
+  });
+  await expect(retry).toBeVisible();
+  await page.evaluate(() => {
+    window.role = "Viewer";
+    window.render();
+  });
+  await expect(retry).toBeDisabled();
+  await page.evaluate(() => {
+    window.role = "Owner";
+    window.render();
+  });
+  await retry.click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(
+    firstPause,
+  );
+  await page.evaluate(() => window.commands[1].resolve(4));
+  await page
+    .getByRole("button", { name: "Pause aufheben", exact: true })
+    .click();
+  const unpause = await page.evaluate(() => window.commands[2].args);
+  expect(unpause.expectedRevision).toBe(4);
+  expect(unpause.commandKey).not.toBe(firstPause.commandKey);
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, revision: 5, paused: false },
+    };
+    window.commands[2].resolve(5);
+    window.render();
+  });
+  await page.getByRole("button", { name: "Pausieren", exact: true }).click();
+  const laterPause = await page.evaluate(() => window.commands[3].args);
+  expect(laterPause.expectedRevision).toBe(5);
+  expect(laterPause.commandKey).not.toBe(firstPause.commandKey);
+  expect(laterPause.action).toEqual({ kind: "pause", paused: true });
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, revision: 6, paused: true },
+    };
+    window.commands[3].resolve(6);
+    window.render();
+  });
+  await expect(
+    page.getByRole("button", { name: "Pause aufheben", exact: true }),
+  ).toBeVisible();
+  await acknowledgedProfile();
+  await page.getByRole("button", { name: "Pausieren", exact: true }).click();
+  const abandonedPause = await page.evaluate(() => window.commands[0].args);
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, revision: 4, paused: true },
+    };
+    window.commands[0].reject(new Error("lost abandoned pause ACK"));
+    window.render();
+  });
+  await expect(retry).toBeVisible();
+  await page
+    .getByRole("button", { name: "Wiederholungsoption verwerfen" })
+    .click();
+  await page
+    .getByRole("button", { name: "Pause aufheben", exact: true })
+    .click();
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, revision: 5, paused: false },
+    };
+    window.commands[1].resolve(5);
+    window.render();
+  });
+  await page.getByRole("button", { name: "Pausieren", exact: true }).click();
+  const afterAbandon = await page.evaluate(() => window.commands[2].args);
+  expect(afterAbandon.expectedRevision).toBe(5);
+  expect(afterAbandon.commandKey).not.toBe(abandonedPause.commandKey);
+  await page.evaluate(() => window.commands[2].resolve(6));
+  await acknowledgedProfile();
+  await page
+    .getByRole("button", { name: "Zeitplan ausdrücklich aktivieren" })
+    .click();
+  const firstActivation = await page.evaluate(() => window.commands[0].args);
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: {
+        ...window.profile.profile,
+        revision: 4,
+        scheduleActive: true,
+        nextAt: 1791289800000,
+      },
+    };
+    window.commands[0].reject(new Error("lost activation ACK"));
+    window.render();
+  });
+  await expect(retry).toBeVisible();
+  await retry.click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(
+    firstActivation,
+  );
+  await page.evaluate(() => window.commands[1].resolve(4));
+  await page.getByRole("button", { name: "Zeitplan deaktivieren" }).click();
+  expect(
+    (await page.evaluate(() => window.commands[2].args)).expectedRevision,
+  ).toBe(4);
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: {
+        ...window.profile.profile,
+        revision: 5,
+        scheduleActive: false,
+        nextAt: null,
+      },
+    };
+    window.commands[2].resolve(5);
+    window.render();
+  });
+  await page
+    .getByRole("button", { name: "Zeitplan ausdrücklich aktivieren" })
+    .click();
+  const laterActivation = await page.evaluate(() => window.commands[3].args);
+  expect(laterActivation.expectedRevision).toBe(5);
+  expect(laterActivation.commandKey).not.toBe(firstActivation.commandKey);
+  await page.evaluate(() => window.commands[3].resolve(6));
+  await acknowledgedProfile();
+  await page.getByRole("button", { name: "Profil löschen" }).click();
+  const deleted = await page.evaluate(() => window.commands[0].args);
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, revision: 4, deleted: true },
+    };
+    window.commands[0].reject(new Error("lost delete ACK"));
+    window.render();
+  });
+  await expect(
+    page.getByRole("button", { name: "Profil löschen" }),
+  ).toHaveCount(0);
+  await expect(retry).toBeEnabled();
+  await retry.click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(deleted);
+  await page.evaluate(() => window.commands[1].resolve(4));
+  await expect(retry).toHaveCount(0);
+  await expect(
+    page.getByText("Gelöscht · historischer Beleg bleibt erhalten", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await acknowledgedProfile();
+  await page.getByRole("button", { name: "Auftrag anlegen" }).click();
+  const admitted = await page.evaluate(() => window.commands[0].args);
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, activeOrderId: "committed-order" },
+    };
+    window.commands[0].reject(new Error("lost start ACK"));
+    window.render();
+  });
+  await expect(
+    page.getByRole("button", { name: "Auftrag anlegen" }),
+  ).toBeDisabled();
+  await expect(retry).toBeEnabled();
+  await retry.click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(admitted);
+  await page.evaluate(() => window.commands[1].resolve("committed-order"));
+  await expect(retry).toHaveCount(0);
+  await page.evaluate(() => {
+    window.orderHistory = {
+      page: [
+        {
+          _id: "committed-order",
+          createdAt: 1791210000000,
+          occasion: "manual",
+          state: "queued",
+          config: { topics: "ACK profile" },
+          reason: null,
+        },
+      ],
+      isDone: true,
+      continueCursor: "",
+    };
+    window.render();
+  });
+  await page.getByRole("button", { name: "Auftrag stoppen" }).click();
+  const stopped = await page.evaluate(() => window.commands[2].args);
+  await page.evaluate(() => {
+    window.profile = {
+      ...window.profile,
+      profile: { ...window.profile.profile, activeOrderId: null },
+    };
+    window.orderHistory = {
+      ...window.orderHistory,
+      page: window.orderHistory.page.map((o) => ({
+        ...o,
+        state: "cancelled",
+        reason: "RESEARCH_STOPPED",
+      })),
+    };
+    window.commands[2].reject(new Error("lost stop ACK"));
+    window.render();
+  });
+  await expect(
+    page.getByRole("button", { name: "Auftrag stoppen" }),
+  ).toHaveCount(0);
+  await expect(retry).toBeEnabled();
+  await retry.click();
+  expect(await page.evaluate(() => window.commands[3].args)).toEqual(stopped);
+  await page.evaluate(() => window.commands[3].resolve(null));
+  await expect(retry).toHaveCount(0);
+  await page.getByRole("button", { name: "Auftrag anlegen" }).click();
+  const laterOrder = await page.evaluate(() => window.commands[4].args);
+  expect(laterOrder.operationKey).not.toBe(admitted.operationKey);
+  expect(laterOrder.expectedRevision).toBe(3);
+  await page.evaluate(() => window.commands[4].resolve("later-order"));
   await page.goto("http://127.0.0.1:5174/research-fixture?demo=1");
   await expect(
     page.getByText("Weniger Funktionen. Mehr Produkt.").first(),
   ).toBeVisible();
   expect(errors).toEqual([]);
   console.log(
-    "Actual ResearchPage real/Demo: empty/no fake data, manual default/no cap, deferred ack/error/exact retry/CAS buffer, actual order/stop/paged history, late role/account/workspace/unmount PASS; no provider call.",
+    "Actual ResearchPage real/Demo PASS: empty/manual/no cap, saved ACK/error/CAS/currency/dirty buffers, exact explicit retries after lost pause/activation/delete/start/stop ACKs, fresh intent keys/revisions after retry or discard, Viewer/late role/account/workspace/unmount fences, actual order/paging; no provider call.",
   );
 } finally {
   await browser?.close();

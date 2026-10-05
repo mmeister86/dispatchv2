@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { PageHeader, Section, EmptyState } from "@/components/shared";
 type Config = Doc<"researchProfileVersions">["config"];
+type Attempt = { execute: () => Promise<unknown>; success: () => void };
 const empty: Config = {
   topics: "",
   project: "",
@@ -99,12 +100,10 @@ function ResearchAccount({
     [capChanged, setCapChanged] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [message, setMessage] = useState("");
+    [message, setMessage] = useState(""),
+    [failedAttempt, setFailedAttempt] = useState<Attempt | null>(null);
   const mounted = useRef(false),
     pending = useRef(false),
-    attempts = useRef<
-      Record<string, { execute: () => Promise<unknown>; success: () => void }>
-    >({}),
     latestBuffer = useRef(buffer),
     context = useRef({ role: state.role, epoch: 0 });
   latestBuffer.current = buffer;
@@ -116,31 +115,28 @@ function ResearchAccount({
       mounted.current = false;
     };
   }, []);
-  const writable = state.role !== "Viewer" && !row?.profile.deleted;
-  async function command(
-    kind: string,
-    fn: (key: string) => Promise<unknown>,
-    success: () => void,
-  ) {
-    if (pending.current) return;
+  const editable = state.role !== "Viewer" && !row?.profile.deleted;
+  const writable = editable && !failedAttempt;
+  async function runAttempt(attempt: Attempt, retry = false) {
+    if (pending.current || state.role === "Viewer") return;
     const epoch = context.current.epoch;
-    if (!attempts.current[kind]) {
-      const key = crypto.randomUUID();
-      attempts.current[kind] = { execute: () => fn(key), success };
-    }
-    const attempt = attempts.current[kind];
     pending.current = true;
     setBusy(true);
     setError("");
     setMessage("");
     try {
       await attempt.execute();
-      delete attempts.current[kind];
+      if (mounted.current) setFailedAttempt(null);
       if (mounted.current && context.current.epoch === epoch) {
         attempt.success();
-        setMessage("Aktion bestätigt.");
+        setMessage(
+          retry
+            ? "Ursprüngliche Anfrage bestätigt. Der aktuelle Profilzustand bleibt maßgeblich."
+            : "Aktion bestätigt.",
+        );
       }
     } catch (e) {
+      if (mounted.current) setFailedAttempt(attempt);
       if (mounted.current && context.current.epoch === epoch)
         setError(errorText(e));
     } finally {
@@ -148,12 +144,19 @@ function ResearchAccount({
       if (mounted.current) setBusy(false);
     }
   }
+  async function command(
+    fn: (key: string) => Promise<unknown>,
+    success: () => void,
+  ) {
+    if (failedAttempt) return;
+    const key = crypto.randomUUID();
+    await runAttempt({ execute: () => fn(key), success });
+  }
   function edit() {
     const c = row?.version.config ?? empty;
     setBuffer(structuredClone(c));
     setRevision(row?.profile.revision ?? 0);
     setCapText(c.cap ? String(c.cap.limitMicros / 1e6) : "");
-    attempts.current = {};
     setCapChanged(false);
     setError("");
   }
@@ -180,7 +183,6 @@ function ResearchAccount({
     };
     if (revision > 0 && row)
       await command(
-        "save",
         (key) =>
           change({
             workspaceId,
@@ -193,7 +195,6 @@ function ResearchAccount({
       );
     else
       await command(
-        "create",
         (key) => create({ workspaceId, accountId, commandKey: key, config }),
         acknowledge,
       );
@@ -224,6 +225,34 @@ function ResearchAccount({
         </p>
       )}
       {message && <p role="status">{message}</p>}
+      {failedAttempt && (
+        <div className="space-y-2">
+          <p>
+            Die ursprüngliche Anfrage ist noch nicht bestätigt. Wiederholen
+            prüft dieselben Eingaben; Verwerfen entfernt nur diese
+            Wiederholungsoption, keine gespeicherte Änderung.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={busy || state.role === "Viewer"}
+              onClick={() => runAttempt(failedAttempt, true)}
+            >
+              Ursprüngliche Anfrage wiederholen
+            </Button>
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={() => {
+                setFailedAttempt(null);
+                setError("");
+                setMessage("");
+              }}
+            >
+              Wiederholungsoption verwerfen
+            </Button>
+          </div>
+        </div>
+      )}
       {row === undefined ? (
         <p>Research-Profil wird geladen …</p>
       ) : (
@@ -282,7 +311,6 @@ function ResearchAccount({
                   }
                   onClick={() =>
                     command(
-                      "start",
                       (key) =>
                         start({
                           workspaceId,
@@ -301,7 +329,6 @@ function ResearchAccount({
                   disabled={!writable || busy}
                   onClick={() =>
                     command(
-                      `pause-${!profile!.paused}`,
                       (key) =>
                         change({
                           workspaceId,
@@ -327,7 +354,6 @@ function ResearchAccount({
                   }
                   onClick={() =>
                     command(
-                      profile!.scheduleActive ? "deactivate" : "activate",
                       (key) =>
                         change({
                           workspaceId,
@@ -353,7 +379,6 @@ function ResearchAccount({
                   disabled={!writable || busy}
                   onClick={() =>
                     command(
-                      "delete",
                       (key) =>
                         change({
                           workspaceId,
@@ -376,7 +401,7 @@ function ResearchAccount({
       {buffer && (
         <Section title="Profil bearbeiten">
           <fieldset
-            disabled={busy || !writable}
+            disabled={busy || !editable}
             className="grid gap-4 sm:grid-cols-2"
           >
             {(
@@ -559,14 +584,17 @@ function ResearchAccount({
               </Button>
             )}
             <p className="text-sm text-muted-foreground">
-              Fehlgeschlagene Anfragen werden mit denselben ursprünglichen
-              Eingaben wiederholt. Aktuelle Version öffnen beginnt eine neue
-              Bearbeitung. Keine automatische Inbox-Übergabe. Änderungen
-              deaktivieren den bisherigen Zeitplan; erneute Aktivierung ist
-              ausdrücklich erforderlich. Bei Sommerzeit-Lücken entfällt die
-              lokale Ausführung, bei doppelter Uhrzeit gilt die frühere Instanz.
+              Fehlgeschlagene Anfragen können mit der sichtbaren
+              Wiederholungsoption exakt geprüft werden. Aktuelle Version öffnen
+              beginnt eine neue Bearbeitung. Keine automatische Inbox-Übergabe.
+              Änderungen deaktivieren den bisherigen Zeitplan; erneute
+              Aktivierung ist ausdrücklich erforderlich. Bei Sommerzeit-Lücken
+              entfällt die lokale Ausführung, bei doppelter Uhrzeit gilt die
+              frühere Instanz.
             </p>
-            <Button onClick={save}>Profil speichern</Button>
+            <Button disabled={!!failedAttempt} onClick={save}>
+              Profil speichern
+            </Button>
             <Button
               variant="outline"
               onClick={() => {
@@ -609,7 +637,6 @@ function ResearchAccount({
                       disabled={!writable || busy}
                       onClick={() =>
                         command(
-                          `stop-${o._id}`,
                           () => stop({ workspaceId, orderId: o._id }),
                           () => {},
                         )
