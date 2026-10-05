@@ -1,6 +1,6 @@
 # Editorial validation — TASK-7/8/11/13
 
-2026-10-05 · master · code commits `9376587`, `6eea458`, `2079e68` · current-scope SPEC PASS; independent QUALITY review pending.
+2026-10-05 · master · code commits `9376587`, `6eea458`, `2079e68` · current-scope SPEC PASS; QUALITY NEEDS WORK at `2079e68`, corrections in progress.
 
 ## Verified code scope
 
@@ -16,6 +16,16 @@ See [domain contract](../editorial-domain-contract.md) for exact tables, limits 
 - Independent SPEC reviewer reproduced browser/profile timezone inconsistency and a generic configuration destination at `6eea458`. Both were repaired at `2079e68`; independent re-review ran all 40 unit tests, the LA-browser/Berlin-profile calendar E2E and the seeded-secret bundle check successfully.
 - Calendar checks include civil-date labels/ranges/navigation, Berlin 23/25-hour DST days and Havana missing/overlapping midnight. Profile timezone changes retain stored UTC appointment values.
 - Configuration guidance displays required key names as prose; it reads no secret values. The bundle check permits three necessary inert names only in the Settings chunk, while rejecting injected secret values in every JavaScript chunk.
+
+## Quality findings at 2079e68
+
+Independent reviewer reran typecheck, all 40 tests and bundle security successfully; no critical or minor findings. Three important findings remain before the next unit:
+
+1. `editorial.schedule` permits a 101st active appointment for a draft, while `draftBundle` then throws `DRAFT_ACTIVE_SCHEDULE_LIMIT` from both get and list. A dense calendar returns no rows, obstructing ordinary cancellation/revocation. Confirmed by isolated Convex transaction reproduction.
+2. The latest-100 approval query excludes an older still-active planned V1 approval after 100 newer approvals. Its planned-revocation UI disappears although its schedule and version remain loaded. Confirmed by isolated Convex reproduction. Referenced approvals must remain available alongside bounded recent history.
+3. The comment textarea remains editable during awaited submission, then clears unconditionally on success, discarding newer input. Clear only the unchanged submitted buffer or protect pending editing.
+
+The original implementer owns these minimal corrections and targeted regressions. SPEC and QUALITY will recheck the final commit before provider implementation starts.
 
 ## Remaining acceptance
 
