@@ -4,7 +4,7 @@ title: X-OAuth und Capability-Status implementieren (P03.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:24'
+updated_date: '2026-10-05 11:35'
 labels:
   - p03
   - r1
@@ -69,4 +69,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 D06-Implementierungsentscheidung innerhalb der vom Nutzer übertragenen Freiheit: ein aktiver Publishing-Workspace je Provider-Identität, expliziter Disconnect vor einer neuen Bindung, keine automatische Cross-Tenant-Verknüpfung/Übernahme oder Übertragung alter Freigaben. Live Callback-/Scope-/Zugangsnachweise bleiben getrennte Abnahme; keine Consumer- oder historischen V1-User-Tokens einsetzen.
 
 Implementation starts after TASK-9 independentSPEC/QUALITY PASSfe3af37. Fresh unit implementer owns X OAuth/PKCE, separateencrypted credentials, generation-safe refresh/disconnect and concrete authenticated settings/callback. Root owns Backlog. Current X primary docs prepared; D06 explicitdisconnect/freshOAuth crossworkspace and D16 evidence-only capability apply. Missing configuration visible, no publicposts/realOAuth/manual evidence claimed. One fresh implementer, sequential SPEC and QUALITY before publisher subunits.
+
+CLI clarification verified via current Context7 and installed Convex1.46 primary source: codegen may upload bundles for deployment-side analysis/type generation but does not activate running functions (runCodegen has no finishPush). Initial provisional activation interpretation corrected. Full tests/typecheck then convex dev --once performs actual existing-Dev activation. No credentials/provider effects from this read-only verification; receipt /tmp/dispatch-convex-cli-receipt.md.
 <!-- SECTION:NOTES:END -->
