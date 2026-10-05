@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 19:50'
+updated_date: '2026-10-05 19:54'
 labels:
   - p06
   - r2
@@ -77,4 +77,6 @@ Fresh implementer native design approved: retain aiAttempts legacy generation sh
 Backend checkpoint f50fc59: implementer reports 170 passing affected native/generation/chat/enrichment/idea/profile tests, typecheck and diff validation; source freeze, independent SPEC/QUALITY and final suite remain pending. Approved native allocation boundary: source policy requires current nonblank allocationEvidence and allocatedProviderLimitMicros matching the native-provider grant limit. Evidence must establish an unreserved native slice excluding generation and reserved publishing capacity. Native x operations share native:x; native Requesty policies share native:requesty. These configured slices do not measure combined external credit or actual publishing reserve. Missing evidence or changed allocation limit blocks new I/O; held liabilities and once-only late settlement survive withdrawal. No automatic grant, provider balance claim, policy activation or Backlog acceptance.
 
 Final implementation source frozen at 215b94c04de4626a66d14a2652306c1d59e12902 after backend checkpoint f50fc59. Implementer verification: 426 tests/27 files including 39 native provider tests; actual Research browser (owned fixture closed, user5173 preserved), typecheck/full lint/build/bundle/diff and official codegen passed. Existing EU Dev functions ready21:46:02, no policy/grant/source/provider activation or paid search/model. Minimal final corrections retain first unknown cost/unit evidence, reject conflicts and keep invalid evidence sticky; RED/GREEN tests retained. Existing supplied X_APP_BEARER_TOKEN reused under operation/credential-hash proof. Fresh independent SPEC now reviewing full source BASE4c50535..215b94c with own actual-handler/physical-fetch/UI negatives; QUALITY follows only after SPEC PASS. No AC checked or manual/live acceptance claimed yet.
+
+Independent initial SPEC NEEDS FIXES at215b94c: valid X data plus errors loses supplied partial sources; actual saved-profile language switch shows en but submits stale de; ai.runs.recent omits native/generation receipt-owner/reference narrowing (synthetic malformed native runId alias projects native estimate as generation usage, not claimed public mutation exploit). ROOT inspected actual callers/own fixtures and confirms. Registered39 pass; two independent actual-handler negatives and actual React language scenario RED, prior temporal/native idle expiry prefix passes. Original sources/logs retained in /tmp/dispatch-research-provider-spec-receipt.md; durable three-scope holds inspected inside physical synthetic fetch. Same implementer owns minimal corrections/regressions; same SPEC delta then fresh QUALITY only after PASS. No AC/Done/activation. Root review receipt .docs/reviews/task-21-research-provider-validation.md.
 <!-- SECTION:NOTES:END -->
