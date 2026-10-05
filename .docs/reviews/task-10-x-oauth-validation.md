@@ -22,6 +22,12 @@ One Important finding, zero Critical findings and no other confirmed defects. Sh
 
 The reviewer independently ran19/19 focused tests and traced complete transfer fencing, auth/lifecycle, key rotation/AAD, secret DTOs, generation/lease/unknown outcomes, inventory/cleanup bounds, connection sequences and actual callback lifecycle; these mechanisms otherwise hold. Date-sensitive query caching was investigated against current docs but not reported as a defect without proof. Reviewer made no changes or provider effects. Scoped tests-first correction assigned to original implementer; renewed SPEC then QUALITY required before TASK-12.1.
 
+## Token correction frozen at75088c3 — renewed reviews pending
+
+Three negative regressions failed before correction: malformed initial access token, malformed refresh token and malformed-access refresh falsely succeeding. The shared validator now requires printable non-whitespace ASCII (0x21–0x7e) for all initial/refresh access/refresh-token paths. Malformed refresh rejects with `X_REFRESH_OUTCOME_UNKNOWN`, removes ciphertext and marks the account `reauth_required`. No UI change or per-caller workaround.
+
+Implementer reports22 targeted OAuth tests/92 full tests, typecheck, formatting, build and bundle checks passing. Existing Dev activated at13:49:16. Prior actual browser evidence applies to unchanged UI; no live provider/env effects. Renewed independent SPEC is running, then QUALITY re-review; actual gates below remain open.
+
 ## Actual acceptance still open
 
 Confidential X OAuth2 client/app setup and exact registered SITE_URL callback; valid32-byte canonical Base64 encryption key with non-secret `INTEGRATION_ENCRYPTION_KEY_ID`, previous-key rotation exercise, real human account identity/scopes/refresh/role-workspace UX. No environment secret values read or set by implementer. Local disconnect does not prove remote grant removal; provider-side access removal remains explicit manual evidence. Actual entitlement/media/public test content and complete provider/EU/customer-data approval gates belong to later units and acceptance, not these synthetic checks. No Backlog Done.

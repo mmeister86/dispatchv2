@@ -4,7 +4,7 @@ title: X-OAuth und Capability-Status implementieren (P03.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:47'
+updated_date: '2026-10-05 11:49'
 labels:
   - p03
   - r1
@@ -77,4 +77,6 @@ Review head49d9402 frozen (production9b31e50, lasttests-only). Worker reportsful
 IndependentSPEC PASS49d9402:19/19OAuth tests +actualtest:x-oauth browser passed (sandboxlistenerEPERM retriedescalated,5174closed). Fulltask authorization/state/PKCE/crypto/keyrotation/globalbinding/fencing/refreshCAS/unknownoutcome/connectionsequence/internalcredentialgate/realUI/inventory checked; no findings/edits/provider effects. Rootauth5175regression3/3PASS withemailsintercepted closed. Full independentQUALITY nowrunning; live/manualgates open and statusInProgress.
 
 IndependentcompleteQUALITY NEEDS WORK49d9402:1Important/0Critical/nootherconfirmeddefects. SharedvalidToken accepts nonASCIIU+0100; actualparser smallfixture succeeds while nativeAuthorizationHeaders throws. Initial/mefailssafe, refreshexchange maypersistbadtoken/reportsuccess. Originalimplementer assignedtestsfirstmalformedrefresh thenshared printableASCII/headersafe validation, reauthunknown+secretremoval/no success assertion and regressions. 19focusedtestsPASS; auth/fence/crypto/CAS/lifecycle/bounds/sequence/UIotherwisehold. Querycachingtime investigatednotconfirmed/notfinding. SPECthenQUALITYrereviewbeforepublisher; externalmanualgatesopen.
+
+Tokenboundarycorrection frozen75088c3:3negativechecks failedbeforefix; sharedvalidToken printable nonwhitespaceASCII0x21..0x7e acrossinitial/refresh/access/refreshToken. Malformedrefresh X_REFRESH_OUTCOME_UNKNOWN removescipher+reauth/no successfulreturn. Worker22OAuth/92fullunit,type/lint/build/bundlePASS,existingDevactivated13:49:16; UIunchanged/priorbrowserholds. No provider/enveffects. RenewedSPECnowrunningthenQUALITY; actualgatesopen,statusInProgress.
 <!-- SECTION:NOTES:END -->
