@@ -28,6 +28,16 @@ Three negative regressions failed before correction: malformed initial access to
 
 Implementer reports22 targeted OAuth tests/92 full tests, typecheck, formatting, build and bundle checks passing. Existing Dev activated at13:49:16. Prior actual browser evidence applies to unchanged UI; no live provider/env effects. Renewed independent SPEC is running, then QUALITY re-review; actual gates below remain open.
 
+## Independent renewed SPEC and final QUALITY — PASS at75088c3
+
+SPEC independently passed22/22 OAuth tests and traced both callers through the shared guard, rejection before persistence and generation-safe unknown-failure cleanup. QUALITY independently passed22/22, reconstructed the original Unicode counterexample for both token fields (now rejected) and verified a valid ASCII token still forms Authorization. No remaining confirmed Critical/Important/Minor findings; the prior full audit remains valid for the single production validator-line change. UI unchanged, so no redundant browser rerun. No reviewer edits or provider effects.
+
+All three TASK-10 AC are verified by isolated negative/race tests; actual manual/provider gates remain open. Code stage may progress to TASK-12.1, not Backlog Done.
+
+## Non-secret development metadata
+
+After both reviews, root read only environment names with installed `convex env list --names-only`; the required key ID was absent. Root set `INTEGRATION_ENCRYPTION_KEY_ID=dispatch-v1` explicitly on existing dev accurate-lion-749. The supplied key value was never read or changed. This supplies a stable initial envelope ID; it does not prove key encoding, migrate old ciphertext, execute OAuth or satisfy real rotation/client/callback acceptance.
+
 ## Actual acceptance still open
 
 Confidential X OAuth2 client/app setup and exact registered SITE_URL callback; valid32-byte canonical Base64 encryption key with non-secret `INTEGRATION_ENCRYPTION_KEY_ID`, previous-key rotation exercise, real human account identity/scopes/refresh/role-workspace UX. No environment secret values read or set by implementer. Local disconnect does not prove remote grant removal; provider-side access removal remains explicit manual evidence. Actual entitlement/media/public test content and complete provider/EU/customer-data approval gates belong to later units and acceptance, not these synthetic checks. No Backlog Done.

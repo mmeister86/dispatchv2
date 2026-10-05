@@ -4,7 +4,7 @@ title: X-OAuth und Capability-Status implementieren (P03.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:49'
+updated_date: '2026-10-05 11:52'
 labels:
   - p03
   - r1
@@ -40,9 +40,9 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Falscher oder wiederverwendeter State wird verworfen.
-- [ ] #2 Token-Refresh überschreibt keine neueren Credentials.
-- [ ] #3 gesperrte Accounts wechseln in einen sichtbaren Reauth-Zustand.
+- [x] #1 Falscher oder wiederverwendeter State wird verworfen.
+- [x] #2 Token-Refresh überschreibt keine neueren Credentials.
+- [x] #3 gesperrte Accounts wechseln in einen sichtbaren Reauth-Zustand.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -79,4 +79,6 @@ IndependentSPEC PASS49d9402:19/19OAuth tests +actualtest:x-oauth browser passed 
 IndependentcompleteQUALITY NEEDS WORK49d9402:1Important/0Critical/nootherconfirmeddefects. SharedvalidToken accepts nonASCIIU+0100; actualparser smallfixture succeeds while nativeAuthorizationHeaders throws. Initial/mefailssafe, refreshexchange maypersistbadtoken/reportsuccess. Originalimplementer assignedtestsfirstmalformedrefresh thenshared printableASCII/headersafe validation, reauthunknown+secretremoval/no success assertion and regressions. 19focusedtestsPASS; auth/fence/crypto/CAS/lifecycle/bounds/sequence/UIotherwisehold. Querycachingtime investigatednotconfirmed/notfinding. SPECthenQUALITYrereviewbeforepublisher; externalmanualgatesopen.
 
 Tokenboundarycorrection frozen75088c3:3negativechecks failedbeforefix; sharedvalidToken printable nonwhitespaceASCII0x21..0x7e acrossinitial/refresh/access/refreshToken. Malformedrefresh X_REFRESH_OUTCOME_UNKNOWN removescipher+reauth/no successfulreturn. Worker22OAuth/92fullunit,type/lint/build/bundlePASS,existingDevactivated13:49:16; UIunchanged/priorbrowserholds. No provider/enveffects. RenewedSPECnowrunningthenQUALITY; actualgatesopen,statusInProgress.
+
+IndependentrenewedSPEC and finalQUALITY PASS75088c3:22/22each, originalUnicodecounterexample access/refresh nowrejected, validASCIIheader andmalformedrefreshunknown/cipherremoved/reauth verified. No remainingconfirmedCritical/Important/Minor. Priorfullaudit/UIbrowserholds oneproductionlinefix. AC1/2/3 isolatednegative/racesverified, notmanualclosure. Rootenvnames-only foundKEY_IDabsent; setnonsecretINTEGRATION_ENCRYPTION_KEY_ID=dispatch-v1 explicitlydevaccurate-lion-749, existingkeyneverread/changed. Realkeyencoding/rotation/clientcallback/humanOAuth/refresh/remotegrantremoval/publishing/EU/manualgatesopen. StatusInProgress, nextfreshTASK12.1 maystart.
 <!-- SECTION:NOTES:END -->

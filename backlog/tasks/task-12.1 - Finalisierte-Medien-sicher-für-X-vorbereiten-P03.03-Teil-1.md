@@ -1,10 +1,10 @@
 ---
 id: TASK-12.1
 title: 'Finalisierte Medien sicher für X vorbereiten (P03.03, Teil 1)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 10:24'
+updated_date: '2026-10-05 11:52'
 labels:
   - p03
   - r1
@@ -44,14 +44,16 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P03.03. Der übergeord
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Nach TASK-9 und X-OAuth TASK-10 aktuelle v2-Media-Endpunkte und exakten Alt-Metadata-Vertrag übernehmen.
-2. Autorisierte finale R2-Bytes mit gespeicherter Identität/Checksum erneut prüfen; begrenzte X-Chunk-Uploads und persistierte Processing-/Expiry-Checkpoints umsetzen.
-3. Freigegebenen Alt-Text als metadata.alt_text.text übertragen und Erfolg bestätigen; Media-ID/Wiederverwendung an Version/Alt-Snapshot binden.
-4. Timeout/Unterbrechung, Verfall, Role-/Generation-/Accountänderungen und Transfer-Messung synthetisch prüfen; tatsächlicher EU-R2/X-Runtime-Durchstich bleibt separat offen.
+1. Reuse reviewed editorial approval/schedule and R2 immutable-source guards plus TASK10 narrow internal credential access.
+2. Add bounded final-only retrieval, checksum validation before X receives bytes, durable chunk/processing/expiry/alt checkpoints and transfer measurements.
+3. Verify small synthetic foreign-source, stale generation, malformed bytes, interruption, processing, exact alt and expiry cases; record live runtime/EU gates separately.
+4. Commit scoped code on master, run relevant checks and update existing Dev only; independent SPEC then QUALITY before next publishing unit.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Schreibgeschützte Vorbereitung: aktuelle offizielle X-v2-Spezifikation enthält verschachteltes metadata.alt_text.text (max1000Zeichen), kein Legacy-top-level alt_text/media_id. Receipt /tmp/dispatch-x-current-docs.md. Keine externen authentifizierten/paid X-Aufrufe, keine Medien hochgeladen. Implementierung als eigene frische SDD-Einheit nach TASK-9/10.
+
+Freshimplementation starts after TASK9SPEC/QUALITYfe3af37 and TASK10SPEC/QUALITY75088c3. CurrentfirstOAuthpublishingcap remainsunverified/disabled; TASK12.1 mediaenginebehindexistingguards, TASK12.2 owns concreteexplicitfirst-write verification/consent path without fabricatedentitlement. Read-onlyR2reuse/currentXmetadata docs receipts and boundedbrief prepared. No actualXuploads/publicposts/Runtime/EU/manualevidence claimed; rootBacklogowner, no automaticDone.
 <!-- SECTION:NOTES:END -->
