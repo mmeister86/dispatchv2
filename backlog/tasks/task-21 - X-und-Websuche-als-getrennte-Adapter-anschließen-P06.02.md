@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 20:43'
+updated_date: '2026-10-05 20:44'
 labels:
   - p06
   - r2
@@ -93,4 +93,6 @@ Final correction source frozen5521672ca3f23e407d7bba5da10644921f72b91f, seven ap
 Same final independent SPEC PASS5521672:113registered/3 incl64native plus7distinctactualhandlercases. OriginalX/Web/trends identical-request and fundedoverage negativesPASSunchanged; new normalizedlanguage/time vs genuinequery, exactoldknowncache through lateoverage then rightswithdrawal, pre-v2sent throughprofile/lease then lateonce afterwithdrawal. Boundedlegacyoverflow registeredPASS. /tmp/dispatch-research-provider-spec-intent-delta-receipt.md preserves originalREDs. Fresh independent QUALITY now whole4c50535..5521672; noAC until verdict/noDone/activation.
 
 Fresh QUALITY confirmed Important parser byte-limit failure webSearch.ts163-185: complete70KB comment/id/event lines consumed before residual check can produce completed/settled; multibyte residual countedUTF16 notbytes. Threeownactualexecute/fetchcases inspectdurableorder/sentattempt/all3holds plusoneownparsercase allRED /tmp/task21-quality-independent.test.ts and initial-red.log. ROOT inspectedactualsource/fixtures and confirms. Source frozen until consolidatedQUALITY; originalimplementer minimal sharedparser bytecheck then sameSPECdelta/reQUALITY. NoAC/Done.
+
+Consolidated fresh QUALITY WITH FIXES552, exactlyoneImportantSSEbyteboundaryfamily/nootherconfirmedfindings. 113registeredPASS;10distinctowncases8RED2PASS /tmp/dispatch-research-provider-quality-receipt.md: samewirepartition, multibytependingline/event, exact65536ASCIIvalid but splitCRLFwronglyrejected, actualpartialsource wronglysettled20/hold0; positiveidentitywithdrawal latefinancePASS. Originalimplementerreleasedonly webSearch/providers.test/providercontract minimal logical-line/pending-event bytebounds retainingframingCR/partialholds. SameSPECdelta then sameQUALITYrerun required beforeAC/next22.1; noDone/activation.
 <!-- SECTION:NOTES:END -->
