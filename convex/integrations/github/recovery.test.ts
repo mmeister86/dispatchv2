@@ -554,12 +554,25 @@ test("explicit current local admission of a proof-blocked signed receipt is atom
   ).toHaveLength(0);
   await f.t.run(async (ctx) => {
     for (const id of f.repositories)
-      await ctx.db.patch(id, {
-        proofExpiresAt: Date.now() + 900000,
-        generation: 2,
-        purposeAt: Date.now(),
-      });
+      await ctx.db.patch(id, { proofExpiresAt: Date.now() + 900000 });
   });
+  for (const [i, repositoryId] of f.repositories.entries()) {
+    await f.t.run((ctx) =>
+      ctx.db.patch(f.userId, { activeWorkspaceId: f.workspaces[i] }),
+    );
+    await f.signed.mutation(api.integrations.github.repositories.configure, {
+      workspaceId: f.workspaces[i],
+      repositoryId,
+      expectedGeneration: 1,
+      access: true,
+      monitoring: true,
+      content: false,
+      communicableContext: "New explicit purpose",
+    });
+  }
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.userId, { activeWorkspaceId: f.workspaceId }),
+  );
   await f.t.mutation(internal.integrations.github.recoveryState.track, {
     delivery: {
       deliveryId: "1",

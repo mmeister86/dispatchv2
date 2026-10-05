@@ -227,6 +227,9 @@ function GithubSignalWorkspace({
             1.000 Zustellversuche der letzten 24 Stunden. Provider-Retention,
             größere Payloads und Einträge außerhalb dieses Fensters bleiben
             mögliche Lücken. Der Empfänger akzeptiert höchstens 256 KiB.
+            Ereignisse vor einer Monitoring-Freigabe oder ohne belegbare
+            Freigabereihenfolge erfordern eine ausdrückliche lokale Nachholung
+            unter aktueller Repository-Prüfung.
           </p>
           <Button
             variant="outline"

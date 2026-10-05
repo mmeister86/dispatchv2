@@ -73,6 +73,7 @@ export const repoFields = {
   communicableContext: v.string(),
   purposeActorId: v.id("users"),
   purposeAt: v.number(),
+  purposeSequence: v.optional(v.number()),
   purposeVersion: v.literal(1),
   connectionGeneration: v.number(),
   generation: v.number(),

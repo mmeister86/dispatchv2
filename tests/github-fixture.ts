@@ -2,6 +2,7 @@ import { vi } from "vitest";
 import { createHmac } from "node:crypto";
 import { mediaFixture } from "./media-fixture";
 import type { Id } from "../convex/_generated/dataModel";
+import { nextAdmissionSequence } from "../convex/integrations/github/barriers";
 export function config() {
   vi.stubEnv("GITHUB_WEBHOOK_SECRET", "synthetic-secret");
   vi.stubEnv("GITHUB_APP_ID", "42");
@@ -106,6 +107,7 @@ export async function sourceFixture(count = 1) {
           communicableContext: "explicit context",
           purposeActorId: f.userId,
           purposeAt: Date.now() - 1000,
+          purposeSequence: await nextAdmissionSequence(ctx),
           purposeVersion: 1,
           connectionGeneration: 1,
           generation: 1,

@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../../_generated/server";
 import { internalQuery, internalMutation } from "../../_generated/server";
 import type { Id, Doc } from "../../_generated/dataModel";
-import { barrierSequence } from "./barriers";
+import { barrierSequence, nextAdmissionSequence } from "./barriers";
 import {
   workspaceQuery,
   workspaceMutation,
@@ -456,6 +456,7 @@ export const verify = workspaceInternalMutation({
         communicableContext: old?.communicableContext ?? "",
         purposeActorId: ctx.user._id,
         purposeAt: Date.now(),
+        purposeSequence: await nextAdmissionSequence(ctx),
         purposeVersion: 1 as const,
         connectionGeneration: c.generation,
         generation: (old?.generation ?? 0) + 1,
@@ -516,6 +517,7 @@ export const configure = workspaceMutation({
       communicableContext: a.communicableContext.trim(),
       purposeActorId: ctx.user._id,
       purposeAt: Date.now(),
+      purposeSequence: await nextAdmissionSequence(ctx),
       generation: r!.generation + 1,
       updatedAt: Date.now(),
     });

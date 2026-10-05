@@ -44,6 +44,7 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  githubAdmissionOrder: defineTable({ sequence: v.number() }),
   githubRevocationBarriers: defineTable({
     key: v.string(),
     receivedAt: v.number(),
@@ -52,6 +53,7 @@ export default defineSchema({
   }).index("by_key", ["key"]),
   githubWebhookReceipts: defineTable(receiptFields)
     .index("by_digest", ["digest"])
+    .index("by_eventKey", ["eventKey"])
     .index("by_state_and_dueAt", ["state", "dueAt"]),
   githubDeliveryGuids: defineTable({
     guid: v.string(),

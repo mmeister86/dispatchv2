@@ -37,6 +37,7 @@ export const receiptFields = {
   guid: v.string(),
   facts,
   receivedAt: v.number(),
+  admissionSequence: v.optional(v.number()),
   state: v.union(v.literal("pending"), v.literal("processed")),
   cursor: v.union(v.string(), v.null()),
   dueAt: v.number(),

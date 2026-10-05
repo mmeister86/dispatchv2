@@ -7,7 +7,7 @@ import type { Doc } from "../../_generated/dataModel";
 import type { MutationCtx } from "../../_generated/server";
 import type { QueryCtx } from "../../_generated/server";
 import type { Id } from "../../_generated/dataModel";
-import { barrierSequence } from "./barriers";
+import { barrierSequence, nextAdmissionSequence } from "./barriers";
 export async function localEvidence(
   ctx: QueryCtx,
   workspaceId: Id<"workspaces">,
@@ -165,10 +165,23 @@ export const record = internalMutation({
               f.providerAt,
             ])
           : a.digest;
+    const factual = f.kind === "push" || f.kind === "release";
+    const firstEvent = factual
+      ? await ctx.db
+          .query("githubWebhookReceipts")
+          .withIndex("by_eventKey", (q) => q.eq("eventKey", eventKey))
+          .first()
+      : null;
+    const admissionSequence = factual
+      ? firstEvent
+        ? firstEvent.admissionSequence
+        : await nextAdmissionSequence(ctx)
+      : undefined;
     const receiptId = await ctx.db.insert("githubWebhookReceipts", {
       ...a,
       eventKey,
       receivedAt,
+      admissionSequence,
       latestReceivedAt: receivedAt,
       ambiguousRevocation: false,
       state: "pending",
@@ -218,7 +231,10 @@ export async function admitFact(
     return null;
   }
   if (
-    (!admission && source.purposeAt > receipt.receivedAt) ||
+    (!admission &&
+      (source.purposeSequence === undefined ||
+        receipt.admissionSequence === undefined ||
+        source.purposeSequence >= receipt.admissionSequence)) ||
     source.providerId !== f.providerId ||
     source.installationId !== f.installationId ||
     source.private !== f.private ||

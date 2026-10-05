@@ -27,6 +27,163 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.useRealTimers();
 });
+test.each([0, -60000])(
+  "a purpose granted after receipt cannot auto-admit at clock offset %i",
+  async (offset) => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-05T12:00:00Z"));
+    const f = await sourceFixture();
+    const configure = (generation: number, monitoring: boolean) =>
+      f.signed.mutation(api.integrations.github.repositories.configure, {
+        workspaceId: f.workspaceId,
+        repositoryId: f.repositories[0],
+        expectedGeneration: generation,
+        access: true,
+        monitoring,
+        content: false,
+        communicableContext: "Explicit purpose",
+      });
+    await configure(1, false);
+    const guid = crypto.randomUUID();
+    const receivedAt = Date.now();
+    expect((await send(f, push, "push", guid)).status).toBe(202);
+    vi.setSystemTime(Date.now() + offset);
+    await configure(2, true);
+    const receipt = (await f.t.run((ctx) =>
+      ctx.db.query("githubWebhookReceipts").first(),
+    ))!;
+    await f.t.mutation(internal.integrations.github.deliveries.process, {
+      receiptId: receipt._id,
+    });
+    expect(
+      await f.t.run((ctx) => ctx.db.query("githubSignals").collect()),
+    ).toHaveLength(0);
+    // A signed reserialization is still the original event, not renewed permission.
+    expect((await send(f, JSON.stringify(push, null, 2))).status).toBe(202);
+    await processAll(f);
+    expect(
+      await f.t.run((ctx) => ctx.db.query("githubSignals").collect()),
+    ).toHaveLength(0);
+    await f.t.mutation(internal.integrations.github.recoveryState.track, {
+      delivery: {
+        guid,
+        deliveryId: "1",
+        event: "push",
+        providerId: "101",
+        installationId: "50",
+        deliveredAt: receivedAt,
+        providerStatus: 503,
+      },
+      cursor: null,
+    });
+    const recovery = (await f.t.run((ctx) =>
+      ctx.db.query("githubRecoveries").first(),
+    ))!;
+    const fetcher = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(Error("No provider call"));
+    const args = {
+      workspaceId: f.workspaceId,
+      recoveryId: recovery._id,
+      expectedGeneration: 3,
+    };
+    await expect(
+      f.signed.action(api.integrations.github.recovery.redeliver, {
+        ...args,
+        expectedGeneration: 2,
+      }),
+    ).rejects.toThrow("SOURCE_DISABLED");
+    await f.signed.action(api.integrations.github.recovery.redeliver, args);
+    await expect(
+      f.signed.action(api.integrations.github.recovery.redeliver, args),
+    ).rejects.toThrow("ALREADY_PROCESSED");
+    expect(fetcher).not.toHaveBeenCalled();
+    const signals = await f.t.run((ctx) =>
+      ctx.db.query("githubSignals").collect(),
+    );
+    expect(signals).toHaveLength(1);
+    expect(signals[0]).toMatchObject({
+      receivedAt,
+      providerAt: null,
+      explicitRecovery: { actorId: f.userId, recoveryId: recovery._id },
+    });
+    expect(await f.t.run((ctx) => ctx.db.get(recovery._id))).toMatchObject({
+      state: "processed",
+      attempts: 0,
+    });
+  },
+);
+test.each(["source", "receipt", "both"])(
+  "unordered legacy %s requires explicit local recovery, including reserialization",
+  async (legacy) => {
+    vi.useFakeTimers();
+    const f = await sourceFixture(),
+      guid = crypto.randomUUID();
+    expect((await send(f, push, "push", guid)).status).toBe(202);
+    const receipt = (await f.t.run((ctx) =>
+      ctx.db.query("githubWebhookReceipts").first(),
+    ))!;
+    await f.t.run(async (ctx) => {
+      if (legacy !== "receipt")
+        await ctx.db.patch(f.repositories[0], { purposeSequence: undefined });
+      if (legacy !== "source")
+        await ctx.db.patch(receipt._id, { admissionSequence: undefined });
+    });
+    expect((await send(f, JSON.stringify(push, null, 2))).status).toBe(202);
+    await processAll(f);
+    expect(
+      await f.t.run((ctx) => ctx.db.query("githubSignals").collect()),
+    ).toHaveLength(0);
+    await f.t.mutation(internal.integrations.github.recoveryState.track, {
+      delivery: {
+        guid,
+        deliveryId: "1",
+        event: "push",
+        providerId: "101",
+        installationId: "50",
+        deliveredAt: receipt.receivedAt,
+        providerStatus: 503,
+      },
+      cursor: null,
+    });
+    const r = (await f.t.run((ctx) =>
+      ctx.db.query("githubRecoveries").first(),
+    ))!;
+    await f.signed.action(api.integrations.github.recovery.redeliver, {
+      workspaceId: f.workspaceId,
+      recoveryId: r._id,
+      expectedGeneration: 1,
+    });
+    expect(
+      await f.t.run((ctx) => ctx.db.query("githubSignals").collect()),
+    ).toHaveLength(1);
+  },
+);
+test("a purpose granted before receipt remains ordered across clock rollback", async () => {
+  vi.useFakeTimers();
+  const f = await sourceFixture();
+  await f.signed.mutation(api.integrations.github.repositories.configure, {
+    workspaceId: f.workspaceId,
+    repositoryId: f.repositories[0],
+    expectedGeneration: 1,
+    access: true,
+    monitoring: true,
+    content: false,
+    communicableContext: "Explicit renewed purpose",
+  });
+  const source = (await f.t.run((ctx) => ctx.db.get(f.repositories[0])))!;
+  vi.setSystemTime(Date.now() - 60000);
+  expect((await send(f)).status).toBe(202);
+  await processAll(f);
+  const receipt = (await f.t.run((ctx) =>
+    ctx.db.query("githubWebhookReceipts").first(),
+  ))!;
+  expect(source.purposeSequence).toBeLessThan(receipt.admissionSequence!);
+  expect(receipt.revocationSequence).toBe(0);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("githubSignals").collect()),
+  ).toHaveLength(1);
+});
 test("the actual webhook rejects an unsigned body before any domain write", async () => {
   config();
   const f = await mediaFixture();
@@ -450,6 +607,7 @@ test("empty all-to-selected removal blocks late discovery, fresh explicit resync
     monitoring: false,
     content: false,
   });
+  expect(r.purposeSequence).toBeGreaterThan(f.repositories.length);
   await f.signed.mutation(api.integrations.github.repositories.configure, {
     workspaceId: f.workspaceId,
     repositoryId: r._id,

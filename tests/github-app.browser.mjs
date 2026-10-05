@@ -255,6 +255,9 @@ try {
   // Ordinary Signals must also hide the same cached row when its own deadline arrives.
   await page.evaluate(() => window.renderSignals());
   await expect(
+    page.getByText(/ohne belegbare Freigabereihenfolge erfordern/),
+  ).toBeVisible();
+  await expect(
     page.getByText("fixture/project · Privat · Monitoring aus · Content aus", {
       exact: true,
     }),
