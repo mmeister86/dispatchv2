@@ -4,7 +4,7 @@ title: Kalender und erste betriebliche Rückmeldung liefern (P03.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 08:44'
+updated_date: '2026-10-05 09:54'
 labels:
   - p03
   - r1
@@ -60,4 +60,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /calendar. Week/month/agenda views, account/status filters, unscheduled drafts, move/cancel dialogs and keyboard alternative to dragging; successful/partial/uncertain statuses and next actions. Grenze: No real calendar jobs or critical email delivery. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Implementierung 9376587/6eea458: persistente Versionstermine und begrenzte Kalenderansichten, Root prüfte35Tests und vollständigen Typecheck erfolgreich. Unabhängige SPEC-Prüfung fand Kalender-Zeitzonenabweichung (Browser-Zeitzone vs. Profilzone) und generische statt konkreter Provider-Konfigurationshinweise; Korrektur läuft vor Freigabe der nächsten Einheit. J02/J08 im echten Testaccount weiterhin offene spätere Provider-Abnahme, keine Aufgabe geschlossen.
 <!-- SECTION:NOTES:END -->
