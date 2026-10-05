@@ -4,7 +4,7 @@ title: 'Begrenzten Research-Workflow und Themencluster bauen (P06.03, Teil 2)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 23:04'
+updated_date: '2026-10-05 23:07'
 labels:
   - p06
   - r2
@@ -73,4 +73,6 @@ Originalimplementer exact10-path correction41709200b7c0bd39d598e6d4800b3f0adcc6e
 SameSPECdelta4170920 ReadyNo: ORIGINAL3findings CLOSED; unchanged7PASS/extended10PASS/pipeline31PASS/actualbrowserPASS. NewONEImportant finish-dispositionregression:20actualdelivered→10selected/10omitted, bothnative+validAgentitems[] completed/all3physicalcalls successful, yetfailed/RESEARCH_FAILED dueincomplete folded intofailed. Exact /tmp/dispatch-research-pipeline-spec-delta-receipt.md andunchangednew11=10PASS1RED /tmp/dispatch-spec-delta-empty-coverage.log00:58:07. ROOT narrowhandoffsameimplementer onlyresearchTools/pipeline regression/owncontract ifneeded: partialsuccessfulboundedempty; preserveactualfailure/config/budget/cancelprecedence/noextraIO. Original7/new11/hash/REDhistory retained; sameSPECrecheck→freshQUALITY. NoAC/Done/provideractivation.
 
 Narrowexacttwo-path correctionf92d2eed2cb12163bd8519911c56eb3a221febb9 frozen: separatesselectionincomplete fromtechnicalfailure, validempty+omissions partial, actualfailure/config/budget/preexistingoutcomeprecedence retained. PermanentactualWorkflowregression firstRED1/31 at01:00:43 then32GREEN; reviewernew11 firstRED1/10 at01:00:18 thenunchanged7+11GREEN01:01:08; full528/28GREEN01:01:09. Fourreviewerscript/configSHA unchanged. Type/lint/build/bundle/codegen/postgentype/DevEXIT0 ready01:02:33local /tmp/task22.2-empty-correction-*.log, source/indexclean; user5173preserved/5174absent. FreshsameReviewerbrowserPASS4170920 reusedexplicitly sinceonlybackenddisposition changed. SameSPECfinalrecheckactivef92d2ee fullBASEd062346, freshQUALITYawaitsPASS; noAC/Done/paidactivation. ROOTreceipt preservesallinitial/correctionRED andprooflimits.
+
+FINALindependentSPEC f92d2ee PASS/ReadyYes noCritical/Important/Minor remaining /tmp/dispatch-research-pipeline-spec-final-receipt.md. Reviewerfreshunchanged7PASS01:03:06/unchanged11PASS01:03:07/fourneighboringdispositioncontrolsPASS01:03:32/focused32PASS01:03:34; all4originalscript/config hashes unchanged. Original/correctionRED+limits preserved, actualnontruncatedempty/nativeunknownoutage/config0IO/semantic503/budgetprecedence verified. ROOTfreshWHOLEdeltaQUALITY research_pipeline_quality (AppSec/astra/medium) nowactive d062346..f92d2ee, only/tmp independent artifacts, noimplementer sourceedits. NoAC/Done/paidactivation/manualclaim untilreviewandexplicitmanualuserconfirmation.
 <!-- SECTION:NOTES:END -->
