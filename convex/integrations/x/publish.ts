@@ -78,6 +78,8 @@ export function uploadResult(
     const info = object(data.processing_info);
     if (info.progress_percent !== undefined)
       integer(info.progress_percent, 0, 100);
+    if (info.check_after_secs !== undefined)
+      integer(info.check_after_secs, 0, 1800);
     if (info.state === "pending" || info.state === "in_progress") {
       state = "processing";
       waitMs = integer(info.check_after_secs, 0, 1800) * 1000;
@@ -98,7 +100,7 @@ export async function mediaRequest(
     | { bytes: Buffer; segment: number }
     | string,
 ) {
-  if (mediaId !== undefined) id(mediaId);
+  if (operation !== "initialize") id(mediaId);
   const url =
     operation === "initialize"
       ? "https://api.x.com/2/media/upload/initialize"

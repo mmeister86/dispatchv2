@@ -16,6 +16,18 @@ test("approved checksum and size fail before provider receives bytes", () => {
     checkedBytes(bytes, { ...expected, checksum: "0".repeat(64) }),
   ).toThrow();
   expect(() =>
+    uploadResult(
+      {
+        data: {
+          id: "123",
+          processing_info: { state: "succeeded", check_after_secs: "1" },
+        },
+      },
+      "123",
+      true,
+    ),
+  ).toThrow();
+  expect(() =>
     checkedBytes(bytes, { ...expected, size: bytes.length + 1 }),
   ).toThrow();
 });
@@ -59,6 +71,13 @@ test("fixed HTTPS requests use approved nested alt and no redirects; POST timeou
       }),
     }),
   );
+  await expect(
+    mediaRequest("append", "fixture-token", undefined, {
+      bytes: Buffer.from([1]),
+      segment: 0,
+    }),
+  ).rejects.toThrow();
+  expect(fetch).toHaveBeenCalledTimes(1);
   fetch.mockRejectedValueOnce(new Error("network"));
   await expect(
     mediaRequest("initialize", "fixture-token", undefined, {
