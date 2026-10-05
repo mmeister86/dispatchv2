@@ -4,7 +4,7 @@ title: 'Finalisierte Medien sicher für X vorbereiten (P03.03, Teil 1)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 12:08'
+updated_date: '2026-10-05 12:11'
 labels:
   - p03
   - r1
@@ -58,4 +58,6 @@ Schreibgeschützte Vorbereitung: aktuelle offizielle X-v2-Spezifikation enthält
 Freshimplementation starts after TASK9SPEC/QUALITYfe3af37 and TASK10SPEC/QUALITY75088c3. CurrentfirstOAuthpublishingcap remainsunverified/disabled; TASK12.1 mediaenginebehindexistingguards, TASK12.2 owns concreteexplicitfirst-write verification/consent path without fabricatedentitlement. Read-onlyR2reuse/currentXmetadata docs receipts and boundedbrief prepared. No actualXuploads/publicposts/Runtime/EU/manualevidence claimed; rootBacklogowner, no automaticDone.
 
 Independent SPEC PASS code9e885d9; documentation-only a69a439 distinguishes official append schema0..9999 from Dispatch cap0..999. Independent reviewer11 targeted tests and root full103 tests/14files passed. Implementer type/lint/build/bundle and existing Dev activation recorded. QUALITY review pending; .docs/reviews/task-12.1-x-media-validation.md records exact scope and remaining EU-R2/runtime/live-provider/manual gates. No actual upload/post/provider proof or Done claimed.
+
+QUALITY NEEDS_WORK a69a439: independent harness confirms caught transient R2 TimeoutError before any Xrequest permanently strands upload despite confirmed chunks. Same implementer fixing narrow read-error classification/bounded durable initialize-or-append retry; auth/config/namespace/validation remain permanent and uncertain Xwrites remain paused. Both reviews recheck before next publishing unit; no code-complete or Done claim.
 <!-- SECTION:NOTES:END -->
