@@ -4,7 +4,7 @@ title: Persistenten Chat und nachvollziehbare Agent-Arbeit liefern (P05.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 17:44'
+updated_date: '2026-10-05 17:51'
 labels:
   - p05
   - r2
@@ -69,4 +69,6 @@ Native API preparation recorded at /tmp/dispatch-chat-native-api-current-docs.md
 Prerequisite16 now independently reviewed5ae8da3:re-SPEC66 registered+11 own and QUALITY137 registered+8 own/both actual browsers PASS; root .docs/reviews/task-16-github-enrichment-validation.md records full chain and corrected shared consent closure. Authorize fresh19 implementation under whole-backlog user request and delegated choices using actual16/17/18 contracts, native Agent0.6.4 stream membership proof and /tmp/dispatch-chat-native-api-current-docs.md. Root owns Backlog/global/review metadata; no provider activation, paid probe or manual acceptance follows from readiness.
 
 Backend intermediate29558d340a892c9754616638125a5d86c8c608ba committed onmaster, sourcebaseline7f015fe (sameproduction asauthorizedd74a262; interveningrootdocs only). Exact11 source/contract/generated files scoped;360 fullUnit/25files including20actualChat cases and splitexistingToolboundary, Typecheck/Prettier/diff PASS. Nativeactualcomponent histories/cursor membership, stop/lateusage/stableprompt continuation, heldunknownstepbarrier and source/hash/actor/proof/credential withdrawal projections verified; malformedToolJSON rejected beforeSDKparser/logger. Contract labels UI/finalchecks/SPEC/QUALITY pending. Sourcecommitwindowclosed/indexempty, only UI/package/browserWIP remains. Implementer reports actualChatbrowser PASS; finalIdeasobjectroute/fullchecks/Dev/freeze and freshindependent reviews still pending. NoAC/Done/live/provideractivation accepted fromintermediate.
+
+Finalproductionfreeze f6cb20e64c380c9c90d199b0f189d1b5df2a4f1a onmaster, backend29558d3/sourceBASE7f015fe; rootmetadata-onlya2f2e6d withinrange. Full361/25 Unit at19:49:20 including21chat, typecheck/lint/build/bundle/diff, officialcodegen and actualChat+Ideas(olderexactobjectroute)browser PASS; existingEUDev ready19:49:50/4.39s afterfinalcorrection. Native0.6.4 sameorder successfultoolresponses are included; actualcorrectedgap is domainreceipt committedbeforeSDKstores Toolresponse/stop. PhysicalSSEresume test verifies realexistingIdea receipt inprompt, CreateTool absent, one savedinput/oneIdea. Source/indexclean/windowclosed, currentuser5173listenerPID48521 preserved (changedexternally from62707). FreshindependentSPEC now reviewingactualfullunit; QUALITY onlyafterPASS. Actualtwo stores conversations/chatOperations +optionalrunrefs/executionFinishedAt/nativeactive streamdeltas; newchatpurpose notimplicitdraftgrant. NoAC/Done/manual/live/paid/private/provideractivation fromfreeze.
 <!-- SECTION:NOTES:END -->
