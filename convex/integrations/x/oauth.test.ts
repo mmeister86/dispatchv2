@@ -462,6 +462,24 @@ test("actual refresh persists rotated token; invalid_grant and unknown transport
     ),
   ).toBe("fixture-refresh");
   fetch.mockResolvedValue(
+    Response.json({
+      access_token: "confirmed-next",
+      token_type: "bearer",
+      expires_in: 7200,
+    }),
+  );
+  await f.signed.action(api.integrations.x.client.refresh, a);
+  const omitted = await f.t.run((ctx) => ctx.db.query("xCredentials").first());
+  expect(
+    (
+      await open<{ refreshToken: string }>(
+        omitted!.envelope!,
+        association(f.workspaceId, id),
+      )
+    ).refreshToken,
+  ).toBe("rotated-refresh");
+  expect(omitted!.scopes).toEqual(scopes.split(" "));
+  fetch.mockResolvedValue(
     Response.json(
       { error: "invalid_grant", secret: "never-show" },
       { status: 400 },
@@ -764,4 +782,46 @@ test("reconnect cannot automatically resume schedules even when later live capab
       })
     ).accountId,
   ).toBe(accountId);
+});
+
+test("lost text/media scopes visibly block their operations without inventing capabilities", async () => {
+  config();
+  const f = await mediaFixture(),
+    accountId = await connect(f);
+  await f.t.run(async (ctx) => {
+    const a = (await ctx.db.get(accountId))!;
+    await ctx.db.patch(accountId, {
+      capability: { ...a.capability, publish: true },
+      xEvidence: { ...a.xEvidence!, liveWrite: "verified" },
+    });
+  });
+  vi.restoreAllMocks();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({
+      access_token: "read-only",
+      refresh_token: "read-only-refresh",
+      token_type: "bearer",
+      expires_in: 3600,
+      scope: "tweet.read users.read offline.access",
+    }),
+  );
+  await f.signed.action(api.integrations.x.client.refresh, {
+    workspaceId: f.workspaceId,
+    accountId,
+  });
+  const a = (
+    await f.signed.query(api.editorial.resources, {
+      workspaceId: f.workspaceId,
+    })
+  ).accounts[0];
+  expect(a.connection).toBe("connected");
+  expect(a.capability.publish).toBe(false);
+  expect(a.capability.maxMedia).toBe(0);
+  expect(a.capability.mediaTypes).toEqual([]);
+  expect(a.xEvidence).toMatchObject({
+    textScopeEligible: false,
+    mediaScopeEligible: false,
+    liveWrite: "blocked",
+    errorCode: "X_SCOPE_REQUIRED",
+  });
 });

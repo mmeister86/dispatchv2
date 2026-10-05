@@ -313,7 +313,13 @@ export const complete = workspaceInternalMutation({
         mediaScopeEligible: a.scopes.includes("media.write"),
         liveWrite: "unverified",
       },
-      capability: { ...target.capability, publish: false },
+      capability: {
+        maxText: 280,
+        maxThread: 25,
+        maxMedia: a.scopes.includes("media.write") ? 4 : 0,
+        mediaTypes: a.scopes.includes("media.write") ? ["image", "video"] : [],
+        publish: false,
+      },
     });
     await ctx.db.patch(s._id, { status: "connected" });
     return null;
@@ -492,6 +498,18 @@ export const refreshComplete = workspaceInternalMutation({
         scopes: a.scopes,
         textScopeEligible: a.scopes.includes("tweet.write"),
         mediaScopeEligible: a.scopes.includes("media.write"),
+        liveWrite: a.scopes.includes("tweet.write")
+          ? target.xEvidence!.liveWrite
+          : "blocked",
+        errorCode: a.scopes.includes("tweet.write")
+          ? undefined
+          : "X_SCOPE_REQUIRED",
+      },
+      capability: {
+        ...target.capability,
+        publish: target.capability.publish && a.scopes.includes("tweet.write"),
+        maxMedia: a.scopes.includes("media.write") ? 4 : 0,
+        mediaTypes: a.scopes.includes("media.write") ? ["image", "video"] : [],
       },
     });
     return null;
