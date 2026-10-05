@@ -35,6 +35,11 @@ export function githubError(error: unknown) {
     return "Diese GitHub-App-Installation ist für deinen GitHub-Zugang nicht freigegeben. Prüfe die Installation und verbinde erneut.";
   if (code.includes("SOURCE_PROOF_EXPIRED"))
     return "Die Repository-Berechtigung muss erneut geprüft werden. Lade die Repository-Auswahl und gib die Quelle erneut frei.";
+  if (
+    code.includes("AUTHORIZATION_REVOKED") ||
+    code.includes("REVOCATION_RECHECK")
+  )
+    return "Ein signiertes Widerrufsereignis ist eingegangen. Eine neue Zustell-ID bei identischem Body kann ein erneuter Widerruf oder Replay sein; der Zugang bleibt vorsorglich gesperrt. Verbinde die App erneut und prüfe die Repository-Freigaben.";
   if (code.includes("SOURCE_CHANGED") || code.includes("CONNECTION_CHANGED"))
     return "Die Quelle wurde zwischenzeitlich geändert. Lade die Auswahl erneut; Änderungen wurden nicht übernommen.";
   if (code.includes("REAUTH") || code.includes("REFRESH_OUTCOME_UNKNOWN"))
@@ -133,8 +138,9 @@ function RepositorySettings({
         {source.private ? "Private Dateien und Diffs bleiben gesperrt. " : ""}
         Diese Freigabe betrifft nur Ereignismetadaten und deinen Projektkontext.
         Modellverarbeitung benötigt gesonderte Zustimmung und einen
-        nachgewiesenen zulässigen Verarbeitungsweg. Signal-Ingestion und KI sind
-        noch nicht aktiviert.
+        nachgewiesenen zulässigen Verarbeitungsweg. Signierte Push- und
+        Release-Metadaten werden bei aktueller Monitoring-Freigabe eingelesen;
+        KI ist noch nicht aktiviert.
       </p>
       <div className="flex flex-wrap gap-2">
         <Button

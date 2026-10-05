@@ -9,13 +9,13 @@ const mocks = {
  const status=async()=>({configured:window.configured,installationConfigured:false,redirectUri:'https://dispatch.example/integrations/github/callback'});
  const command=args=>new Promise((resolve,reject)=>window.commands.push({resolve,reject,args}));
  export const useAction=ref=>getFunctionName(ref).endsWith(':callback')?callback:getFunctionName(ref).endsWith(':status')?status:command;
- export const useMutation=()=>command; export const useQuery=()=>window.sources;`,
+ export const useMutation=()=>command; export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);if(name==='content/signals:list')return args.paginationOpts.cursor?window.olderSignals:window.signals;if(name==='content/signals:recoveries')return window.recoveries;if(name.endsWith(':scanStatus'))return window.scan;return window.sources;};`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';`,
   "@/lib/store": `import {useState} from 'react'; export const useStore=()=>({state:{activeWorkspaceId:window.workspace,role:window.role,accounts:[],ideas:[]},setState:()=>false}); export const useWorkspaceLocalState=(key,initial)=>useState(initial);`,
 };
 const entry = `import React from 'react'; import ReactDOM from 'react-dom/client'; import {MemoryRouter} from 'react-router-dom';
 import {GithubSources,GithubOAuthCallback} from '/src/features/settings/github.tsx';import {SignalsPage} from '/src/pages/Ideas.tsx';
-window.pending=[];window.commands=[];window.workspace='workspace-one';window.role='Owner';window.configured=false;window.sources={connection:null,repositories:[]};
+window.pending=[];window.commands=[];window.workspace='workspace-one';window.role='Owner';window.configured=false;window.sources={connection:null,repositories:[]};window.signals={page:[],isDone:true,continueCursor:''};window.olderSignals={page:[],isDone:true,continueCursor:''};window.recoveries={page:[],isDone:true,continueCursor:''};window.scan=null;
 const root=ReactDOM.createRoot(document.getElementById('root'));
 window.renderCallback=(workspace,key='callback')=>{window.workspace=workspace;root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(GithubOAuthCallback,{key}))));};
 window.renderSettings=(key=window.workspace)=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(GithubSources,{key}))));
@@ -275,7 +275,7 @@ try {
   );
   await page.evaluate(() => window.renderSignals());
   await expect(
-    page.getByText("GitHub-Signale werden noch nicht eingelesen", {
+    page.getByText("Noch keine verarbeiteten GitHub-Signale", {
       exact: true,
     }),
   ).toBeVisible();
@@ -322,6 +322,212 @@ try {
   ).toBeVisible();
   await expect(demo.getByText("91 · Relevanz", { exact: true })).toBeVisible();
   await demo.close();
+  // The preceding visibility test intentionally fixed Date.now; resume an advancing clock for lease deadlines.
+  await page.clock.setSystemTime(
+    new Date(await page.evaluate(() => Date.now())),
+  );
+  await page.evaluate(() => {
+    window.sources.repositories = [
+      {
+        ...window.sources.repositories[0],
+        monitoring: true,
+        proofExpiresAt: Date.now() + 900000,
+      },
+    ];
+    window.signals = {
+      page: [
+        {
+          _id: "signal-one",
+          kind: "push",
+          commitCount: 2,
+          ref: "refs/heads/main",
+          fullName: "fixture/project",
+          private: true,
+          created: false,
+          deleted: false,
+          forced: true,
+          receivedAt: Date.now(),
+          processedAt: Date.now(),
+          providerAt: null,
+          guid: "actual-guid",
+          url: "https://github.com/fixture/project/commit/" + "1".repeat(40),
+        },
+      ],
+      isDone: false,
+      continueCursor: "next",
+    };
+    window.recoveries = {
+      page: [
+        {
+          _id: "recovery-one",
+          providerId: "101",
+          installationId: "50",
+          repositoryId: "repo",
+          generation: 1,
+          event: "push",
+          guid: "missing-guid",
+          deliveredAt: Date.now(),
+          providerStatus: null,
+          state: "missing",
+          leaseUntil: 0,
+          notBefore: 0,
+          attempts: 0,
+          errorCode: null,
+        },
+      ],
+      isDone: true,
+      continueCursor: "",
+    };
+    window.scan = {
+      checkedAt: Date.now(),
+      oldestAt: null,
+      limited: true,
+      errorCode: "GITHUB_APP_PRIVATE_KEY_REQUIRED",
+      notBefore: 0,
+    };
+    window.renderSignals();
+  });
+  await expect(
+    page.getByText("2 Commit-Einträge · refs/heads/main", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Original bei GitHub öffnen" }),
+  ).toHaveAttribute(
+    "href",
+    "https://github.com/fixture/project/commit/" + "1".repeat(40),
+  );
+  await expect(page.getByText("91 · Relevanz", { exact: true })).toHaveCount(0);
+  await expect(
+    page.getByText("Kalenderansicht aufgeräumt", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("GITHUB_APP_PRIVATE_KEY fehlt oder ist ungültig.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Signierte Redelivery anfordern" })
+    .click();
+  await page.waitForFunction(() => window.commands.length === 3);
+  await expect(
+    page.getByRole("button", { name: "Signierte Redelivery anfordern" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("Zustellung: actual-guid", { exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() => window.commands[2].resolve(null));
+  await expect(page.getByRole("status")).toContainText(
+    "Erst ein verifizierter signierter Eingang",
+  );
+  await page.evaluate(() => {
+    window.recoveries.page[0] = {
+      ...window.recoveries.page[0],
+      state: "accepted",
+      attempts: 1,
+      notBefore: Date.now() + 900000,
+    };
+    window.renderSignals();
+  });
+  await expect(
+    page.getByText(
+      "Redelivery angefordert (202); signierter Eingang steht noch aus",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Signiert im Workspace verarbeitet", { exact: false }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Ältere Signale" }).click();
+  await expect(
+    page.getByText("2 Commit-Einträge · refs/heads/main", { exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("button", { name: "Neueste Signale" }).click();
+  await expect(
+    page.getByText("2 Commit-Einträge · refs/heads/main", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Zustellungen jetzt prüfen" }).click();
+  await page.waitForFunction(() => window.commands.length === 4);
+  await page.evaluate(() =>
+    window.commands[3].reject(new Error("GITHUB_RATE_LIMITED")),
+  );
+  await expect(
+    page.getByRole("alert").filter({ hasText: "GitHub begrenzt" }),
+  ).toBeVisible();
+  // Cached requesting projection must expire locally; no query write or user interaction advances it.
+  await page.evaluate(() => {
+    window.recoveries.page[0] = {
+      ...window.recoveries.page[0],
+      state: "requesting",
+      leaseUntil: Date.now() + 60000,
+      notBefore: 0,
+    };
+    window.renderSignals();
+  });
+  await expect(
+    page.getByText("Anfrage läuft; Ergebnis offen", { exact: false }),
+  ).toBeVisible();
+  await page.clock.fastForward(61000);
+  await expect(
+    page.getByText("Anfrageausgang unklar; Eingang bleibt offen", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    window.recoveries.page[0] = {
+      ...window.recoveries.page[0],
+      localReceipt: true,
+      attempts: 3,
+      notBefore: Date.now() + 900000,
+    };
+    window.renderSignals();
+  });
+  await expect(
+    page.getByRole("button", { name: "Signierte Fakten lokal nachholen" }),
+  ).toBeEnabled();
+  await page
+    .getByRole("button", { name: "Signierte Fakten lokal nachholen" })
+    .click();
+  await page.waitForFunction(() => window.commands.length === 5);
+  await page.evaluate(() => window.commands[4].resolve(null));
+  await expect(page.getByRole("status")).toContainText(
+    "unter aktueller Freigabe lokal nachgeholt",
+  );
+  await expect(
+    page.getByText("Signiert im Workspace verarbeitet", { exact: false }),
+  ).toHaveCount(0);
+  await page.evaluate(() => {
+    window.recoveries.page[0] = {
+      ...window.recoveries.page[0],
+      state: "processed",
+    };
+    window.signals.page[0] = {
+      ...window.signals.page[0],
+      explicitRecovery: { authorizedAt: Date.now() },
+    };
+    window.renderSignals();
+  });
+  await expect(
+    page.getByText(
+      "Vorhandene signierte Fakten ausdrücklich lokal nachgeholt:",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Signierte Fakten lokal nachholen" }),
+  ).toBeDisabled();
+  await page.evaluate(() => {
+    window.workspace = "workspace-two";
+    window.signals = { page: [], isDone: true, continueCursor: "" };
+    window.recoveries = { page: [], isDone: true, continueCursor: "" };
+    window.sources = { connection: null, repositories: [] };
+    window.renderSignals();
+  });
+  await expect(
+    page.getByText("2 Commit-Einträge · refs/heads/main", { exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Zustellung missing-guid", { exact: false }),
+  ).toHaveCount(0);
   expect(errors).toEqual([]);
   console.log(
     "GitHub App browser: StrictMode callback, denied/wrong-workspace, config guidance, awaited settings failure/disconnect and real/demo Signals passed.",

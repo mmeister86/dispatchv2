@@ -1,12 +1,10 @@
-import {
-  githubSourceAuthorized,
-  useGithubSourceProofClock,
-} from "@/lib/github-source-proof";
 import { demoMode } from "@/lib/auth-client";
-import { useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
+const GithubSignals = lazy(() =>
+  import("@/features/signals/github").then((m) => ({
+    default: m.GithubSignals,
+  })),
+);
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Plus,
@@ -325,7 +323,13 @@ const signalSeed = [
   },
 ];
 export function SignalsPage() {
-  return demoMode ? <DemoSignalsPage /> : <GithubSignalsGuide />;
+  return demoMode ? (
+    <DemoSignalsPage />
+  ) : (
+    <Suspense fallback={<p role="status">Signale werden geladen …</p>}>
+      <GithubSignals />
+    </Suspense>
+  );
 }
 function DemoSignalsPage() {
   const { state, setState } = useStore();
@@ -517,38 +521,6 @@ function DemoSignalsPage() {
           )}
         </aside>
       </div>
-    </div>
-  );
-}
-
-function GithubSignalsGuide() {
-  const { state } = useStore();
-  const sources = useQuery(api.integrations.github.repositories.list, {
-    workspaceId: state.activeWorkspaceId as Id<"workspaces">,
-  });
-  const proofClock = useGithubSourceProofClock(sources?.repositories);
-  return (
-    <div className="fade-in">
-      <EmptyState
-        title="GitHub-Signale werden noch nicht eingelesen"
-        description="Die Quellen-Auswahl ist verfügbar. Echte Ereignisse erscheinen nach Aktivierung der verifizierten Signal-Ingestion; hier werden keine Beispieldaten oder erfundenen Bewertungen angezeigt."
-        action={
-          <Button variant="outline" asChild>
-            <Link to="/settings/integrations">
-              Repository-Quellen verwalten
-            </Link>
-          </Button>
-        }
-      />
-      {sources?.repositories
-        .filter((r) => githubSourceAuthorized(r, proofClock))
-        .map((r) => (
-          <p key={r._id} className="text-sm">
-            {r.fullName} · {r.private ? "Privat" : "Öffentlich"} · Monitoring{" "}
-            {r.monitoring ? "freigegeben" : "aus"} · Content{" "}
-            {r.content ? "freigegeben" : "aus"}
-          </p>
-        ))}
     </div>
   );
 }
