@@ -4,7 +4,7 @@ title: Signale anreichern und verständlich darstellen (P04.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 17:19'
+updated_date: '2026-10-05 17:26'
 labels:
   - p04
   - r2
@@ -37,11 +37,11 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Wartungsrauschen bleibt ohne Draft.
-- [ ] #2 relevante Änderung wird zur begründeten Idee weitergereicht.
-- [ ] #3 ein Modellfehler verliert das Signal nicht.
-- [ ] #4 P04.01–P04.02 können vor P05 geliefert werden.
-- [ ] #5 AI-Anreicherung folgt nach dessen Modelladapter.
+- [x] #1 Wartungsrauschen bleibt ohne Draft.
+- [x] #2 relevante Änderung wird zur begründeten Idee weitergereicht.
+- [x] #3 ein Modellfehler verliert das Signal nicht.
+- [x] #4 P04.01–P04.02 können vor P05 geliefert werden.
+- [x] #5 AI-Anreicherung folgt nach dessen Modelladapter.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -78,4 +78,6 @@ Final implementer source frozen77ba114b603446bcf7a77cc7178ec727a0417e9c (backend
 Independent SPEC at77ba114 NEEDS WORK, one reproducedP2: shared deliveries.closeRepository omits contextRead reset and already-closed predicate. Actual signed installation.deleted leaves access/monitoring/content false and proof0/newgeneration but contextRead true; Settings retains checked withdrawn flag. Existing source/barrier/generation denies old work, no immediate bypass claimed. Registered131 tests/7files PASS, own9PASS/1 closureFAIL, both affected actual browsers PASS. Receipt /tmp/dispatch-enrichment-spec-receipt.md and runnable isolated test/config. Original implementer assigned verify/reproduce then minimal shared-writer correction and actual signed caller regressions. No criteria accepted; re-SPEC then freshQUALITY required before19.
 
 Confirmed SPEC correction source5ae8da30b93345d051a69fc693d74c492582219e frozen, minimal shared closeRepository fully-closed predicate plus contextRead:false reset; originalsource77ba114 retained in history. Implementer reproduced original9PASS/1FAIL first, then original10/10PASS and added6 actual signed closure regressions across both shared fanout paths, staleflag and replay. Affected66/3 and full339/24 including34context, type/lint/build/bundle/codegen/diff and affected actualGitHubSettings/Signals browserPASS; EUDev19:17:28/5.13s, own5174closed/user5173preserved. Same independent SPEC reviewer now rechecking correction and own cases; freshQUALITY only after re-PASS. Initialfailure remains documented, no codecriteria orDone accepted yet.
+
+Final independent re-SPEC PASS5ae8da3:66 affected registered, original own10/10 plus one separate cross-workspace signed fanout/newGUID/clock-rollback case. Fresh independent QUALITY PASS whole5c99601..5ae8da3:137 registered/7files,8 own actual-handler/transport cases, both actual SignalContext and GitHubSettings browsers; no findings. Full signed historical source->hash-approved patch->funded officialAgent->real immutableIdea->human edit->concurrent duplicate-safe realDraft verified. Policy/authority withdrawal blocks domain writes while lateusage settles once; unproved cost currency retains full3scope holds. Root review .docs/reviews/task-16-github-enrichment-validation.md preserves original SPEC failure, correction and separate actual receipts. Code-only AC1-5 checked; status In Progress, human DoD/manualJ03/privateGitHub/completeprocessing/pricing/live quality and laterlifecycle remain open. TASK19 may proceed on actual reviewed16/17/18 interfaces.
 <!-- SECTION:NOTES:END -->

@@ -4,7 +4,7 @@ title: Persistenten Chat und nachvollziehbare Agent-Arbeit liefern (P05.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 17:23'
+updated_date: '2026-10-05 17:26'
 labels:
   - p05
   - r2
@@ -65,4 +65,6 @@ Read-only preparation updated for reviewed18ad3fc25 (SPEC53+8 own/browser and QU
 Read-only installed API map complete at /tmp/dispatch-chat-code-map.md: native listStreams with server-derived threadId and streaming/finished/aborted gives at most100 actual thread-scoped metadata IDs; there is no exported single-stream lookup. Validate bounded unique cursor IDs and safe nonnegative integers against that list before any listDeltas call; unproved/old/deleted streams fail closed or are omitted with history/list resync, never probed for data. Native useUIMessages stream-only pagination uses numItems=0, an authorized sentinel the public guard must support. Existing conversation history must not automatically forward previously revoked private sources through a fresh source-less run; recheck all source/context approvals actually included or start a new thread without withdrawn history. Same operation cannot bypass held unknown attempts by new run ID. Preparation only, no19 source or acceptance.
 
 Native API preparation recorded at /tmp/dispatch-chat-native-api-current-docs.md through exactly three fresh Context7 CLI requests and pinned0.6.4 source inspection. Agent.deleteThreadAsync wrapper discards the component mutation isDone receipt and only initiates recursive cleanup; native direct mutation can preserve real completion proof. Persist stop first, keep financial unknown liabilities and truthful local cleanup; do not equate hiding a mapping or one accepted asynchronous page with complete erasure. TASK16 re-SPEC5ae8da3 passed66 registered and11 independent checks; separate QUALITY underway. No19 source implementation starts before final16 QUALITY passes.
+
+Prerequisite16 now independently reviewed5ae8da3:re-SPEC66 registered+11 own and QUALITY137 registered+8 own/both actual browsers PASS; root .docs/reviews/task-16-github-enrichment-validation.md records full chain and corrected shared consent closure. Authorize fresh19 implementation under whole-backlog user request and delegated choices using actual16/17/18 contracts, native Agent0.6.4 stream membership proof and /tmp/dispatch-chat-native-api-current-docs.md. Root owns Backlog/global/review metadata; no provider activation, paid probe or manual acceptance follows from readiness.
 <!-- SECTION:NOTES:END -->
