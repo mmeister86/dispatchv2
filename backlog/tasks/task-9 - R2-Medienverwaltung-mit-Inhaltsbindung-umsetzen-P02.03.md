@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 10:44'
+updated_date: '2026-10-05 10:46'
 labels:
   - p02
   - r1
@@ -78,4 +78,6 @@ TASK-9 code is frozen for independent SPEC review at 33663d3. Implementer report
 Independent root full browser regression at frozen media code33663d3: pnpm test:e2e completed 34/34 tests in 2.0m on isolated5174. SPEC reviewer reproduced duplicate-PNG-header predecode-bound bypass and composer/history media lookup gaps; acceptance stays open while fixes and re-review proceed.
 
 Three SPEC defects corrected and source frozen atf381e39 for independent re-review: strict predecode PNG metadata/header checks; paginated Composer inventory; authorized historical descriptors merged through actual store with exact-alt restore. Committed checks reproduced defects before fixing. Implementer reports62 unit checks and4 targeted browser checks plus typecheck/lint/build/bundle passed; Dev updated12:44:09. Root independently pnpm audit --prod: no known vulnerabilities. SPEC re-review and subsequent QUALITY still pending, actual EU-R2/CORS/runtime/manual acceptance still open.
+
+Independent SPEC PASS atf381e39:20 committed targetedchecks plus2 updated original counterexamples passed. Reviewer confirmed PNG limits beforedecode, paginated first-attachment inventory and authorized bounded historical descriptors with exact-alt restoration. Fresh independent QUALITY review nowrunning, including an unverified StrictMode mounted-ref concern; no next provider implementer until QUALITY passes. Actual live/manual acceptance unchanged and statusInProgress.
 <!-- SECTION:NOTES:END -->

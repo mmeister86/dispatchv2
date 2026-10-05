@@ -22,7 +22,13 @@ Safe reproduction: `/private/tmp/dispatch-r2-spec.test.ts`, invoked with `pnpm e
 
 The three corrections are committed in `f381e39`: strict PNG chunk metadata/order checks before decode; the existing paginated inventory reused by Composer; shared authorized version-asset descriptors returned with history and merged in the real store. Committed negative checks reproduced the defects before correction. Implementer evidence on the corrected source: 62 unit checks, typecheck, formatting, build, seeded bundle security and four targeted browser checks passed. Configured Convex dev updated at 12:44:09. No new schema, jobs or dependencies were added by this correction.
 
-Root independently ran `pnpm audit --prod` on the updated pinned production dependencies: no known vulnerabilities found. SPEC re-review and the subsequent independent QUALITY review remain pending. The next provider implementer starts only after both pass.
+Root independently ran `pnpm audit --prod` on the updated pinned production dependencies: no known vulnerabilities found.
+
+## Independent SPEC re-review — PASS at f381e39
+
+Four committed targeted files: 20/20 checks passed independently. The original safe PNG exploit was changed to require rejection, and the inventory/history counterexamples were reconstructed against the corrected DTOs: two further checks passed. The reviewer verified predecode PNG bounds,50-item Composer pagination, workspace-filtered history descriptors bounded by20 versions×20 references and exact historical alt restoration.
+
+The fresh independent QUALITY review is now running. A separate unverified mounted-ref/React StrictMode concern was forwarded for reproduction; it is not a confirmed finding yet. The next provider implementer starts only after QUALITY passes too.
 
 ## Actual acceptance still open
 
