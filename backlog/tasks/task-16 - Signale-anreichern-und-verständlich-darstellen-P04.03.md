@@ -4,7 +4,7 @@ title: Signale anreichern und verständlich darstellen (P04.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 10:34'
 labels:
   - p04
   - r2
@@ -49,6 +49,16 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Reuse reviewed TASK-14 source bindings and TASK-15 durable per-workspace ingestion.
+2. Wait for reviewed TASK-17 bounded model/budget contracts and TASK-18 idea/content operations; no duplicate model pipeline.
+3. Load bounded allowed commit/file/diff context, filter secrets/private details and preserve factual source evidence.
+4. Enrich only through approved purpose/region paths, retain signals on failures and classify maintenance noise without drafts.
+5. Wire real signal detail and explicit idea handoff, independently review requirements and quality, verify regression and live/manual gates. Keep In Progress until user confirmation.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
