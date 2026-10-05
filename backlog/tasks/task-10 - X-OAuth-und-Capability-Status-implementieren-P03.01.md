@@ -4,7 +4,7 @@ title: X-OAuth und Capability-Status implementieren (P03.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 10:03'
+updated_date: '2026-10-05 11:24'
 labels:
   - p03
   - r1
@@ -67,4 +67,6 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/integrations. Mock social account connection, reconnect/disconnect and account/instance metadata. Grenze: No X OAuth/PKCE/tokens/refresh. Connection labels explicitly describe simulated publishing. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 D06-Implementierungsentscheidung innerhalb der vom Nutzer übertragenen Freiheit: ein aktiver Publishing-Workspace je Provider-Identität, expliziter Disconnect vor einer neuen Bindung, keine automatische Cross-Tenant-Verknüpfung/Übernahme oder Übertragung alter Freigaben. Live Callback-/Scope-/Zugangsnachweise bleiben getrennte Abnahme; keine Consumer- oder historischen V1-User-Tokens einsetzen.
+
+Implementation starts after TASK-9 independentSPEC/QUALITY PASSfe3af37. Fresh unit implementer owns X OAuth/PKCE, separateencrypted credentials, generation-safe refresh/disconnect and concrete authenticated settings/callback. Root owns Backlog. Current X primary docs prepared; D06 explicitdisconnect/freshOAuth crossworkspace and D16 evidence-only capability apply. Missing configuration visible, no publicposts/realOAuth/manual evidence claimed. One fresh implementer, sequential SPEC and QUALITY before publisher subunits.
 <!-- SECTION:NOTES:END -->

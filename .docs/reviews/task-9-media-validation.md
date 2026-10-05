@@ -67,6 +67,16 @@ Small negative regressions were committed before production changes (`20ca2d4`, 
 
 Implementer reports70 unit checks across11 files, the original independent three-check counterexample suite, typecheck, formatting, build, bundle checks and both actual lifecycle/upload browser scripts passing. The upload script verifies visible filename/error preservation, success clearing and new selection surviving an older completion. Configured Dev updated at13:20:22 without R2 object operations; isolated5174 closed and user5173 untouched. Independent SPEC re-review is running; independent full QUALITY follows its PASS. These reported checks do not close live/manual acceptance.
 
+## Independent final SPEC — PASS at fe3af37
+
+The independent reviewer ran four targeted files,28/28 tests passed, then both actual `pnpm test:media-lifecycle` and `pnpm test:media-upload` scripts sequentially on5174. Servers/browser closed;5173 remained untouched. It verified valid H.264/AAC, whole-file allocations bounded before `appendBuffer`, strict own MIME lookup, complete normalized namespace checks across storage/receipt paths, explicit legacy reconciliation, same-namespace credential rotation and filename/current-buffer behavior. No source or Backlog edits, provider calls or new findings. Independent QUALITY re-review is now running.
+
+## Independent final QUALITY — PASS at fe3af37
+
+All four findings and the namespace follow-up are corrected; no critical, important or minor findings remain in the reviewed unit. The reviewer independently ran28 targeted checks, its original three counterexamples and three additional bounded receipt/binding regressions (34 total), plus the actual upload browser script. Extra checks prove account drift blocks receipts without quota changes, same-namespace credential rotation permits exactly-once quota release, and missing asset-only binding defers cleanup. Earlier PNG/MP4 and authorization/lifecycle protections remain covered. Production matches the frozen commit; no edits, provider effects or stress inputs, isolated server/browser closed and5173 untouched.
+
+The implemented isolated checks verify AC1 (foreign IDs/server-owned keys), AC3 (only validated ready assets), AC4 (immutable scheduled version) and AC5 (fixed-key interruption recovery). Live immutable grant/runtime proof and large-upload acceptance for AC2/6 remain unchecked. All actual acceptance below remains open, and no Backlog Done or release readiness is asserted. The next fresh implementer may begin TASK-10.
+
 ## Actual acceptance still open
 
 An approved existing private bucket with actual EU jurisdiction and restricted S3 access, browser-origin CORS, live signature/size enforcement, conditional-write/runtime/race probes, late-PUT cleanup and authenticated manual upload/abort/preview-refresh/replacement evidence remain open. No bucket, public post or test email was created. An EU location hint or a passing synthetic test does not satisfy those checks.

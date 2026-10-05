@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:21'
+updated_date: '2026-10-05 11:24'
 labels:
   - p02
   - r1
@@ -40,11 +40,11 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Fremde Asset-IDs und clientseitig untergeschobene Objektschlüssel werden abgelehnt.
+- [x] #1 Fremde Asset-IDs und clientseitig untergeschobene Objektschlüssel werden abgelehnt.
 - [ ] #2 Eine weiterhin gültige Upload-URL kann keinen finalisierten Inhalt überschreiben.
-- [ ] #3 Nur geprüfte `ready`-Assets sind freigabefähig.
-- [ ] #4 ein ersetztes Asset ändert keine geplante Version.
-- [ ] #5 Unterbrechung zwischen R2-Operation und Convex-Update ist wiederaufnehmbar.
+- [x] #3 Nur geprüfte `ready`-Assets sind freigabefähig.
+- [x] #4 ein ersetztes Asset ändert keine geplante Version.
+- [x] #5 Unterbrechung zwischen R2-Operation und Convex-Update ist wiederaufnehmbar.
 - [ ] #6 große Uploads besitzen Fortschritt und Abbruch.
 <!-- AC:END -->
 
@@ -94,4 +94,8 @@ Fresh complete QUALITY NEEDS WORKa51f9ed: MP4 aggregate allocation/track/table l
 Storage-binding follow-up confirmed same root includes Cloudflare account drift at unchanged bucket name: old keys can reach a different physical endpoint and cleanup receipt can refer to the wrong namespace. Shared scoped fix persists normalized nonsecret accountId+bucket on session/asset and checks all Prepare/Finish/Preview/Cleanup paths; legacy unknown binding fails closed, same-namespace key rotation stays valid. Synthetic frozen-config evidence only, no provider calls. Worker incorporates this into current correction and updates inventory after freeze.
 
 Scoped corrections frozen fe3af37 after tests-first20ca2d4/c9f8154 and productionf67946b: pre-parser whole-file MP4 allocation/track/table budgets, strict own MIME lookup, Account-ID+Bucket on session/asset across signing/finalization/preview/cleanup/receipt, explicit legacy reconciliation and same-namespace credential rotation, stable native filename/current-buffer-safe success clear. Worker reports70 unit checks/11files plus original reviewer3checks, type/lint/build/bundle and actual lifecycle/upload browser scripts PASS; configured Dev updated13:20:22 without R2 object effects. Independent SPEC then full QUALITY pending. Metadata inventory updated; real EU-R2/CORS/runtime/manual gates remain open. Status In Progress, no automatic Done.
+
+Independent final SPEC PASS on productionfe3af37 (root docs218966e):4 targeted files28/28 plus actual test:media-lifecycle/test:media-upload PASS sequential5174, closed. Valid H264/AAC/preparse allocation caps, own MIME, normalized fullnamespace guards including receipt/legacy/rotation, nativefilename/currentbuffer verified. No provider calls,5173 untouched. Independent complete QUALITY re-review running; actualEU-R2/manual gates remain open.
+
+Independent final QUALITY PASSfe3af37:28 targeted+3 original+3 additional receipt/binding checks=34, actualtest:media-upload PASS. No remaining critical/important/minor findings in reviewed code. Accountdrift/missingbinding blocksreceipt/quota; same-namespace rotation allows exactly-once release; productionfrozen/no provider effects. AC1/3/4/5 verified with isolated domain/byte/race tests. AC2 liveimmutablegrant and AC6 actuallargeupload remain unchecked; realEU-R2/CORS/runtime/manual gates open. TASK-9 code-stage reviewed; status stays In Progress until explicit manual user confirmation.
 <!-- SECTION:NOTES:END -->
