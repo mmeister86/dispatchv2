@@ -460,6 +460,82 @@ try {
     .getByRole("checkbox", { name: "Sichtbare Fortsetzung bestätigen" })
     .check();
   await expect(calendarContinue).toBeEnabled();
+  await page.evaluate(() => {
+    const posts = [123, 124, 125].map((id, position) => ({
+      position,
+      externalId: String(id),
+      url: `https://x.com/i/web/status/${id}`,
+      attemptId: `late-${position}`,
+      confirmedAt: 1,
+    }));
+    window.recovery = {
+      aborted: false,
+      positions: posts.map((p) => ({
+        position: p.position,
+        stage: "confirmed",
+        errorCode: null,
+        notBefore: null,
+      })),
+    };
+    window.calendar = {
+      ...window.calendar,
+      rows: window.calendar.rows.map((row) => ({
+        ...row,
+        schedule: {
+          ...row.schedule,
+          state: "reconciliation_required",
+          publishedCount: 3,
+          externalPosts: posts,
+        },
+      })),
+    };
+    window.listeners.forEach((cb) => cb());
+  });
+  await expect(
+    calendarDialog.getByLabel("Kandidaten-ID oder X-Link für Beitrag 2"),
+  ).toHaveCount(0);
+  await expect(calendarContinue).toBeDisabled();
+  await calendarDialog
+    .getByRole("button", {
+      name: "Gespeichertes Ergebnis bestätigen",
+      exact: true,
+    })
+    .click();
+  await expect(
+    calendarDialog.getByRole("button", {
+      name: "Gespeichertes Ergebnis bestätigen",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  expect(await page.evaluate(() => window.pending.at(-1))).toMatchObject({
+    kind: "reconcile",
+    args: {
+      scheduleId: "job",
+      expectedGeneration: 1,
+      position: 2,
+      candidateId: "125",
+    },
+  });
+  await page.evaluate(() => {
+    window.pending.at(-1).resolve("confirmed");
+    window.calendar = {
+      ...window.calendar,
+      rows: window.calendar.rows.map((row) => ({
+        ...row,
+        schedule: { ...row.schedule, state: "published" },
+      })),
+    };
+    window.listeners.forEach((cb) => cb());
+  });
+  await expect(
+    calendarDialog.getByRole("button", {
+      name: "Gespeichertes Ergebnis bestätigen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    calendarDialog.getByRole("link", { name: "X-Beitrag 125", exact: true }),
+  ).toHaveAttribute("href", "https://x.com/i/web/status/125");
   expect(errors).toEqual([]);
   console.log(
     "PASS: real Composer exact snapshot, separate awaited consent, failure buffer, weighted CJK count, remote conflict, confirmed links, awaited read-only reconciliation, preserved buffers, separate continuation consent and abort barrier.",

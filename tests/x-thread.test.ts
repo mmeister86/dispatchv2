@@ -2026,3 +2026,281 @@ test.each(["before", "during"])(
     }
   },
 );
+
+async function expiredSending() {
+  const f = await fixture(true);
+  const c = (await f.t.mutation(internal.publishing.attempts.claim, f.job))!;
+  await f.t.mutation(internal.publishing.attempts.beforeSend, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    credentialGeneration: 1,
+    mediaIds: [],
+  });
+  vi.setSystemTime(c.leaseUntil + 1);
+  await f.t.mutation(internal.publishing.attempts.claim, f.job);
+  expect((await f.t.run((ctx) => ctx.db.get(c._id)))?.stage).toBe("unknown");
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))?.state).toBe(
+    "reconciliation_required",
+  );
+  return { f, c };
+}
+test("QUALITY: explicit idempotent lookup releases known late confirmation for continuation", async () => {
+  const { f, c } = await expiredSending();
+  await f.t.mutation(internal.publishing.attempts.receipt, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    outcome: "confirmed",
+    externalId: "101",
+    httpStatus: 201,
+    durationMs: 1,
+  });
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(
+      new Error("Must not fetch: confirmed receipt is enough"),
+    );
+  expect(
+    await f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+      position: 0,
+      candidateId: "101",
+    }),
+  ).toBe("confirmed");
+  expect(fetch).not.toHaveBeenCalled();
+  const inspection = await f.signed.query(api.publishing.reconcile.inspect, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+  });
+  expect(inspection.positions.map((p) => p.stage)).toEqual([
+    "confirmed",
+    "unsent",
+    "unsent",
+  ]);
+  await expect(
+    f.signed.mutation(api.publishing.reconcile.continueThread, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    }),
+  ).resolves.toBeNull();
+});
+test("QUALITY: known late rejection remains eligible for explicit continuation", async () => {
+  const { f, c } = await expiredSending();
+  await f.t.mutation(internal.publishing.attempts.receipt, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    outcome: "rejected",
+    errorCode: "X_POST_RATE_LIMITED",
+    httpStatus: 429,
+    durationMs: 1,
+  });
+  const inspection = await f.signed.query(api.publishing.reconcile.inspect, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+  });
+  expect(inspection.positions.map((p) => p.stage)).toEqual([
+    "rejected",
+    "unsent",
+    "unsent",
+  ]);
+  await expect(
+    f.signed.mutation(api.publishing.reconcile.continueThread, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    }),
+  ).resolves.toBeNull();
+});
+
+test("QUALITY: final late confirmation becomes published after explicit reconciliation", async () => {
+  const f = await fixture(true);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(
+      Response.json({ data: { id: "101" } }, { status: 201 }),
+    )
+    .mockResolvedValueOnce(
+      Response.json({ data: { id: "102" } }, { status: 201 }),
+    );
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  const c = (await f.t.mutation(internal.publishing.attempts.claim, f.job))!;
+  await f.t.mutation(internal.publishing.attempts.beforeSend, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    credentialGeneration: 1,
+    mediaIds: [],
+  });
+  vi.setSystemTime(c.leaseUntil + 1);
+  await f.t.mutation(internal.publishing.attempts.claim, f.job);
+  await f.t.mutation(internal.publishing.attempts.receipt, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    outcome: "confirmed",
+    externalId: "103",
+    httpStatus: 201,
+    durationMs: 1,
+  });
+  fetch
+    .mockClear()
+    .mockRejectedValue(new Error("Known receipt must not fetch"));
+  expect(
+    await f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+      position: 2,
+      candidateId: "103",
+    }),
+  ).toBe("confirmed");
+  expect(fetch).not.toHaveBeenCalled();
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))?.externalPosts?.map(
+      (p) => p.externalId,
+    ),
+  ).toEqual(["101", "102", "103"]);
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))?.state).toBe(
+    "published",
+  );
+});
+
+test("known late receipt completion does not require expired read tokens or current R2 configuration", async () => {
+  const f = await fixture(true);
+  await attachMedia(f);
+  const c = (await f.t.mutation(internal.publishing.attempts.claim, f.job))!;
+  await f.t.mutation(internal.publishing.attempts.beforeSend, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    credentialGeneration: 1,
+    mediaIds: ["456"],
+  });
+  vi.setSystemTime(c.leaseUntil + 1);
+  await f.t.mutation(internal.publishing.attempts.claim, f.job);
+  await f.t.mutation(internal.publishing.attempts.receipt, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    outcome: "confirmed",
+    externalId: "101",
+    httpStatus: 201,
+    durationMs: 1,
+  });
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.credentialId, { expiresAt: Date.now() - 1 }),
+  );
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "");
+  vi.stubEnv("R2_MEDIA_BUCKET", "");
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("Known must not fetch"));
+  expect(
+    await f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+      position: 0,
+      candidateId: "101",
+    }),
+  ).toBe("confirmed");
+  expect(fetch).not.toHaveBeenCalled();
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.state).toBe(
+    "partially_published",
+  );
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.accountId)))!.capability.publish,
+  ).toBe(false);
+  await expect(
+    f.signed.mutation(api.publishing.reconcile.continueThread, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    }),
+  ).rejects.toThrow();
+});
+
+test.each([429, 400])(
+  "resolved late rejection %s preserves provider backoff or permanent refusal",
+  async (httpStatus) => {
+    const { f, c } = await expiredSending();
+    await f.t.mutation(internal.publishing.attempts.receipt, {
+      attemptId: c._id,
+      claimSequence: c.claimSequence,
+      outcome: "rejected",
+      errorCode: httpStatus === 429 ? "X_POST_RATE_LIMITED" : "X_POST_REJECTED",
+      httpStatus,
+      rateResetAt: Date.now() + 60000,
+      durationMs: 1,
+    });
+    const args = {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    };
+    const inspection = await f.signed.query(api.publishing.reconcile.inspect, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+    });
+    expect(inspection.positions[0].stage).toBe("rejected");
+    expect(inspection.positions[0].notBefore).toBe(Date.now() + 60000);
+    await expect(
+      f.signed.mutation(api.publishing.reconcile.continueThread, args),
+    ).rejects.toThrow(
+      httpStatus === 429 ? "X_POST_RATE_LIMITED" : "X_POST_PERMANENT_REJECTION",
+    );
+    expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.generation).toBe(
+      1,
+    );
+  },
+);
+
+test.each(["role", "lifecycle", "generation", "provider", "parent"])(
+  "stored late completion still checks current %s guards",
+  async (kind) => {
+    const { f, c } = await expiredSending();
+    await f.t.mutation(internal.publishing.attempts.receipt, {
+      attemptId: c._id,
+      claimSequence: c.claimSequence,
+      outcome: "confirmed",
+      externalId: "101",
+      httpStatus: 201,
+      durationMs: 1,
+    });
+    await f.t.run(async (ctx) => {
+      if (kind === "role") {
+        const m = await ctx.db
+          .query("memberships")
+          .withIndex("by_userId_and_workspaceId", (q) =>
+            q.eq("userId", f.actorId).eq("workspaceId", f.workspaceId),
+          )
+          .unique();
+        await ctx.db.patch(m!._id, { role: "Viewer" });
+      } else if (kind === "lifecycle")
+        await ctx.db.patch(f.workspaceId, { lifecycle: "deleting" });
+      else if (kind === "generation")
+        await ctx.db.patch(f.scheduleId, { generation: 2 });
+      else if (kind === "provider")
+        await ctx.db.patch(f.accountId, { providerIdentity: "other" });
+      else await ctx.db.patch(c._id, { parentId: "invalid-parent" });
+    });
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("No provider request"));
+    await expect(
+      f.signed.action(api.publishing.reconcile.lookup, {
+        workspaceId: f.workspaceId,
+        scheduleId: f.scheduleId,
+        expectedGeneration: 1,
+        position: 0,
+        candidateId: "101",
+      }),
+    ).rejects.toThrow();
+    expect(fetch).not.toHaveBeenCalled();
+    expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.state).toBe(
+      "reconciliation_required",
+    );
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(f.accountId)))!.capability.publish,
+    ).toBe(false);
+  },
+);

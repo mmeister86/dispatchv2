@@ -5,6 +5,7 @@ import {
   internalMutation,
   internalQuery,
   type QueryCtx,
+  type MutationCtx,
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -95,6 +96,14 @@ async function context(
     throw new ConvexError("ACCOUNT_CONNECTION_CHANGED");
   const posts = s.externalPosts ?? [];
   if (
+    s.publishedCount !== posts.length ||
+    posts.length > ver.content.text.length ||
+    rows.some(
+      (c) =>
+        !Number.isInteger(c.position) ||
+        c.position < 0 ||
+        c.position >= ver.content.text.length,
+    ) ||
     posts.some(
       (p, i) =>
         p.position !== i ||
@@ -103,12 +112,68 @@ async function context(
             c._id === p.attemptId &&
             c.position === p.position &&
             c.stage === "confirmed" &&
-            c.externalId === p.externalId,
+            c.externalId === p.externalId &&
+            c.parentId === (i ? posts[i - 1].externalId : undefined),
         ),
     )
   )
     throw new ConvexError("X_POST_CHECKPOINT_CONFLICT");
   return { ...auth, s, ver, account, rows };
+}
+// Derive stopped outcomes from complete guarded history; this never schedules writes or proves capability.
+function stoppedState(
+  s: Doc<"schedules">,
+  ver: Doc<"draftVersions">,
+  rows: Doc<"xPostAttempts">[],
+): Doc<"schedules">["state"] {
+  const posts = s.externalPosts ?? [];
+  if (
+    rows.some(
+      (c) =>
+        c.stage === "confirmed" &&
+        !posts.some(
+          (p) =>
+            p.attemptId === c._id &&
+            p.position === c.position &&
+            p.externalId === c.externalId,
+        ),
+    )
+  )
+    throw new ConvexError("X_POST_CHECKPOINT_CONFLICT");
+  if (
+    rows.some(
+      (c) =>
+        ["unknown", "sending"].includes(c.stage) ||
+        (c.stage !== "confirmed" && c.errorCode?.includes("OUTCOME_UNKNOWN")),
+    )
+  )
+    return "reconciliation_required";
+  if (s.abortRequestedAt !== undefined) return "cancelled";
+  if (posts.length === ver.content.text.length) return "published";
+  return posts.length ? "partially_published" : "failed";
+}
+async function recordStoppedState(
+  ctx: MutationCtx,
+  s: Doc<"schedules">,
+  ver: Doc<"draftVersions">,
+  rows: Doc<"xPostAttempts">[],
+  actorId: Id<"users">,
+) {
+  const state = stoppedState(s, ver, rows);
+  if (state !== s.state) {
+    await ctx.db.patch(s._id, {
+      state,
+      errorCode: state === "reconciliation_required" ? s.errorCode : null,
+    });
+    await event(
+      ctx,
+      s.workspaceId,
+      s.draftId,
+      state === "cancelled" ? "X_ABORT_RECONCILED" : "X_POST_RECONCILED",
+      actorId,
+      s._id,
+    );
+  }
 }
 async function readable(
   ctx: QueryCtx,
@@ -353,30 +418,32 @@ export const begin = internalMutation({
     v.null(),
   ),
   handler: async (ctx, a): Promise<ReadSource | null> => {
+    const { s, ver, rows, user } = await context(ctx, a);
+    if (
+      ![
+        "reconciliation_required",
+        "partially_published",
+        "failed",
+        "cancelled",
+        "published",
+      ].includes(s.state)
+    )
+      throw new ConvexError("X_RECONCILIATION_REQUIRED");
+    const known =
+      rows.find(
+        (c) =>
+          c.position === a.position && ["unknown", "sending"].includes(c.stage),
+      ) ??
+      rows.find((c) => c.position === a.position && c.stage === "confirmed");
+    if (known?.stage === "confirmed") {
+      if (known.externalId !== a.candidateId)
+        throw new ConvexError("X_POST_CHECKPOINT_CONFLICT");
+      await recordStoppedState(ctx, s, ver, rows, user._id);
+      return null; // Trusted stored receipt: no fresh provider read authority or capability proof.
+    }
     const src = await ctx.runQuery(internal.publishing.reconcile.source, a);
     const c = src.attempt,
       now = Date.now();
-    if (c.stage === "confirmed") {
-      if (c.externalId !== a.candidateId)
-        throw new ConvexError("X_POST_CHECKPOINT_CONFLICT");
-      const { s, rows, user } = await context(ctx, a);
-      if (
-        s.abortRequestedAt !== undefined &&
-        s.state !== "cancelled" &&
-        !rows.some((r) => ["sending", "unknown"].includes(r.stage))
-      ) {
-        await ctx.db.patch(s._id, { state: "cancelled", errorCode: null });
-        await event(
-          ctx,
-          s.workspaceId,
-          s.draftId,
-          "X_ABORT_RECONCILED",
-          user._id,
-          s._id,
-        );
-      }
-      return null;
-    }
     if (
       (c.stage === "sending" && c.leaseUntil > now) ||
       (c.reconcileLeaseUntil ?? 0) > now
@@ -442,6 +509,8 @@ export const evidence = internalMutation({
     if (c.stage === "confirmed") {
       if (c.externalId !== a.candidateId)
         throw new ConvexError("X_POST_CHECKPOINT_CONFLICT");
+      const { s, ver, rows, user } = await context(ctx, a);
+      await recordStoppedState(ctx, s, ver, rows, user._id);
       return "confirmed";
     }
     if ((c.reconcileLeaseUntil ?? 0) <= Date.now())
@@ -482,20 +551,20 @@ export const evidence = internalMutation({
         confirmedAt: Date.now(),
       });
     posts.sort((a, b) => a.position - b.position);
-    const unresolved = rows.some(
-      (r) => r._id !== c._id && ["sending", "unknown"].includes(r.stage),
+    const state = stoppedState(
+      { ...s, externalPosts: posts, publishedCount: posts.length },
+      ver,
+      rows.map((r) =>
+        r._id === c._id
+          ? { ...r, stage: "confirmed", externalId: a.candidateId }
+          : r,
+      ),
     );
     await ctx.db.patch(s._id, {
       externalPosts: posts,
       publishedCount: posts.length,
-      state: unresolved
-        ? "reconciliation_required"
-        : s.abortRequestedAt !== undefined
-          ? "cancelled"
-          : posts.length === ver.content.text.length
-            ? "published"
-            : "partially_published",
-      errorCode: unresolved ? s.errorCode : null,
+      state,
+      errorCode: state === "reconciliation_required" ? s.errorCode : null,
     });
     await event(
       ctx,
@@ -632,9 +701,12 @@ export const continueThread = workspaceMutation({
     });
     if (s.abortRequestedAt !== undefined)
       throw new ConvexError("SCHEDULE_ABORT_REQUESTED");
-    if (!["partially_published", "failed"].includes(s.state))
-      throw new ConvexError("X_RECONCILIATION_REQUIRED");
-    if (rows.some((c) => ["unknown", "sending"].includes(c.stage)))
+    if (
+      !["partially_published", "failed", "reconciliation_required"].includes(
+        s.state,
+      ) ||
+      !["partially_published", "failed"].includes(stoppedState(s, ver, rows))
+    )
       throw new ConvexError("X_RECONCILIATION_REQUIRED");
     const posts = s.externalPosts ?? [];
     if (
@@ -801,31 +873,15 @@ export const finalizeAbort = workspaceMutation({
   args: target,
   returns: v.null(),
   handler: async (ctx, a) => {
-    const { s, rows, user } = await context(ctx, {
+    const { s, ver, rows, user } = await context(ctx, {
       ...a,
       workspaceId: ctx.workspace._id,
     });
     if (s.abortRequestedAt === undefined)
       throw new ConvexError("SCHEDULE_ABORT_REQUIRED");
-    if (
-      rows.some(
-        (c) =>
-          ["unknown", "sending"].includes(c.stage) ||
-          (c.stage !== "confirmed" && c.errorCode?.includes("OUTCOME_UNKNOWN")),
-      )
-    )
+    if (stoppedState(s, ver, rows) !== "cancelled")
       throw new ConvexError("X_RECONCILIATION_REQUIRED");
-    if (s.state !== "cancelled") {
-      await ctx.db.patch(s._id, { state: "cancelled", errorCode: null });
-      await event(
-        ctx,
-        s.workspaceId,
-        s.draftId,
-        "X_ABORT_RECONCILED",
-        user._id,
-        s._id,
-      );
-    }
+    await recordStoppedState(ctx, s, ver, rows, user._id);
     return null;
   },
 });

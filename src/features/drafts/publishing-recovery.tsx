@@ -186,6 +186,19 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
           veröffentlicht wurde.
         </p>
       )}
+      {inspection &&
+      !inspection.aborted &&
+      !unknown &&
+      schedule.status === "uncertain" &&
+      schedule.externalPosts?.length ? (
+        <Button
+          variant="outline"
+          disabled={pending || !allowed}
+          onClick={() => void execute(schedule.externalPosts!.at(-1)!.position)}
+        >
+          Gespeichertes Ergebnis bestätigen
+        </Button>
+      ) : null}
       {inspection?.aborted ? (
         <div className="space-y-2">
           <p className="text-xs">
