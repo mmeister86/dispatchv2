@@ -308,6 +308,7 @@ export const beginDiscovery = workspaceInternalMutation({
   args: {
     generation: v.number(),
     credentialGeneration: v.number(),
+    installationId: v.string(),
     selectId: v.optional(v.string()),
   },
   returns: v.object({
@@ -324,7 +325,9 @@ export const beginDiscovery = workspaceInternalMutation({
       c.credentialGeneration !== a.credentialGeneration
     )
       throw new ConvexError("GITHUB_CONNECTION_CHANGED");
-    const rows = await selected(ctx, ctx.workspace._id);
+    const rows = (await selected(ctx, ctx.workspace._id)).filter(
+      (r) => r.installationId === a.installationId,
+    );
     if (a.selectId) {
       const old = await ctx.db
         .query("githubRepositories")
@@ -395,7 +398,7 @@ export const verify = workspaceInternalMutation({
           proofExpiresAt: Date.now() + PROOF_TTL,
           updatedAt: Date.now(),
         });
-      else
+      else if (r.access || r.monitoring || r.content || r.proofExpiresAt !== 0)
         await ctx.db.patch(r._id, {
           access: false,
           monitoring: false,
@@ -724,7 +727,10 @@ export const installationProof = workspaceInternalMutation({
       updatedAt: Date.now(),
     });
     for (const r of await selected(ctx, ctx.workspace._id)) {
-      if (!a.installations.some((i) => i.id === r.installationId))
+      if (
+        !a.installations.some((i) => i.id === r.installationId) &&
+        (r.access || r.monitoring || r.content || r.proofExpiresAt !== 0)
+      )
         await ctx.db.patch(r._id, {
           access: false,
           monitoring: false,

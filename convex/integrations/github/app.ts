@@ -473,6 +473,7 @@ async function discover(
       generation: c.connection.generation,
       credentialGeneration: c.connection.credentialGeneration,
       selectId: a.repositoryId,
+      installationId: a.installationId,
     },
   );
   try {

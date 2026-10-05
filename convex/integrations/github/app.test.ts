@@ -689,3 +689,206 @@ test("unselected installation metadata is not included in ordinary workspace pro
     ).connection!.installations,
   ).toHaveLength(1);
 });
+
+test("revoked other installation does not block two remaining-source resyncs or repeat revocation generation", async () => {
+  config();
+  const f = await mediaFixture();
+  let both = true;
+  const fetched = provider();
+  const original = fetched.getMockImplementation()!;
+  fetched.mockImplementation(async (u, o) => {
+    const path = new URL(String(u)).pathname;
+    if (path === "/user/installations")
+      return Response.json({
+        total_count: both ? 2 : 1,
+        installations: [
+          {
+            id: 50,
+            app_id: 42,
+            suspended_at: null,
+            account: { login: "fixture", type: "User" },
+          },
+          ...(both
+            ? [
+                {
+                  id: 60,
+                  app_id: 42,
+                  suspended_at: null,
+                  account: { login: "other", type: "Organization" },
+                },
+              ]
+            : []),
+        ],
+      });
+    if (path === "/user/installations/60/repositories")
+      return Response.json({
+        total_count: 1,
+        repositories: [
+          {
+            ...repo,
+            id: 201,
+            full_name: "other/project",
+            owner: { login: "other" },
+          },
+        ],
+      });
+    return original(u, o);
+  });
+  await connect(f);
+  await f.signed.action(api.integrations.github.app.select, {
+    workspaceId: f.workspaceId,
+    installationId: "50",
+    repositoryId: "101",
+  });
+  await f.signed.action(api.integrations.github.app.select, {
+    workspaceId: f.workspaceId,
+    installationId: "60",
+    repositoryId: "201",
+  });
+  const selected = (
+    await f.signed.query(api.integrations.github.repositories.settings, {
+      workspaceId: f.workspaceId,
+    })
+  ).repositories;
+  for (const r of selected)
+    await f.signed.mutation(api.integrations.github.repositories.configure, {
+      workspaceId: f.workspaceId,
+      repositoryId: r._id,
+      expectedGeneration: r.generation,
+      access: true,
+      monitoring: true,
+      content: true,
+      communicableContext: "Communicable metadata only",
+    });
+  const activeA = selected.find((r) => r.providerId === "101")!,
+    removedB = selected.find((r) => r.providerId === "201")!;
+  both = false;
+  const failures: string[] = [];
+  const revokedGenerations: number[] = [];
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      await f.signed.action(api.integrations.github.app.discoverRepositories, {
+        workspaceId: f.workspaceId,
+        installationId: "50",
+      });
+      const closed = (
+        await f.signed.query(api.integrations.github.repositories.settings, {
+          workspaceId: f.workspaceId,
+        })
+      ).repositories.find((r) => r.providerId === "201")!;
+      revokedGenerations.push(closed.generation);
+      await expect(
+        f.t.query(internal.integrations.github.repositories.source, {
+          workspaceId: f.workspaceId,
+          repositoryId: removedB._id,
+          generation: removedB.generation + 1,
+          purpose: "content",
+        }),
+      ).rejects.toThrow("GITHUB_SOURCE_DISABLED");
+      expect(
+        (
+          await f.t.query(internal.integrations.github.repositories.source, {
+            workspaceId: f.workspaceId,
+            repositoryId: activeA._id,
+            generation: activeA.generation + 1,
+            purpose: "content",
+          })
+        ).providerId,
+      ).toBe("101");
+    } catch (e) {
+      failures.push(String(e));
+    }
+  }
+  expect(failures).toEqual([]);
+  expect(revokedGenerations).toEqual([
+    removedB.generation + 2,
+    removedB.generation + 2,
+  ]);
+  const v = await f.signed.query(
+    api.integrations.github.repositories.settings,
+    { workspaceId: f.workspaceId },
+  );
+  expect(v.repositories.find((r) => r.providerId === "201")).toMatchObject({
+    access: false,
+    monitoring: false,
+    content: false,
+    authorized: false,
+  });
+  expect(v.repositories.find((r) => r.providerId === "101")).toMatchObject({
+    authorized: true,
+  });
+});
+test.each(["configure", "role", "disconnect"] as const)(
+  "scoped inventory still rejects concurrent %s during provider I/O",
+  async (change) => {
+    config();
+    const f = await mediaFixture(),
+      fetcher = provider();
+    await connect(f);
+    await f.signed.action(api.integrations.github.app.select, {
+      workspaceId: f.workspaceId,
+      installationId: "50",
+      repositoryId: "101",
+    });
+    const r = (
+      await f.signed.query(api.integrations.github.repositories.settings, {
+        workspaceId: f.workspaceId,
+      })
+    ).repositories[0];
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve)),
+      original = fetcher.getMockImplementation()!;
+    fetcher.mockImplementation(async (url, options) => {
+      if (
+        new URL(String(url)).pathname === "/user/installations/50/repositories"
+      )
+        await held;
+      return original(url, options);
+    });
+    const pending = f.signed.action(
+      api.integrations.github.app.discoverRepositories,
+      { workspaceId: f.workspaceId, installationId: "50" },
+    );
+    await vi.waitFor(() =>
+      expect(
+        fetcher.mock.calls.filter(
+          ([url]) =>
+            new URL(String(url)).pathname ===
+            "/user/installations/50/repositories",
+        ).length,
+      ).toBe(2),
+    );
+    if (change === "configure")
+      await f.signed.mutation(api.integrations.github.repositories.configure, {
+        workspaceId: f.workspaceId,
+        repositoryId: r._id,
+        expectedGeneration: r.generation,
+        access: true,
+        monitoring: false,
+        content: false,
+        communicableContext: "Changed during I/O",
+      });
+    else if (change === "role") {
+      const m = await f.t.run((ctx) =>
+        ctx.db
+          .query("memberships")
+          .withIndex("by_userId_and_workspaceId", (q) =>
+            q.eq("userId", f.userId).eq("workspaceId", f.workspaceId),
+          )
+          .unique(),
+      );
+      await f.t.run((ctx) => ctx.db.patch(m!._id, { role: "Viewer" }));
+    } else
+      await f.signed.mutation(api.integrations.github.repositories.disconnect, {
+        workspaceId: f.workspaceId,
+      });
+    release();
+    await expect(pending).rejects.toThrow(
+      change === "configure"
+        ? "GITHUB_SOURCE_CHANGED"
+        : change === "role"
+          ? "ROLE_ACCESS_DENIED"
+          : "GITHUB_REAUTH_REQUIRED",
+    );
+  },
+);
