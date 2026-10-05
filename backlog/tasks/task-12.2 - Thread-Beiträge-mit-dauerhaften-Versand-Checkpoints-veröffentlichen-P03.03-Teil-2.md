@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 12:46'
+updated_date: '2026-10-05 12:54'
 labels:
   - p03
   - r1
@@ -68,4 +68,10 @@ Independent SPEC FAIL on 8b84329: (1) initial publishing.claim commits publishin
 Root independent existing Playwright regression on 8b84329: all34 cases PASS in2.1min, including calendar/editor/navigation/accessibility. This is local browser evidence, not live provider/manual acceptance. SPEC defects remain under correction; no broad regression repeat needed unless subsequent UI changes/failures justify it.
 
 Fix candidate 9f5f593: initial workflow step registered atomically within claim mutation; dispatch no longer has separate action gap. Finalize/status retains real acknowledged media keys; conflicts pause uncertain without overwriting. Five permanent regressions reproduced red then green; implementer full141/type/lint/build/bundle/diff and existing EU Dev ready14:45:43 PASS. UI unchanged from root34 browser PASS. Same independent SPEC reviewer re-review running; QUALITY not yet started.
+
+Independent SPEC re-review PASS on 9f5f593:47 repository tests plus4 isolated checks PASS, including original claim crash gap and finalize/status missing key reproductions plus absent-key evidence. No outstanding SPEC finding. Fresh independent QUALITY review now running on frozen code; AC/manually confirmed Done remain pending.
+
+Independent QUALITY NEEDS WORK on9f5f593: public cancel changes uncertain zero-confirmed write to cancelled and clears error, releasing first-write account barrier although provider POST may exist. Two isolated reproductions fail (unknown->cancel->new proof; repeated cancel of sending->late receipt),8 existing safety tests pass. Original implementer corrects central cancellation with persistent idempotent abort intent/unresolved evidence barrier and no late advance/proof activation. QUALITY re-review and SPEC delta required; no AC/Done closure.
+
+Cancellation fix candidate eddf1a2 frozen: schedules optional abortRequestedAt/By, current public authority/ownership before idempotence, generation invalidated once, bounded indexed cross-generation unresolved barrier/error/IDs retained, known resolved prefix may cancel, shared claim/send/reschedule guards reject abort, late receipts evidence-only. Six permanent regressions PASS; implementer147full/type/lint/build/bundle/diff and existingEUDev ready14:53:02PASS. SPEC delta review running before QUALITY re-review; UI unchanged/root34PASS. New fields added to contract inventory for TASK33/36.
 <!-- SECTION:NOTES:END -->
