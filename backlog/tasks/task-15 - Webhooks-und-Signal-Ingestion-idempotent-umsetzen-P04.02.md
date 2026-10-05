@@ -1,10 +1,10 @@
 ---
 id: TASK-15
 title: Webhooks und Signal-Ingestion idempotent umsetzen (P04.02)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 14:21'
+updated_date: '2026-10-05 14:46'
 labels:
   - p04
   - r2
@@ -51,12 +51,12 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Reuse final reviewed TASK14 App proof/source records and native HTTP/crypto/scheduler; confirm current webhook and delivery recovery contract.
-2. Bound raw body and verify HMAC before any domain write; persist auditable receipt and schedule async processing before fast2xx acknowledgement.
-3. Process allowlisted Push/Release into tenant-scoped factual signals with atomic per-workspace/body/event dedupe and resumable fanout; recheck source generation/purpose/lifecycle before commit.
-4. Detect failed provider deliveries and provide bounded cursor/window redelivery or reconciliation, preserving privacy and coverage gaps; no assumption automatic redelivery.
-5. Wire real Signals factual state and truthful recovery/configuration; AI enrichment remains TASK16 after17/18.
-6. Validate signature/replay/multiple-workspace/crash/disabled-source/receiver-outage recovery and affected actual UI; full checks/Dev/scoped commits/independent SPEC then QUALITY; no Done.
+1. Start after TASK14 ad9d395 independent SPEC/QUALITY PASS; read exact current source/generation/credential contracts and primary webhook/revocation/recovery receipts.
+2. Verify bounded unchanged raw bytes with native HMAC before writes, discriminate signed event shape, durably store minimal factual receipt and native scheduled processing before fast acknowledgement.
+3. Process Push/Release per authorized workspace with source-purpose/proof/actor/lifecycle/generation rechecks, resumable bounded fanout and atomic body/event/tenant dedupe; apply verified revocation barriers.
+4. Implement bounded App-JWT failed-delivery detection and explicit selected-source recovery with truthful cursor/window/gaps/cooldown and accepted-versus-processed status.
+5. Wire actual paged factual Signals and recovery/configuration, keeping AI and idea handoff unavailable until reviewed17/18; no invented scores or demo outcomes in real UI.
+6. Validate exact signatures/replays/header reinterpretation/foreign or disabled sources/multiple tenants/interrupted processing/receiver outage redelivery and affected actual UI; full checks, existingEUDev, native inventory/scoped commits/freeze then fresh SPEC and QUALITY/fix/re-review. No live provider or automaticDone.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -65,4 +65,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 Read-only preparation while TASK12.3 active; no implementation. Current official Context7 library-first /github/docs plus2docs (3commands/noquota), independently verified primary guides in /tmp/dispatch-github-webhook-current-docs.md. Raw-byte SHA256 HMAC/fast10sec2xx afterdurable receipt; GUID stable acrossredelivery; no automaticredelivery; App-global JWT-only delivery endpoints cursor<=100 and202redelivery notcompletion. Body-only signature means headers alone are not authenticated event/tenant proof; signed-body identity and per-workspace dedupe required. Missing privatekey/webhooksecret remains visibleguidance; actual TASK14 interfaces supplied afterreviews.
 
 Weitere Read-only-Prep während TASK14: Context7 library-first offizielles /github/docs plus docs (zwei Befehle/keine Quota), direkt aktuelle GitHub- und Octokit-Payload-Verträge geprüft. Receipt /tmp/dispatch-github-revocation-webhook-current-docs.md: github_app_authorization.revoked hat sender ohne installation und beendet User-Zugriff, nicht Deinstallation; volle Installation enthält app_id/IDs, Aktionen deleted/suspend/unsuspend/new_permissions_accepted. Repository-Auswahl all→selected kann leere removed-Arrays liefern: vorhandene breite Proofs dann konservativ invalidieren und konkret resyncen; added/unsuspend erteilt keine lokale Purpose-Aktivierung. Signierter Body plus diskriminative Form/Digest schützt vor Header-/GUID-Replay, sender/ghost ist keine Human-Autorität. Native WebCrypto auf unveränderten begrenzten Bytes; tatsächliche14-Gates werden nach Freeze übernommen. Keine Implementierung/Provider-/Webhook-/manuelle Abnahme.
+
+Implementation assigned following final TASK14 ad9d395 SPEC/QUALITY PASS; root closing metadata fc87b6d. Full brief /tmp/dispatch-github-signal-implementation-brief.md and current webhook/revocation/recovery primary docs required. Missing App-privatekey/webhooksecret stays visible per user answer. Implement actual typed factual-ingestion/recovery paths with synthetic effects only; no actual authenticated provider/redelivery/model request. New fresh worker, independent SPEC then QUALITY, no BacklogDone.
 <!-- SECTION:NOTES:END -->
