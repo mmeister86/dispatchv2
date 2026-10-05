@@ -2,19 +2,21 @@ import { afterEach, expect, test, vi } from "vitest";
 import { convexTest } from "convex-test";
 import { PNG } from "pngjs";
 import { S3Client } from "@aws-sdk/client-s3";
+import { randomBytes } from "node:crypto";
 import schema from "../schema";
 import { internal } from "../_generated/api";
 import { seal } from "../lib/crypto";
 import { association } from "../integrations/x/fields";
 import { validateBytes } from "../media/validation";
-import { EXPIRY_MARGIN_MS } from "./mediaFields";
+import { EXPIRY_MARGIN_MS, CHUNK_BYTES } from "./mediaFields";
 const modules = import.meta.glob("/convex/**/*.ts");
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
   vi.useRealTimers();
 });
-async function fixture() {
+async function fixture(mediaBytes?: Buffer) {
+  vi.useFakeTimers();
   vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
   vi.stubEnv("R2_MEDIA_BUCKET", "fixture");
   vi.stubEnv("R2_ACCESS_KEY_ID", "synthetic");
@@ -25,11 +27,13 @@ async function fixture() {
     Buffer.alloc(32, 1).toString("base64"),
   );
   vi.stubEnv("INTEGRATION_ENCRYPTION_KEY_ID", "fixture");
-  const bytes = PNG.sync.write({
-      width: 1,
-      height: 1,
-      data: Buffer.from([1, 2, 3, 255]),
-    } as PNG),
+  const bytes =
+      mediaBytes ??
+      PNG.sync.write({
+        width: 1,
+        height: 1,
+        data: Buffer.from([1, 2, 3, 255]),
+      } as PNG),
     checked = validateBytes(bytes, bytes.length, "image/png"),
     t = convexTest(schema, modules);
   const f = await t.run(async (ctx) => {
@@ -434,6 +438,7 @@ test("actual final read checksum mismatch prevents every X call and measures fai
     phase: "failed",
     bytesRead: f.bytes.length,
     providerRequests: 0,
+    readRetries: 0,
   });
 });
 test("confirmed initialization and append resume without repeating chunks; processing waits and exact metadata yields ready", async () => {
@@ -573,4 +578,184 @@ test("late initialize outcome is recorded after cancel but cannot continue; expi
   expect(
     await g.t.mutation(internal.publishing.media.claim, g.job),
   ).toMatchObject({ attempt: 2, phase: "initialize", nextSegment: 0 });
+});
+test.each(["initialize", "append"] as const)(
+  "caught R2 timeout in %s preserves acknowledged progress and resumes only after a fresh read",
+  async (phase) => {
+    const f = await fixture(),
+      c = (await f.t.mutation(internal.publishing.media.claim, f.job))!;
+    await f.t.run((ctx) =>
+      ctx.db.patch(c._id, {
+        phase,
+        ...(phase === "append"
+          ? {
+              mediaId: "123",
+              expiresAt: Date.now() + 3600000,
+              nextSegment: 1,
+              chunkCount: 1,
+              bytesUploaded: CHUNK_BYTES,
+            }
+          : {}),
+        operation: undefined,
+        leaseUntil: 0,
+      }),
+    );
+    f.storage.mockRejectedValueOnce(
+      Object.assign(new Error("read timeout"), { name: "TimeoutError" }),
+    );
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ data: { id: "123", expires_after_secs: 3600 } }),
+        ),
+      );
+    await f.t.action(internal.integrations.x.publish.prepare, f.job);
+    const retry = (await f.checkpoint())!;
+    expect(fetch).not.toHaveBeenCalled();
+    expect(retry).toMatchObject({
+      phase,
+      nextSegment: phase === "append" ? 1 : 0,
+      chunkCount: phase === "append" ? 1 : 0,
+      providerRequests: 0,
+      readRetries: 1,
+      errorCode: "MEDIA_RETRIEVAL_RETRY",
+    });
+    expect(retry.nextCheckAt).toBeGreaterThan(Date.now());
+    await f.t.action(internal.integrations.x.publish.prepare, f.job);
+    expect(f.storage).toHaveBeenCalledTimes(1);
+    // Fresh credential rejection proves the resumed read cannot reuse pre-interruption authorization.
+    await f.t.run((ctx) => ctx.db.patch(f.credentialId, { scopes: [] }));
+    await vi.advanceTimersByTimeAsync(1000);
+    await f.t.finishInProgressScheduledFunctions();
+    expect(f.storage).toHaveBeenCalledTimes(2);
+    expect(fetch).not.toHaveBeenCalled();
+    expect(await f.checkpoint()).toMatchObject({
+      phase: "failed",
+      nextSegment: phase === "append" ? 1 : 0,
+      chunkCount: phase === "append" ? 1 : 0,
+      errorCode: "X_SCOPE_REQUIRED",
+    });
+  },
+);
+test("transient R2 reads exhaust a small retry budget while invalid bytes and access errors remain permanent", async () => {
+  const f = await fixture(),
+    fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("unexpected X"));
+  f.storage.mockRejectedValue(
+    Object.assign(new Error("connection reset"), { code: "ECONNRESET" }),
+  );
+  for (let n = 0; n < 4; n++) {
+    await f.t.action(internal.integrations.x.publish.prepare, f.job);
+    const c = (await f.checkpoint())!;
+    await f.t.run((ctx) => ctx.db.patch(c._id, { nextCheckAt: Date.now() }));
+  }
+  expect(await f.checkpoint()).toMatchObject({
+    phase: "failed",
+    readRetries: 3,
+    errorCode: "MEDIA_READ_RETRY_BUDGET_EXHAUSTED",
+  });
+  await f.t.action(internal.integrations.x.publish.prepare, f.job);
+  expect(f.storage).toHaveBeenCalledTimes(4);
+  expect(fetch).not.toHaveBeenCalled();
+  const g = await fixture();
+  g.storage.mockRejectedValueOnce({
+    $metadata: { httpStatusCode: 403 },
+    name: "AccessDenied",
+  });
+  await g.t.action(internal.integrations.x.publish.prepare, g.job);
+  expect(await g.checkpoint()).toMatchObject({
+    phase: "failed",
+    readRetries: 0,
+  });
+  expect(fetch).not.toHaveBeenCalled();
+});
+test("R2 read retry stops at the shared deadline and rechecks source before any resumed retrieval", async () => {
+  const f = await fixture(),
+    fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("unexpected X"));
+  f.storage.mockRejectedValueOnce({ name: "TimeoutError" });
+  await f.t.action(internal.integrations.x.publish.prepare, f.job);
+  const c = (await f.checkpoint())!;
+  await f.t.run((ctx) =>
+    ctx.db.patch(c._id, { deadline: Date.now() - 1, nextCheckAt: Date.now() }),
+  );
+  await f.t.action(internal.integrations.x.publish.prepare, f.job);
+  expect(f.storage).toHaveBeenCalledTimes(1);
+  expect(await f.checkpoint()).toMatchObject({
+    phase: "failed",
+    errorCode: "X_MEDIA_BUDGET_EXHAUSTED",
+  });
+  const g = await fixture();
+  g.storage.mockClear();
+  g.storage.mockRejectedValueOnce({ name: "TimeoutError" });
+  await g.t.action(internal.integrations.x.publish.prepare, g.job);
+  const d = (await g.checkpoint())!;
+  await g.t.run(async (ctx) => {
+    await ctx.db.patch(d._id, { nextCheckAt: Date.now() });
+    await ctx.db.patch(g.assetId, { state: "deleting" });
+  });
+  await expect(
+    g.t.action(internal.integrations.x.publish.prepare, g.job),
+  ).rejects.toThrow("MEDIA_NOT_READY");
+  expect(g.storage).toHaveBeenCalledTimes(1);
+  expect(fetch).not.toHaveBeenCalled();
+});
+test("a confirmed first segment survives reset and only the remaining validated segment is uploaded", async () => {
+  // One valid image just over the segment boundary; no maximum-size/stress fixture.
+  const bytes = PNG.sync.write({
+      width: 1024,
+      height: 1025,
+      data: randomBytes(1024 * 1025 * 4),
+    } as PNG),
+    f = await fixture(bytes);
+  expect(bytes.length).toBeGreaterThan(CHUNK_BYTES);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ data: { id: "123", expires_after_secs: 3600 } }),
+      ),
+    )
+    .mockImplementation(
+      async () =>
+        new Response(
+          JSON.stringify({
+            data: { expires_at: Math.floor(Date.now() / 1000) + 3600 },
+          }),
+        ),
+    );
+  await f.t.action(internal.integrations.x.publish.prepare, f.job);
+  await f.t.action(internal.integrations.x.publish.prepare, f.job);
+  expect(await f.checkpoint()).toMatchObject({
+    nextSegment: 1,
+    chunkCount: 1,
+    bytesUploaded: CHUNK_BYTES,
+  });
+  f.storage.mockRejectedValueOnce({ code: "ECONNRESET" });
+  await f.t.action(internal.integrations.x.publish.prepare, f.job);
+  const c = (await f.checkpoint())!;
+  expect(fetch).toHaveBeenCalledTimes(2);
+  expect(c).toMatchObject({
+    phase: "append",
+    nextSegment: 1,
+    chunkCount: 1,
+    readRetries: 1,
+  });
+  await f.t.run((ctx) => ctx.db.patch(c._id, { nextCheckAt: Date.now() }));
+  await f.t.action(internal.integrations.x.publish.prepare, f.job);
+  expect(fetch).toHaveBeenCalledTimes(3);
+  const form = fetch.mock.calls[2][1]!.body as FormData;
+  expect(form.get("segment_index")).toBe("1");
+  expect(Buffer.from(await (form.get("media") as Blob).arrayBuffer())).toEqual(
+    bytes.subarray(CHUNK_BYTES),
+  );
+  expect(await f.checkpoint()).toMatchObject({
+    phase: "finalize",
+    nextSegment: 2,
+    chunkCount: 2,
+    bytesUploaded: bytes.length,
+  });
 });

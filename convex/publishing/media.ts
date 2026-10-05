@@ -178,6 +178,7 @@ export const claim = internalMutation({
         nextCheckAt: now,
         deadline: now + MEDIA_BUDGET_MS,
         statusReads: 0,
+        readRetries: 0,
         metadataApplied: false,
         bytesRead: 0,
         bytesUploaded: 0,
@@ -319,6 +320,11 @@ export const receipt = internalMutation({
       bytesRead: c.bytesRead + a.bytesRead,
       durationMs: c.durationMs + a.durationMs,
       measurementIncomplete: c.measurementIncomplete || a.incomplete,
+      readRetries:
+        (c.readRetries ?? 0) +
+        Number(
+          c.operation === "read" && a.errorCode === "MEDIA_RETRIEVAL_RETRY",
+        ),
       operation: undefined,
       leaseUntil: 0,
       nextCheckAt,
@@ -326,9 +332,14 @@ export const receipt = internalMutation({
     });
     if (
       allowed &&
-      ["append", "finalize", "processing", "metadata", "expired"].includes(
-        a.phase,
-      )
+      [
+        "initialize",
+        "append",
+        "finalize",
+        "processing",
+        "metadata",
+        "expired",
+      ].includes(a.phase)
     )
       await ctx.scheduler.runAfter(
         a.waitMs,

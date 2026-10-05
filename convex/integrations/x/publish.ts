@@ -20,6 +20,23 @@ export class MediaRequestError extends Error {
     super(code);
   }
 }
+class TransientR2ReadError extends Error {}
+export function transientR2Read(error: unknown) {
+  const e = error as {
+    name?: string;
+    code?: string;
+    $metadata?: { httpStatusCode?: number };
+  } | null;
+  return Boolean(
+    e &&
+    (["TimeoutError", "RequestTimeout", "AbortError"].includes(e.name ?? "") ||
+      ["ECONNRESET", "ETIMEDOUT", "EPIPE"].includes(e.code ?? "") ||
+      e.$metadata?.httpStatusCode === 429 ||
+      (e.$metadata?.httpStatusCode !== undefined &&
+        e.$metadata.httpStatusCode >= 500 &&
+        e.$metadata.httpStatusCode <= 599)),
+  );
+}
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("X_MEDIA_RESPONSE_INVALID");
@@ -238,8 +255,9 @@ export const prepare = internalAction({
       let bytes: Buffer | undefined;
       if (c.phase === "initialize" || c.phase === "append") {
         readStarted = true;
-        bytes = checkedBytes(
-          await readBounded(
+        let retrieved: Buffer | null;
+        try {
+          retrieved = await readBounded(
             config.client,
             c.bucket,
             c.objectKey,
@@ -247,9 +265,13 @@ export const prepare = internalAction({
             (count) => {
               bytesRead += count;
             },
-          ),
-          c,
-        );
+          );
+        } catch (e) {
+          // Retry only the read transport boundary; byte validation and credential/configuration errors stay permanent.
+          if (transientR2Read(e)) throw new TransientR2ReadError();
+          throw e;
+        }
+        bytes = checkedBytes(retrieved, c);
       }
       const credential = await ctx.runAction(
         internal.integrations.x.client.credentialForSchedule,
@@ -339,6 +361,8 @@ export const prepare = internalAction({
           : {}),
       });
     } catch (e) {
+      const readRetry =
+        e instanceof TransientR2ReadError && (c.readRetries ?? 0) < 3;
       const retry =
         requestStarted &&
         c.phase === "processing" &&
@@ -348,27 +372,36 @@ export const prepare = internalAction({
         e.data === "X_MEDIA_EXPIRED_OR_CLAIM_CHANGED";
       await ctx.runMutation(internal.publishing.media.receipt, {
         ...claim,
-        phase: expired
-          ? "expired"
+        phase: readRetry
+          ? c.phase
+          : expired
+            ? "expired"
+            : retry
+              ? "processing"
+              : requestStarted &&
+                  (!(e instanceof MediaRequestError) ||
+                    e.outcome === "uncertain")
+                ? "uncertain"
+                : "failed",
+        waitMs: readRetry
+          ? 1000 * 2 ** (c.readRetries ?? 0)
           : retry
-            ? "processing"
-            : requestStarted &&
-                (!(e instanceof MediaRequestError) || e.outcome === "uncertain")
-              ? "uncertain"
-              : "failed",
-        waitMs: retry
-          ? Math.min(
-              (e instanceof MediaRequestError ? e.waitMs : 1000) *
-                2 ** Math.min(c.statusReads, 5),
-              1800000,
-            )
-          : 0,
+            ? Math.min(
+                (e instanceof MediaRequestError ? e.waitMs : 1000) *
+                  2 ** Math.min(c.statusReads, 5),
+                1800000,
+              )
+            : 0,
         errorCode:
-          e instanceof ConvexError
-            ? String(e.data)
-            : e instanceof MediaRequestError
-              ? e.code
-              : "MEDIA_RETRIEVAL_FAILED",
+          e instanceof TransientR2ReadError
+            ? readRetry
+              ? "MEDIA_RETRIEVAL_RETRY"
+              : "MEDIA_READ_RETRY_BUDGET_EXHAUSTED"
+            : e instanceof ConvexError
+              ? String(e.data)
+              : e instanceof MediaRequestError
+                ? e.code
+                : "MEDIA_RETRIEVAL_FAILED",
         bytesRead,
         durationMs: Date.now() - measuredAt,
         incomplete: requestStarted || readStarted,

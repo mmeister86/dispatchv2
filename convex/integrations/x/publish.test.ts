@@ -1,9 +1,33 @@
 import { afterEach, expect, test, vi } from "vitest";
 import { PNG } from "pngjs";
 import { validateBytes } from "../../media/validation";
-import { checkedBytes, mediaRequest, uploadResult } from "./publish";
+import {
+  checkedBytes,
+  mediaRequest,
+  uploadResult,
+  transientR2Read,
+} from "./publish";
 
 afterEach(() => vi.restoreAllMocks());
+test("only known R2 GET transport and throttling/service errors are retryable", () => {
+  for (const error of [
+    { name: "TimeoutError" },
+    { name: "AbortError" },
+    { code: "ECONNRESET" },
+    { $metadata: { httpStatusCode: 429 } },
+    { $metadata: { httpStatusCode: 503 } },
+  ])
+    expect(transientR2Read(error)).toBe(true);
+  for (const error of [
+    new Error("unknown"),
+    { name: "AccessDenied" },
+    { $metadata: { httpStatusCode: 403 } },
+    { $metadata: { httpStatusCode: 404 } },
+    { name: "MediaValidationError" },
+    null,
+  ])
+    expect(transientR2Read(error)).toBe(false);
+});
 test("approved checksum and size fail before provider receives bytes", () => {
   const bytes = PNG.sync.write({
     width: 1,

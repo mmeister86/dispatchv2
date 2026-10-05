@@ -57,6 +57,7 @@ export const checkpointFields = {
   nextCheckAt: v.number(),
   deadline: v.number(),
   statusReads: v.number(),
+  readRetries: v.optional(v.number()),
   metadataApplied: v.boolean(),
   bytesRead: v.number(),
   bytesUploaded: v.number(),
