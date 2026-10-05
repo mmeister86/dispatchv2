@@ -28,7 +28,11 @@ Root independently ran `pnpm audit --prod` on the updated pinned production depe
 
 Four committed targeted files: 20/20 checks passed independently. The original safe PNG exploit was changed to require rejection, and the inventory/history counterexamples were reconstructed against the corrected DTOs: two further checks passed. The reviewer verified predecode PNG bounds,50-item Composer pagination, workspace-filtered history descriptors bounded by20 versions×20 references and exact historical alt restoration.
 
-The fresh independent QUALITY review is now running. A separate unverified mounted-ref/React StrictMode concern was forwarded for reproduction; it is not a confirmed finding yet. The next provider implementer starts only after QUALITY passes too.
+## Independent QUALITY review — running
+
+The reviewer reproduced a P2 StrictMode bug in the actual MediaLibrary using an isolated Vite/Playwright fixture on port5174, with production source unchanged. Its mounted-ref effect cleanup sets `mounted.current=false`, but setup does not restore true. React StrictMode's setup/cleanup/setup cycle therefore suppresses successful command notifications and the `finally` busy reset. An initially enabled delete button remains disabled after successful completion.
+
+Temporary evidence: `/tmp/dispatch-r2-quality-browser.mjs` and `/tmp/dispatch-r2-strictmode-success.png`. The fixture server was closed. Remaining parser, lifecycle and asynchronous-UI review continues on the frozen source before the implementer fixes the confirmed findings. The next provider implementer starts only after QUALITY passes too.
 
 ## Actual acceptance still open
 

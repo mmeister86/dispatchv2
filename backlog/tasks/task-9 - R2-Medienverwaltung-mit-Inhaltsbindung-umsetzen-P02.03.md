@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 10:46'
+updated_date: '2026-10-05 10:48'
 labels:
   - p02
   - r1
@@ -80,4 +80,6 @@ Independent root full browser regression at frozen media code33663d3: pnpm test:
 Three SPEC defects corrected and source frozen atf381e39 for independent re-review: strict predecode PNG metadata/header checks; paginated Composer inventory; authorized historical descriptors merged through actual store with exact-alt restore. Committed checks reproduced defects before fixing. Implementer reports62 unit checks and4 targeted browser checks plus typecheck/lint/build/bundle passed; Dev updated12:44:09. Root independently pnpm audit --prod: no known vulnerabilities. SPEC re-review and subsequent QUALITY still pending, actual EU-R2/CORS/runtime/manual acceptance still open.
 
 Independent SPEC PASS atf381e39:20 committed targetedchecks plus2 updated original counterexamples passed. Reviewer confirmed PNG limits beforedecode, paginated first-attachment inventory and authorized bounded historical descriptors with exact-alt restoration. Fresh independent QUALITY review nowrunning, including an unverified StrictMode mounted-ref concern; no next provider implementer until QUALITY passes. Actual live/manual acceptance unchanged and statusInProgress.
+
+Independent QUALITY review reproduced P2 in actual MediaLibrary under ReactStrictMode: effect cleanup marks mountedfalse without setup reset, so successful delete suppresses feedback/finally and remains busy. Isolated5174 browser fixture and screenshot captured without source or real provider writes; serverclosed. Review continues on frozenf381e39 before scoped correction and re-review. No automatic Done.
 <!-- SECTION:NOTES:END -->
