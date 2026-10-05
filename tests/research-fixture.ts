@@ -2,7 +2,9 @@ import { vi } from "vitest";
 import { mediaFixture } from "./media-fixture";
 import { api } from "../convex/_generated/api";
 import { sha256 } from "../convex/lib/crypto";
-import type { Id } from "../convex/_generated/dataModel";
+import workflowComponent from "@convex-dev/workflow/test";
+import agentComponent from "@convex-dev/agent/test";
+import type { Doc, Id } from "../convex/_generated/dataModel";
 export const config = {
   topics: "Product",
   project: "",
@@ -178,4 +180,74 @@ export function streamResponse(
       "data: [DONE]\r\n\r\n",
     { headers: { "content-type": "text/event-stream" } },
   );
+}
+
+export async function pipelineFixture(
+  cap = 20000,
+  operations: Doc<"researchSourcePolicies">["operation"][] = ["web-search"],
+  topicCount?: number,
+) {
+  const f = await fixture(operations, cap);
+  workflowComponent.register(f.t);
+  agentComponent.register(f.t);
+  await f.t.run(async (ctx) => {
+    await ctx.db.insert("aiPolicies", {
+      key: "requesty-generation",
+      version: "synthetic-v1",
+      enabled: true,
+      processingEvidence: "synthetic",
+      pricingEvidence: "synthetic",
+      model: "synthetic/model",
+      baseURL: "https://router.eu.requesty.ai/v1",
+      currency: "USD",
+      inputMicrosPerMillion: 1000000,
+      outputMicrosPerMillion: 1000000,
+      maxInputTokens: 16000,
+      maxOutputTokens: 3000,
+      maxAttempts: 3,
+      maxToolSteps: 2,
+      maxDurationMs: 120000,
+      purposes: ["research"],
+    });
+    for (const [scope, key] of [
+      ["provider", "provider"],
+      ["workspace", `workspace:${f.workspaceId}`],
+      ["account", `account:${f.accountId}`],
+    ] as const)
+      await ctx.db.insert("aiBudgets", {
+        key,
+        scope,
+        workspaceId: scope === "provider" ? undefined : f.workspaceId,
+        accountId: scope === "account" ? f.accountId : undefined,
+        approvedBy: scope === "provider" ? undefined : f.userId,
+        policyVersion: "synthetic-v1",
+        currency: "USD",
+        purposes: ["research"],
+        expiresAt: Date.now() + 86400000,
+        limitMicros: 100000,
+        heldMicros: 0,
+        spentMicros: 0,
+      });
+  });
+  if (topicCount !== undefined) {
+    const p = (await f.t.run((ctx) => ctx.db.get(f.profileId)))!,
+      version = (await f.t.run((ctx) => ctx.db.get(p.currentVersionId!)))!;
+    await f.signed.mutation(api.research.profiles.change, {
+      workspaceId: f.workspaceId,
+      profileId: f.profileId,
+      expectedRevision: 2,
+      commandKey: "pipeline-topics",
+      action: { kind: "save", config: { ...version.config, topicCount } },
+    });
+  }
+  const start = (key = "pipeline-one") =>
+    f.signed.mutation(api.research.pipeline.start, {
+      workspaceId: f.workspaceId,
+      profileId: f.profileId,
+      expectedRevision: topicCount === undefined ? 2 : 3,
+      operationKey: key,
+      language: "de",
+      operations,
+    });
+  return { ...f, start };
 }

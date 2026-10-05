@@ -63,6 +63,7 @@ import type * as publishing_workflows from "../publishing/workflows.js";
 import type * as research_access from "../research/access.js";
 import type * as research_cache from "../research/cache.js";
 import type * as research_clusters from "../research/clusters.js";
+import type * as research_evaluate from "../research/evaluate.js";
 import type * as research_evidence from "../research/evidence.js";
 import type * as research_evidenceFields from "../research/evidenceFields.js";
 import type * as research_execute from "../research/execute.js";
@@ -144,6 +145,7 @@ declare const fullApi: ApiFromModules<{
   "research/access": typeof research_access;
   "research/cache": typeof research_cache;
   "research/clusters": typeof research_clusters;
+  "research/evaluate": typeof research_evaluate;
   "research/evidence": typeof research_evidence;
   "research/evidenceFields": typeof research_evidenceFields;
   "research/execute": typeof research_execute;
