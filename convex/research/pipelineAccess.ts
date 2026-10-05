@@ -64,6 +64,7 @@ async function materialAuthority(ctx: Ctx, o: Doc<"researchOrders">) {
     (profile.researchMaterialGeneration ?? 0) !== o.pipeline.materialGeneration
   )
     throw new ConvexError("RESEARCH_MATERIAL_REMOVED");
+  let until = o.pipeline.retentionUntil ?? Number.MAX_SAFE_INTEGER;
   if (
     o.pipeline.runId &&
     (!o.approval ||
@@ -74,6 +75,8 @@ async function materialAuthority(ctx: Ctx, o: Doc<"researchOrders">) {
   )
     throw new ConvexError("RESEARCH_GENERATION_AUTHORITY_CHANGED");
   if (o.pipeline.runId) {
+    for (const id of o.approval!.budgetIds)
+      until = Math.min(until, (await ctx.db.get(id))!.expiresAt);
     const r = await ctx.db.get(o.pipeline.runId),
       account = await ctx.db.get(o.accountId);
     if (
@@ -89,9 +92,10 @@ async function materialAuthority(ctx: Ctx, o: Doc<"researchOrders">) {
     )
       throw new ConvexError("RESEARCH_GENERATION_AUTHORITY_CHANGED");
   }
+  return until;
 }
-export async function currentMaterials(ctx: Ctx, o: Doc<"researchOrders">) {
-  await materialAuthority(ctx, o);
+export async function currentMaterialProof(ctx: Ctx, o: Doc<"researchOrders">) {
+  let proofUntil = await materialAuthority(ctx, o);
   for (const pin of o.pipeline!.contextPins ?? []) {
     const original = await ctx.db.get(pin.orderId);
     if (
@@ -100,8 +104,9 @@ export async function currentMaterials(ctx: Ctx, o: Doc<"researchOrders">) {
       original.accountId !== o.accountId
     )
       throw new ConvexError("RESEARCH_CONTEXT_OWNER_INVALID");
-    await materialAuthority(ctx, original);
+    proofUntil = Math.min(proofUntil, await materialAuthority(ctx, original));
     const d = await deliveredSource(ctx, original._id, pin.sourceId);
+    proofUntil = Math.min(proofUntil, pin.until, d.until);
     if (
       pin.until <= Date.now() ||
       (await materialHash(d.s)) !== pin.materialHash
@@ -120,7 +125,11 @@ export async function currentMaterials(ctx: Ctx, o: Doc<"researchOrders">) {
       !original?.pipeline?.evidenceIds.includes(e._id)
     )
       throw new ConvexError("RESEARCH_CONTEXT_REMOVED");
-    await materialAuthority(ctx, original);
+    proofUntil = Math.min(
+      proofUntil,
+      e.retentionUntil,
+      await materialAuthority(ctx, original),
+    );
   }
   const result = [];
   for (const pin of o.pipeline!.sourcePins) {
@@ -130,9 +139,13 @@ export async function currentMaterials(ctx: Ctx, o: Doc<"researchOrders">) {
       (await materialHash(d.s)) !== pin.materialHash
     )
       throw new ConvexError("RESEARCH_MATERIAL_CHANGED");
+    proofUntil = Math.min(proofUntil, pin.until, d.until);
     result.push(d);
   }
-  return result;
+  return { materials: result, proofUntil };
+}
+export async function currentMaterials(ctx: Ctx, o: Doc<"researchOrders">) {
+  return (await currentMaterialProof(ctx, o)).materials;
 }
 export async function orderLiability(ctx: Ctx, o: Doc<"researchOrders">) {
   const rows = await ctx.db

@@ -18,11 +18,15 @@ import {
   liveAuthority,
 } from "./access";
 import { operation } from "./providerFields";
-import { disposition } from "./pipelineFields";
+import { disposition, sourceCoverage } from "./pipelineFields";
 import { admitNative } from "./native";
 import { deriveQuestion } from "../ai/researchTools";
 import { workflow } from "../ai/researchAgent";
-import { currentMaterials, orderLiability } from "./pipelineAccess";
+import {
+  currentMaterials,
+  currentMaterialProof,
+  orderLiability,
+} from "./pipelineAccess";
 import { deliveredSource, materialHash } from "./evidence";
 import { evidenceFields } from "./evidenceFields";
 import type { WorkflowId } from "@convex-dev/workflow";
@@ -177,6 +181,7 @@ export const results = workspaceQuery({
       currency: v.union(v.string(), v.null()),
       nextAt: v.union(v.number(), v.null()),
       handoff: v.literal("disabled"),
+      sourceCoverage: v.union(v.array(sourceCoverage), v.null()),
       historyIncomplete: v.boolean(),
       cleanupState: v.union(
         v.literal("retained"),
@@ -191,9 +196,10 @@ export const results = workspaceQuery({
     requireReference(ctx.workspace._id, o);
     if (!o!.pipeline) return null;
     const money = await orderLiability(ctx, o!);
-    let readable = true;
+    let readable = true,
+      displayUntil = 0;
     try {
-      await currentMaterials(ctx, o!);
+      displayUntil = (await currentMaterialProof(ctx, o!)).proofUntil;
     } catch {
       readable = false;
     }
@@ -213,10 +219,7 @@ export const results = workspaceQuery({
           results.push({
             evidenceId: e._id,
             payload: e.payload,
-            retentionUntil: Math.min(
-              e.retentionUntil,
-              ...o!.pipeline.sourcePins.map((p) => p.until),
-            ),
+            retentionUntil: Math.min(e.retentionUntil, displayUntil, d.until),
             state: "review" as const,
             publishedAt: d.s.publishedAt,
             observedAt: d.s.observedAt,
@@ -242,8 +245,12 @@ export const results = workspaceQuery({
       currency: o!.config.cap?.currency ?? null,
       nextAt: o!.pipeline.nextAt,
       handoff: "disabled" as const,
+      sourceCoverage: o!.pipeline.sourceCoverage ?? null,
       historyIncomplete:
-        o!.pipeline.historyTruncated || o!.pipeline.clustersTruncated,
+        o!.pipeline.historyTruncated ||
+        o!.pipeline.clustersTruncated ||
+        o!.pipeline.sourceCoverage === undefined ||
+        (o!.pipeline.sourceCoverage ?? []).some((c) => c.omitted > 0),
       cleanupState: o!.pipeline.cleanupState,
     };
   },

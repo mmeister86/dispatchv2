@@ -2,17 +2,29 @@ import { ConvexError } from "convex/values";
 import type { MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { sha256 } from "../lib/crypto";
+export function topicGroup(item: {
+  clusterId: string | null;
+  topicKey?: string | null;
+  title: string;
+}) {
+  return JSON.stringify(
+    item.clusterId
+      ? ["existing", item.clusterId]
+      : item.topicKey == null
+        ? ["declared-title", item.title]
+        : ["local-topic", item.topicKey],
+  );
+}
 // Technical cluster membership only: source-derived text stays in governed evidence.
 export async function assignCluster(
   ctx: MutationCtx,
   o: Doc<"researchOrders">,
-  index: number,
   item: NonNullable<
     NonNullable<Doc<"researchOrders">["pipeline"]>["pending"]
   >[number],
 ) {
   const key = await sha256(
-    JSON.stringify([o._id, index, o.pipeline!.proposalHash]),
+    JSON.stringify([o._id, topicGroup(item), o.pipeline!.proposalHash]),
   );
   if (item.clusterId) {
     const c = await ctx.db.get(item.clusterId);

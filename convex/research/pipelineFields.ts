@@ -1,5 +1,12 @@
 import { v } from "convex/values";
+import { operation } from "./providerFields";
 import { annotation } from "./evidenceFields";
+export const sourceCoverage = v.object({
+  operation,
+  delivered: v.number(),
+  selected: v.number(),
+  omitted: v.number(),
+});
 export const sourcePin = v.object({
   sourceId: v.id("researchSources"),
   materialHash: v.string(),
@@ -19,6 +26,7 @@ export const proposedItem = v.object({
   sourceId: v.id("researchSources"),
   materialHash: v.string(),
   annotation,
+  topicKey: v.optional(v.union(v.string(), v.null())),
   perspective: v.string(),
   dynamics: v.string(),
   clusterId: v.union(v.id("researchClusters"), v.null()),
@@ -49,6 +57,7 @@ export const pipeline = v.object({
   step: v.number(),
   outcome: disposition,
   sourcePins: v.array(sourcePin),
+  sourceCoverage: v.optional(v.array(sourceCoverage)),
   contextPins: v.optional(
     v.array(
       v.object({

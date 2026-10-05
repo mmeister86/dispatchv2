@@ -1,4 +1,4 @@
-import { currentMaterials } from "./pipelineAccess";
+import { currentMaterials, currentMaterialProof } from "./pipelineAccess";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -236,10 +236,12 @@ export const list = workspaceQuery({
           reason = e.reason;
         try {
           if (e.workspaceId !== ctx.workspace._id) throw new Error();
+          let modelProofUntil = Number.MAX_SAFE_INTEGER;
           if (e.modelOrigin) {
             const order = await ctx.db.get(e.orderId);
             if (!order?.pipeline) throw new Error();
-            await currentMaterials(ctx, order);
+            modelProofUntil = (await currentMaterialProof(ctx, order))
+              .proofUntil;
           }
           const author = await ctx.db.get(e.annotationActorId);
           if (!author) throw new Error();
@@ -273,7 +275,7 @@ export const list = workspaceQuery({
               throw error;
             }
           }
-          proofUntil = Math.min(until, e.retentionUntil);
+          proofUntil = Math.min(until, e.retentionUntil, modelProofUntil);
           payload = e.payload;
           source = {
             materialHash: e.materialHash,

@@ -42,6 +42,7 @@ afterEach(() => {
 async function pipelineFixture(
   cap = 20000,
   operations: Doc<"researchSourcePolicies">["operation"][] = ["web-search"],
+  topicCount?: number,
 ) {
   const f = await fixture(operations, cap);
   workflowComponent.register(f.t);
@@ -85,11 +86,22 @@ async function pipelineFixture(
         spentMicros: 0,
       });
   });
+  if (topicCount !== undefined) {
+    const p = (await f.t.run((ctx) => ctx.db.get(f.profileId)))!,
+      version = (await f.t.run((ctx) => ctx.db.get(p.currentVersionId!)))!;
+    await f.signed.mutation(api.research.profiles.change, {
+      workspaceId: f.workspaceId,
+      profileId: f.profileId,
+      expectedRevision: 2,
+      commandKey: "pipeline-topics",
+      action: { kind: "save", config: { ...version.config, topicCount } },
+    });
+  }
   const start = (key = "pipeline-one") =>
     f.signed.mutation(api.research.pipeline.start, {
       workspaceId: f.workspaceId,
       profileId: f.profileId,
-      expectedRevision: 2,
+      expectedRevision: topicCount === undefined ? 2 : 3,
       operationKey: key,
       language: "de",
       operations,
@@ -1145,7 +1157,7 @@ async function seedCluster(f: Awaited<ReturnType<typeof pipelineFixture>>) {
     commandKey: "cluster-context-edit",
     action: {
       kind: "save",
-      config: { ...old.config, topics: "Different topic" },
+      config: { ...old.config, topics: "Different topic", topicCount: 1 },
     },
   });
   return { first, old };
@@ -1219,4 +1231,322 @@ test("two semantic results update one existing cluster once and concurrent stage
   expect(
     await f.t.run((ctx) => ctx.db.query("researchClusters").collect()),
   ).toHaveLength(1);
+});
+async function finishSemantic(
+  f: Awaited<ReturnType<typeof pipelineFixture>>,
+  id: Id<"researchOrders">,
+  a: { orderId: Id<"researchOrders">; generation: number },
+  output?: string,
+) {
+  const runId = (await f.t.mutation(internal.ai.researchTools.bindModel, a))!,
+    body = output ?? (await modelOutput(f, id)),
+    executionKey = `proof-${id}`;
+  await f.t.mutation(internal.ai.runs.claim, { runId, executionKey });
+  await f.t.action((ctx) =>
+    generateForRun(
+      ctx,
+      runId,
+      executionKey,
+      new MockLanguageModelV3({ doGenerate: async () => modelReceipt(body) }),
+    ),
+  );
+  await f.t.mutation(internal.ai.researchTools.commitModel, {
+    runId,
+    executionKey,
+    output: body,
+  });
+  await f.t.mutation(internal.ai.runs.finish, {
+    runId,
+    generation: 1,
+    executionKey,
+    failed: false,
+  });
+  for (const fn of [
+    internal.ai.researchTools.cluster,
+    internal.ai.researchTools.assess,
+    internal.ai.researchTools.evidence,
+    internal.ai.researchTools.inbox,
+    internal.ai.researchTools.finish,
+  ])
+    await f.t.mutation(fn, a);
+}
+test.each(["generation", "native"] as const)(
+  "display proof uses current short %s grant expiry in Inbox and model-origin manual evidence",
+  async (owner) => {
+    const f = await pipelineFixture();
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+    const id = await f.start(),
+      a = await prepared(f, id);
+    await finishSemantic(f, id, a);
+    const expiry = Date.now() + 1000;
+    await f.t.run(async (ctx) => {
+      const rows = await ctx.db.query("aiAttempts").collect(),
+        receipt = rows.find(
+          (t) => (t.owner === "native-search") === (owner === "native"),
+        )!;
+      await ctx.db.patch(receipt.budgetIds[0], { expiresAt: expiry });
+    });
+    const row = await f.signed.query(api.research.pipeline.results, {
+        workspaceId: f.workspaceId,
+        orderId: id,
+      }),
+      evidence = await f.signed.query(api.research.evidence.list, {
+        workspaceId: f.workspaceId,
+        orderId: id,
+      });
+    expect(row!.results).toHaveLength(1);
+    expect(row!.results[0].retentionUntil).toBeLessThanOrEqual(expiry);
+    expect(evidence[0].proofUntil).toBeLessThanOrEqual(expiry);
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(evidence[0].evidenceId)))!
+        .retentionUntil,
+    ).toBeGreaterThan(expiry);
+    vi.setSystemTime(expiry + 1);
+    expect(
+      (await f.signed.query(api.research.pipeline.results, {
+        workspaceId: f.workspaceId,
+        orderId: id,
+      }))!.results,
+    ).toEqual([]);
+  },
+);
+test.each(["legacy-exact-title", "explicit-key", "different-title"])(
+  "two independent first-order sources share one requested topic using %s",
+  async (grouping) => {
+    const f = await pipelineFixture(20000, ["web-search"], 1);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      streamResponse([
+        { url: "https://one.test/new", title: "First" },
+        { url: "https://two.test/new", title: "Second" },
+      ]),
+    );
+    const id = await f.start(),
+      a = await prepared(f, id),
+      o = (await f.t.run((ctx) => ctx.db.get(id)))!,
+      template = JSON.parse(await modelOutput(f, id)).items[0];
+    const output = JSON.stringify({
+      items: o.pipeline!.sourcePins.map((p) => ({
+        ...template,
+        sourceId: p.sourceId,
+        materialHash: p.materialHash,
+        title:
+          grouping !== "legacy-exact-title"
+            ? `Launch topic ${p.sourceId}`
+            : "Same declared launch topic",
+        ...(grouping === "explicit-key" ? { topicKey: "launch_update" } : {}),
+      })),
+    });
+    if (grouping === "different-title") {
+      await expect(finishSemantic(f, id, a, output)).rejects.toThrow(
+        "RESEARCH_OUTPUT_LIMIT",
+      );
+      expect(
+        await f.t.run((ctx) => ctx.db.query("researchEvidence").collect()),
+      ).toEqual([]);
+      return;
+    }
+    await finishSemantic(f, id, a, output);
+    const done = (await f.t.run((ctx) => ctx.db.get(id)))!;
+    expect(done.pipeline!.evidenceIds).toHaveLength(2);
+    expect(new Set(done.pipeline!.clusterIds).size).toBe(1);
+  },
+);
+test("secondary cluster native grant has its own short display proof even when current primary grants remain live", async () => {
+  const f = await pipelineFixture(20000, ["x-recent", "web-search"]);
+  let xCall = 0;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) =>
+    String(url).startsWith("https://api.x.com/")
+      ? Response.json({
+          data: [
+            {
+              id: String(++xCall + 1000),
+              text: "Delivered independent X text",
+              created_at: new Date(Date.now() - 1000).toISOString(),
+            },
+          ],
+          meta: { result_count: 1 },
+        })
+      : streamResponse(),
+  );
+  const { first, old } = await seedCluster(f);
+  const id = await f.signed.mutation(api.research.pipeline.start, {
+      workspaceId: f.workspaceId,
+      profileId: f.profileId,
+      expectedRevision: 3,
+      operationKey: "secondary-proof",
+      language: "de",
+      operations: ["x-recent"],
+    }),
+    a = { orderId: id, generation: 1 };
+  await f.t.mutation(internal.ai.researchTools.reserve, a);
+  await f.t.mutation(internal.ai.researchTools.prepare, a);
+  await f.t.action(internal.research.execute.operation, {
+    ...a,
+    operation: "x-recent",
+  });
+  await f.t.mutation(internal.ai.researchTools.select, a);
+  await finishSemantic(f, id, a);
+  const o = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  expect(
+    o.pipeline!.contextPins!.some(
+      (p) =>
+        p.orderId === first &&
+        old.pipeline!.sourcePins.some((s) => s.sourceId === p.sourceId),
+    ),
+  ).toBe(true);
+  const expiry = Date.now() + 1000;
+  await f.t.run(async (ctx) => {
+    const rows = await ctx.db
+        .query("aiAttempts")
+        .withIndex("by_researchOrderId_and_key", (q) =>
+          q.eq("researchOrderId", first),
+        )
+        .collect(),
+      web = rows.find(
+        (r) => r.owner === "native-search" && r.operation === "web-search",
+      )!;
+    await ctx.db.patch(web.budgetIds[0], { expiresAt: expiry });
+  });
+  const row = await f.signed.query(api.research.pipeline.results, {
+    workspaceId: f.workspaceId,
+    orderId: id,
+  });
+  expect(row!.results).toHaveLength(1);
+  expect(row!.results[0].retentionUntil).toBeLessThanOrEqual(expiry);
+  const manual = await f.signed.query(api.research.evidence.list, {
+    workspaceId: f.workspaceId,
+    orderId: id,
+  });
+  expect(manual[0].proofUntil).toBeLessThanOrEqual(expiry);
+  vi.setSystemTime(expiry + 1);
+  expect(
+    (await f.signed.query(api.research.pipeline.results, {
+      workspaceId: f.workspaceId,
+      orderId: id,
+    }))!.results,
+  ).toEqual([]);
+});
+test("actual combined source selection records omitted per-operation coverage in prompt, evidence and partial Inbox", async () => {
+  const f = await pipelineFixture(20000, ["x-recent", "web-search"]);
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url) =>
+    String(url).startsWith("https://api.x.com/")
+      ? Response.json({
+          data: Array.from({ length: 10 }, (_, i) => ({
+            id: String(3000 + i),
+            text: `Independent actual X ${i}`,
+            created_at: new Date(Date.now() - 1000).toISOString(),
+          })),
+          meta: { result_count: 10 },
+        })
+      : streamResponse(
+          Array.from({ length: 10 }, (_, i) => ({
+            url: `https://coverage${i}.test/news`,
+            title: `Web source ${i}`,
+          })),
+        ),
+  );
+  const id = await f.start(),
+    a = { orderId: id, generation: 1 };
+  await f.t.mutation(internal.ai.researchTools.reserve, a);
+  await f.t.mutation(internal.ai.researchTools.prepare, a);
+  for (const operation of ["x-recent", "web-search"] as const)
+    await f.t.action(internal.research.execute.operation, { ...a, operation });
+  await f.t.mutation(internal.ai.researchTools.select, a);
+  const o = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  expect(o.pipeline!.sourcePins).toHaveLength(10);
+  expect(o.pipeline!.sourceCoverage).toEqual([
+    { operation: "x-recent", delivered: 10, selected: 5, omitted: 5 },
+    { operation: "web-search", delivered: 10, selected: 5, omitted: 5 },
+  ]);
+  await finishSemantic(f, id, a);
+  const row = await f.signed.query(api.research.pipeline.results, {
+    workspaceId: f.workspaceId,
+    orderId: id,
+  });
+  expect(row).toMatchObject({
+    outcome: "partial",
+    historyIncomplete: true,
+    sourceCoverage: o.pipeline!.sourceCoverage,
+  });
+  expect(row!.results[0].payload!.annotation.gaps.join(" ")).toContain(
+    "Begrenzte Quellenabdeckung",
+  );
+  const done = (await f.t.run((ctx) => ctx.db.get(id)))!,
+    run = (await f.t.run((ctx) => ctx.db.get(done.pipeline!.runId!)))!,
+    messages = await f.t.query(
+      components.agent.messages.listMessagesByThreadId,
+      {
+        threadId: run.threadId,
+        order: "asc",
+        paginationOpts: { cursor: null, numItems: 20 },
+      },
+    );
+  expect(JSON.stringify(messages.page)).toContain("sourceCoverage");
+  expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+});
+test("new topic identifiers are bounded local declarations and cannot also select an existing or foreign cluster", () => {
+  const s = {
+      sourceId: "source" as Id<"researchSources">,
+      materialHash: "hash",
+      text: null,
+      title: "Metadata",
+      publishedAt: null,
+      observedAt: 1,
+      operation: "web-search" as const,
+    },
+    item = {
+      title: "Declared topic",
+      sourceId: s.sourceId,
+      materialHash: s.materialHash,
+      annotation: note,
+      perspective: "Account perspective",
+      dynamics: "No time series",
+      clusterId: null,
+      clusterRevision: null,
+      historyIds: [],
+      copySourceIds: [],
+      eventAt: null,
+      eventQuote: null,
+    };
+  for (const topicKey of ["", "x".repeat(65), "bad\u0000label"]) {
+    expect(() =>
+      validateProposal(
+        JSON.stringify({ items: [{ ...item, topicKey }] }),
+        [s],
+        [],
+        [],
+      ),
+    ).toThrow();
+  }
+  expect(
+    validateProposal(
+      JSON.stringify({
+        items: [{ ...item, topicKey: "foreign-looking:local-label" }],
+      }),
+      [s],
+      [],
+      [],
+    )[0].topicKey,
+  ).toBe("foreign-looking:local-label");
+  const clusterId = "known" as Id<"researchClusters">;
+  expect(() =>
+    validateProposal(
+      JSON.stringify({
+        items: [{ ...item, topicKey: "local", clusterId, clusterRevision: 1 }],
+      }),
+      [s],
+      [{ id: clusterId, revision: 1 }],
+      [],
+    ),
+  ).toThrow("RESEARCH_OUTPUT_GROUP_INVALID");
+  expect(() =>
+    validateProposal(
+      JSON.stringify({
+        items: [{ ...item, clusterId: "foreign", clusterRevision: 1 }],
+      }),
+      [s],
+      [{ id: clusterId, revision: 1 }],
+      [],
+    ),
+  ).toThrow();
 });

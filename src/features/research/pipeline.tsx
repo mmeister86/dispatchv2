@@ -160,10 +160,28 @@ export function ResearchInbox({
               ? "Kein aktivierter Workflow-Folgeaufruf."
               : `Nächster aktivierter Aufruf: ${new Date(row.nextAt).toISOString()}`}
           </p>
+          {row.sourceCoverage === null && (
+            <p>
+              Frühere Quellen-Auswahlabdeckung nicht aufgezeichnet;
+              Vollständigkeit unbekannt.
+            </p>
+          )}
+          {row.sourceCoverage?.some((c) => c.omitted > 0) && (
+            <p>
+              Begrenzte Quellenabdeckung (maximal 10):{" "}
+              {row.sourceCoverage
+                .map(
+                  (c) =>
+                    `${c.operation}: ${c.delivered} geliefert, ${c.selected} ausgewählt, ${c.omitted} ausgelassen`,
+                )
+                .join(" · ")}
+              . Ergebnisabdeckung ist unvollständig.
+            </p>
+          )}
           {row.historyIncomplete && (
             <p>
-              Begrenzte Historien-/Clusterabdeckung; fehlende Treffer beweisen
-              keine Neuheit.
+              Begrenzte Rechercheabdeckung; fehlende Treffer beweisen keine
+              Neuheit.
             </p>
           )}
           {row.removed ? (
@@ -180,7 +198,8 @@ export function ResearchInbox({
             row.results.map((e) =>
               e.retentionUntil <= clock ? (
                 <p key={e.evidenceId}>
-                  Quellenhorizont abgelaufen; Ergebnis ausgeblendet.
+                  Quellen- oder Berechtigungsnachweis abgelaufen; Ergebnis
+                  ausgeblendet.
                 </p>
               ) : (
                 <article key={e.evidenceId} className="border-t pt-3">

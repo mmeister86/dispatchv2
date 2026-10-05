@@ -6,7 +6,7 @@ const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='research/profiles:get')return window.profile;if(name==='research/profiles:configuration')return window.configuration;if(name==='research/runs:history')return window.orderHistory;if(name==='research/native:availability')return window.sourceAvailability??[];if(name==='research/native:results')return window.sourceResults??[];if(name==='research/evidence:list')return window.evidenceRows??[];if(name==='research/pipeline:results')return window.pipelineResults??null;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';`,
-  "@/lib/store": `import {useState} from 'react';export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:window.account,workspaceId:window.workspace,name:'Synthetic',channel:'X'}],drafts:[],ideas:[]},createDraft:()=>{throw new Error('No fake real draft');},mutate:()=>{}});`,
+  "@/lib/store": `import {useState,useEffect} from 'react';export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>{const role=window.role;useEffect(()=>{window.committedRole=role;},[role]);return ({state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role,accounts:[{id:window.account,workspaceId:window.workspace,name:'Synthetic',channel:'X'}],drafts:[],ideas:[]},createDraft:()=>{throw new Error('No fake real draft');},mutate:()=>{}});};`,
 };
 const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {ResearchPage} from '/src/pages/Research.tsx';window.workspace='workspace-one';window.account='account-one';window.role='Owner';window.queries=[];window.commands=[];window.profile=undefined;window.configuration={currency:null,downstreamAvailable:false};window.orderHistory={page:[],isDone:true,continueCursor:''};const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(ResearchPage))));window.render();`;
 const server = await createServer({
@@ -233,6 +233,7 @@ try {
     window.role = "Viewer";
     window.render();
   });
+  await page.waitForFunction(() => window.committedRole === "Viewer");
   await expect(
     page.getByRole("button", { name: "Aktuelle Version öffnen" }),
   ).toBeDisabled();
@@ -454,6 +455,7 @@ try {
     window.role = "Viewer";
     window.render();
   });
+  await page.waitForFunction(() => window.committedRole === "Viewer");
   await expect(retry).toBeDisabled();
   await page.evaluate(() => {
     window.role = "Owner";
@@ -1093,6 +1095,10 @@ try {
       nextAt: null,
       handoff: "disabled",
       historyIncomplete: true,
+      sourceCoverage: [
+        { operation: "x-recent", delivered: 10, selected: 5, omitted: 5 },
+        { operation: "web-search", delivered: 10, selected: 5, omitted: 5 },
+      ],
       cleanupState: "retained",
       results: [
         {
@@ -1130,6 +1136,11 @@ try {
     page.getByRole("heading", { name: "Actual persisted result · Review" }),
   ).toBeVisible();
   await expect(
+    page.getByText("web-search: 10 geliefert, 5 ausgewählt, 5 ausgelassen", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(
     page.getByText(
       "Schritt 10/10 · partial · automatische Übergabe deaktiviert.",
     ),
@@ -1156,6 +1167,7 @@ try {
     ),
   ).toBeVisible();
   await page.evaluate(() => {
+    window.physicalRetentionDeadline = Date.now() + 60000;
     window.pipelineResults = {
       ...window.pipelineResults,
       removed: false,
@@ -1178,15 +1190,20 @@ try {
     window.render();
   });
   await expect(
-    page.getByText("Quellenhorizont abgelaufen; Ergebnis ausgeblendet."),
+    page.getByText(
+      "Quellen- oder Berechtigungsnachweis abgelaufen; Ergebnis ausgeblendet.",
+    ),
   ).toBeVisible();
+  expect(
+    await page.evaluate(() => Date.now() < window.physicalRetentionDeadline),
+  ).toBe(true);
   await page.goto("http://127.0.0.1:5174/research-fixture?demo=1");
   await expect(
     page.getByText("Weniger Funktionen. Mehr Produkt.").first(),
   ).toBeVisible();
   expect(errors).toEqual([]);
   console.log(
-    "Actual ResearchPage real/Demo PASS: empty/manual/no cap, saved ACK/error/CAS/currency/dirty buffers, exact explicit retries after lost pause/activation/delete/start/stop ACKs, fresh intent keys/revisions after retry or discard, Viewer/late role/account/workspace/unmount fences, actual order/paging; evidence creation/review, immutable snapshot/retry/material reset and idle validity/source expiry; new workflow exact retry, actual Review projection/partial/null usage/withdrawal/idle expiry; no provider call.",
+    "Actual ResearchPage real/Demo PASS: empty/manual/no cap, saved ACK/error/CAS/currency/dirty buffers, exact explicit retries after lost pause/activation/delete/start/stop ACKs, fresh intent keys/revisions after retry or discard, Viewer/late role/account/workspace/unmount fences, actual order/paging; evidence creation/review, immutable snapshot/retry/material reset and idle validity/source expiry; new workflow exact retry, actual Review projection/partial/null usage/withdrawal/short authority idle expiry before physical retention; no provider call.",
   );
 } finally {
   await browser?.close();
