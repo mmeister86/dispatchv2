@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 19:54'
+updated_date: '2026-10-05 20:02'
 labels:
   - p06
   - r2
@@ -79,4 +79,6 @@ Backend checkpoint f50fc59: implementer reports 170 passing affected native/gene
 Final implementation source frozen at 215b94c04de4626a66d14a2652306c1d59e12902 after backend checkpoint f50fc59. Implementer verification: 426 tests/27 files including 39 native provider tests; actual Research browser (owned fixture closed, user5173 preserved), typecheck/full lint/build/bundle/diff and official codegen passed. Existing EU Dev functions ready21:46:02, no policy/grant/source/provider activation or paid search/model. Minimal final corrections retain first unknown cost/unit evidence, reject conflicts and keep invalid evidence sticky; RED/GREEN tests retained. Existing supplied X_APP_BEARER_TOKEN reused under operation/credential-hash proof. Fresh independent SPEC now reviewing full source BASE4c50535..215b94c with own actual-handler/physical-fetch/UI negatives; QUALITY follows only after SPEC PASS. No AC checked or manual/live acceptance claimed yet.
 
 Independent initial SPEC NEEDS FIXES at215b94c: valid X data plus errors loses supplied partial sources; actual saved-profile language switch shows en but submits stale de; ai.runs.recent omits native/generation receipt-owner/reference narrowing (synthetic malformed native runId alias projects native estimate as generation usage, not claimed public mutation exploit). ROOT inspected actual callers/own fixtures and confirms. Registered39 pass; two independent actual-handler negatives and actual React language scenario RED, prior temporal/native idle expiry prefix passes. Original sources/logs retained in /tmp/dispatch-research-provider-spec-receipt.md; durable three-scope holds inspected inside physical synthetic fetch. Same implementer owns minimal corrections/regressions; same SPEC delta then fresh QUALITY only after PASS. No AC/Done/activation. Root review receipt .docs/reviews/task-21-research-provider-validation.md.
+
+Additional ROOT actual-handler RED22:00:59: native.results projects20microUSD finance even after its native receipt workspaceId alone is changed to another actual workspace. Native settlement validates owner graph; native result projection does not. Same malformed-record boundary as SPEC3, not a public writer exploit. Runnable /tmp/task21-root-native-projection.test.ts and red receipt retained; one own test failed/two copied SPEC cases skipped. Held correction staging window for minimal native projection/settlement shared graph guard. Legitimate cache-hit attachment to prior filling order must remain valid. Initial three-fix437/27/native41/codegen/Dev22:00:40 not final fourth-fix proof. No AC or QUALITY/Done.
 <!-- SECTION:NOTES:END -->
