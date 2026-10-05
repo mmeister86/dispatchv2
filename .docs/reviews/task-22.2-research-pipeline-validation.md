@@ -1,6 +1,6 @@
 # TASK22.2 — Research workflow validation
 
-Status: correction source4170920 frozen; same independent SPEC delta active, QUALITY pending SPEC PASS. Backlog remains In Progress; no manual/live acceptance or paid activation.
+Status: original three SPEC gaps closed at4170920; one disposition regression needs original-implementer correction, QUALITY pending SPEC PASS. Backlog remains In Progress; no manual/live acceptance or paid activation.
 
 Accepted prerequisite baseline: `d06234639086f9514c686007f549ceb37c856710` (evidence source `3e079cef`, SPEC/QUALITY PASS). Implementer: fresh `research_pipeline`, Backend Architect, gpt-6.1-sol/medium. Source milestone: `2670f50c5a5ad5138d83cce346bb89bbe2be0819`, exact34 paths, clean staged diff and working tree. ROOT metadata commits do not change the source baseline.
 
@@ -44,7 +44,13 @@ Type/build/bundle/helper format PASS `/tmp/task22.2-correction-final-{typecheck,
 
 Official codegen/postgeneration typeEXIT0 `/tmp/task22.2-correction-{codegen,post-codegen-typecheck}.log`, no generated diff. Existing EU Dev--onceEXIT0 functionsready00:55:02local `/tmp/task22.2-correction-eu-dev-once.log`. Source/index/diffcheck clean at22:55:06UTC, own5174closed/user5173PID48521preserved. No paid/live call or policy activation.
 
-Same SPEC reviewer delta active on frozen4170920. Its own unchanged7 rerunPASS00:55:43 `/tmp/dispatch-spec-delta-unchanged-seven.log`; additional independent affected-boundary checks are pending. This preliminary GREEN is not the final SPEC or QUALITY verdict. No AC/Done/manual claim.
+At the start of the same SPEC delta on frozen4170920, its own unchanged7 rerunPASS00:55:43 `/tmp/dispatch-spec-delta-unchanged-seven.log`; additional independent affected-boundary checks were pending. This preliminary GREEN was not the final SPEC or QUALITY verdict. No AC/Done/manual claim.
+
+## Same SPEC delta — original three closed, one regression
+
+Final delta receipt `/tmp/dispatch-research-pipeline-spec-delta-receipt.md`: ReadyNo, one Important, no confirmed Critical/Minor. Original7 unchangedPASS; independent extended10PASS00:57:21 `/tmp/dispatch-spec-delta-extended-final.log`; repository31pipelinePASS00:57:04; actual synthetic Research browserPASS `/tmp/dispatch-spec-delta-browser-authorized.log`, own5174closed/user5173preserved. Browser's first sandbox EPERM was resolved with command-specific escalation; no automatic-approval rejection or product failure. New reviewer prompt-coverage assertion initially compared JSON property order; corrected only its new harness to parse/deep-compare actual exact counts, preserving original checks and RED log.
+
+New unchanged eleven-check delta at00:58:07:10PASS/1RED `/tmp/dispatch-spec-delta-empty-coverage.log`. Actual X+Web both complete, funded Agent returns valid items[], all three intercepted physical calls succeed,20sources→10selected/10omitted, but researchTools.finish folds incomplete coverage into failed and emits RESEARCH_FAILED. Incomplete selection is not a technical operation failure. ROOT approved a narrow disposition correction: successful empty with omitted sources is partial; real operation/model/configuration/budget/cancel precedence stays intact. Same original implementer owns only researchTools, permanent pipeline regression and own contract if needed. Both reviewer scripts/config/hash manifests remain unchanged for recheck. No fresh QUALITY or code AC yet.
 
 ## Open acceptance
 
