@@ -1,3 +1,4 @@
+import { ResearchPipeline, ResearchInbox } from "./pipeline";
 import { SourceSearch } from "./source-search";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
@@ -222,8 +223,8 @@ function ResearchAccount({
       <Section title="Verfügbarkeit">
         <p>
           Quellenadapter benötigen eine aktuelle ausdrückliche Freigabe. Alte
-          vorbereitete Zeitpläne bleiben blockiert; Auswertung und
-          Inbox-Übergabe sind noch nicht verfügbar.
+          vorbereitete Zeitpläne bleiben blockiert; Inbox-Ergebnisse bleiben
+          Review; automatische Übergabe ist deaktiviert.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
           Kostenpflichtige Recherche benötigt einen freigegebenen
@@ -286,7 +287,9 @@ function ResearchAccount({
                     : "Manuelle Aufträge möglich"}{" "}
                 · Zeitplan{" "}
                 {profile!.scheduleActive
-                  ? "aktiv (nur blockierte Auftragsbelege)"
+                  ? profile!.scheduleKind === "workflow"
+                    ? "aktiv (ausdrücklich freigegebener Workflow)"
+                    : "aktiv (nur blockierte Auftragsbelege)"
                   : "inaktiv"}
               </p>
               <dl className="grid grid-cols-3 gap-4 my-4">
@@ -386,6 +389,35 @@ function ResearchAccount({
                   {profile!.scheduleActive
                     ? "Zeitplan deaktivieren"
                     : "Zeitplan ausdrücklich aktivieren"}
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={
+                    !writable ||
+                    busy ||
+                    profile!.paused ||
+                    !!buffer ||
+                    row.version.config.frequency === "manual"
+                  }
+                  onClick={() =>
+                    command(
+                      (key) =>
+                        change({
+                          workspaceId,
+                          profileId: profile!._id,
+                          expectedRevision: profile!.revision,
+                          commandKey: key,
+                          action: {
+                            kind: "activate-workflow",
+                            language: row.version.config.languages[0],
+                            operations: ["web-search"],
+                          },
+                        }),
+                      () => {},
+                    )
+                  }
+                >
+                  Web-Workflow periodisch aktivieren
                 </Button>
                 <Button
                   variant="outline"
@@ -639,6 +671,23 @@ function ResearchAccount({
         </Section>
       )}
       {row && !profile!.deleted && (
+        <ResearchPipeline
+          workspaceId={workspaceId}
+          profileId={profile!._id}
+          revision={profile!.revision}
+          config={row.version.config}
+          disabled={
+            !writable ||
+            busy ||
+            profile!.paused ||
+            !!buffer ||
+            !!profile!.activeOrderId
+          }
+          command={command}
+          onSelect={setSelectedId}
+        />
+      )}
+      {row && !profile!.deleted && (
         <SourceSearch
           workspaceId={workspaceId}
           accountId={accountId}
@@ -682,7 +731,8 @@ function ResearchAccount({
                         (o.state === "completed"
                           ? "Quellensuche beendet; Belege separat prüfen"
                           : "Auftrag wartet auf Prüfung")}{" "}
-                      · Themencluster und Inbox-Übergabe nicht verfügbar
+                      · Quellensuche oder Workflow-Beleg; Ergebnisse separat
+                      prüfen
                     </p>
                   </div>
                   <Button
@@ -727,12 +777,12 @@ function ResearchAccount({
           </>
         )}
       </Section>
-      <Section title="Research-Inbox">
-        <p>
-          Keine Research-Evidenz oder Themencluster. Native Quellenbelege sind
-          in der Quellensuche einsehbar; Inbox-Übergabe bleibt nicht verfügbar.
-        </p>
-      </Section>
+      <ResearchInbox
+        workspaceId={workspaceId}
+        orderId={selectedId}
+        disabled={!writable || busy}
+        command={command}
+      />
     </div>
   );
 }

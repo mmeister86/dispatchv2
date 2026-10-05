@@ -1,3 +1,4 @@
+import { currentMaterials } from "./pipelineAccess";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -36,7 +37,7 @@ export const materialHash = (s: Doc<"researchSources">) =>
   );
 
 // This validates actual delivery, including a cache filled by an earlier order.
-async function deliveredSource(
+export async function deliveredSource(
   ctx: Ctx,
   orderId: Id<"researchOrders">,
   sourceId: Id<"researchSources">,
@@ -235,6 +236,11 @@ export const list = workspaceQuery({
           reason = e.reason;
         try {
           if (e.workspaceId !== ctx.workspace._id) throw new Error();
+          if (e.modelOrigin) {
+            const order = await ctx.db.get(e.orderId);
+            if (!order?.pipeline) throw new Error();
+            await currentMaterials(ctx, order);
+          }
           const author = await ctx.db.get(e.annotationActorId);
           if (!author) throw new Error();
           requireRole(
@@ -355,6 +361,11 @@ export const review = workspaceMutation({
       throw new ConvexError("RESEARCH_EVIDENCE_VALIDITY_INVALID");
     if (!e!.payload || e!.state !== "review" || e!.retentionUntil <= Date.now())
       throw new ConvexError("RESEARCH_EVIDENCE_SOURCE_UNUSABLE");
+    if (e!.modelOrigin) {
+      const order = await ctx.db.get(e!.orderId);
+      if (!order?.pipeline) throw new ConvexError("RESEARCH_WORKFLOW_REQUIRED");
+      await currentMaterials(ctx, order);
+    }
     const { s, until } = await deliveredSource(ctx, e!.orderId, e!.sourceId);
     if ((await materialHash(s)) !== e!.materialHash)
       throw new ConvexError("RESEARCH_EVIDENCE_MATERIAL_CHANGED");
@@ -486,6 +497,10 @@ export async function clearSourceCopies(
   oldMaterialHash?: string,
   batchSize = 100,
 ) {
+  await ctx.scheduler.runAfter(0, internal.research.pipeline.clearSource, {
+    sourceId,
+    ...(oldMaterialHash ? { oldMaterialHash } : {}),
+  });
   const rows = await ctx.db
     .query("researchEvidence")
     .withIndex("by_sourceId_and_state_and_materialHash", (q) => {

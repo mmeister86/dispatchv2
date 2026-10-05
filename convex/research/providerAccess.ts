@@ -175,11 +175,12 @@ export async function orderAuthority(
     version!.profileId !== p!._id
   )
     throw new ConvexError("RESEARCH_ORDER_INACTIVE");
-  requireRole((await requireWorkspace(ctx, o.workspaceId, actor)).membership, [
-    "Owner",
-    "Admin",
-    "Editor",
-  ]);
+  requireRole(
+    (await requireWorkspace(ctx, o.workspaceId, actor)).membership,
+    o.pipeline && o.occasion === "scheduled"
+      ? ["Owner", "Admin"]
+      : ["Owner", "Admin", "Editor"],
+  );
   return o;
 }
 export async function sourceAuthority(
@@ -189,11 +190,12 @@ export async function sourceAuthority(
 ) {
   const actor = await ctx.db.get(o.actorId);
   if (!actor) throw new ConvexError("RESEARCH_ACTOR_UNAVAILABLE");
-  requireRole((await requireWorkspace(ctx, o.workspaceId, actor)).membership, [
-    "Owner",
-    "Admin",
-    "Editor",
-  ]);
+  requireRole(
+    (await requireWorkspace(ctx, o.workspaceId, actor)).membership,
+    o.pipeline && o.occasion === "scheduled"
+      ? ["Owner", "Admin"]
+      : ["Owner", "Admin", "Editor"],
+  );
   const account = await ctx.db.get(o.accountId);
   requireReference(o.workspaceId, account);
   if (account!.providerIdentity !== o.native!.accountIdentity)

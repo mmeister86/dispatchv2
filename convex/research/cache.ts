@@ -1,3 +1,4 @@
+import { orderLiability } from "./pipelineAccess";
 import { clearSourceCopies, materialHash } from "./evidence";
 import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
@@ -190,13 +191,15 @@ export const begin = internalMutation({
     if (attempts.some((x) => x.key === a.operation))
       throw new ConvexError("RESEARCH_ATTEMPT_ALREADY_ADMITTED");
     const reservedMicros = p.unitMicros * (a.operation === "x-recent" ? 10 : 1),
-      total = attempts.reduce(
-        (sum, x) =>
-          sum +
-          x.heldMicros +
-          (x.estimatedMicros ?? 0) * (x.state === "settled" ? 1 : 0),
-        0,
-      );
+      total = o.pipeline
+        ? (await orderLiability(ctx, o)).total
+        : attempts.reduce(
+            (sum, x) =>
+              sum +
+              x.heldMicros +
+              (x.estimatedMicros ?? 0) * (x.state === "settled" ? 1 : 0),
+            0,
+          );
     if (
       !Number.isSafeInteger(reservedMicros) ||
       !Number.isSafeInteger(total) ||
@@ -217,7 +220,7 @@ export const begin = internalMutation({
         policyId: p._id,
         policyFingerprint: captured.fingerprint,
         generation: o.generation,
-        leaseUntil: Math.min(o.deadline, now + 20000),
+        leaseUntil: o.pipeline ? o.deadline : Math.min(o.deadline, now + 20000),
         createdAt: now,
         expiresAt: now + Math.min(300000, p.retentionMs),
         state: "unknown",

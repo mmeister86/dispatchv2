@@ -1,3 +1,4 @@
+import { clusterFields, bindingFields } from "./research/pipelineFields";
 import { evidenceFields } from "./research/evidenceFields";
 import {
   policyFields as researchSourcePolicyFields,
@@ -69,7 +70,19 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  researchClusters: defineTable(clusterFields).index(
+    "by_workspaceId_and_accountId_and_key",
+    ["workspaceId", "accountId", "key"],
+  ),
+  researchSourceBindings: defineTable(bindingFields)
+    .index("by_sourceId_and_state_and_materialHash", [
+      "sourceId",
+      "state",
+      "materialHash",
+    ])
+    .index("by_orderId", ["orderId"]),
   researchEvidence: defineTable(evidenceFields)
+    .index("by_modelOrigin_runId_and_state", ["modelOrigin.runId", "state"])
     .index("by_orderId_and_createdAt", ["orderId", "createdAt"])
     .index("by_orderId_and_actorId_and_commandKey", [
       "orderId",

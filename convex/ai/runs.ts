@@ -1,3 +1,5 @@
+import { currentMaterials, orderLiability } from "../research/pipelineAccess";
+import { orderAuthority } from "../research/providerAccess";
 import { changeLiability, generationAttempt } from "./accounting";
 import {
   conversationAccess,
@@ -89,7 +91,7 @@ async function authority(
     | "actorId"
     | "sources"
     | "accountConnectionSequence"
-  >,
+  > & { research?: Doc<"agentRuns">["research"]; _id?: Id<"agentRuns"> },
 ) {
   requireActiveWorkspace(await ctx.db.get(r.workspaceId));
   const actor = await ctx.db.get(r.actorId);
@@ -104,6 +106,31 @@ async function authority(
       r.accountConnectionSequence
   )
     throw new ConvexError("MODEL_ACCOUNT_CHANGED");
+  if (r.research) {
+    const o = await orderAuthority(
+      ctx,
+      r.research.orderId,
+      r.research.generation,
+    );
+    if (
+      o.workspaceId !== r.workspaceId ||
+      o.accountId !== r.accountId ||
+      o.actorId !== r.actorId ||
+      !o.pipeline ||
+      (r._id && o.pipeline.runId !== r._id) ||
+      r.research.sources.length !== o.pipeline.sourcePins.length ||
+      r.research.sources.some(
+        (pin, i) =>
+          pin.sourceId !== o.pipeline!.sourcePins[i].sourceId ||
+          pin.materialHash !== o.pipeline!.sourcePins[i].materialHash,
+      )
+    )
+      throw new ConvexError("RESEARCH_RUN_OWNER_INVALID");
+    await currentMaterials(ctx, o);
+    const money = await orderLiability(ctx, o);
+    if (!o.config.cap || money.total > o.config.cap.limitMicros)
+      throw new ConvexError("RESEARCH_ORDER_BUDGET_EXHAUSTED");
+  }
   for (const s of r.sources) {
     if (s.contextId) {
       const { c } = await currentContext(ctx, s.contextId, true);
@@ -209,6 +236,7 @@ export async function createRun(
     conversationId?: Id<"conversations">;
     chatOperationId?: Id<"chatOperations">;
     existingPrompt?: { threadId: string; messageId: string };
+    research?: Doc<"agentRuns">["research"];
   },
 ) {
   const p = await policy(ctx);
@@ -286,7 +314,7 @@ export async function createRun(
     createdAt: Date.now(),
     errorCode: null,
   });
-  if (!a.conversationId) await active(ctx, runId);
+  if (!a.conversationId && !a.research) await active(ctx, runId);
   return runId;
 }
 export const create = internalMutation({
@@ -398,6 +426,20 @@ export const fund = internalMutation({
       p.inputMicrosPerMillion,
       p.outputMicrosPerMillion,
     );
+    if (r.research) {
+      const o = await orderAuthority(
+          ctx,
+          r.research.orderId,
+          r.research.generation,
+        ),
+        money = await orderLiability(ctx, o);
+      if (
+        !o.config.cap ||
+        p.currency !== o.config.cap.currency ||
+        money.total + reservedMicros > o.config.cap.limitMicros
+      )
+        throw new ConvexError("RESEARCH_ORDER_BUDGET_EXHAUSTED");
+    }
     await changeLiability(ctx, r.budgetIds, reservedMicros, 0, true);
     await ctx.db.patch(r._id, { attempts: r.attempts + 1 });
     return ctx.db.insert("aiAttempts", {

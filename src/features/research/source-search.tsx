@@ -98,7 +98,8 @@ export function SourceSearch({
       <p>
         Neue ausdrückliche Quellensuche mit gespeichertem Profil und
         Auftragslimit. Evidenz kann manuell erfasst und menschlich geprüft
-        werden; Themencluster und Inbox-Übergabe bleiben nicht verfügbar.
+        werden; Modellauswertung startet nur über den ausdrücklichen
+        Research-Workflow.
       </p>
       {availability?.map((a) => (
         <p className="mt-2 text-sm" key={a.operation}>

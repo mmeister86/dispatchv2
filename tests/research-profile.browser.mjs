@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='research/profiles:get')return window.profile;if(name==='research/profiles:configuration')return window.configuration;if(name==='research/runs:history')return window.orderHistory;if(name==='research/native:availability')return window.sourceAvailability??[];if(name==='research/native:results')return window.sourceResults??[];if(name==='research/evidence:list')return window.evidenceRows??[];};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
+  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='research/profiles:get')return window.profile;if(name==='research/profiles:configuration')return window.configuration;if(name==='research/runs:history')return window.orderHistory;if(name==='research/native:availability')return window.sourceAvailability??[];if(name==='research/native:results')return window.sourceResults??[];if(name==='research/evidence:list')return window.evidenceRows??[];if(name==='research/pipeline:results')return window.pipelineResults??null;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';`,
   "@/lib/store": `import {useState} from 'react';export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:window.account,workspaceId:window.workspace,name:'Synthetic',channel:'X'}],drafts:[],ideas:[]},createDraft:()=>{throw new Error('No fake real draft');},mutate:()=>{}});`,
 };
@@ -1036,13 +1036,157 @@ try {
   await expect(
     page.getByRole("link", { name: "Evidence delivered source" }),
   ).toHaveCount(0);
+  await page.evaluate(() => {
+    window.commands = [];
+    window.evidenceRows = [];
+    window.sourceResults = [];
+    window.role = "Owner";
+    window.profile = {
+      ...window.profile,
+      profile: {
+        ...window.profile.profile,
+        paused: false,
+        deleted: false,
+        activeOrderId: null,
+      },
+    };
+    window.profile = {
+      ...window.profile,
+      version: {
+        ...window.profile.version,
+        config: {
+          ...window.profile.version.config,
+          cap: { currency: "USD", limitMicros: 20000 },
+        },
+      },
+    };
+    window.pipelineResults = null;
+    window.render();
+  });
+  await page
+    .getByRole("button", {
+      name: "Research-Workflow ausdrücklich starten",
+      exact: true,
+    })
+    .click();
+  const workflowIntent = await page.evaluate(() => window.commands[0].args);
+  expect(await page.evaluate(() => window.commands[0].name)).toBe(
+    "research/pipeline:start",
+  );
+  expect(workflowIntent).not.toHaveProperty("query");
+  await page.evaluate(() =>
+    window.commands[0].reject(new Error("lost workflow ACK")),
+  );
+  await retry.click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(
+    workflowIntent,
+  );
+  await page.evaluate(() => {
+    window.commands[1].resolve("workflow-order");
+    window.pipelineResults = {
+      step: 10,
+      outcome: "partial",
+      removed: false,
+      estimatedMicros: null,
+      usagePending: true,
+      currency: "USD",
+      nextAt: null,
+      handoff: "disabled",
+      historyIncomplete: true,
+      cleanupState: "retained",
+      results: [
+        {
+          evidenceId: "model-evidence",
+          state: "review",
+          retentionUntil: Date.now() + 60000,
+          publishedAt: null,
+          observedAt: Date.now(),
+          provenance: {
+            runId: "real-run",
+            promptVersion: "research-semantic-v1",
+            policyVersion: "real-policy",
+          },
+          payload: {
+            annotation: {
+              claim: "Quellenmetadaten",
+              interpretation: "Bounded model interpretation",
+              relevance: "Account relevance",
+              novelty: "Coverage incomplete",
+              uncertainty: "Unknown independent support",
+              gaps: ["Human review required"],
+            },
+            model: {
+              title: "Actual persisted result",
+              perspective: "Attributed account perspective",
+              dynamics: "Currently discussed; no time series",
+            },
+          },
+        },
+      ],
+    };
+    window.render();
+  });
+  await expect(
+    page.getByRole("heading", { name: "Actual persisted result · Review" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Schritt 10/10 · partial · automatische Übergabe deaktiviert.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Verbrauch nicht vollständig bestätigt", { exact: false }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    window.pipelineResults = {
+      ...window.pipelineResults,
+      removed: true,
+      results: [],
+      cleanupState: "pending",
+    };
+    window.render();
+  });
+  await expect(
+    page.getByRole("heading", { name: "Actual persisted result · Review" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText(
+      "Quellenstand oder aktuelle Berechtigung nicht mehr nutzbar.",
+      { exact: false },
+    ),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    window.pipelineResults = {
+      ...window.pipelineResults,
+      removed: false,
+      cleanupState: "retained",
+      results: [
+        {
+          evidenceId: "idle-expiry",
+          state: "review",
+          retentionUntil: Date.now() + 500,
+          publishedAt: null,
+          observedAt: Date.now(),
+          provenance: null,
+          payload: {
+            annotation: { claim: "metadata", gaps: [] },
+            model: { title: "Idle expired model result" },
+          },
+        },
+      ],
+    };
+    window.render();
+  });
+  await expect(
+    page.getByText("Quellenhorizont abgelaufen; Ergebnis ausgeblendet."),
+  ).toBeVisible();
   await page.goto("http://127.0.0.1:5174/research-fixture?demo=1");
   await expect(
     page.getByText("Weniger Funktionen. Mehr Produkt.").first(),
   ).toBeVisible();
   expect(errors).toEqual([]);
   console.log(
-    "Actual ResearchPage real/Demo PASS: empty/manual/no cap, saved ACK/error/CAS/currency/dirty buffers, exact explicit retries after lost pause/activation/delete/start/stop ACKs, fresh intent keys/revisions after retry or discard, Viewer/late role/account/workspace/unmount fences, actual order/paging; evidence creation/review, immutable snapshot/retry/material reset and idle validity/source expiry; no provider call.",
+    "Actual ResearchPage real/Demo PASS: empty/manual/no cap, saved ACK/error/CAS/currency/dirty buffers, exact explicit retries after lost pause/activation/delete/start/stop ACKs, fresh intent keys/revisions after retry or discard, Viewer/late role/account/workspace/unmount fences, actual order/paging; evidence creation/review, immutable snapshot/retry/material reset and idle validity/source expiry; new workflow exact retry, actual Review projection/partial/null usage/withdrawal/idle expiry; no provider call.",
   );
 } finally {
   await browser?.close();

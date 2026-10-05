@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { nativeOrder } from "./providerFields";
+import { pipeline } from "./pipelineFields";
+import { nativeOrder, operation, captured } from "./providerFields";
 export const configFields = {
   topics: v.string(),
   project: v.string(),
@@ -35,6 +36,18 @@ export const approval = v.union(
   v.null(),
 );
 export const profileFields = {
+  researchMaterialGeneration: v.optional(v.number()),
+  workflowActivation: v.optional(
+    v.union(
+      v.object({
+        kind: v.literal("research-workflow-v1"),
+        language: v.string(),
+        operations: v.array(operation),
+        approvals: v.array(captured),
+      }),
+      v.null(),
+    ),
+  ),
   scheduleApproval: approval,
   scheduleReason: v.union(v.string(), v.null()),
   workspaceId: v.id("workspaces"),
@@ -63,6 +76,7 @@ export const versionFields = {
 };
 export const orderFields = {
   native: v.optional(nativeOrder),
+  pipeline: v.optional(pipeline),
   approval,
   workspaceId: v.id("workspaces"),
   accountId: v.id("socialAccounts"),
@@ -99,6 +113,7 @@ export const orderFields = {
   usageMicros: v.null(),
 };
 const {
+  workflowActivation: _workflowActivation,
   scheduleApproval: _approval,
   scheduleActorId: _actor,
   scheduleAccountSequence: _sequence,
@@ -109,6 +124,9 @@ export const profileDoc = v.object({
   _id: v.id("researchProfiles"),
   _creationTime: v.number(),
   ...publicProfileFields,
+  scheduleKind: v.optional(
+    v.union(v.literal("prepared"), v.literal("workflow"), v.null()),
+  ),
 });
 export const versionDoc = v.object({
   _id: v.id("researchProfileVersions"),
@@ -117,6 +135,7 @@ export const versionDoc = v.object({
 });
 const {
   native: _native,
+  pipeline: _pipeline,
   approval: _orderApproval,
   actorId: _orderActor,
   accountSequence: _orderSequence,

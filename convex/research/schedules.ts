@@ -25,7 +25,9 @@ export async function planSchedule(
   if (at === null) return;
   const scheduledJobId = await ctx.scheduler.runAt(
     at,
-    internal.research.schedules.fire,
+    p.workflowActivation
+      ? internal.research.pipeline.fire
+      : internal.research.schedules.fire,
     { profileId: p._id, generation: p.scheduleGeneration, at },
   );
   await ctx.db.patch(p._id, { nextAt: at, scheduledJobId });
@@ -56,6 +58,7 @@ export const fire = internalMutation({
       !Number.isSafeInteger(a.generation) ||
       a.at > Date.now() ||
       !p.scheduleActive ||
+      !!p.workflowActivation ||
       !p.scheduleActorId ||
       p.scheduleGeneration !== a.generation ||
       p.nextAt !== a.at ||

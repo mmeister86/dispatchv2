@@ -44,6 +44,18 @@ export const budgetFields = {
   spentMicros: v.number(),
 };
 export const runFields = {
+  research: v.optional(
+    v.object({
+      orderId: v.id("researchOrders"),
+      generation: v.number(),
+      sources: v.array(
+        v.object({
+          sourceId: v.id("researchSources"),
+          materialHash: v.string(),
+        }),
+      ),
+    }),
+  ),
   executionFinishedAt: v.optional(v.number()),
   conversationId: v.optional(v.id("conversations")),
   chatOperationId: v.optional(v.id("chatOperations")),

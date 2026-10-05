@@ -36,6 +36,15 @@ export const assessment = v.object({
   eventQuote: v.union(v.string(), v.null()),
 });
 export const evidenceFields = {
+  modelOrigin: v.optional(
+    v.object({
+      runId: v.id("agentRuns"),
+      promptMessageId: v.string(),
+      promptVersion: v.string(),
+      policyVersion: v.string(),
+      outputHash: v.string(),
+    }),
+  ),
   workspaceId: v.id("workspaces"),
   accountId: v.id("socialAccounts"),
   orderId: v.id("researchOrders"),
@@ -56,6 +65,18 @@ export const evidenceFields = {
   payload: v.union(
     v.object({
       annotation,
+      model: v.optional(
+        v.object({
+          eventAt: v.union(v.number(), v.null()),
+          eventQuote: v.union(v.string(), v.null()),
+          title: v.string(),
+          perspective: v.string(),
+          dynamics: v.string(),
+          clusterId: v.id("researchClusters"),
+          historyIds: v.array(v.id("xPostAttempts")),
+          copySourceIds: v.array(v.id("researchSources")),
+        }),
+      ),
       perspective: v.object({
         profileVersionId: v.id("researchProfileVersions"),
         audience: v.string(),

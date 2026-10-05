@@ -1,7 +1,12 @@
+import { orderLiability } from "./pipelineAccess";
 import { materialHash } from "./evidence";
 import { ConvexError, v } from "convex/values";
 import { internal } from "../_generated/api";
-import { internalMutation, internalQuery } from "../_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  type MutationCtx,
+} from "../_generated/server";
 import {
   workspaceMutation,
   workspaceQuery,
@@ -26,6 +31,125 @@ import {
 import { orderFields } from "./fields";
 import type { Doc } from "../_generated/dataModel";
 import { sha256 } from "../lib/crypto";
+export async function admitNative(
+  ctx: MutationCtx,
+  a: {
+    profileId: Doc<"researchProfiles">["_id"];
+    expectedRevision: number;
+    operationKey: string;
+    query: string;
+    language: string;
+    operations: Doc<"researchSourcePolicies">["operation"][];
+  },
+  workspaceId: Doc<"workspaces">["_id"],
+  actorId: Doc<"users">["_id"],
+  pipeline = false,
+) {
+  operationKey(a.operationKey);
+  const { profile: p, version } = await currentProfile(
+    ctx,
+    workspaceId,
+    a.profileId,
+  );
+  const hash = await sha256(
+    JSON.stringify(
+      pipeline ? { ...a, workflowKind: "research-workflow-v1" } : a,
+    ),
+  );
+  const old = await ctx.db
+    .query("researchOrders")
+    .withIndex("by_profileId_and_actorId_and_operationKey", (q) =>
+      q
+        .eq("profileId", p._id)
+        .eq("actorId", actorId)
+        .eq("operationKey", a.operationKey),
+    )
+    .unique();
+  if (old) {
+    if (old.fingerprint !== hash || !old.native)
+      throw new ConvexError("RESEARCH_OPERATION_CONFLICT");
+    return old._id;
+  }
+  if (
+    p.deleted ||
+    p.paused ||
+    p.activeOrderId ||
+    p.revision !== a.expectedRevision ||
+    !Number.isSafeInteger(a.expectedRevision)
+  )
+    throw new ConvexError("RESEARCH_REVISION_CONFLICT");
+  if (
+    !a.query.trim() ||
+    a.query.length > 450 ||
+    /[\u0000-\u001f]/.test(a.query) ||
+    !version.config.languages.includes(a.language) ||
+    a.operations.length < 1 ||
+    a.operations.length > 3 ||
+    new Set(a.operations).size !== a.operations.length ||
+    !version.config.cap
+  )
+    throw new ConvexError("RESEARCH_NATIVE_INPUT_INVALID");
+  const approvals = [];
+  for (const op of a.operations) {
+    try {
+      const sourcePolicy = await policy(ctx, p.workspaceId, p.accountId, op);
+      if (sourcePolicy.currency !== version.config.cap.currency)
+        throw new ConvexError("RESEARCH_CURRENCY_INCOMPATIBLE");
+      approvals.push({
+        policyId: sourcePolicy._id,
+        fingerprint: await fingerprint(sourcePolicy),
+        budgetIds: await grants(ctx, sourcePolicy),
+      });
+    } catch {
+      approvals.push(null);
+    }
+  }
+  const now = Date.now(),
+    acc = await ctx.db.get(p.accountId);
+  const id = await ctx.db.insert("researchOrders", {
+    workspaceId: p.workspaceId,
+    accountId: p.accountId,
+    profileId: p._id,
+    profileVersionId: version._id,
+    actorId: actorId,
+    occasion: "manual",
+    operationKey: a.operationKey,
+    fingerprint: hash,
+    occurrence: null,
+    accountSequence: acc?.xEvidence?.connectionSequence ?? 0,
+    approval: null,
+    config: version.config,
+    windowStart: now - version.config.freshnessDays * 86400000,
+    windowEnd: now,
+    deadline: now + 120000,
+    state: "queued",
+    generation: 1,
+    createdAt: now,
+    finishedAt: null,
+    reason: null,
+    usageMicros: null,
+    native: {
+      accountIdentity: acc!.providerIdentity,
+      query: a.query,
+      language: a.language,
+      operations: a.operations,
+      approvals,
+      cacheIds: a.operations.map(() => null),
+      outcomes: a.operations.map(() => ({
+        state: "unknown" as const,
+        reason: "RESEARCH_QUEUED",
+        cacheHit: false,
+      })),
+    },
+  });
+  await ctx.db.patch(p._id, { activeOrderId: id });
+  if (!pipeline)
+    await ctx.scheduler.runAfter(0, internal.research.execute.execute, {
+      orderId: id,
+      generation: 1,
+    });
+  return id;
+}
 export const start = workspaceMutation({
   args: {
     profileId: v.id("researchProfiles"),
@@ -38,105 +162,7 @@ export const start = workspaceMutation({
   returns: v.id("researchOrders"),
   handler: async (ctx, a) => {
     requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
-    operationKey(a.operationKey);
-    const { profile: p, version } = await currentProfile(
-      ctx,
-      ctx.workspace._id,
-      a.profileId,
-    );
-    const hash = await sha256(JSON.stringify(a));
-    const old = await ctx.db
-      .query("researchOrders")
-      .withIndex("by_profileId_and_actorId_and_operationKey", (q) =>
-        q
-          .eq("profileId", p._id)
-          .eq("actorId", ctx.user._id)
-          .eq("operationKey", a.operationKey),
-      )
-      .unique();
-    if (old) {
-      if (old.fingerprint !== hash || !old.native)
-        throw new ConvexError("RESEARCH_OPERATION_CONFLICT");
-      return old._id;
-    }
-    if (
-      p.deleted ||
-      p.paused ||
-      p.activeOrderId ||
-      p.revision !== a.expectedRevision ||
-      !Number.isSafeInteger(a.expectedRevision)
-    )
-      throw new ConvexError("RESEARCH_REVISION_CONFLICT");
-    if (
-      !a.query.trim() ||
-      a.query.length > 450 ||
-      /[\u0000-\u001f]/.test(a.query) ||
-      !version.config.languages.includes(a.language) ||
-      a.operations.length < 1 ||
-      a.operations.length > 3 ||
-      new Set(a.operations).size !== a.operations.length ||
-      !version.config.cap
-    )
-      throw new ConvexError("RESEARCH_NATIVE_INPUT_INVALID");
-    const approvals = [];
-    for (const op of a.operations) {
-      try {
-        const sourcePolicy = await policy(ctx, p.workspaceId, p.accountId, op);
-        if (sourcePolicy.currency !== version.config.cap.currency)
-          throw new ConvexError("RESEARCH_CURRENCY_INCOMPATIBLE");
-        approvals.push({
-          policyId: sourcePolicy._id,
-          fingerprint: await fingerprint(sourcePolicy),
-          budgetIds: await grants(ctx, sourcePolicy),
-        });
-      } catch {
-        approvals.push(null);
-      }
-    }
-    const now = Date.now(),
-      acc = await ctx.db.get(p.accountId);
-    const id = await ctx.db.insert("researchOrders", {
-      workspaceId: p.workspaceId,
-      accountId: p.accountId,
-      profileId: p._id,
-      profileVersionId: version._id,
-      actorId: ctx.user._id,
-      occasion: "manual",
-      operationKey: a.operationKey,
-      fingerprint: hash,
-      occurrence: null,
-      accountSequence: acc?.xEvidence?.connectionSequence ?? 0,
-      approval: null,
-      config: version.config,
-      windowStart: now - version.config.freshnessDays * 86400000,
-      windowEnd: now,
-      deadline: now + 120000,
-      state: "queued",
-      generation: 1,
-      createdAt: now,
-      finishedAt: null,
-      reason: null,
-      usageMicros: null,
-      native: {
-        accountIdentity: acc!.providerIdentity,
-        query: a.query,
-        language: a.language,
-        operations: a.operations,
-        approvals,
-        cacheIds: a.operations.map(() => null),
-        outcomes: a.operations.map(() => ({
-          state: "unknown" as const,
-          reason: "RESEARCH_QUEUED",
-          cacheHit: false,
-        })),
-      },
-    });
-    await ctx.db.patch(p._id, { activeOrderId: id });
-    await ctx.scheduler.runAfter(0, internal.research.execute.execute, {
-      orderId: id,
-      generation: 1,
-    });
-    return id;
+    return admitNative(ctx, a, ctx.workspace._id, ctx.user._id);
   },
 });
 export const context = internalQuery({
@@ -183,6 +209,12 @@ export const context = internalQuery({
           throw new ConvexError("RESEARCH_BUDGET_EXHAUSTED");
       }
     }
+    if (
+      order.pipeline &&
+      (!order.config.cap ||
+        (await orderLiability(ctx, order)).total > order.config.cap.limitMicros)
+    )
+      throw new ConvexError("RESEARCH_ORDER_BUDGET_EXHAUSTED");
     return { order, policy: p };
   },
 });
@@ -444,5 +476,49 @@ export const executionOrder = internalQuery({
     } catch {
       return null;
     }
+  },
+});
+
+export const dispatch = internalMutation({
+  args: { orderId: v.id("researchOrders"), generation: v.number(), operation },
+  returns: v.object({
+    cacheId: v.id("researchCaches"),
+    attemptId: v.union(v.id("aiAttempts"), v.null()),
+    cacheHit: v.boolean(),
+    state: resultState,
+  }),
+  handler: async (ctx, a) => {
+    const o = await orderAuthority(ctx, a.orderId, a.generation);
+    await sourceAuthority(ctx, o, a.operation);
+    if (!o.pipeline) throw new ConvexError("RESEARCH_WORKFLOW_REQUIRED");
+    const i = o.native!.operations.indexOf(a.operation),
+      id = o.native!.cacheIds[i];
+    const c = id ? await ctx.db.get(id) : null;
+    if (!c?.attemptId) throw new ConvexError("RESEARCH_RESERVATION_MISSING");
+    const { t } = await nativeAttempt(ctx, c.attemptId);
+    if (o.native!.outcomes[i].cacheHit)
+      return {
+        cacheId: c._id,
+        attemptId: null,
+        cacheHit: true,
+        state: c.state,
+      };
+    if (
+      t.researchOrderId !== o._id ||
+      t.state !== "sent" ||
+      t.dispatchedAt !== undefined
+    )
+      throw new ConvexError("RESEARCH_PREVIOUS_ATTEMPT_UNRESOLVED");
+    await ctx.db.patch(t._id, { dispatchedAt: Date.now() });
+    await ctx.db.patch(c._id, {
+      leaseUntil: Math.min(o.deadline, Date.now() + 20000),
+    });
+    await ctx.db.patch(o._id, { pipeline: { ...o.pipeline, step: 3 } });
+    return {
+      cacheId: c._id,
+      attemptId: t._id,
+      cacheHit: false,
+      state: c.state,
+    };
   },
 });

@@ -148,6 +148,7 @@ export async function prerequisites(
   ctx: QueryCtx | MutationCtx,
   p: Doc<"researchProfiles">,
   c: Doc<"researchProfileVersions">["config"],
+  requireCoverage = true,
 ) {
   const policy = await pricing(ctx);
   if (
@@ -184,7 +185,8 @@ export async function prerequisites(
       b.heldMicros < 0 ||
       !Number.isSafeInteger(b.spentMicros) ||
       b.spentMicros < 0 ||
-      b.limitMicros - b.heldMicros - b.spentMicros < c.cap.limitMicros
+      (requireCoverage &&
+        b.limitMicros - b.heldMicros - b.spentMicros < c.cap.limitMicros)
     )
       throw new ConvexError("RESEARCH_BUDGET_CONFIGURATION_REQUIRED");
     if (b.approvedBy) {

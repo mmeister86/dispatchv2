@@ -1,3 +1,6 @@
+import { internal } from "../_generated/api";
+import { captureWorkflowApproval } from "./pipeline";
+import { operation } from "./providerFields";
 import { ConvexError, v } from "convex/values";
 import {
   workspaceMutation,
@@ -41,13 +44,24 @@ export const get = workspaceQuery({
       p._id,
     );
     const {
+      workflowActivation,
       scheduleApproval,
       scheduleActorId,
       scheduleAccountSequence,
       scheduledJobId,
       ...safe
     } = profile;
-    return { profile: safe, version };
+    return {
+      profile: {
+        ...safe,
+        scheduleKind: profile.scheduleActive
+          ? profile.workflowActivation
+            ? ("workflow" as const)
+            : ("prepared" as const)
+          : null,
+      },
+      version,
+    };
   },
 });
 export const configuration = workspaceQuery({
@@ -155,6 +169,11 @@ export const change = workspaceMutation({
       v.object({ kind: v.literal("save"), config }),
       v.object({ kind: v.literal("pause"), paused: v.boolean() }),
       v.object({ kind: v.literal("activate") }),
+      v.object({
+        kind: v.literal("activate-workflow"),
+        language: v.string(),
+        operations: v.array(operation),
+      }),
       v.object({ kind: v.literal("deactivate") }),
       v.object({ kind: v.literal("delete") }),
     ),
@@ -162,6 +181,8 @@ export const change = workspaceMutation({
   returns: v.number(),
   handler: async (ctx, a) => {
     requireRole(ctx.membership, [...editable]);
+    if (a.action.kind === "activate-workflow")
+      requireRole(ctx.membership, ["Owner", "Admin"]);
     operationKey(a.commandKey);
     const { profile: p, version } = await currentProfile(
       ctx,
@@ -200,7 +221,7 @@ export const change = workspaceMutation({
       await validateCurrency(ctx, nextConfig, p.workspaceId, p.accountId);
     let approval = null,
       sequence = null;
-    if (a.action.kind === "activate") {
+    if (a.action.kind === "activate" || a.action.kind === "activate-workflow") {
       const acc = await account(ctx, p.workspaceId, p.accountId);
       sequence = acc.xEvidence?.connectionSequence ?? 0;
       await liveAuthority(ctx, p, ctx.user._id, sequence);
@@ -221,12 +242,33 @@ export const change = workspaceMutation({
       fingerprint,
       createdAt: Date.now(),
     });
+    const workflowActivation =
+      a.action.kind === "activate-workflow"
+        ? await captureWorkflowApproval(
+            ctx,
+            p,
+            nextConfig,
+            a.action.language,
+            a.action.operations,
+          )
+        : null;
+    const materialWithdrawn =
+      a.action.kind === "delete" ||
+      (a.action.kind === "pause" && a.action.paused);
     const patch = {
+      workflowActivation,
+      researchMaterialGeneration: materialWithdrawn
+        ? (p.researchMaterialGeneration ?? 0) + 1
+        : (p.researchMaterialGeneration ?? 0),
       revision,
       currentVersionId: versionId,
       scheduleGeneration: p.scheduleGeneration + 1,
-      scheduleActive: a.action.kind === "activate",
-      scheduleActorId: a.action.kind === "activate" ? ctx.user._id : null,
+      scheduleActive:
+        a.action.kind === "activate" || a.action.kind === "activate-workflow",
+      scheduleActorId:
+        a.action.kind === "activate" || a.action.kind === "activate-workflow"
+          ? ctx.user._id
+          : null,
       scheduleAccountSequence: sequence,
       scheduleApproval: approval,
       scheduleReason: null,
@@ -236,13 +278,24 @@ export const change = workspaceMutation({
       deleted: a.action.kind === "delete",
     };
     await ctx.db.patch(p._id, patch);
-    if (patch.deleted && p.activeOrderId) {
+    if (materialWithdrawn)
+      await ctx.scheduler.runAfter(0, internal.research.pipeline.purgeProfile, {
+        profileId: p._id,
+        cursor: null,
+      });
+    if (materialWithdrawn && p.activeOrderId) {
       const order = await ctx.db.get(p.activeOrderId);
-      if (order && (order.state === "queued" || order.state === "running"))
+      if (
+        order &&
+        (patch.deleted || order.pipeline) &&
+        (order.state === "queued" || order.state === "running")
+      )
         await ctx.db.patch(order._id, {
           state: "cancelled",
           generation: order.generation + 1,
-          reason: "RESEARCH_PROFILE_DELETED",
+          reason: patch.deleted
+            ? "RESEARCH_PROFILE_DELETED"
+            : "RESEARCH_PROFILE_PAUSED",
           finishedAt: Date.now(),
         });
       await ctx.db.patch(p._id, { activeOrderId: null });

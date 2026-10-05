@@ -180,6 +180,20 @@ export const stop = workspaceMutation({
       reason: "RESEARCH_STOPPED",
       finishedAt: Date.now(),
     });
+    if (o!.pipeline) {
+      const r = o!.pipeline.runId ? await ctx.db.get(o!.pipeline.runId) : null;
+      if (r && (r.state === "ready" || r.state === "running"))
+        await ctx.db.patch(r._id, {
+          state: "stopped",
+          generation: r.generation + 1,
+        });
+      await ctx.db.patch(o!._id, {
+        pipeline: { ...o!.pipeline, outcome: "cancelled", pending: null },
+      });
+      await ctx.scheduler.runAfter(0, internal.research.pipeline.cancel, {
+        orderId: o!._id,
+      });
+    }
     const p = await ctx.db.get(o!.profileId);
     if (p?.activeOrderId === o!._id)
       await ctx.db.patch(p._id, { activeOrderId: null });
@@ -215,6 +229,7 @@ export const history = workspaceQuery({
       page: result.page.map(
         ({
           native,
+          pipeline,
           approval,
           actorId,
           accountSequence,
