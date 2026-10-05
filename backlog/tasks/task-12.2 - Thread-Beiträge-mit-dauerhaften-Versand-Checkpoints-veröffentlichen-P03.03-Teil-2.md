@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 12:17'
 labels:
   - p03
   - r1
@@ -42,8 +42,20 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P03.03. Der übergeord
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Reuse reviewed approval/schedule/X credentials and TASK12.1 media engine; fetch current post contract before new API code.
+2. Implement durable per-position intent/confirmed-ID checkpoints and native bounded coordinator with no unknown-write retries.
+3. Add explicit human-approved first-write verification purpose and concrete UI confirmation, truthful results/configuration.
+4. Check isolated crash/race/permission/media/unknown cases and actual browser UI, full checks and existing Dev; independent SPEC then QUALITY before reconciliation.
+5. Record inventory and live/manual gates; do not set Done.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /calendar?view=agenda. Thread detail shows each contribution and confirmed checkpoint; local completion updates only pending mock contributions. Grenze: No durable backend checkpoints or external IDs. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Fresh SDD implementation begins after TASK12.1 final SPEC/QUALITYddd3ad4. Explicit first-write decision .docs/decisions/first-write-verification.md; current provider receipt /tmp/dispatch-x-post-current-docs.md. Existing version-level media list attaches to first position only, shown in exact human consent snapshot. No root/provider live posts without actual testaccount/content authorization; current missing configuration remains visible per user decision.
 <!-- SECTION:NOTES:END -->
