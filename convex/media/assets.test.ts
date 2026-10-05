@@ -2,8 +2,16 @@ import { test, expect, vi, afterEach, beforeEach } from "vitest";
 import { mediaFixture } from "../../tests/media-fixture";
 import { api, internal } from "../_generated/api";
 import { localInput } from "../../src/lib/time";
+import { S3Client } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+vi.mock("@aws-sdk/s3-request-presigner", async (original) => {
+  const actual =
+    await original<typeof import("@aws-sdk/s3-request-presigner")>();
+  return { ...actual, getSignedUrl: vi.fn(actual.getSignedUrl) };
+});
 beforeEach(() => vi.stubEnv("R2_MEDIA_BUCKET", "synthetic-eu"));
 afterEach(() => {
+  vi.restoreAllMocks();
   vi.useRealTimers();
   vi.unstubAllEnvs();
 });
@@ -500,4 +508,197 @@ test("paginated historical versions include authorized descriptors and restore e
   });
   expect(restored!.versions.at(-1)!.content.media).toEqual(content.media);
   expect(restored!.assets.map((a) => a._id)).toEqual([s.assetId]);
+});
+
+test("unsupported inherited MIME names cannot reserve media or alter workspace quota", async () => {
+  const f = await mediaFixture();
+  const before = await f.t.run((ctx) => ctx.db.get(f.workspaceId));
+  for (const mime of [
+    "toString",
+    "constructor",
+    "__proto__",
+    "image/unsupported",
+  ])
+    await expect(
+      f.signed.mutation(internal.media.uploads.reserve, {
+        workspaceId: f.workspaceId,
+        requestId: crypto.randomUUID(),
+        name: "Synthetic.bin",
+        size: 70,
+        mime,
+        alt: "Synthetic",
+      }),
+    ).rejects.toThrow("INVALID_MEDIA_UPLOAD");
+  expect(await f.t.run((ctx) => ctx.db.get(f.workspaceId))).toEqual(before);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("mediaUploadSessions").collect()),
+  ).toHaveLength(0);
+});
+test("bucket-binding changes reject prepare replay without signing, sending or quota changes", async () => {
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "0".repeat(32));
+  vi.stubEnv("R2_ACCESS_KEY_ID", "synthetic-key");
+  vi.stubEnv("R2_SECRET_ACCESS_KEY", "synthetic-secret");
+  vi.stubEnv("R2_MEDIA_EU_CONFIRMED", "true");
+  const f = await mediaFixture();
+  const args = {
+    workspaceId: f.workspaceId,
+    requestId: crypto.randomUUID(),
+    name: "Synthetic.png",
+    size: 70,
+    mime: "image/png",
+    alt: "Synthetic",
+  };
+  await f.signed.action(api.media.r2.prepare, args);
+  const before = await f.t.run((ctx) => ctx.db.get(f.workspaceId));
+  const sign = vi.mocked(getSignedUrl);
+  sign.mockClear();
+  const send = vi
+    .spyOn(S3Client.prototype, "send")
+    .mockRejectedValue(new Error("EXTERNAL_CALL_BLOCKED"));
+  vi.stubEnv("R2_MEDIA_BUCKET", "replacement-eu");
+  await expect(f.signed.action(api.media.r2.prepare, args)).rejects.toThrow(
+    "MEDIA_CONFIGURATION_REQUIRED",
+  );
+  expect(sign).not.toHaveBeenCalled();
+  expect(send).not.toHaveBeenCalled();
+  expect(await f.t.run((ctx) => ctx.db.get(f.workspaceId))).toEqual(before);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("mediaUploadSessions").collect()),
+  ).toHaveLength(1);
+});
+
+function syntheticConfiguration() {
+  vi.stubEnv("R2_MEDIA_BUCKET", "synthetic-eu");
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+  vi.stubEnv("R2_ACCESS_KEY_ID", "synthetic-key");
+  vi.stubEnv("R2_SECRET_ACCESS_KEY", "synthetic-secret");
+  vi.stubEnv("R2_MEDIA_EU_CONFIRMED", "true");
+}
+test("account drift with the same bucket denies prepare, finish, preview and cleanup without storage calls or receipts", async () => {
+  syntheticConfiguration();
+  const f = await mediaFixture();
+  const args = {
+    workspaceId: f.workspaceId,
+    requestId: crypto.randomUUID(),
+    name: "Synthetic.png",
+    size: 70,
+    mime: "image/png",
+    alt: "Synthetic",
+  };
+  const upload = await f.signed.action(api.media.r2.prepare, args),
+    ready = await f.ready();
+  const before = await f.t.run((ctx) => ctx.db.get(f.workspaceId));
+  const sign = vi.mocked(getSignedUrl);
+  sign.mockClear();
+  const send = vi
+    .spyOn(S3Client.prototype, "send")
+    .mockRejectedValue(new Error("EXTERNAL_CALL_BLOCKED"));
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "b".repeat(32));
+  await expect(f.signed.action(api.media.r2.prepare, args)).rejects.toThrow(
+    "MEDIA_CONFIGURATION_REQUIRED",
+  );
+  await expect(
+    f.signed.action(api.media.r2.finish, {
+      workspaceId: f.workspaceId,
+      sessionId: upload.sessionId,
+    }),
+  ).rejects.toThrow("MEDIA_CONFIGURATION_REQUIRED");
+  await expect(
+    f.signed.action(api.media.r2.preview, {
+      workspaceId: f.workspaceId,
+      assetId: ready.assetId,
+    }),
+  ).rejects.toThrow("MEDIA_CONFIGURATION_REQUIRED");
+  vi.useFakeTimers();
+  vi.setSystemTime(ready.expiresAt + 60001);
+  await f.t.action(internal.media.cleanupR2.run, {});
+  expect(sign).not.toHaveBeenCalled();
+  expect(send).not.toHaveBeenCalled();
+  expect(await f.t.run((ctx) => ctx.db.get(f.workspaceId))).toEqual(before);
+  expect((await f.t.run((ctx) => ctx.db.get(upload.assetId)))!.state).toBe(
+    "uploading",
+  );
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(upload.sessionId)))!.deletedAt,
+  ).toBeUndefined();
+});
+test("normalized account binding persists on both records and permits key rotation in the same namespace", async () => {
+  syntheticConfiguration();
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "A".repeat(32));
+  const f = await mediaFixture();
+  const args = {
+    workspaceId: f.workspaceId,
+    requestId: crypto.randomUUID(),
+    name: "Synthetic.png",
+    size: 70,
+    mime: "image/png",
+    alt: "Synthetic",
+  };
+  const upload = await f.signed.action(api.media.r2.prepare, args),
+    ready = await f.ready();
+  expect(await f.t.run((ctx) => ctx.db.get(upload.sessionId))).toMatchObject({
+    r2AccountId: "a".repeat(32),
+    bucket: "synthetic-eu",
+  });
+  expect(await f.t.run((ctx) => ctx.db.get(upload.assetId))).toMatchObject({
+    r2AccountId: "a".repeat(32),
+    bucket: "synthetic-eu",
+  });
+  vi.stubEnv("CLOUDFLARE_ACCOUNT_ID", "a".repeat(32));
+  vi.stubEnv("R2_ACCESS_KEY_ID", "rotated-key");
+  vi.stubEnv("R2_SECRET_ACCESS_KEY", "rotated-secret");
+  const replay = await f.signed.action(api.media.r2.prepare, args);
+  expect(replay.sessionId).toBe(upload.sessionId);
+  expect(
+    new URL(replay.uploadUrl).searchParams.get("X-Amz-Credential"),
+  ).toContain("rotated-key/");
+  const preview = await f.signed.action(api.media.r2.preview, {
+    workspaceId: f.workspaceId,
+    assetId: ready.assetId,
+  });
+  expect(new URL(preview.url).searchParams.get("X-Amz-Credential")).toContain(
+    "rotated-key/",
+  );
+  expect(
+    await f.signed.action(api.media.r2.finish, {
+      workspaceId: f.workspaceId,
+      sessionId: ready._id,
+    }),
+  ).toBe(ready.assetId);
+});
+test("missing legacy binding fails closed with an explicit reconciliation code", async () => {
+  syntheticConfiguration();
+  const f = await mediaFixture();
+  const s = await f.ready();
+  await f.t.run(async (ctx) => {
+    const session = await ctx.db.get(s._id),
+      asset = await ctx.db.get(s.assetId);
+    if (session && "r2AccountId" in session)
+      await ctx.db.patch(s._id, { r2AccountId: undefined });
+    if (asset && "r2AccountId" in asset)
+      await ctx.db.patch(s.assetId, { r2AccountId: undefined });
+  });
+  const sign = vi.mocked(getSignedUrl);
+  sign.mockClear();
+  const send = vi
+    .spyOn(S3Client.prototype, "send")
+    .mockRejectedValue(new Error("EXTERNAL_CALL_BLOCKED"));
+  await expect(
+    f.signed.action(api.media.r2.preview, {
+      workspaceId: f.workspaceId,
+      assetId: s.assetId,
+    }),
+  ).rejects.toThrow("MEDIA_BINDING_RECONCILIATION_REQUIRED");
+  await expect(
+    f.signed.action(api.media.r2.finish, {
+      workspaceId: f.workspaceId,
+      sessionId: s._id,
+    }),
+  ).rejects.toThrow("MEDIA_BINDING_RECONCILIATION_REQUIRED");
+  vi.useFakeTimers();
+  vi.setSystemTime(s.expiresAt + 60001);
+  await f.t.action(internal.media.cleanupR2.run, {});
+  expect(sign).not.toHaveBeenCalled();
+  expect(send).not.toHaveBeenCalled();
+  expect((await f.t.run((ctx) => ctx.db.get(s.assetId)))!.state).toBe("ready");
 });

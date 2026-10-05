@@ -7,6 +7,7 @@ import { GifWriter } from "omggif";
 import { finalizeObject, readBounded } from "./r2";
 import { validateBytes } from "./validation";
 import { S3Client } from "@aws-sdk/client-s3";
+import { ISOFile } from "mp4box";
 function png() {
   return PNG.sync.write({
     width: 1,
@@ -325,4 +326,79 @@ test("MP4 keeps valid H264/AAC-LC support while rejecting recursive esds metadat
   expect(() => validateBytes(bytes, bytes.length, "video/mp4")).toThrow(
     "MEDIA_VALIDATION_FAILED",
   );
+});
+
+function videoTracks(count: number, sampleCounts?: number[]) {
+  const original = readFileSync(
+    new URL("../../tests/fixtures/media-h264.mp4", import.meta.url),
+  );
+  const tracks = Array.from({ length: count }, (_, i) => {
+    let track = Buffer.from(original.subarray(148, 896));
+    if (sampleCounts) {
+      const start = track.indexOf(Buffer.from("stsz")) - 4,
+        oldSize = track.readUInt32BE(start);
+      const table = Buffer.alloc(12);
+      table.writeUInt32BE(1, 4);
+      table.writeUInt32BE(sampleCounts[i], 8);
+      const replacement = mp4Box("stsz", table),
+        delta = replacement.length - oldSize;
+      for (const offset of [0, 136, 221, 285])
+        track.writeUInt32BE(track.readUInt32BE(offset) + delta, offset);
+      track = Buffer.concat([
+        track.subarray(0, start),
+        replacement,
+        track.subarray(start + oldSize),
+      ]);
+    }
+    return track;
+  });
+  const delta = tracks.reduce((n, track) => n + track.length, 0) - 748;
+  original.writeUInt32BE(original.readUInt32BE(32) + delta, 32);
+  for (const track of tracks) {
+    const offset = track.indexOf(Buffer.from("stco")) - 4 + 16;
+    track.writeUInt32BE(track.readUInt32BE(offset) + delta, offset);
+  }
+  return Buffer.concat([
+    original.subarray(0, 148),
+    ...tracks,
+    original.subarray(896),
+  ]);
+}
+function duplicateSampleTable() {
+  const original = readFileSync(
+    new URL("../../tests/fixtures/media-h264.mp4", import.meta.url),
+  );
+  const start = original.indexOf(Buffer.from("stsz")) - 4;
+  const length = original.readUInt32BE(start);
+  for (const offset of [32, 148, 284, 369, 433])
+    original.writeUInt32BE(original.readUInt32BE(offset) + length, offset);
+  original.writeUInt32BE(original.readUInt32BE(892) + length, 892);
+  return Buffer.concat([
+    original.subarray(0, start),
+    original.subarray(start, start + length),
+    original.subarray(start),
+  ]);
+}
+test("whole-file track/sample budgets and duplicate sample tables reject before any MP4Box parsing", () => {
+  // appendBuffer is deliberately blocked: count-only fixtures never allocate sample arrays.
+  const parse = vi
+    .spyOn(ISOFile.prototype, "appendBuffer")
+    .mockImplementation(() => {
+      throw new Error("PARSER_REACHED");
+    });
+  try {
+    for (const bytes of [
+      videoTracks(3),
+      videoTracks(2, [10001, 10000]),
+      duplicateSampleTable(),
+    ]) {
+      parse.mockClear();
+      expect(() => validateBytes(bytes, bytes.length, "video/mp4")).toThrow(
+        "MEDIA_VALIDATION_FAILED",
+      );
+      expect(parse).not.toHaveBeenCalled();
+    }
+  } finally {
+    parse.mockRestore();
+  }
 });

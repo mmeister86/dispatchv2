@@ -1,9 +1,14 @@
+import { vi } from "vitest";
 import { convexTest } from "convex-test";
 import betterAuthComponent from "@convex-dev/better-auth/test";
 import schema from "../convex/schema";
 import { api, internal, components } from "../convex/_generated/api";
 const modules = import.meta.glob("../convex/**/*.ts");
 export async function mediaFixture() {
+  vi.stubEnv(
+    "CLOUDFLARE_ACCOUNT_ID",
+    process.env.CLOUDFLARE_ACCOUNT_ID ?? "0".repeat(32),
+  );
   const t = convexTest(schema, modules);
   betterAuthComponent.register(t);
   const identity = await t.run(async (ctx) => {
