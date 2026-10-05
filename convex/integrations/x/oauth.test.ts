@@ -202,7 +202,7 @@ test("denial, expiry, malformed state and replaced attempts fail without provide
     (await f.t.run((ctx) => ctx.db.query("xOAuthStates").first()))!.verifier,
   ).toBeUndefined();
   const next = await start(f);
-  await start(f);
+  const expired = await start(f);
   await expect(
     f.signed.action(api.integrations.x.client.callback, next),
   ).rejects.toThrow("X_OAUTH_STATE_INVALID");
@@ -210,6 +210,10 @@ test("denial, expiry, malformed state and replaced attempts fail without provide
     const s = await ctx.db.query("xOAuthStates").first();
     await ctx.db.patch(s!._id, { expiresAt: Date.now() - 1 });
   });
+  await expect(
+    f.signed.action(api.integrations.x.client.callback, expired),
+  ).rejects.toThrow("X_OAUTH_STATE_INVALID");
+  expect(fetch).not.toHaveBeenCalled();
   await f.t.mutation(internal.integrations.x.oauth.cleanup, {});
   expect(await f.t.run((ctx) => ctx.db.query("xOAuthStates").take(1))).toEqual(
     [],
@@ -430,6 +434,18 @@ test("parallel refresh and rotation commit once; stale completion cannot survive
     a,
   );
   await f.signed.mutation(api.integrations.x.oauth.disconnect, a);
+  await expect(
+    f.signed.mutation(internal.integrations.x.oauth.refreshComplete, {
+      ...a,
+      generation: fresh.credential!.generation,
+      envelope: await seal(
+        { accessToken: "stale-disconnected" },
+        association(f.workspaceId, id),
+      ),
+      expiresAt: Date.now() + 10000,
+      scopes: [],
+    }),
+  ).rejects.toThrow("X_REAUTH_REQUIRED");
   await f.t.mutation(internal.integrations.x.oauth.refreshFailed, {
     ...a,
     generation: fresh.credential!.generation,
