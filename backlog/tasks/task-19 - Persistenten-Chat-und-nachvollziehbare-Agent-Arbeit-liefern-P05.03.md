@@ -4,7 +4,7 @@ title: Persistenten Chat und nachvollziehbare Agent-Arbeit liefern (P05.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 18:11'
+updated_date: '2026-10-05 18:14'
 labels:
   - p05
   - r2
@@ -75,4 +75,6 @@ Finalproductionfreeze f6cb20e64c380c9c90d199b0f189d1b5df2a4f1a onmaster, backend
 Fresh independent SPEC PASS for complete 7f015fe..f6cb20e unit, no actionable finding. Executed361 registered/25 files,24 own actual-component/physical-transport cases,8 actual installed-native-hook browser checks using captured native deltas, both affected Agent/Ideas browser fixtures, typecheck and diff check. /tmp/dispatch-chat-spec-receipt.md separates actual evidence, harness-only corrections and synthetic/manual limits. No production fixes were required. Fresh separate QUALITY now running; AC remains unchecked until both reviews pass. No grant/policy activation, live paid/private effect, deployment by reviewer or Done transition.
 
 Fresh QUALITY confirmed P2 authorization bypass at convex/ai/runs.ts public stop: second authenticated Editor in same workspace cannot use conversations.stop, but can discover owner chat run via runs.recent and generic runs.stop changes ready to stopped. Root independently reproduced exact own two-human case on frozen f6cb20e. Initial reviewer /tmp/dispatch-chat-quality-own.log records9 PASS/1 RED. Hold QUALITY/AC; minimal common-stop chat authority/native abort correction must preserve legacy nonchat cancellation and late usage, followed by independent re-SPEC then QUALITY re-review. Initial full QUALITY receipt still being finalized; no source mutation or task closure yet.
+
+Initial full QUALITY frozen NEEDS FIXES: exactlyone confirmed P2 common-stop personal actor bypass, no additional actionable finding.109 registered/5files pass, own9PASS/1RED, both affected real-component browser fixtures pass; no own native-hook browser claim. Full /tmp/dispatch-chat-quality-receipt.md preserves red source/log, all-caller tracing and actual clarified human draft handoff after harness API-name correction. Original implementer authorized minimal shared guard plus exact-old-run native abort, before state returns, retaining nonchat behavior and late liability. Newsource will freeze for re-SPEC then QUALITY re-review; no code AC/manual/Done claim.
 <!-- SECTION:NOTES:END -->
