@@ -6,6 +6,7 @@ import { api, internal, components } from "../convex/_generated/api";
 import { seal } from "../convex/lib/crypto";
 import { association } from "../convex/integrations/x/fields";
 import { postRequest } from "../convex/integrations/x/publish";
+import { matchedPost } from "../convex/publishing/reconcile";
 import { draftValid } from "../src/lib/model";
 const modules = import.meta.glob("../convex/**/*.ts");
 afterEach(() => {
@@ -1859,5 +1860,169 @@ test.each(["role", "lifecycle", "generation"])(
     expect(
       (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.abortRequestedAt,
     ).toBeDefined();
+  },
+);
+
+test("SPEC: a shortened URL cannot match by replacing only a substring of a longer URL", () => {
+  const now = Date.now();
+  const data = {
+    data: {
+      id: "101",
+      author_id: "123",
+      text: "See https://t.co/z/b",
+      created_at: new Date(now).toISOString(),
+      referenced_posts: [],
+      edit_history_post_ids: ["101"],
+      attachments: { media_keys: [] },
+      entities: {
+        urls: [
+          { url: "https://t.co/z", expanded_url: "https://example.test/a" },
+        ],
+      },
+    },
+  };
+  expect(
+    matchedPost(
+      data,
+      { providerIdentity: "123", mediaIds: [], requestStartedAt: now },
+      "101",
+      "See https://example.test/a/b",
+    ),
+  ).toBe(false);
+});
+test("SPEC: reconciliation commit rechecks immutable approved media source", async () => {
+  const f = await fixture(true);
+  const media = await attachMedia(f);
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  fetch.mockImplementation(async () => {
+    await f.t.run((ctx) =>
+      ctx.db.patch(media.assetId, { checksum: "c".repeat(64) }),
+    );
+    return Response.json({
+      data: {
+        id: "101",
+        author_id: "123",
+        text: "First",
+        created_at: new Date(Date.now()).toISOString(),
+        referenced_posts: [],
+        edit_history_post_ids: ["101"],
+        attachments: { media_keys: ["3_456"] },
+      },
+    });
+  });
+  await expect(
+    f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+      position: 0,
+      candidateId: "101",
+    }),
+  ).rejects.toThrow("MEDIA_SNAPSHOT_CHANGED");
+});
+
+test("SPEC: actual lookup cannot confirm a longer URL through a partial returned entity", async () => {
+  const f = await fixture(true);
+  await f.t.run(async (ctx) => {
+    const ver = (await ctx.db.get(f.versionId))!;
+    await ctx.db.patch(f.versionId, {
+      content: {
+        ...ver.content,
+        text: ["See https://example.test/a/b", "Second", "Third"],
+      },
+    });
+  });
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("timeout"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  fetch.mockResolvedValue(
+    Response.json({
+      data: {
+        id: "101",
+        author_id: "123",
+        text: "See https://t.co/z/b",
+        created_at: new Date(Date.now()).toISOString(),
+        referenced_posts: [],
+        edit_history_post_ids: ["101"],
+        attachments: { media_keys: [] },
+        entities: {
+          urls: [
+            { url: "https://t.co/z", expanded_url: "https://example.test/a" },
+          ],
+        },
+      },
+    }),
+  );
+  expect(
+    await f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+      position: 0,
+      candidateId: "101",
+    }),
+  ).toBe("unknown");
+});
+
+test.each(["before", "during"])(
+  "immutable media checksum, reference and namespace drift %s GET cannot grant evidence",
+  async (timing) => {
+    for (const kind of ["checksum", "reference", "namespace"] as const) {
+      const f = await fixture(true),
+        media = await attachMedia(f);
+      const fetch = vi
+        .spyOn(globalThis, "fetch")
+        .mockRejectedValue(new Error("timeout"));
+      await f.t.action(internal.publishing.workflows.step, f.job);
+      const drift = () =>
+        f.t.run(async (ctx) => {
+          if (kind === "checksum")
+            await ctx.db.patch(media.assetId, { checksum: "c".repeat(64) });
+          else if (kind === "namespace")
+            await ctx.db.patch(media.assetId, { bucket: "another-bucket" });
+          else {
+            const foreign = await ctx.db.insert("workspaces", {
+              name: "Foreign",
+              description: "Fixture",
+              lifecycle: "active",
+            });
+            await ctx.db.patch(media.assetId, { workspaceId: foreign });
+          }
+        });
+      if (timing === "before") await drift();
+      fetch.mockClear().mockImplementation(async () => {
+        if (timing === "during") await drift();
+        const data = await lookup().json();
+        data.data.attachments.media_keys = ["3_456"];
+        return Response.json(data);
+      });
+      await expect(
+        f.signed.action(api.publishing.reconcile.lookup, {
+          workspaceId: f.workspaceId,
+          scheduleId: f.scheduleId,
+          expectedGeneration: 1,
+          position: 0,
+          candidateId: "101",
+        }),
+      ).rejects.toThrow(
+        kind === "checksum"
+          ? "MEDIA_SNAPSHOT_CHANGED"
+          : kind === "namespace"
+            ? "MEDIA_CONFIGURATION_REQUIRED"
+            : "REFERENCE_ACCESS_DENIED",
+      );
+      expect(fetch).toHaveBeenCalledTimes(timing === "before" ? 0 : 1);
+      const schedule = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+      expect(schedule.externalPosts ?? []).toEqual([]);
+      expect(schedule.abortRequestedAt).toBeUndefined();
+      expect(
+        (await f.t.run((ctx) => ctx.db.get(f.accountId)))!.capability.publish,
+      ).toBe(false);
+      vi.restoreAllMocks();
+    }
   },
 );

@@ -602,8 +602,19 @@ export async function firstWriteContent(
     (ver.content.media.length > 0 && !credential.scopes.includes("media.write"))
   )
     throw new ConvexError("X_SCOPE_REQUIRED");
+  await checkImmutableMediaSource(ctx, ver);
+  return account;
+}
+// Exact approved R2 source guards also apply to paused read evidence, without write authority.
+export async function checkImmutableMediaSource(
+  ctx: QueryCtx,
+  ver: Doc<"draftVersions">,
+) {
+  const workspaceId = ver.workspaceId;
   await immutableMedia(ctx, ver);
-  for (const ref of ver.content.media) {
+  for (const [position, ref] of ver.content.media.entries()) {
+    if (ver.mediaChecksums?.[position]?.assetId !== ref.assetId)
+      throw new ConvexError("MEDIA_SNAPSHOT_CHANGED");
     const asset = requireReference(
       workspaceId,
       await ctx.db.get(ref.assetId),
@@ -621,6 +632,8 @@ export async function firstWriteContent(
     requireR2Binding(asset);
     requireR2Binding(session);
     if (
+      asset.state !== "ready" ||
+      asset.storageProvider !== "r2" ||
       asset.objectKey !== `final/${workspaceId}/${asset._id}` ||
       session.finalKey !== asset.objectKey ||
       session.expectedSize !== asset.size ||
@@ -632,7 +645,6 @@ export async function firstWriteContent(
     )
       throw new ConvexError("MEDIA_SOURCE_CHANGED");
   }
-  return account;
 }
 export const approveFirstWrite = workspaceMutation({
   args: { versionId: v.id("draftVersions"), accountId: v.id("socialAccounts") },

@@ -16,7 +16,7 @@ const asset={id:'media',workspaceId:ws,name:'Approved image',alt:'Changed librar
 const draft={id:'thread',workspaceId:ws,title:'Exact approved thread',accountId:account.id,pillar:'',strategy:'generic',comments:[],revision:1,versions:[{id:'version-one',number:1,text:['Exact approved first','Exact approved second'],mediaIds:['media'],media:[{assetId:'media',alt:'Exact approved alt'}],createdAt:new Date().toISOString(),reason:'Fixture'}]};
 const command=(kind,args)=>new Promise(resolve=>window.pending.push({kind,args,resolve}));
 const no=()=>false;
-window.store={state:{...seed,role:'Owner',accounts:[account],media:[asset],drafts:[draft],schedules:[]},approveFirstWrite:d=>command('approve',{versionId:d.versions.at(-1).id,accountId:d.accountId}),confirmFirstWrite:(d,id)=>command('confirm',{versionId:d.versions.at(-1).id,accountId:d.accountId,approvalId:id}),saveDraft:d=>command('save',d),approveVersion:async()=>false,revokeApproval:async()=>false,cancelSchedule:async()=>false,replaceSchedule:async()=>false,createDraft:async()=>'',loadMoreVersions:no,hasMoreVersions:false,loadMoreMedia:no,hasMoreMedia:false,members:[],mutate:no,addComment:async()=>false,resolveComment:async()=>false,assignDraft:async()=>false};
+window.store={state:{...seed,role:'Owner',accounts:[account],media:[asset],drafts:[draft],schedules:[]},approveFirstWrite:d=>command('approve',{versionId:d.versions.at(-1).id,accountId:d.accountId}),confirmFirstWrite:(d,id)=>command('confirm',{versionId:d.versions.at(-1).id,accountId:d.accountId,approvalId:id}),saveDraft:d=>command('save',d),approveVersion:async()=>false,revokeApproval:async()=>false,cancelSchedule:s=>command('cancel',{scheduleId:s.id,expectedGeneration:s.generation}),replaceSchedule:async()=>false,createDraft:async()=>'',loadMoreVersions:no,hasMoreVersions:false,loadMoreMedia:no,hasMoreMedia:false,members:[],mutate:no,addComment:async()=>false,resolveComment:async()=>false,assignDraft:async()=>false};
 window.update=(fn)=>{window.store.state=fn(window.store.state);window.listeners.forEach(cb=>cb());};
 const root=ReactDOM.createRoot(document.getElementById('root')),router=createMemoryRouter([{path:'/drafts/:id',element:React.createElement(ComposerPage)},{path:'/calendar',element:React.createElement(CalendarPage)}],{initialEntries:['/drafts/thread']});
 window.router=router;root.render(React.createElement(React.StrictMode,null,React.createElement(RouterProvider,{router})));
@@ -359,20 +359,107 @@ try {
   await page.getByRole("button", { name: /Exact approved thread/ }).click();
   const calendarDialog = page.getByRole("dialog");
   await expect(calendarDialog).toContainText("Exact approved third");
+  await expect(calendarDialog).toContainText("Exact approved alt");
+  const unknownCandidate = calendarDialog.getByLabel(
+    "Kandidaten-ID oder X-Link für Beitrag 2",
+  );
+  await unknownCandidate.fill("124");
+  await calendarDialog
+    .getByRole("button", { name: "Auftrag abbrechen", exact: true })
+    .click();
+  await expect(unknownCandidate).toBeDisabled();
+  await expect(
+    calendarDialog.getByRole("button", {
+      name: "Auftrag abbrechen",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  expect(await page.evaluate(() => window.pending.at(-1))).toMatchObject({
+    kind: "cancel",
+    args: { scheduleId: "job", expectedGeneration: 1 },
+  });
+  await page.evaluate(() => window.pending.at(-1).resolve(false));
+  await expect(
+    calendarDialog.getByText(/Abbruch konnte nicht gespeichert werden/),
+  ).toBeVisible();
+  await expect(unknownCandidate).toHaveValue("124");
+  await calendarDialog
+    .getByRole("button", { name: "Auftrag abbrechen", exact: true })
+    .click();
+  await page.evaluate(() => {
+    window.pending.at(-1).resolve(true);
+    window.recovery = { ...window.recovery, aborted: true };
+    window.listeners.forEach((cb) => cb());
+  });
+  await expect(
+    calendarDialog.getByText(/Der Abbruch bleibt gespeichert/),
+  ).toBeVisible();
+  await expect(unknownCandidate).toHaveValue("124");
+  await expect(
+    calendarDialog.getByRole("button", {
+      name: "Abbruch abschließen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    calendarDialog.getByRole("button", {
+      name: "Unveränderten Thread ausdrücklich fortsetzen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
   await expect(
     calendarDialog.getByRole("link", { name: "X-Beitrag 123", exact: true }),
   ).toHaveAttribute("href", "https://x.com/i/web/status/123");
   await expect(
     calendarDialog.getByLabel("Kandidaten-ID oder X-Link für Beitrag 2"),
   ).toBeVisible();
-  await expect(
-    calendarDialog.getByRole("button", {
-      name: "Unveränderten Thread ausdrücklich fortsetzen",
-    }),
-  ).toBeDisabled();
+
   await expect(
     calendarDialog.getByRole("button", { name: "Termin verschieben" }),
   ).toHaveCount(0);
+  await page.evaluate(() => {
+    window.recovery = {
+      aborted: false,
+      positions: [
+        { position: 0, stage: "confirmed", errorCode: null, notBefore: null },
+        { position: 1, stage: "unsent", errorCode: null, notBefore: null },
+        { position: 2, stage: "unsent", errorCode: null, notBefore: null },
+      ],
+    };
+    window.calendar = {
+      ...window.calendar,
+      rows: window.calendar.rows.map((row) => ({
+        ...row,
+        schedule: { ...row.schedule, state: "partially_published" },
+      })),
+    };
+    window.listeners.forEach((cb) => cb());
+  });
+  await expect(calendarDialog).toContainText(
+    "Freigegebener Alt-Text: Exact approved alt",
+  );
+  await expect(calendarDialog).not.toContainText("Changed library default");
+  await expect(
+    calendarDialog.getByRole("button", {
+      name: "Termin stornieren",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    calendarDialog.getByRole("button", {
+      name: "Auftrag abbrechen",
+      exact: true,
+    }),
+  ).toHaveCount(1);
+  const calendarContinue = calendarDialog.getByRole("button", {
+    name: "Unveränderten Thread ausdrücklich fortsetzen",
+    exact: true,
+  });
+  await expect(calendarContinue).toBeDisabled();
+  await calendarDialog
+    .getByRole("checkbox", { name: "Sichtbare Fortsetzung bestätigen" })
+    .check();
+  await expect(calendarContinue).toBeEnabled();
   expect(errors).toEqual([]);
   console.log(
     "PASS: real Composer exact snapshot, separate awaited consent, failure buffer, weighted CJK count, remote conflict, confirmed links, awaited read-only reconciliation, preserved buffers, separate continuation consent and abort barrier.",

@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
 export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
-  const { state } = useStore();
+  const { state, cancelSchedule } = useStore();
   const args = {
     workspaceId: schedule.workspaceId as Id<"workspaces">,
     scheduleId: schedule.id as Id<"schedules">,
@@ -56,14 +56,26 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
     );
     return () => clearTimeout(timer);
   }, [inspection, clock]);
-  const execute = async (position?: number, abort = false) => {
+  const execute = async (
+    position?: number,
+    abort: "request" | "finalize" | false = false,
+  ) => {
+    if (pending) return;
     const expectedGeneration = schedule.generation!;
     setPending(true);
     setFeedback("");
     setAck(false);
     try {
       const target = { ...args, expectedGeneration };
-      if (abort) {
+      if (abort === "request") {
+        const ok = await cancelSchedule(schedule);
+        if (mounted.current)
+          setFeedback(
+            ok
+              ? "Abbruch angefordert. Ungeklärte Ergebnisse bleiben gesperrt und müssen lesend abgeglichen werden."
+              : "Abbruch konnte nicht gespeichert werden. Das Ergebnis und deine Eingabe bleiben erhalten; Fehlermeldung prüfen.",
+          );
+      } else if (abort === "finalize") {
         await finalizeAbort(target);
         if (mounted.current)
           setFeedback(
@@ -184,7 +196,7 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
             <Button
               variant="outline"
               disabled={pending || !allowed}
-              onClick={() => void execute(undefined, true)}
+              onClick={() => void execute(undefined, "finalize")}
             >
               Abbruch abschließen
             </Button>
@@ -192,6 +204,13 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
         </div>
       ) : (
         <>
+          <Button
+            variant="outline"
+            disabled={pending || !allowed || !inspection}
+            onClick={() => void execute(undefined, "request")}
+          >
+            Auftrag abbrechen
+          </Button>
           {!state.accounts.find((a) => a.id === schedule.accountId)?.capability
             ?.publish && (
             <p className="text-xs">

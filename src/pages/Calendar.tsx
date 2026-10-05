@@ -488,6 +488,18 @@ function CalendarContent({
                     <p className="mb-0 whitespace-pre-wrap text-xs leading-relaxed">
                       {t}
                     </p>
+                    {i === 0 &&
+                      currentDetail.media?.map((m) => (
+                        <p
+                          key={m.assetId}
+                          className="mt-2 whitespace-pre-wrap text-xs"
+                        >
+                          Medium am ersten Beitrag ·{" "}
+                          {state.media.find((asset) => asset.id === m.assetId)
+                            ?.name ?? m.assetId}{" "}
+                          · Freigegebener Alt-Text: {m.alt}
+                        </p>
+                      ))}
                     {currentDetail.externalPosts?.find(
                       (p) => p.position === i,
                     ) && (
@@ -656,19 +668,21 @@ function CalendarContent({
                   )}
                 {!["published", "cancelled", "uncertain"].includes(
                   currentDetail.status,
-                ) && (
-                  <Button
-                    variant="ghost"
-                    disabled={!editable}
-                    onClick={async () => {
-                      if (await cancelSchedule(currentDetail)) {
-                        setDetail(null);
-                      }
-                    }}
-                  >
-                    Termin stornieren
-                  </Button>
-                )}
+                ) &&
+                  (demoMode ||
+                    !["partial", "failed"].includes(currentDetail.status)) && (
+                    <Button
+                      variant="ghost"
+                      disabled={!editable}
+                      onClick={async () => {
+                        if (await cancelSchedule(currentDetail)) {
+                          setDetail(null);
+                        }
+                      }}
+                    >
+                      Termin stornieren
+                    </Button>
+                  )}
                 <Button variant="outline" asChild>
                   <Link to={`/drafts/${currentDetail.draftId}`}>
                     Arbeitsversion öffnen

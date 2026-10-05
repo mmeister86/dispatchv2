@@ -113,5 +113,6 @@ test("published result uses confirmed IDs and immutable snapshot; uncertainty ex
   expect(html).toContain("Kandidaten-ID oder X-Link für Beitrag 2");
   expect(html).toContain("Sichtbare Fortsetzung bestätigen");
   expect(html).toContain("Ungeklärte Positionen blockieren");
+  expect(html).toContain("Auftrag abbrechen");
   expect(html).not.toContain("erfolgreich fortgesetzt");
 });

@@ -1,3 +1,4 @@
+import twitterText from "twitter-text";
 import { ConvexError, v } from "convex/values";
 import {
   action,
@@ -16,6 +17,7 @@ import {
 } from "../lib/authorization";
 import {
   firstWriteContent,
+  checkImmutableMediaSource,
   validateContent,
   checkApproval,
   event,
@@ -117,6 +119,7 @@ async function readable(
   },
 ) {
   const source = await context(ctx, a);
+  await checkImmutableMediaSource(ctx, source.ver);
   const { account, s } = source;
   const credential = await ctx.db
     .query("xCredentials")
@@ -249,9 +252,16 @@ export function matchedPost(
   let approved = text.normalize("NFC"),
     returned = d.text.normalize("NFC");
   if (approved === returned) return true;
-  // Exact literal URL substitutions avoid assuming entity index units. Repeated/overlapping mappings are ambiguous.
+  // Use local parser URL tokens, never provider index units. t.co parser truncation with an adjacent suffix is unknown.
   const urls = record(d.entities)?.urls;
   if (!Array.isArray(urls) || urls.length > 20) return false;
+  const originalReturned = returned;
+  const approvedUrls = twitterText.extractUrlsWithIndices(approved, {
+    extractUrlsWithoutProtocol: false,
+  });
+  const returnedUrls = twitterText.extractUrlsWithIndices(returned, {
+    extractUrlsWithoutProtocol: false,
+  });
   const seen = new Set<string>();
   for (const item of urls) {
     const entity = record(item),
@@ -267,7 +277,13 @@ export function matchedPost(
     )
       return false;
     seen.add(url);
+    const tokens = returnedUrls.filter((token) => token.url === url);
     if (
+      tokens.length !== 1 ||
+      (tokens[0].indices[1] < originalReturned.length &&
+        !/\s/u.test(originalReturned[tokens[0].indices[1]])) ||
+      approvedUrls.filter((token) => token.url === expanded.normalize("NFC"))
+        .length !== 1 ||
       returned.split(url).length !== 2 ||
       approved.split(expanded.normalize("NFC")).length !== 2
     )
