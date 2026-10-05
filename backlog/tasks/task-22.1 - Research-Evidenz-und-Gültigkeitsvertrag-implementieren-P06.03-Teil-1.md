@@ -4,7 +4,7 @@ title: 'Research-Evidenz und Gültigkeitsvertrag implementieren (P06.03, Teil 1)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 21:00'
+updated_date: '2026-10-05 21:04'
 labels:
   - p06
   - r2
@@ -63,4 +63,6 @@ Read-only native-source retrieval preparation /tmp/dispatch-research-source-fetc
 Implementation released by ROOT after final TASK21 re-SPEC and QUALITY PASS e5e1c1e. Currentsource wins over earlier43f3cc5 prepmap. Read actualprovidercontract and finalreview: native3source stores/canonicalv2/legacyunknowncompat/ownfundedcontext coverage and source rights distinct; cachehitmaypriorfillorder. Sourcegenerationpolicygen notuniquecontentversion, bindactualmaterialidentity/observation/expiry. Web/trends metadata notarticle/body/factualquote; actualXboundedtextavailable. D08formal5f01f79 actualsource+versionedpurposevalidityrule/justifiedfiniteexpiry, otherwiseReview; modelproposal/searchwindow/newobservedtime noauthority. Newcopiedevidence extends actualphysicalscrub/proof/retention hooks now. No genericprovider/secondledger/messageengine, no paidactivation/Done. Full22.2 tenstepworkflow and23Inbox/contentbridge separate; 22.1mustnotclaim them.
 
 ROOT concrete D08 choice: manualsourcebound creation now, nofundedmodelbridge/articlefetcher. AddminimumexplicitOwnerAdmin humanvalidityreview asNEWimmutablelineage foractualmaterial+annotationversion/purpose/currentversionedrule/boundedmaxage/requestedfiniteexpiry/justification/actor/time/substantivesupportattestation. Quoteonlyprovenance, labelhumanreviewednotautomaticallyprovedtruth. Clampcurrentactualsource/cache/policy/grantretentionproof; originalreviewerrolecurrent. Source-publication alone cannotrenewoldmentioned event: separateattributedactualeventtime, earliestrelevantbasis for event/time-sensitiveclaims; missingrequiredtimeReview. Metadata-only/unknownfreshness/absentquote/consequential-contestednocorroborationReview. No globalruletable/engine/newproviderorpublicationpermission. Actualdecisionin domain-contracts7.2, initiallimitedrulecoverage documented rather thanfalseuniversalverification.
+
+OfficialcodegenUploadmessage clarified BEFORE runtimeclaim: currentContext7library-first2commands plusinstalledConvex1.46components.ts runCodegen callsstartComponentsPushAndCodegen analysis/bindings, notfinishPush; runtimefinishPush onlyrunComponentsPush/dev. Officialdocs saycodegenconfigurationevaluation doesnotmodifyrunningcode. /tmp/dispatch-codegen-analysis-current-docs.md. Preliminaryofficialbindingsgenerationneededforcompile mayprecedelocalgreen; actualDev--once remainsaftergreen. No accidentalWIPdeployment/provideractivationclaim/no rollback. Workerhumanrule minimum immutablelineage + currentOwnerAdminreview; event/sourcepublication earliestrelevantbasis needed, unknowneventtimingReview.
 <!-- SECTION:NOTES:END -->
