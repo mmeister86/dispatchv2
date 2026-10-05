@@ -4,7 +4,7 @@ title: X- und Websuche als getrennte Adapter anschließen (P06.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 20:02'
+updated_date: '2026-10-05 20:10'
 labels:
   - p06
   - r2
@@ -81,4 +81,6 @@ Final implementation source frozen at 215b94c04de4626a66d14a2652306c1d59e12902 a
 Independent initial SPEC NEEDS FIXES at215b94c: valid X data plus errors loses supplied partial sources; actual saved-profile language switch shows en but submits stale de; ai.runs.recent omits native/generation receipt-owner/reference narrowing (synthetic malformed native runId alias projects native estimate as generation usage, not claimed public mutation exploit). ROOT inspected actual callers/own fixtures and confirms. Registered39 pass; two independent actual-handler negatives and actual React language scenario RED, prior temporal/native idle expiry prefix passes. Original sources/logs retained in /tmp/dispatch-research-provider-spec-receipt.md; durable three-scope holds inspected inside physical synthetic fetch. Same implementer owns minimal corrections/regressions; same SPEC delta then fresh QUALITY only after PASS. No AC/Done/activation. Root review receipt .docs/reviews/task-21-research-provider-validation.md.
 
 Additional ROOT actual-handler RED22:00:59: native.results projects20microUSD finance even after its native receipt workspaceId alone is changed to another actual workspace. Native settlement validates owner graph; native result projection does not. Same malformed-record boundary as SPEC3, not a public writer exploit. Runnable /tmp/task21-root-native-projection.test.ts and red receipt retained; one own test failed/two copied SPEC cases skipped. Held correction staging window for minimal native projection/settlement shared graph guard. Legitimate cache-hit attachment to prior filling order must remain valid. Initial three-fix437/27/native41/codegen/Dev22:00:40 not final fourth-fix proof. No AC or QUALITY/Done.
+
+Correction source frozen at82e9ff75f6c79a772c4df6319b97b39db5284641: validated mixed X partial data retained with uncertain usage hold; fresh UI displayed/submitted language aligned without altering frozen retries; shared concrete generationAttempt/nativeAttempt guards cover actual financial projections, admission/history/cap/settlement consumers with captured ownership/scope/currency. Legitimate previous-order cache hit and once-only late finance after expiry/withdrawal remain valid. Implementer final448/27/native50 plus196affected/7, actual Research browser/type/lint/build/bundle/diff/officialcodegen passed; existing EU Dev ready22:08:19, no activation/paid I/O. ROOT original native projection negative rerun unchanged22:10:11 PASS one own actual-handler case/two copied SPEC cases skipped, /tmp/task21-root-native-projection-green.log. Same independent SPEC delta now checking original failures and sibling boundaries; fresh QUALITY follows only after PASS. No AC or manual/Done acceptance yet.
 <!-- SECTION:NOTES:END -->
