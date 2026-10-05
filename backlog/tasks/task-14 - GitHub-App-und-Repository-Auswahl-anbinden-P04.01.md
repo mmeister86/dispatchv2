@@ -4,7 +4,7 @@ title: GitHub-App und Repository-Auswahl anbinden (P04.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 10:43'
+updated_date: '2026-10-05 11:29'
 labels:
   - p04
   - r2
@@ -68,4 +68,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 D05 implementation scope chosen by root under the users explicit delegated decision authority on2026-10-05; see domain-contracts.md. This selects bounded opt-in contracts, not actual private-source/model activation or a legal/EU proof. Missing GITHUB_APP_PRIVATE_KEY continues as visible setup guidance per latest user answer.
 
 Readonly current official GitHub docs confirm setup installation_id can be spoofed: per-workspace binding must verify GitHub App user authorization plus accessible installation/repository intersection. Global App JWT/installation token and GITHUB_APP_INSTALLATION_ID are not a human/tenant authorization proof. App source OAuth stays separate from BetterAuth GitHub login; missing required App client configuration must be visible rather than bypassing proof. Receipt /tmp/dispatch-github-authorization-docs.md; current TASK-10 crypto/auth patterns may be reused only where concrete contracts match.
+
+Read-only future implementation prep after TASK-10 settles: separate source GitHub-App USER authorization must prove accessible installation/repository intersection; global AppID/installation env cannot authorize tenant. Exact current docs /tmp/dispatch-github-authorization-docs.md and scoped brief prepared. UI tracing found real /signals currently renders unconditional mock signalSeed and unavailable local handoff; TASK-14 source guidance must guard that real path empty/config until genuine TASK-15 ingestion, preserving explicit demo. No code/provider effects from prep; actual scope remains separate access/monitoring/content/private purpose D05.
 <!-- SECTION:NOTES:END -->
