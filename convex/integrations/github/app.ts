@@ -59,7 +59,10 @@ export async function request(
     !/^\/(user(?:\/installations(?:\/\d{1,19}\/repositories)?)?|app\/installations\/\d{1,19}\/access_tokens)$/.test(
       path,
     ) &&
-    path !== "/login/oauth/access_token"
+    path !== "/login/oauth/access_token" &&
+    !/^\/repos\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/compare\/[0-9a-f]{40}\.\.\.[0-9a-f]{40}$/.test(
+      path,
+    )
   )
     throw new ProviderError("GITHUB_PROVIDER_ENDPOINT_INVALID");
   const controller = new AbortController(),
@@ -67,7 +70,7 @@ export async function request(
   try {
     const oauth = path === "/login/oauth/access_token";
     const response = await fetch(
-      `${oauth ? "https://github.com" : "https://api.github.com"}${path}${!oauth && path !== "/user" && !body ? "?per_page=100&page=" + page : ""}`,
+      `${oauth ? "https://github.com" : "https://api.github.com"}${path}${!oauth && path !== "/user" && !path.startsWith("/repos/") && !body ? "?per_page=100&page=" + page : ""}`,
       {
         method: form || body ? "POST" : "GET",
         redirect: "error",
@@ -616,13 +619,35 @@ export const installationCredential = internalAction({
     ...workspaceArgs,
     repositoryId: v.id("githubRepositories"),
     generation: v.number(),
-    purpose: v.union(v.literal("monitoring"), v.literal("content")),
+    purpose: v.union(
+      v.literal("monitoring"),
+      v.literal("content"),
+      v.literal("context"),
+    ),
+    contextId: v.optional(v.id("githubContexts")),
   },
   returns: v.object({ token: v.string(), expiresAt: v.number() }),
   handler: async (ctx, a): Promise<{ token: string; expiresAt: number }> => {
+    const { contextId, ...sourceArgs } = a;
+    const checkContext = async () => {
+      if (a.purpose !== "context") return;
+      if (!contextId) throw new ConvexError("GITHUB_CONTEXT_CHANGED");
+      const { context } = await ctx.runQuery(
+        internal.integrations.github.context.read,
+        { contextId },
+      );
+      if (
+        context.workspaceId !== a.workspaceId ||
+        context.repositoryId !== a.repositoryId ||
+        context.generation !== a.generation ||
+        context.state !== "pending"
+      )
+        throw new ConvexError("GITHUB_CONTEXT_CHANGED");
+    };
+    await checkContext();
     const source = await ctx.runQuery(
         internal.integrations.github.repositories.source,
-        a,
+        sourceArgs,
       ),
       config = configuration();
     const result = await request(
@@ -631,7 +656,10 @@ export const installationCredential = internalAction({
       undefined,
       {
         repository_ids: [Number(source.providerId)],
-        permissions: { metadata: "read" },
+        permissions:
+          a.purpose === "context"
+            ? { metadata: "read", contents: "read" }
+            : { metadata: "read" },
       },
     );
     if (
@@ -641,7 +669,10 @@ export const installationCredential = internalAction({
       !result.permissions ||
       typeof result.permissions !== "object" ||
       Array.isArray(result.permissions) ||
-      Object.keys(result.permissions).length !== 1 ||
+      Object.keys(result.permissions).length !==
+        (a.purpose === "context" ? 2 : 1) ||
+      (a.purpose === "context" &&
+        (result.permissions as Record<string, unknown>).contents !== "read") ||
       (result.permissions as Record<string, unknown>).metadata !== "read" ||
       !Array.isArray(result.repositories) ||
       result.repositories.length !== 1 ||
@@ -656,7 +687,11 @@ export const installationCredential = internalAction({
       expiresAt > Date.now() + 3600000 + 60000
     )
       throw new ConvexError("GITHUB_PROVIDER_RESPONSE_INVALID");
-    await ctx.runQuery(internal.integrations.github.repositories.source, a);
+    await ctx.runQuery(
+      internal.integrations.github.repositories.source,
+      sourceArgs,
+    );
+    await checkContext();
     return { token: result.token, expiresAt };
   },
 });

@@ -1,3 +1,4 @@
+import { currentContext } from "../integrations/github/contextAccess";
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { z } from "zod";
@@ -80,6 +81,17 @@ export async function currentIdeaSource(
   source: Doc<"ideaVersions">["source"],
 ) {
   if (source.kind === "note") return [];
+  if (source.kind === "context") {
+    const { c } = await currentContext(ctx, source.contextId, true);
+    if (c.workspaceId !== ws) throw new ConvexError("IDEA_SOURCE_CHANGED");
+    return [
+      {
+        repositoryId: c.repositoryId,
+        generation: c.generation,
+        contextId: c._id,
+      },
+    ];
+  }
   const signal = await ctx.db.get(source.signalId);
   requireReference(ws, signal);
   if (
@@ -119,7 +131,7 @@ async function resolveSource(
   ];
   return { source: captured, originals };
 }
-async function insertIdea(
+export async function insertIdea(
   ctx: MutationCtx,
   ws: Id<"workspaces">,
   actor: Id<"users">,

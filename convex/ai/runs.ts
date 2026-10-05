@@ -1,3 +1,4 @@
+import { currentContext } from "../integrations/github/contextAccess";
 import { ConvexError, v } from "convex/values";
 import { createThread, saveMessage } from "@convex-dev/agent";
 import {
@@ -98,7 +99,16 @@ async function authority(
       r.accountConnectionSequence
   )
     throw new ConvexError("MODEL_ACCOUNT_CHANGED");
-  for (const s of r.sources)
+  for (const s of r.sources) {
+    if (s.contextId) {
+      const { c } = await currentContext(ctx, s.contextId, true);
+      if (
+        c.workspaceId !== r.workspaceId ||
+        c.repositoryId !== s.repositoryId ||
+        c.generation !== s.generation
+      )
+        throw new ConvexError("GITHUB_CONTEXT_CHANGED");
+    }
     await checkSource(
       ctx,
       r.workspaceId,
@@ -106,6 +116,7 @@ async function authority(
       s.generation,
       "content",
     );
+  }
 }
 export async function active(
   ctx: QueryCtx | MutationCtx,

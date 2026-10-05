@@ -3,6 +3,7 @@ export const generationPurpose = v.union(
   ...(["summary", "research", "draft", "plan"] as const).map(v.literal),
 );
 export const source = v.object({
+  contextId: v.optional(v.id("githubContexts")),
   repositoryId: v.id("githubRepositories"),
   generation: v.number(),
 });

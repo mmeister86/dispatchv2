@@ -400,11 +400,16 @@ export const execute = internalAction({
         executionKey,
         provider.chatModel(policy.model),
       );
-      await ctx.runMutation(internal.content.ideas.commitProposal, {
-        runId,
-        executionKey,
-        output,
-      });
+      const enriched = await ctx.runMutation(
+        internal.integrations.github.context.commitSummary,
+        { runId, executionKey, output },
+      );
+      if (!enriched)
+        await ctx.runMutation(internal.content.ideas.commitProposal, {
+          runId,
+          executionKey,
+          output,
+        });
       failed = false;
     } catch {
       /* Sanitized domain state only; provider errors and customer text never enter general logs. */

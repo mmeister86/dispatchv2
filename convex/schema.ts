@@ -1,3 +1,4 @@
+import { contextFields } from "./integrations/github/contextFields";
 import {
   ideaFields,
   ideaVersionFields,
@@ -85,6 +86,14 @@ export default defineSchema({
   aiAttempts: defineTable(aiAttemptFields)
     .index("by_runId_and_key", ["runId", "key"])
     .index("by_runId_and_state", ["runId", "state"]),
+  githubContexts: defineTable(contextFields)
+    .index("by_workspaceId_and_actorId_and_operationKey", [
+      "workspaceId",
+      "actorId",
+      "operationKey",
+    ])
+    .index("by_signalId", ["signalId"])
+    .index("by_runId", ["runId"]),
   githubAdmissionOrder: defineTable({ sequence: v.number() }),
   githubRevocationBarriers: defineTable({
     key: v.string(),

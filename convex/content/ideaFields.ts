@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 export const ideaSource = v.union(
+  v.object({ kind: v.literal("context"), contextId: v.id("githubContexts") }),
   v.object({ kind: v.literal("note") }),
   v.object({
     kind: v.literal("signal"),

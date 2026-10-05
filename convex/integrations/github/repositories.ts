@@ -95,6 +95,7 @@ function projection(
     access: r.access,
     monitoring: r.monitoring,
     content: r.content,
+    contextRead: r.contextRead ?? false,
     communicableContext: r.communicableContext,
     generation: r.generation,
     verifiedAt: r.verifiedAt,
@@ -289,6 +290,7 @@ export const complete = workspaceInternalMutation({
       await ctx.db.patch(r._id, {
         selected: c.identity === a.identity,
         access: false,
+        contextRead: false,
         monitoring: false,
         content: false,
         generation: r.generation + 1,
@@ -415,6 +417,7 @@ export const verify = workspaceInternalMutation({
           ...fresh,
           ...(fresh.private !== r.private
             ? {
+                contextRead: false,
                 monitoring: false,
                 content: false,
                 generation: r.generation + 1,
@@ -429,6 +432,7 @@ export const verify = workspaceInternalMutation({
       else if (r.access || r.monitoring || r.content || r.proofExpiresAt !== 0)
         await ctx.db.patch(r._id, {
           access: false,
+          contextRead: false,
           monitoring: false,
           content: false,
           proofExpiresAt: 0,
@@ -451,6 +455,7 @@ export const verify = workspaceInternalMutation({
         ...fresh,
         selected: true,
         access: true,
+        contextRead: false,
         monitoring: false,
         content: false,
         communicableContext: old?.communicableContext ?? "",
@@ -482,6 +487,7 @@ export const configure = workspaceMutation({
     access: v.boolean(),
     monitoring: v.boolean(),
     content: v.boolean(),
+    contextRead: v.optional(v.boolean()),
     communicableContext: v.string(),
   },
   returns: v.null(),
@@ -498,7 +504,8 @@ export const configure = workspaceMutation({
       throw new ConvexError("GITHUB_CONTEXT_INVALID");
     if (
       (a.monitoring && !a.access) ||
-      (a.content && (!a.access || !a.monitoring))
+      (a.content && (!a.access || !a.monitoring)) ||
+      (a.contextRead && !a.content)
     )
       throw new ConvexError("GITHUB_PURPOSE_REQUIRED");
     const c = await connection(ctx, ctx.workspace._id);
@@ -514,6 +521,7 @@ export const configure = workspaceMutation({
       access: a.access,
       monitoring: a.monitoring,
       content: a.content,
+      contextRead: a.contextRead ?? false,
       communicableContext: a.communicableContext.trim(),
       purposeActorId: ctx.user._id,
       purposeAt: Date.now(),
@@ -539,6 +547,7 @@ export const remove = workspaceMutation({
     await ctx.db.patch(r!._id, {
       selected: false,
       access: false,
+      contextRead: false,
       monitoring: false,
       content: false,
       generation: r!.generation + 1,
@@ -568,6 +577,7 @@ export const disconnect = workspaceMutation({
     for (const r of await selected(ctx, ctx.workspace._id))
       await ctx.db.patch(r._id, {
         access: false,
+        contextRead: false,
         monitoring: false,
         content: false,
         proofExpiresAt: 0,
@@ -673,7 +683,7 @@ export async function checkSource(
   workspaceId: Id<"workspaces">,
   repositoryId: Id<"githubRepositories">,
   generation: number,
-  purpose: "monitoring" | "content",
+  purpose: "monitoring" | "content" | "context",
 ) {
   requireActiveWorkspace(await ctx.db.get(workspaceId));
   const r = await ctx.db.get(repositoryId),
@@ -684,7 +694,8 @@ export async function checkSource(
     r.generation !== generation ||
     !authorized(r, c) ||
     !r.monitoring ||
-    (purpose === "content" && !r.content) ||
+    (purpose !== "monitoring" && !r.content) ||
+    (purpose === "context" && !r.contextRead) ||
     !c ||
     !(await actorValid(ctx, c))
   )
@@ -721,7 +732,11 @@ export const source = internalQuery({
     workspaceId: v.id("workspaces"),
     repositoryId: v.id("githubRepositories"),
     generation: v.number(),
-    purpose: v.union(v.literal("monitoring"), v.literal("content")),
+    purpose: v.union(
+      v.literal("monitoring"),
+      v.literal("content"),
+      v.literal("context"),
+    ),
   },
   returns: v.object({
     ...repository.fields,
@@ -784,6 +799,7 @@ export const installationProof = workspaceInternalMutation({
       )
         await ctx.db.patch(r._id, {
           access: false,
+          contextRead: false,
           monitoring: false,
           content: false,
           proofExpiresAt: 0,
