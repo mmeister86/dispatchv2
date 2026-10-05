@@ -841,3 +841,48 @@ test("lost text/media scopes visibly block their operations without inventing ca
     errorCode: "X_SCOPE_REQUIRED",
   });
 });
+
+test.each(["access_token", "refresh_token"] as const)(
+  "initial %s rejects non-ASCII OAuth token characters",
+  (field) => {
+    expect(() =>
+      tokens({
+        access_token: "valid-access",
+        refresh_token: "valid-refresh",
+        token_type: "bearer",
+        expires_in: 3600,
+        scope: "tweet.write",
+        [field]: "unicode-\u0100",
+      }),
+    ).toThrow("X_PROVIDER_RESPONSE_INVALID");
+  },
+);
+
+test("malformed refreshed token cannot persist or report successful refresh", async () => {
+  config();
+  const f = await mediaFixture(),
+    accountId = await connect(f);
+  vi.restoreAllMocks();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({
+      access_token: "unicode-\u0100",
+      refresh_token: "valid-replacement",
+      token_type: "bearer",
+      expires_in: 3600,
+      scope: scopes,
+    }),
+  );
+  await expect(
+    f.signed.action(api.integrations.x.client.refresh, {
+      workspaceId: f.workspaceId,
+      accountId,
+    }),
+  ).rejects.toThrow("X_REFRESH_OUTCOME_UNKNOWN");
+  const credential = await f.t.run((ctx) =>
+    ctx.db.query("xCredentials").first(),
+  );
+  expect(credential!.envelope).toBeUndefined();
+  const account = await f.t.run((ctx) => ctx.db.get(accountId));
+  expect(account!.connection).toBe("reauth_required");
+  expect(account!.xEvidence?.errorCode).toBe("X_REFRESH_OUTCOME_UNKNOWN");
+});

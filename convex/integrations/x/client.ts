@@ -125,7 +125,7 @@ export function tokens(data: Record<string, unknown>, priorScopes?: string[]) {
     typeof s === "string" &&
     s.length > 0 &&
     s.length <= 8192 &&
-    !/[\x00-\x20\x7f]/.test(s);
+    !/[^\x21-\x7e]/.test(s);
   if (
     !validToken(data.access_token) ||
     String(data.token_type).toLowerCase() !== "bearer" ||
