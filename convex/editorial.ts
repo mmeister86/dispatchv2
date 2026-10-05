@@ -760,6 +760,19 @@ export const confirmFirstWrite = workspaceMutation({
         .first();
       if (active) throw new ConvexError("FIRST_WRITE_ACTIVE_JOB");
     }
+    // Actual possible effects remain an account barrier even on legacy terminal schedules without audit fields.
+    for (const stage of ["unknown", "sending"] as const) {
+      const effect = await ctx.db
+        .query("xPostAttempts")
+        .withIndex("by_workspaceId_and_accountId_and_stage", (q) =>
+          q
+            .eq("workspaceId", ctx.workspace._id)
+            .eq("accountId", a.accountId)
+            .eq("stage", stage),
+        )
+        .first();
+      if (effect) throw new ConvexError("FIRST_WRITE_ACTIVE_JOB");
+    }
     const now = Date.now(),
       fields = {
         workspaceId: ctx.workspace._id,

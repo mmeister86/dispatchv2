@@ -120,6 +120,13 @@ async function context(
     throw new ConvexError("X_POST_CHECKPOINT_CONFLICT");
   return { ...auth, s, ver, account, rows };
 }
+function hasUnresolvedEffects(rows: Doc<"xPostAttempts">[]) {
+  return rows.some(
+    (c) =>
+      ["unknown", "sending"].includes(c.stage) ||
+      (c.stage !== "confirmed" && c.errorCode?.includes("OUTCOME_UNKNOWN")),
+  );
+}
 // Derive stopped outcomes from complete guarded history; this never schedules writes or proves capability.
 function stoppedState(
   s: Doc<"schedules">,
@@ -140,14 +147,9 @@ function stoppedState(
     )
   )
     throw new ConvexError("X_POST_CHECKPOINT_CONFLICT");
-  if (
-    rows.some(
-      (c) =>
-        ["unknown", "sending"].includes(c.stage) ||
-        (c.stage !== "confirmed" && c.errorCode?.includes("OUTCOME_UNKNOWN")),
-    )
-  )
-    return "reconciliation_required";
+  // Legacy terminal tombstones are authority even when optional abort audit fields are absent.
+  if (s.state === "cancelled" || s.state === "published") return s.state;
+  if (hasUnresolvedEffects(rows)) return "reconciliation_required";
   if (s.abortRequestedAt !== undefined) return "cancelled";
   if (posts.length === ver.content.text.length) return "published";
   return posts.length ? "partially_published" : "failed";
@@ -163,7 +165,7 @@ async function recordStoppedState(
   if (state !== s.state) {
     await ctx.db.patch(s._id, {
       state,
-      errorCode: state === "reconciliation_required" ? s.errorCode : null,
+      errorCode: hasUnresolvedEffects(rows) ? s.errorCode : null,
     });
     await event(
       ctx,
@@ -564,7 +566,9 @@ export const evidence = internalMutation({
       externalPosts: posts,
       publishedCount: posts.length,
       state,
-      errorCode: state === "reconciliation_required" ? s.errorCode : null,
+      errorCode: hasUnresolvedEffects(rows.filter((r) => r._id !== c._id))
+        ? s.errorCode
+        : null,
     });
     await event(
       ctx,
@@ -838,7 +842,7 @@ export const inspect = workspaceQuery({
       )
       .take(101);
     return {
-      aborted: s.abortRequestedAt !== undefined,
+      aborted: s.state === "cancelled" || s.abortRequestedAt !== undefined,
       positions: ver.content.text.map((_, position) => {
         const post = s.externalPosts?.find((p) => p.position === position),
           c = rows.filter((c) => c.position === position).at(-1),
@@ -879,7 +883,10 @@ export const finalizeAbort = workspaceMutation({
     });
     if (s.abortRequestedAt === undefined)
       throw new ConvexError("SCHEDULE_ABORT_REQUIRED");
-    if (stoppedState(s, ver, rows) !== "cancelled")
+    if (
+      hasUnresolvedEffects(rows) ||
+      stoppedState(s, ver, rows) !== "cancelled"
+    )
       throw new ConvexError("X_RECONCILIATION_REQUIRED");
     await recordStoppedState(ctx, s, ver, rows, user._id);
     return null;

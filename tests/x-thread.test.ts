@@ -2304,3 +2304,157 @@ test.each(["role", "lifecycle", "generation", "provider", "parent"])(
     ).toBe(false);
   },
 );
+
+test("QUALITY DELTA: legacy cancelled status cannot be reopened by confirming stored receipt", async () => {
+  const { f, c } = await expiredSending();
+  await f.t.mutation(internal.publishing.attempts.receipt, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    outcome: "confirmed",
+    externalId: "101",
+    httpStatus: 201,
+    durationMs: 1,
+  });
+  const args = {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+    position: 0,
+    candidateId: "101",
+  };
+  // Existing schedules may lack the optional fields introduced for TASK12.2 abort audit.
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.scheduleId, {
+      state: "cancelled",
+      abortRequestedAt: undefined,
+      abortRequestedBy: undefined,
+    }),
+  );
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("Must not fetch"));
+  expect(await f.signed.action(api.publishing.reconcile.lookup, args)).toBe(
+    "confirmed",
+  );
+  expect(fetch).not.toHaveBeenCalled();
+  const normalized = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))?.state;
+  let resumed = false;
+  try {
+    await f.signed.mutation(api.publishing.reconcile.continueThread, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    });
+    resumed = true;
+  } catch {
+    /* A cancelled operation must remain blocked. */
+  }
+  expect({ normalized, resumed }).toEqual({
+    normalized: "cancelled",
+    resumed: false,
+  });
+});
+
+test.each(["unknown", "sending"] as const)(
+  "legacy cancelled %s retains cancellation and the account barrier",
+  async (stage) => {
+    const { f, c } = await expiredSending();
+    await f.t.run(async (ctx) => {
+      await ctx.db.patch(f.scheduleId, {
+        state: "cancelled",
+        abortRequestedAt: undefined,
+        abortRequestedBy: undefined,
+      });
+      await ctx.db.patch(c._id, { stage });
+    });
+    await f.signed.mutation(api.editorial.revoke, {
+      workspaceId: f.workspaceId,
+      approvalId: f.approvalId,
+    });
+    const approvalId = await f.signed.mutation(
+      api.editorial.approveFirstWrite,
+      {
+        workspaceId: f.workspaceId,
+        versionId: f.versionId,
+        accountId: f.accountId,
+      },
+    );
+    await expect(
+      f.signed.mutation(api.editorial.confirmFirstWrite, {
+        workspaceId: f.workspaceId,
+        versionId: f.versionId,
+        accountId: f.accountId,
+        approvalId,
+      }),
+    ).rejects.toThrow("FIRST_WRITE_ACTIVE_JOB");
+    const storedAttempt = (await f.t.run((ctx) => ctx.db.get(c._id)))!;
+    const value = await lookup().json();
+    value.data.created_at = new Date(
+      storedAttempt.requestStartedAt!,
+    ).toISOString();
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async () => Response.json(value));
+    if (stage === "sending") vi.setSystemTime(Date.now() + 20001);
+    await f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+      position: 0,
+      candidateId: "101",
+    });
+    await f.signed.action(api.publishing.reconcile.lookup, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+      position: 0,
+      candidateId: "101",
+    });
+    expect(fetch).toHaveBeenCalledTimes(1);
+    const s = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+    expect(s.state).toBe("cancelled");
+    expect(s.abortRequestedAt).toBeUndefined();
+    expect(s.abortRequestedBy).toBeUndefined();
+    await expect(
+      f.signed.mutation(api.publishing.reconcile.continueThread, {
+        workspaceId: f.workspaceId,
+        scheduleId: f.scheduleId,
+        expectedGeneration: 1,
+      }),
+    ).rejects.toThrow();
+  },
+);
+
+test("published terminal status cannot be reopened by stored receipt reconciliation", async () => {
+  const { f, c } = await expiredSending();
+  await f.t.mutation(internal.publishing.attempts.receipt, {
+    attemptId: c._id,
+    claimSequence: c.claimSequence,
+    outcome: "confirmed",
+    externalId: "101",
+    httpStatus: 201,
+    durationMs: 1,
+  });
+  await f.t.run((ctx) => ctx.db.patch(f.scheduleId, { state: "published" }));
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("No new provider request"));
+  await f.signed.action(api.publishing.reconcile.lookup, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+    position: 0,
+    candidateId: "101",
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.state).toBe(
+    "published",
+  );
+  expect(fetch).not.toHaveBeenCalled();
+  await expect(
+    f.signed.mutation(api.publishing.reconcile.continueThread, {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    }),
+  ).rejects.toThrow();
+});

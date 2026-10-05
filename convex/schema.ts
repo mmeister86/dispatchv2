@@ -40,7 +40,12 @@ export default defineSchema({
       "generation",
       "position",
     ])
-    .index("by_workspaceId", ["workspaceId"]),
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_workspaceId_and_accountId_and_stage", [
+      "workspaceId",
+      "accountId",
+      "stage",
+    ]),
   xMediaCheckpoints: defineTable(checkpointFields)
     .index("by_scheduleId_and_generation_and_mediaPosition", [
       "scheduleId",
