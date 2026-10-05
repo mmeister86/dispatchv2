@@ -4,7 +4,7 @@ title: 'Research-Evidenz und Gültigkeitsvertrag implementieren (P06.03, Teil 1)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 21:04'
+updated_date: '2026-10-05 21:24'
 labels:
   - p06
   - r2
@@ -65,4 +65,6 @@ Implementation released by ROOT after final TASK21 re-SPEC and QUALITY PASS e5e1
 ROOT concrete D08 choice: manualsourcebound creation now, nofundedmodelbridge/articlefetcher. AddminimumexplicitOwnerAdmin humanvalidityreview asNEWimmutablelineage foractualmaterial+annotationversion/purpose/currentversionedrule/boundedmaxage/requestedfiniteexpiry/justification/actor/time/substantivesupportattestation. Quoteonlyprovenance, labelhumanreviewednotautomaticallyprovedtruth. Clampcurrentactualsource/cache/policy/grantretentionproof; originalreviewerrolecurrent. Source-publication alone cannotrenewoldmentioned event: separateattributedactualeventtime, earliestrelevantbasis for event/time-sensitiveclaims; missingrequiredtimeReview. Metadata-only/unknownfreshness/absentquote/consequential-contestednocorroborationReview. No globalruletable/engine/newproviderorpublicationpermission. Actualdecisionin domain-contracts7.2, initiallimitedrulecoverage documented rather thanfalseuniversalverification.
 
 OfficialcodegenUploadmessage clarified BEFORE runtimeclaim: currentContext7library-first2commands plusinstalledConvex1.46components.ts runCodegen callsstartComponentsPushAndCodegen analysis/bindings, notfinishPush; runtimefinishPush onlyrunComponentsPush/dev. Officialdocs saycodegenconfigurationevaluation doesnotmodifyrunningcode. /tmp/dispatch-codegen-analysis-current-docs.md. Preliminaryofficialbindingsgenerationneededforcompile mayprecedelocalgreen; actualDev--once remainsaftergreen. No accidentalWIPdeployment/provideractivationclaim/no rollback. Workerhumanrule minimum immutablelineage + currentOwnerAdminreview; event/sourcepublication earliestrelevantbasis needed, unknowneventtimingReview.
+
+Frozen implementation49a9b9971e95f4e39629261e407dc10df83436bd exact13paths; index/treeclean. FreshSPEC active, QUALITY notstarted and ACunchecked. Implementer493/27 and95 native/evidence checks plus type/lint/build/bundle/diff and actualResearchPage synthetic-providerbrowser PASS. Officialcodegen23:16:31 / existingEUDevReady23:17:15 afterlocalgreen, no activation/model/provider/liveclaim. Preserved original90case88PASS2RED: genuineinvalidate asynchronouscopycleanup fixed sharedsynchronousfirstbatch; rawsourceexpiryCASfixture corrected independently, notproductexpirybug. Later93/95/full493 progression retained actualtooltranscript (no fabricated initial log). Full pendingreview record .docs/reviews/task-22.1-research-evidence-validation.md. Humanvalidity limited research-context + exactISOeventexcerpt; metadata/unknown/corroboration gaps remainReview, no full22.2workflow/23handoff/manualDone.
 <!-- SECTION:NOTES:END -->
