@@ -44,6 +44,10 @@ Tests-first commit `1e494b1` reproduces the two findings with bounded inputs and
 
 Implementer evidence:64 unit checks, eight targeted media-byte checks, actual `pnpm test:media-lifecycle` browser checks for success/failure/unmount/workspace change, typecheck, formatting, build and seeded bundle checks passed. The valid small H.264/AAC fixture also decodes with FFmpeg. Configured Dev updated at12:58:28. Renewed SPEC review is running; the fresh complete QUALITY review follows only after its PASS. No final quality/release claim is made yet.
 
+## Independent renewed SPEC — PASS at a51f9ed
+
+The reviewer independently ran four targeted files:22/22 unit checks passed. The actual isolated `pnpm test:media-lifecycle` browser check passed for StrictMode success/failure and true unmount/workspace replacement; server/browser closed. The reviewer verified the supported bounded MP4 metadata before decoding, valid H.264/AAC fixtures, preserved previous corrections and unchanged schema/jobs/dependencies. The fresh reviewer is now performing the full-unit QUALITY audit. External acceptance gates below remain open.
+
 ## Actual acceptance still open
 
 An approved existing private bucket with actual EU jurisdiction and restricted S3 access, browser-origin CORS, live signature/size enforcement, conditional-write/runtime/race probes, late-PUT cleanup and authenticated manual upload/abort/preview-refresh/replacement evidence remain open. No bucket, public post or test email was created. An EU location hint or a passing synthetic test does not satisfy those checks.
