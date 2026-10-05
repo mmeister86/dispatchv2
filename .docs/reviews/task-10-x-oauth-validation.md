@@ -16,6 +16,12 @@ Independent SPEC PASS on frozen49d9402:19/19 targeted OAuth tests and actual `pn
 
 Root independently ran the existing auth browser regression on isolated5175 with reset/verification endpoints intercepted:3/3 passed in4 seconds; no emails. First sandbox attempt failed binding localhost with EPERM; command-specific escalated rerun passed, not an application correction. Isolated server closed; user5173 untouched.
 
+## Independent complete QUALITY — NEEDS WORK at49d9402
+
+One Important finding, zero Critical findings and no other confirmed defects. Shared `client.validToken` accepts non-ASCII U+0100. A small actual-parser counterexample accepts `unicode-\u0100`, but native `Headers` rejects it in Authorization. Initial callback's `/users/me` fails safely; refresh does not make that identity request, so it may persist the unusable token and return success. Correct the shared boundary with supported printable ASCII/header-safe token validation and a malformed-refresh regression proving no success, reauth/unknown outcome and ciphertext removal.
+
+The reviewer independently ran19/19 focused tests and traced complete transfer fencing, auth/lifecycle, key rotation/AAD, secret DTOs, generation/lease/unknown outcomes, inventory/cleanup bounds, connection sequences and actual callback lifecycle; these mechanisms otherwise hold. Date-sensitive query caching was investigated against current docs but not reported as a defect without proof. Reviewer made no changes or provider effects. Scoped tests-first correction assigned to original implementer; renewed SPEC then QUALITY required before TASK-12.1.
+
 ## Actual acceptance still open
 
 Confidential X OAuth2 client/app setup and exact registered SITE_URL callback; valid32-byte canonical Base64 encryption key with non-secret `INTEGRATION_ENCRYPTION_KEY_ID`, previous-key rotation exercise, real human account identity/scopes/refresh/role-workspace UX. No environment secret values read or set by implementer. Local disconnect does not prove remote grant removal; provider-side access removal remains explicit manual evidence. Actual entitlement/media/public test content and complete provider/EU/customer-data approval gates belong to later units and acceptance, not these synthetic checks. No Backlog Done.
