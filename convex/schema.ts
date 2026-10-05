@@ -1,3 +1,8 @@
+import {
+  profileFields as researchProfileFields,
+  versionFields as researchVersionFields,
+  orderFields as researchOrderFields,
+} from "./research/fields";
 import { contextFields } from "./integrations/github/contextFields";
 import {
   ideaFields,
@@ -57,6 +62,26 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  researchProfiles: defineTable(researchProfileFields).index(
+    "by_workspaceId_and_accountId",
+    ["workspaceId", "accountId"],
+  ),
+  researchProfileVersions: defineTable(researchVersionFields).index(
+    "by_profileId_and_actorId_and_commandKey",
+    ["profileId", "actorId", "commandKey"],
+  ),
+  researchOrders: defineTable(researchOrderFields)
+    .index("by_profileId_and_actorId_and_operationKey", [
+      "profileId",
+      "actorId",
+      "operationKey",
+    ])
+    .index("by_profileId_and_createdAt", ["profileId", "createdAt"])
+    .index("by_profileId_and_occasion_and_operationKey", [
+      "profileId",
+      "occasion",
+      "operationKey",
+    ]),
   conversations: defineTable({
     workspaceId: v.id("workspaces"),
     accountId: v.id("socialAccounts"),

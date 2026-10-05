@@ -56,6 +56,12 @@ import type * as publishing_mediaFields from "../publishing/mediaFields.js";
 import type * as publishing_postFields from "../publishing/postFields.js";
 import type * as publishing_reconcile from "../publishing/reconcile.js";
 import type * as publishing_workflows from "../publishing/workflows.js";
+import type * as research_access from "../research/access.js";
+import type * as research_fields from "../research/fields.js";
+import type * as research_profiles from "../research/profiles.js";
+import type * as research_runs from "../research/runs.js";
+import type * as research_schedules from "../research/schedules.js";
+import type * as research_time from "../research/time.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -114,6 +120,12 @@ declare const fullApi: ApiFromModules<{
   "publishing/postFields": typeof publishing_postFields;
   "publishing/reconcile": typeof publishing_reconcile;
   "publishing/workflows": typeof publishing_workflows;
+  "research/access": typeof research_access;
+  "research/fields": typeof research_fields;
+  "research/profiles": typeof research_profiles;
+  "research/runs": typeof research_runs;
+  "research/schedules": typeof research_schedules;
+  "research/time": typeof research_time;
   users: typeof users;
   workspaces: typeof workspaces;
 }>;
