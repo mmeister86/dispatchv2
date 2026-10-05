@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 12:54'
+updated_date: '2026-10-05 12:55'
 labels:
   - p03
   - r1
@@ -31,9 +31,9 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P03.03. Der übergeord
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Jeder Einzelpost besitzt eine nachvollziehbare Operation und einen dauerhaften Checkpoint mit externer ID.
-- [ ] #2 Account, Version und Autorisierung werden unmittelbar vor Versand geprüft.
-- [ ] #3 Automatische SDK-/Workflow-Retries nicht idempotenter Schreibaufrufe sind deaktiviert; ein Crash nach Beitrag 2 wiederholt bestätigte Beiträge 1/2 nicht.
+- [x] #1 Jeder Einzelpost besitzt eine nachvollziehbare Operation und einen dauerhaften Checkpoint mit externer ID.
+- [x] #2 Account, Version und Autorisierung werden unmittelbar vor Versand geprüft.
+- [x] #3 Automatische SDK-/Workflow-Retries nicht idempotenter Schreibaufrufe sind deaktiviert; ein Crash nach Beitrag 2 wiederholt bestätigte Beiträge 1/2 nicht.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -74,4 +74,6 @@ Independent SPEC re-review PASS on 9f5f593:47 repository tests plus4 isolated ch
 Independent QUALITY NEEDS WORK on9f5f593: public cancel changes uncertain zero-confirmed write to cancelled and clears error, releasing first-write account barrier although provider POST may exist. Two isolated reproductions fail (unknown->cancel->new proof; repeated cancel of sending->late receipt),8 existing safety tests pass. Original implementer corrects central cancellation with persistent idempotent abort intent/unresolved evidence barrier and no late advance/proof activation. QUALITY re-review and SPEC delta required; no AC/Done closure.
 
 Cancellation fix candidate eddf1a2 frozen: schedules optional abortRequestedAt/By, current public authority/ownership before idempotence, generation invalidated once, bounded indexed cross-generation unresolved barrier/error/IDs retained, known resolved prefix may cancel, shared claim/send/reschedule guards reject abort, late receipts evidence-only. Six permanent regressions PASS; implementer147full/type/lint/build/bundle/diff and existingEUDev ready14:53:02PASS. SPEC delta review running before QUALITY re-review; UI unchanged/root34PASS. New fields added to contract inventory for TASK33/36.
+
+Final code eddf1a2 independent SPEC and QUALITY PASS. SPEC delta83repo+8isolated includes older-generation uncertainty/lateIDs/repeatedabort/currentauth; QUALITY2originalisolated+10targetedPASS/no furtherCriticalImportant. Earlier atomic-start/media-key fixes retained. Implementer147full/type/lint/build/bundle/diff/Dev14:53:02PASS; root34browserPASS on unchangedUI and dependency audit0. AC1-3 checked as isolated code evidence only, not live/manual acceptance. Actual provider API write entitlement/firstproof, EU-R2 runtime/processing/egress/costs and authenticated manual gates remain open. Status In Progress; no Done without explicit user manual confirmation.
 <!-- SECTION:NOTES:END -->

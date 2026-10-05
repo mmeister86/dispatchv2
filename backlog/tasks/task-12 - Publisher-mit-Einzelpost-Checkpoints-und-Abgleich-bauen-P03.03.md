@@ -4,7 +4,7 @@ title: Publisher mit Einzelpost-Checkpoints und Abgleich bauen (P03.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 12:19'
+updated_date: '2026-10-05 12:55'
 labels:
   - p03
   - r1
@@ -73,4 +73,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 Delegatedfirst-write setup decision recorded .docs/decisions/first-write-verification.md for TASK12.2: freshOAuth scopes/identity do notprovewrite, normalcap remainsfalse; avoidcircularrequirement with explicitimmediate exactversion/account human approval+separateconfirmation of visible publishing toverifyaccess. Reusepurpose-boundapproval/schedule/checkpoints, no generalbypass/modelauthority/fakeproof; onlymatchingcurrentconnection confirmedAPIwrite enablesstandardcap, unknownoutcomepause/reconcile. TASK12.1 mediaenginefirst behindguards,12.2 ownsbootstrapintegration. No rootliveprobe/publicpostauthorized/performed; manualaccount/content/providergatesopen.
 
 Clarified first-write evidence: capability activation requires validated actual Dispatch credentialed POST response/current connection. A later read-only exact candidate lookup can reconcile an existing piece but cannot prove it used those API credentials (manual samecontent possible), and never enables publishing capability. Explicit approved remaining position/newproofjob may later supply actualwriteevidence. Decision .docs/decisions/first-write-verification.md; no provider calls performed.
+
+TASK12.1 final ddd3ad4 and TASK12.2 final eddf1a2 each independent SPEC/QUALITY PASS. Publishing uses durable native per-position claims/confirmedIDs, explicit persisted first-write consent, realweightedtext, initial continuation in same claim transaction, actualmedia-key receipts and persistent idempotent abort/unresolved account barriers. No POST automatic retry or read-only capability proof. TASK12.3 now begins after both reviews; parent code/manual acceptance remains open.
 <!-- SECTION:NOTES:END -->

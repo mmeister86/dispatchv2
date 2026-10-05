@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 12:50'
+updated_date: '2026-10-05 12:55'
 labels:
   - p03
   - r1
@@ -59,4 +59,6 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P03.03. Der übergeord
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /calendar?view=agenda. Uncertain outcomes require explicit mock reconciliation; partial/failed snapshots have continuation and snapshot review controls. Grenze: No provider reconciliation, real retry/backoff or remote duplicate-prevention evidence. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Preparation only while TASK12.2 QUALITY cancellation correction is pending. Root candidate-ID lookup is the minimum sufficient reconciliation path; no automatic timeline collector or speculative provider abstraction. Current docs receipt /tmp/dispatch-x-reconciliation-current-docs.md (Context7 library-first3commands plus current primary schema); final implementation brief /tmp/dispatch-x-reconciliation-implementation-brief.md. Actual final12.2 hash/abort-field receipt will be supplied after both reviews PASS. No implementation/provider call or acceptance claimed.
+
+Fresh SDD implementation begins after TASK12.2 final eddf1a2 independent SPEC/QUALITY PASS. Concrete final engine/optional abortRequestedAt/By and cross-generation evidence documented in .docs/x-thread-publishing-contract.md; root full brief /tmp/dispatch-x-reconciliation-implementation-brief.md. Scope candidate-ID verified read-only reconciliation, explicit same-snapshot missing-only continuation/new generation/realUI, positive evidence never grants write capability and abort never cleared to resend. No live provider action or manual acceptance authorized by these synthetic checks.
 <!-- SECTION:NOTES:END -->
