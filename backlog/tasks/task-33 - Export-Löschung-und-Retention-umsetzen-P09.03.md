@@ -4,7 +4,7 @@ title: 'Export, Löschung und Retention umsetzen (P09.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 14:10'
 labels:
   - p09
   - r3
@@ -71,4 +71,6 @@ Das Daten-Lifecycle-Paket umfasst zusätzlich Jev-Assessments, Analyse-Caches, E
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/data, /team. Active-workspace JSON export, retention preferences, scoped deletion confirmation/error/retry; account identity/membership deletion preserves shared contents. Grenze: No server data inventory, provider/R2 deletion, backups or legal retention execution. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Incrementelles reales Intelligence/Kalibrierungsinventar ergänzt: .docs/decisions/data-inventory.md (Quellstand43.3 582ecf0). Algorithm/Audience/Selection/Receipts, tatsächliche Jev/Performance-Vorfahren, calibrationPurposes/References/Models einschließlich finite Monitoring/Activation/Rollback/spentTombstones/Controls und publicationKnowledge.projection samt Scope/Akteuren/Purpose-Generation/Horizonten/providerWeitergabe/immediateMask/physischemCleanup/erhaltenenFinancialPublishing-Eltern. Kein vollständiger Workspace-Export, Account-/Workspace-Erasure, Audit-Aufbewahrungsentscheid oder33-Abnahmezertifikat.44-Varianten werden erst am tatsächlichen geprüften Schema aufgenommen;45Vertrag dokumentiert geplante neueEdges. Restore darf Consent/Model/Pins nicht erneuern oder spentIDs weglassen.
 <!-- SECTION:NOTES:END -->

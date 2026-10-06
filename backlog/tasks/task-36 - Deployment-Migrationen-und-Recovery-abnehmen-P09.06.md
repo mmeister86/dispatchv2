@@ -4,7 +4,7 @@ title: 'Deployment, Migrationen und Recovery abnehmen (P09.06)'
 status: To Do
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-06 14:10'
 labels:
   - p09
   - r3
@@ -65,3 +65,9 @@ Großes Paket: Die zugeordneten Unteraufgaben liefern die Implementierung in beg
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Restore-Referenzgraph Intelligence/Kalibrierung bei Source43.3 582ecf0 dokumentiert in .docs/decisions/data-inventory.md: Originalprofile/Assessments/Usage/NumericReceipts/PurposeGenerationen/Horizonte und immutable Veröffentlichungspins konsistent erhalten; keine Rechte-/Fristverlängerung/Backfill oder neuen Posts aus Restore. Verbrauchte scoped Monitoring-IDs dürfen bei noch gültigem Originalkandidaten nicht durch Teilrestore verschwinden. Dokumentiert/native localCleanup geprüft, keine tatsächliche Backup-/Restore-/Production-Domain-Abnahme; Status unverändertTo Do.44 und45 ergänzen neueGraphEdges erst verifiziert.
+<!-- SECTION:NOTES:END -->
