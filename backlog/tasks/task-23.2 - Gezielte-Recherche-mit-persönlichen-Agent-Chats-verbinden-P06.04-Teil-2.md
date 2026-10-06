@@ -4,7 +4,7 @@ title: 'Gezielte Recherche mit persönlichen Agent-Chats verbinden (P06.04, Teil
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 01:09'
+updated_date: '2026-10-06 01:11'
 labels: []
 dependencies:
   - TASK-23.1
@@ -54,4 +54,6 @@ ROOTrelease after23.1 finalSOURCE6fde7a9 SAME SPEC+freshQUALITYPASS. Concrete br
 ROOT multi-source clarification: one selected evidence summary per explicit researchcommand permitted, but rejectcreateIdea at>1 researchdependency wouldcut actualpersonal-followup scope. Minimalfinite flatcompound source mayreuseexact primitiveResearch/GitHubrefs, dedupimmutablepins/flatten, minimumhorizon andALLactualconsumers. Narrowindexedreverseprovenancerelation permittedonlyifexistingrun/chatOperationrelations lackexactcleanupreachability, notnewmessages/contentstore/graph. Requiretwoindependent summaries->fundedfollowup->onegenuineIdea +secondary-onlyrevocation/expiry physicalnative/copiedcleanup/currentproof/financiallateonce. Solewriter proposes exactshape/paths beforeexpansion; noAC/Done.
 
 Fresh soleimplementer targeted_chat_research Backend Architect sol/medium releasedat977bb28. ROOTapproved concrete context-set source1..10 exact flat primitiveAgentrefs; shared currentproof/minhorizon, no recursiveengine. Actualrun/conversationssourcesflat. Narrow researchCopyBindings evidence->exactconversation/ideaVersion indexedstate forsecondary-copyphysicalcleanup permitted; existinginsert/edit/restore/cleanupnativecallersmustpreserveallhistory/ownership/proof/unknownholds/realexecutionFinished/isDone. FirstactualadmissionRED reported, implementationchecks pending; noAC/Done.
+
+Firstregisteredadmission contractRED /tmp/task232-red.log ->GREEN actualWorkflowemptysearch/nativeimmutabletopic/profileunchanged/exactreplay/conflict/durabletechnicalnativeMessage, one interceptedsearch. Interim107/4PASS03:10:18 /tmp/task232-target.log +typePASS /tmp/task232-type.log. NOTfullJ05/source-disclosure/finalbytes: fundedsemantic/evidence/summary/followup/multi-sourcecleanup/newbrowser/full/static/Dev/freshreviews stillpending. NoAC/Done.
 <!-- SECTION:NOTES:END -->

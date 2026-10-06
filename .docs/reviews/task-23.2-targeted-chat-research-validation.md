@@ -15,3 +15,8 @@ Actual run/conversation source arrays remain flat. A concrete researchCopyBindin
 Required proof includes actual registered no-GitHub Workflow/Agent/native J05, stable replay/no extra paid attempt, foreign actor/thread/account/grant denial, source withdrawal/expiry, actual native cleanup and two unrelated evidence summaries → funded follow-up → one genuine Idea. Removing only the secondary dependency must fence and erase its actual downstream native/idea/draft copies while retaining legitimate financial/technical receipts. Real changed React browser checks are separate mocked-transport evidence; user manual/live acceptance is not claimed.
 
 Implementation has reported a first admission RED and basic transport work. Exact artifacts, final checks/Dev/commit/hashes and independent reviews will be recorded after verification. No AC or Done is checked at this stage.
+
+
+## First registered admission proof — not full J05 yet
+
+Contract RED `/tmp/task232-red.log` asserts the missing real domain research export/admission, not a historical disclosure defect. First registered GREEN covers actual Workflow empty search, immutable native topic without profile rewrite, exact replay, conflict denial and a durable technical native message; one intercepted search, no paid call. Interim affected suite **107/4 PASS** at03:10:18, `/tmp/task232-target.log`, and typecheck PASS `/tmp/task232-type.log`. These are intermediate bytes; successful funded semantic model/evidence/durable summary/follow-up/multi-source cleanup and changed browser/full/static/Dev/frozen independent reviews still remain. No AC/Done.
