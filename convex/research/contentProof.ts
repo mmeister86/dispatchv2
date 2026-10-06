@@ -1,3 +1,4 @@
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 import { currentRunSources } from "../ai/sourceAccess";
 import { materialWalk, type MaterialWalk } from "./pipelineAccess";
 import { sha256 } from "../lib/crypto";
@@ -126,7 +127,8 @@ export async function projectIdea(ctx: QueryCtx, ver: Doc<"ideaVersions">) {
     const until = await ideaProofUntil(ctx, ver);
     if (!ver.sourceUnavailable)
       return until === null ? ver : { ...ver, sourceProofUntil: until };
-  } catch {
+  } catch (error) {
+    rethrowUnexpectedSourceError(error);
     /* fail closed without changing history */
   }
   return {
@@ -144,7 +146,8 @@ export async function projectDraft(ctx: QueryCtx, ver: Doc<"draftVersions">) {
   try {
     const until = await draftResearchProof(ctx, ver);
     return until === null ? ver : { ...ver, sourceProofUntil: until };
-  } catch {
+  } catch (error) {
+    rethrowUnexpectedSourceError(error);
     return {
       ...ver,
       sourceUnavailable: true,

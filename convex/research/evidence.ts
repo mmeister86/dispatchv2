@@ -1,3 +1,4 @@
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 import {
   currentMaterials,
   currentMaterialProof,
@@ -249,12 +250,14 @@ export async function currentEvidence(
   if (e.assessment) {
     try {
       const reviewer = await ctx.db.get(e.assessment.reviewerId);
-      if (!reviewer) throw new Error();
+      if (!reviewer)
+        throw new ConvexError("RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE");
       requireRole((await requireWorkspace(ctx, ws, reviewer)).membership, [
         "Owner",
         "Admin",
       ]);
-    } catch {
+    } catch (error) {
+      rethrowUnexpectedSourceError(error);
       throw new ConvexError("RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE");
     }
   }
@@ -351,6 +354,7 @@ export async function projectEvidence(
       usableUntil: proofUntil,
     };
   } catch (error) {
+    rethrowUnexpectedSourceError(error);
     reason =
       error instanceof ConvexError &&
       error.data === "RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE"

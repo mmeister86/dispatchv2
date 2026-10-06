@@ -1022,6 +1022,7 @@ test("TASK30 original feedback horizon is enforced server-side and physically cl
     (await r.t.run((ctx) => ctx.db.get(feedback._id)))?.editExtent,
   ).toBeGreaterThan(0);
   await r.t.mutation(internal.content.feedback.sweep, { cursor: null });
+  await r.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0));
   const stored = await r.t.run((ctx) => ctx.db.get(feedback._id));
   const projected = (
     await r.signed.query(api.content.feedback.list, {

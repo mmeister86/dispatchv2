@@ -2,6 +2,8 @@ import { convexTest } from "convex-test";
 import betterAuthComponent from "@convex-dev/better-auth/test";
 import { expect, test, vi, afterEach } from "vitest";
 import schema from "../convex/schema";
+import { ConvexError } from "convex/values";
+import * as contentProof from "../convex/research/contentProof";
 import { api, internal, components } from "../convex/_generated/api";
 import { resolveLocalTime, localInput } from "../src/lib/time";
 import { preflight } from "../convex/publishing";
@@ -867,4 +869,74 @@ test("planned approval stays available for revocation beyond the latest hundred 
       draftId: f.draftId,
     }))!.approvals.find((a) => a._id === planned.approvalId)!.revokedAt,
   ).not.toBeNull();
+});
+
+test.each([
+  new Error("Unexpected draft proof"),
+  new ConvexError("UNKNOWN_SOURCE"),
+  new ConvexError({ code: "CONTENT_FEEDBACK_SOURCE_UNAVAILABLE" }),
+])(
+  "feedback list and sweep propagate unknown proof failures without removing retained extent (%s)",
+  async (error) => {
+    const f = await setup();
+    await f.signed.mutation(api.editorial.save, {
+      workspaceId: f.workspaceId,
+      draftId: f.draftId,
+      expectedRevision: 1,
+      content: { ...f.content, text: ["Edited"] },
+      reason: "Edit",
+    });
+    const snapshot = () =>
+      f.t.run(async (ctx) => ({
+        rows: await ctx.db.query("contentFeedback").collect(),
+        scheduled: await ctx.db.system.query("_scheduled_functions").collect(),
+      }));
+    const before = await snapshot();
+    const spy = vi
+      .spyOn(contentProof, "draftResearchProof")
+      .mockRejectedValue(error);
+    try {
+      await expect(
+        f.signed.query(api.content.feedback.list, {
+          workspaceId: f.workspaceId,
+          accountId: f.accountId,
+        }),
+      ).rejects.toThrow();
+      await expect(
+        f.t.mutation(internal.content.feedback.sweep, { cursor: null }),
+      ).rejects.toThrow();
+    } finally {
+      spy.mockRestore();
+    }
+    expect(await snapshot()).toEqual(before);
+  },
+);
+test("feedback known source withdrawal masks and physically removes descriptive extent", async () => {
+  vi.useFakeTimers();
+  const f = await setup();
+  await f.signed.mutation(api.editorial.save, {
+    workspaceId: f.workspaceId,
+    draftId: f.draftId,
+    expectedRevision: 1,
+    content: { ...f.content, text: ["Edited"] },
+    reason: "Edit",
+  });
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.versionId, { sourceUnavailable: true }),
+  );
+  expect(
+    (
+      await f.signed.query(api.content.feedback.list, {
+        workspaceId: f.workspaceId,
+        accountId: f.accountId,
+      })
+    )[0],
+  ).toMatchObject({ sourceUnavailable: true, editExtent: null });
+  await f.t.mutation(internal.content.feedback.sweep, { cursor: null });
+  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+  expect(
+    await f.t.run((ctx) => ctx.db.query("contentFeedback").collect()),
+  ).toEqual([
+    expect.objectContaining({ sourceUnavailable: true, editExtent: null }),
+  ]);
 });

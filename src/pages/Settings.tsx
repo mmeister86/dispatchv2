@@ -1,3 +1,4 @@
+import { ContentStrategy } from "@/features/settings/content-strategy";
 import { IntelligenceProfiles } from "@/features/intelligence/profiles";
 import { GithubSources } from "@/features/settings/github";
 import { ModelConfiguration } from "@/features/settings/models";
@@ -157,6 +158,8 @@ export function SettingsPage() {
           )}
           {!demoMode && tab === "integrations" ? (
             <IntegrationGuidance />
+          ) : !demoMode && tab === "strategy" ? (
+            <ContentStrategy />
           ) : !demoMode && !["profile", "workspaces"].includes(tab) ? (
             <EmptyState
               title="Dieser Bereich wird noch angebunden"

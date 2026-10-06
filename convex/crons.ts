@@ -67,4 +67,10 @@ crons.interval(
   internal.performance.models.sweep,
   { cursor: null },
 );
+crons.interval(
+  "Protected declared style cleanup",
+  { minutes: 15 },
+  internal.ai.styleProfiles.sweep,
+  { cursor: null, table: "proposals" },
+);
 export default crons;

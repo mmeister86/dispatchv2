@@ -1,11 +1,17 @@
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 import { ConvexError, v } from "convex/values";
-import { internalMutation, type MutationCtx } from "../_generated/server";
+import {
+  internalMutation,
+  type MutationCtx,
+  type QueryCtx,
+} from "../_generated/server";
 import { internal } from "../_generated/api";
 import {
   workspaceMutation,
   workspaceQuery,
   requireReference,
   requireRole,
+  requireActiveWorkspace,
 } from "../lib/authorization";
 import type { Doc, Id } from "../_generated/dataModel";
 import { draftResearchProof } from "../research/contentProof";
@@ -24,6 +30,79 @@ export function extent(before: string[], after: string[]) {
     end++;
   return Math.max(a.length - start - end, b.length - start - end);
 }
+// The same exact before/result proof protects every consumer, including legacy rows.
+export async function evidence(
+  ctx: QueryCtx,
+  row: Pick<
+    Doc<"contentFeedback">,
+    | "workspaceId"
+    | "accountId"
+    | "versionId"
+    | "resultingVersionId"
+    | "actorId"
+    | "kind"
+    | "createdAt"
+    | "sourceUntil"
+    | "sourceUnavailable"
+  >,
+) {
+  requireActiveWorkspace(await ctx.db.get(row.workspaceId));
+  requireReference(row.workspaceId, await ctx.db.get(row.accountId));
+  const ver = await ctx.db.get(row.versionId);
+  const result = row.resultingVersionId
+    ? await ctx.db.get(row.resultingVersionId)
+    : null;
+  const member = await ctx.db
+    .query("memberships")
+    .withIndex("by_userId_and_workspaceId", (q) =>
+      q.eq("userId", row.actorId).eq("workspaceId", row.workspaceId),
+    )
+    .unique();
+  if (
+    !member ||
+    !(await ctx.db.get(row.actorId)) ||
+    !["Owner", "Admin", "Editor"].includes(member.role) ||
+    row.sourceUnavailable ||
+    !ver ||
+    ver.sourceUnavailable ||
+    ver.workspaceId !== row.workspaceId ||
+    ver.content.accountId !== row.accountId
+  )
+    throw new ConvexError("CONTENT_FEEDBACK_SOURCE_UNAVAILABLE");
+  const draft = await ctx.db.get(ver.draftId);
+  if (
+    !draft ||
+    draft.workspaceId !== row.workspaceId ||
+    (row.kind === "edit"
+      ? !result ||
+        result.sourceUnavailable ||
+        result.workspaceId !== row.workspaceId ||
+        result.draftId !== ver.draftId ||
+        result.content.accountId !== row.accountId ||
+        result.number !== ver.number + 1 ||
+        result.authorId !== row.actorId ||
+        result.createdAt < ver.createdAt ||
+        row.createdAt < result.createdAt
+      : row.resultingVersionId !== null)
+  )
+    throw new ConvexError("CONTENT_FEEDBACK_SOURCE_UNAVAILABLE");
+  const beforeUntil = await draftResearchProof(ctx, ver),
+    resultUntil = result ? await draftResearchProof(ctx, result) : null;
+  const until = Math.min(
+    row.sourceUntil ?? Infinity,
+    beforeUntil ?? Infinity,
+    resultUntil ?? Infinity,
+  );
+  if (until <= Date.now())
+    throw new ConvexError("CONTENT_FEEDBACK_SOURCE_UNAVAILABLE");
+  return {
+    ver,
+    result,
+    beforeUntil,
+    resultUntil,
+    sourceUntil: Number.isFinite(until) ? until : null,
+  };
+}
 export async function record(
   ctx: MutationCtx,
   ver: Doc<"draftVersions">,
@@ -36,8 +115,7 @@ export async function record(
     (kind === "edit" && ver.content.accountId !== resulting?.content.accountId)
   )
     return;
-  const sourceUntil = await draftResearchProof(ctx, ver);
-  await ctx.db.insert("contentFeedback", {
+  const row = {
     workspaceId: ver.workspaceId,
     accountId: ver.content.accountId,
     versionId: ver._id,
@@ -45,13 +123,24 @@ export async function record(
     actorId,
     kind,
     createdAt: Date.now(),
+    sourceUntil: null,
+    sourceUnavailable: false,
+  };
+  const proof = await evidence(ctx, row);
+  await ctx.db.insert("contentFeedback", {
+    ...row,
     editExtent:
       kind === "edit" && resulting
         ? extent(ver.content.text, resulting.content.text)
         : null,
     definition: "changed-middle-codepoints-v1",
-    sourceUntil,
-    sourceUnavailable: false,
+    sourceUntil: proof.sourceUntil,
+  });
+}
+async function remove(ctx: MutationCtx, row: Doc<"contentFeedback">) {
+  await ctx.db.patch(row._id, { editExtent: null, sourceUnavailable: true });
+  await ctx.scheduler.runAfter(0, internal.ai.styleProfiles.purgeFeedback, {
+    feedbackId: row._id,
   });
 }
 export const decide = workspaceMutation({
@@ -92,47 +181,13 @@ export const list = workspaceQuery({
         .take(50),
       out = [];
     for (const r of rows) {
-      let valid = !r.sourceUnavailable,
-        sourceUntil = r.sourceUntil;
       try {
-        const ver = await ctx.db.get(r.versionId);
-        if (
-          !ver ||
-          ver.sourceUnavailable ||
-          ver.workspaceId !== r.workspaceId ||
-          ver.content.accountId !== r.accountId
-        )
-          throw new Error();
-        const result =
-          r.kind === "edit" && r.resultingVersionId
-            ? await ctx.db.get(r.resultingVersionId)
-            : null;
-        if (
-          r.kind === "edit" &&
-          (!result ||
-            result.sourceUnavailable ||
-            result.workspaceId !== r.workspaceId ||
-            result.draftId !== ver.draftId ||
-            result.content.accountId !== r.accountId)
-        )
-          throw new Error();
-        const horizon = Math.min(
-          r.sourceUntil ?? Infinity,
-          (await draftResearchProof(ctx, ver)) ?? Infinity,
-          result
-            ? ((await draftResearchProof(ctx, result)) ?? Infinity)
-            : Infinity,
-        );
-        if (horizon <= Date.now()) throw new Error();
-        sourceUntil = Number.isFinite(horizon) ? horizon : null;
-      } catch {
-        valid = false;
+        const proof = await evidence(ctx, r);
+        out.push({ ...r, sourceUntil: proof.sourceUntil });
+      } catch (error) {
+        rethrowUnexpectedSourceError(error);
+        out.push({ ...r, editExtent: null, sourceUnavailable: true });
       }
-      out.push(
-        valid
-          ? { ...r, sourceUntil }
-          : { ...r, editExtent: null, sourceUnavailable: true },
-      );
     }
     return out;
   },
@@ -141,15 +196,21 @@ export const purgeVersion = internalMutation({
   args: { versionId: v.id("draftVersions") },
   returns: v.null(),
   handler: async (ctx, a) => {
-    const rows = await ctx.db
-      .query("contentFeedback")
-      .withIndex("by_versionId_and_sourceUnavailable", (q) =>
-        q.eq("versionId", a.versionId).eq("sourceUnavailable", false),
-      )
-      .take(50);
-    for (const r of rows)
-      await ctx.db.patch(r._id, { editExtent: null, sourceUnavailable: true });
-    if (rows.length === 50)
+    let more = false;
+    for (const field of ["versionId", "resultingVersionId"] as const) {
+      const rows = await ctx.db
+        .query("contentFeedback")
+        .withIndex(
+          field === "versionId"
+            ? "by_versionId_and_sourceUnavailable"
+            : "by_resultingVersionId_and_sourceUnavailable",
+          (q) => q.eq(field, a.versionId).eq("sourceUnavailable", false),
+        )
+        .take(50);
+      for (const r of rows) await remove(ctx, r);
+      more ||= rows.length === 50;
+    }
+    if (more)
       await ctx.scheduler.runAfter(
         0,
         internal.content.feedback.purgeVersion,
@@ -164,20 +225,16 @@ export const sweep = internalMutation({
   handler: async (ctx, a) => {
     const batch = await ctx.db
       .query("contentFeedback")
-      .withIndex("by_sourceUntil", (q) => q.gt("sourceUntil", null))
-      .paginate({ cursor: a.cursor, numItems: 25 });
+      .withIndex("by_sourceUnavailable", (q) =>
+        q.eq("sourceUnavailable", false),
+      )
+      .paginate({ cursor: a.cursor, numItems: 1 });
     for (const r of batch.page) {
       try {
-        if (r.sourceUntil !== null && r.sourceUntil <= Date.now())
-          throw new Error();
-        const ver = await ctx.db.get(r.versionId);
-        if (!ver || ver.sourceUnavailable) throw new Error();
-        await draftResearchProof(ctx, ver);
-      } catch {
-        await ctx.db.patch(r._id, {
-          editExtent: null,
-          sourceUnavailable: true,
-        });
+        await evidence(ctx, r);
+      } catch (error) {
+        rethrowUnexpectedSourceError(error);
+        await remove(ctx, r);
       }
     }
     if (!batch.isDone)

@@ -27,6 +27,8 @@ import type * as ai_researchTools from "../ai/researchTools.js";
 import type * as ai_runs from "../ai/runs.js";
 import type * as ai_scoring_dispatchScore from "../ai/scoring/dispatchScore.js";
 import type * as ai_sourceAccess from "../ai/sourceAccess.js";
+import type * as ai_styleFields from "../ai/styleFields.js";
+import type * as ai_styleProfiles from "../ai/styleProfiles.js";
 import type * as auth from "../auth.js";
 import type * as content_feedback from "../content/feedback.js";
 import type * as content_feedbackFields from "../content/feedbackFields.js";
@@ -156,6 +158,8 @@ declare const fullApi: ApiFromModules<{
   "ai/runs": typeof ai_runs;
   "ai/scoring/dispatchScore": typeof ai_scoring_dispatchScore;
   "ai/sourceAccess": typeof ai_sourceAccess;
+  "ai/styleFields": typeof ai_styleFields;
+  "ai/styleProfiles": typeof ai_styleProfiles;
   auth: typeof auth;
   "content/feedback": typeof content_feedback;
   "content/feedbackFields": typeof content_feedbackFields;

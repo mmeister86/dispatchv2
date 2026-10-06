@@ -1,4 +1,10 @@
 import {
+  versionFields as styleVersionFields,
+  controlFields as styleControlFields,
+  commandFields as styleCommandFields,
+  proposalFields as styleProposalFields,
+} from "./ai/styleFields";
+import {
   modelFields as calibrationModelFields,
   calibrationControlFields,
 } from "./performance/modelFields";
@@ -113,6 +119,49 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  styleProfileVersions: defineTable(styleVersionFields)
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
+    .index("by_proposalId_and_sourceUnavailable", [
+      "proposalId",
+      "sourceUnavailable",
+    ])
+    .index("by_baseVersionId_and_sourceUnavailable", [
+      "baseVersionId",
+      "sourceUnavailable",
+    ])
+    .index("by_sourceUnavailable", ["sourceUnavailable"]),
+  styleProfileControls: defineTable(styleControlFields).index(
+    "by_workspaceId_and_accountId",
+    ["workspaceId", "accountId"],
+  ),
+  styleProfileCommands: defineTable(styleCommandFields)
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
+    .index("by_workspaceId_and_accountId_and_actorId_and_commandKey", [
+      "workspaceId",
+      "accountId",
+      "actorId",
+      "commandKey",
+    ])
+    .index("by_versionId_and_sourceUnavailable", [
+      "versionId",
+      "sourceUnavailable",
+    ])
+    .index("by_proposalId_and_sourceUnavailable", [
+      "proposalId",
+      "sourceUnavailable",
+    ])
+    .index("by_sourceUnavailable", ["sourceUnavailable"]),
+  learningProposals: defineTable(styleProposalFields)
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
+    .index("by_feedbackId_and_sourceUnavailable", [
+      "feedbackId",
+      "sourceUnavailable",
+    ])
+    .index("by_baseVersionId_and_sourceUnavailable", [
+      "baseVersionId",
+      "sourceUnavailable",
+    ])
+    .index("by_sourceUnavailable", ["sourceUnavailable"]),
   calibrationControls: defineTable(calibrationControlFields).index(
     "by_workspaceId_and_accountId",
     ["workspaceId", "accountId"],
@@ -182,6 +231,11 @@ export default defineSchema({
       "version",
     ]),
   contentFeedback: defineTable(contentFeedbackFields)
+    .index("by_resultingVersionId_and_sourceUnavailable", [
+      "resultingVersionId",
+      "sourceUnavailable",
+    ])
+    .index("by_sourceUnavailable", ["sourceUnavailable"])
     .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
     .index("by_versionId_and_sourceUnavailable", [
       "versionId",

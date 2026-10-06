@@ -1,6 +1,9 @@
 import { test, expect, vi, beforeEach, afterEach } from "vitest";
 import { fixture } from "../../tests/research-fixture";
 import { api, internal, components } from "../_generated/api";
+import { ConvexError } from "convex/values";
+import { currentEvidence, projectEvidence } from "./evidence";
+import { projectIdea, projectDraft } from "./contentProof";
 const secret = "Distinctive protected research quote 231";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
@@ -556,3 +559,68 @@ test("existing Inbox attaches exact current proof to an actual native owned thre
     f.signed.mutation(api.ai.conversations.attachEvidence, args),
   ).rejects.toThrow();
 });
+
+test.each([
+  new Error("Unexpected reviewer database failure"),
+  new ConvexError("RESEARCH_UNKNOWN_SOURCE"),
+  new ConvexError({ code: "ROLE_ACCESS_DENIED" }),
+])(
+  "reviewer database failures propagate through every shared projection (%s)",
+  async (error) => {
+    const f = await setup();
+    const reviewed = await f.signed.mutation(api.research.evidence.review, {
+      workspaceId: f.workspaceId,
+      evidenceId: f.evidenceId,
+      commandKey: "review-error",
+      maxAgeMs: 86400000,
+      validUntil: Date.now() + 86400000,
+      reason: "Actual review",
+      substantiveSupportAttested: true,
+      eventAt: null,
+      eventQuote: null,
+    });
+    const [result] = await f.signed.mutation(api.research.handoff.consume, {
+      ...f.args,
+      evidenceIds: [reviewed],
+    });
+    const before = await f.t.run(async (ctx) => ({
+      evidence: await ctx.db.get(reviewed),
+      idea: await ctx.db.get(result.ideaVersionId),
+      draft: await ctx.db.get(result.draftVersionId!),
+    }));
+    for (const kind of ["proof", "evidence", "idea", "draft"] as const) {
+      await expect(
+        f.t.run(async (ctx) => {
+          let userReads = 0;
+          const db = new Proxy(ctx.db, {
+            get(target, key) {
+              if (key !== "get") return Reflect.get(target, key);
+              return async (id: typeof f.userId) => {
+                if (
+                  id === before.evidence!.assessment!.reviewerId &&
+                  ++userReads === 2
+                )
+                  throw error;
+                return target.get(id);
+              };
+            },
+          });
+          const proofCtx = { ...ctx, db };
+          if (kind === "proof")
+            return currentEvidence(proofCtx, f.workspaceId, reviewed);
+          if (kind === "evidence")
+            return projectEvidence(proofCtx, f.workspaceId, before.evidence!);
+          if (kind === "idea") return projectIdea(proofCtx, before.idea!);
+          return projectDraft(proofCtx, before.draft!);
+        }),
+      ).rejects.toThrow();
+    }
+    expect(
+      await f.t.run(async (ctx) => ({
+        evidence: await ctx.db.get(reviewed),
+        idea: await ctx.db.get(result.ideaVersionId),
+        draft: await ctx.db.get(result.draftVersionId!),
+      })),
+    ).toEqual(before);
+  },
+);
