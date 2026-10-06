@@ -4,7 +4,7 @@ title: Versionierte Algorithmus- und Audience-Profile erstellen (P08.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 03:08'
+updated_date: '2026-10-06 03:13'
 labels:
   - p08
   - jev
@@ -90,4 +90,6 @@ ROOT independently read actualReactbrowser /tmp/dispatch-task27-browser-fixed.lo
 ROOT read actual lifecycle browserPASS /tmp/dispatch-task27-browser-lifecycle.log (registeredmocktransport). IndependentAdmin reviewer/activationactor currentrevocation/removal checkaddedimplementation-first, reported7/1GREEN. Readpre-finalfull601/31PASS05:02:29. GenuineinputRED /tmp/dispatch-task27-multiline-red.log05:03:11: sharedtextvalidator rejectedTextarea newline context; minimalvalidator permits textual newline/tab while rejectingnontextcontrols, separate8/1GREEN05:03:18. Newbackendtrustboundarybytes require freshfinalfull/static/codegen/posttype/Dev/posttypes; priorreceipts retained asintermediate. NoAC/Done/sourcewindowstillclosed.
 
 ROOT read pre-index readiness inventory13ownedpaths RAW7e2205a0aeb3e61f7e44e249f070c6828e01fffccafe6e7541fc2566febb33d8, retainedseparately /tmp/dispatch-task27-pre-index-source-inventory.json. Implementerreports602/31final/static/build/bundle/browser/codegen/posttype/existingEUDev05:04:56/posttypePASS; notSOURCEcommitted. ROOT actualcommoncode review foundrollback exacthistoricalpair by_scope+filter hasunboundedreceipt scan (unlike50versionlist/pagedhistory), noactualruntimefailureclaimed. Originalwriterconfirmsrootcallers andfixessameownedprofiles.ts/schema.ts withoneexactscope/pair/actionindex andmax1select+max1rollbacklookup aftercurrentproof; oldpairafter>50unrelatedcommandscontrol validation-only, noengine/newtable/helper. Sourcewindowclosed, freshfull/static/codegen/Dev/inventory requiredaftercorrection; original602receipts preserved. NoAC/Done.
+
+ROOT independentlyverified SOURCE4f7578353fb0ce0dd79ef833bcd99890b5b3bb76 exact13scopedcommit/current+gitshowhashes boundedinventory RAWc33e692b38599280c1a8f91d45a32bb519ad212b3a18bb1ccee51d244a0769a3, sourceSet79a81bcd9b40a600e0e9754b7a620deea472a9fcd8b7356d3259157aa9759af8. Final9profile05:08:05/603full31files05:08:21/static/build/bundle/codegen/posttype/existingEUDev05:09:38/posttypesPASS logsreadandhashed. ROOTreadactualprofilecurrentauthority/CAS/receipt/contextprojection source, correctedrollbackexactby_selection scope/pair/action2boundedfirstlookup; noactor/grant/bootstrap/modelsideeffects. Olderselectedrowappendedpast50versionlist, historypaged25. Backend-onlyindex/test/docdelta usesunchangedactualbrowserlifecycle receipt/UI+APIsourcebyteshonestly. Current13SOURCEfrozen, index/treecleanverified; freshBackendArchitect SPEC intelligence_profiles_spec dispatched fullunit BASE9ab3418, QUALITYonlyafterPASS. Actualanalysis/predictionAC1/2 and executablequestion/normalization/lowconfidencepartAC5 await28, nosoftwareAC/Done beforefreshreviews.
 <!-- SECTION:NOTES:END -->
