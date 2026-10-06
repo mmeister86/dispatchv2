@@ -4,7 +4,7 @@ title: 'Modellaktivierung und Rückfall auf die Baseline absichern (P11.03, Teil
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 13:08'
+updated_date: '2026-10-06 13:28'
 labels:
   - p11
   - r5
@@ -65,4 +65,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 ROOT releases scoped engineering after independently accepted43.2 source21ccb0e. .docs/calibration-activation-contract.md is authoritative; /tmp/dispatch-continuation-43.3-design.md provides traced seams and native child-limit mechanism proof. Two fixed monitoring blocks, NO initial-use permission, static before mature first pass; original policy values remain UNSET and old retention cannot extend. Native internal query boundary avoids circular source extraction/cache abstractions. Actual Owner/policy/rights/live/manual/Done remain separate.
 
 2026-10-06 timing refinement: actual snapshots.begin forbids collection beforeconfirmedAt+24h. Negative24h-minus-tolerance fixtures would be unreachable. Original28-day publication span/24h maturity and30-day numeric retention normally leave <2d; <=60s positive confirmation delay can give incidental slack, so universal impossibility was not claimed. ROOT chooses ONE mature block1 checkpoint with D<F<=unusedblock2Start and original horizons; no phase/second-continuity branch/initialpermission. Existing native secondblock vocabulary grants no authority. This fully scoped finite drift/expiry/rollback contract is simpler and reachable without altering original retention; writer informed before verifying two-checkpoint branches.
+
+Root-Fortsetzungsprüfung vor Freeze: native positive Kandidatenbindung/beforeSend und echter160-Query-Child-Fallback bestehen laut Writer. Optionaler assessments.get-Child erhält ebenfalls aktuelle transactionLimits. Operations erhält direkte Owner-Deklaration mit leeren Pflichtfeldern statt bloßer Konfigurationsanweisung. Bestätigter Lifecycle-Fehler: Sweep durfte deklarierte/finale Einmal-Sperren nicht durch Löschen freigeben, solange passiver Originalkandidat gültig bleibt; sonst Rollenentzug/Wiederherstellung ermöglicht Ersatzversuch. Writer ersetzt geschützte Deklarations-/Check-Daten durch minimale scoped spent-ID-Marker in vorhandener Tabelle bis Originalkandidatenfrist und ergänzt native Gegenproben. Vertrag .docs/calibration-activation-contract.md präzisiert. Noch kein Freeze, keine frischen SPEC/QUALITY, keine AC-/Done-Abnahme.
 <!-- SECTION:NOTES:END -->

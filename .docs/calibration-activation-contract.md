@@ -8,6 +8,8 @@ Reuse block1 of one NEW prospective native reference spec as ONE fixed monitorin
 
 Stay static until the complete, mature monitoring checkpoint passes. There is no initial-use permission. One declaration per candidate and one final check per declaration prevent failed evidence being hidden by a later pass. Premature checks reject without writes; a mature unknown/fail is terminal. This is a measured checkpoint with a bounded approval interval, not continuous drift detection. New coverage/policy requires a new prospective process.
 
+Cleanup cannot free these one-shot identities while the original candidate remains retained. On declaration/check expiry or authority loss, remove protected scalar/fingerprints/policy and retain only a scoped spent-ID tombstone in the existing model table through the original candidate horizon. Admission honors live rows and these markers. Restoring Owner/Admin roles never permits a second declaration or a replacement terminal check. No separate registry or unbounded control array.
+
 Let D be monitoring block1End and F the explicitly declared final validity. Require D < F <= unused block2Start and all original/current retained horizons. Before D: static. In [D,F): require the exact block1 pass and explicit Owner activation. At F, or missing/failed/unknown/expired proof: static. Check snapshots must have D <= asOf <= block2Start; later block2 labels cannot contribute. No activation, retry or rollback moves these absolute clocks.
 
 Timing audit: the actual collector rejects requests before confirmedAt+24h, so negative observation ages within the broad ±60s reference tolerance cannot be fabricated for feasibility. A 28-day original publication span normally leaves less than two days after final label maturity before the earliest 30-day numeric retention ends. Positive confirmation delay can add at most about60s of incidental slack; two later mature windows cannot be promised. One checkpoint avoids this fragile dependency and keeps all original clocks intact.
@@ -39,6 +41,8 @@ Prospective assessment get returns projection separately from its original resul
 External consumers in assessments.get and knowledge.capture call the internal projection through generated API references. Do not directly import models back into assessments/knowledge or extract an unnecessary source layer. Convex1.46 and installed convex-test support nested runQuery transactionLimits.
 
 Use CURRENT remaining query/document/byte capacity minus a conservative parent tail reserve; skip the child if any resulting budget is not a positive safe integer. Reserve covers knowledge insert, sending patch, tail obligations and one attempted-read overflow. Failed child reads remain charged. Preserve pair's own early headroom guard. Child query has no writes and never uses a stale snapshot. Parent can pin static after a failed optional projection, preserving publishing; activation/check/sweep failures cannot become fake evidence or deletions. Native read limits do not certify CPU suitability.
+
+The saved-assessment get consumer also caps its optional child using current remaining capacity and an overflow/tail reserve. A failed optional projection cannot exhaust the parent and prevent display of the retained original assessment.
 
 ## Ownership and verification
 
