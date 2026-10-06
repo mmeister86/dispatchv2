@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 16:13'
+updated_date: '2026-10-06 23:14'
 labels: []
 dependencies:
   - TASK-49.2
@@ -35,3 +36,19 @@ Kohäsive minimale gemeinsame native Review-Grenze nach49 und final45-47. Besteh
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind dokumentiert.
 - [ ] #2 Der Nutzer bestätigt nach manueller Prüfung ausdrücklich die Freigabe zum Done-Status.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Nach technisch akzeptiertem 47/49 finale Source/Role/Team-/Lifecycle-Seams und alle Approval-/Schedule-Writer abgleichen.
+2. Konkrete default-OFF Policy/immutable Stage-Entscheidungen und server-authored aktuelle Admission-/Frozen-Pins im gemeinsamen approve/checkApproval ergänzen.
+3. Planning beide Modes, FirstWrite approve+confirm, reconcile continuation und pureMove-vs-newAdmission an dieselbe Grenze anbinden.
+4. Quellen-/Reviewer-/Horizon-Masks und indexed physische Cleanup ohne Publishing-/Finanz-Löschung prüfen.
+5. Registered native Writer/Policy/P1-P2/Text+Media/Replay/Lifecycle-Regressionen, Source-Freeze/fresh SPEC/distinct QUALITY, vollständige native/static/build/bundle/codegen und Root-Commit/exaktes EUDev; manuelle Done-Abnahme offen.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Read-only TASK50-preflight vollständig von Root gelesen und als .docs/reviews/task-50-review-preflight.md mit 14 stabilen Source-Hashes archiviert. Drei echte Approval-Inserts, zwei Schedule-Inserts, FirstWrite approve+confirm, direkte reconcile-Continuation und pureMove-vs-replacement sind verbindliche spätere Writer-Seams. resolveComment recheckt derzeit keine exakte Source; Assignment noch ohne CAS/key; bestehender Drawer/Mail-State ist kein recipient-nativer Readstate. Noch keine Source-/Test-/Review-/Dev-Abnahme; final47/49 zuerst technisch akzeptieren und dann erneut abgleichen.
+<!-- SECTION:NOTES:END -->

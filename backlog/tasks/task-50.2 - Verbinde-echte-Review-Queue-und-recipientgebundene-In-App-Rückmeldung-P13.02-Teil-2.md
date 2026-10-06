@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 16:13'
+updated_date: '2026-10-06 23:14'
 labels: []
 dependencies:
   - TASK-50.1
@@ -35,3 +36,19 @@ Nach akzeptierter50.1 echte Team/Composer/Plans/Calendar/Drawer Review-Projektio
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind dokumentiert.
 - [ ] #2 Der Nutzer bestätigt nach manueller Prüfung ausdrücklich die Freigabe zum Done-Status.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Final akzeptierte 50.1 und echte native49 Team-/Invite-/Mitgliedschaftskette abgleichen.
+2. Konkrete Assignment-CAS/immutable Commands und aktuelle exakte CommentResolve-Source-Grenze im vorhandenen Editorial-Pfad ergänzen.
+3. Native paginierte Queue und recipient-bound deduplizierte In-App-Notices ohne Textkopien an echte Team/Composer/Plans/Calendar/Drawer anbinden.
+4. Aktuelle Rollen/Scope/SourceClock, immutable original Retry, private Readstate und indexed physische Source-/Recipient-Cleanup prüfen.
+5. Öffentliche Invite-bis-Review-J10, Native Pagination/Notice/Replay/Lifecycle und styled Desktop/390/Demo/Keyboard, Source-Freeze/fresh SPEC/distinct QUALITY, vollständige Gates und Root-Commit/exaktes EUDev; manuelle Done-Abnahme offen.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Read-only TASK50-preflight vollständig von Root gelesen und als .docs/reviews/task-50-review-preflight.md mit 14 stabilen Source-Hashes archiviert. Drei echte Approval-Inserts, zwei Schedule-Inserts, FirstWrite approve+confirm, direkte reconcile-Continuation und pureMove-vs-replacement sind verbindliche spätere Writer-Seams. resolveComment recheckt derzeit keine exakte Source; Assignment noch ohne CAS/key; bestehender Drawer/Mail-State ist kein recipient-nativer Readstate. Noch keine Source-/Test-/Review-/Dev-Abnahme; final47/49 zuerst technisch akzeptieren und dann erneut abgleichen.
+<!-- SECTION:NOTES:END -->
