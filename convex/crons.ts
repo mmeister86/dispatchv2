@@ -85,4 +85,10 @@ crons.interval(
   internal.planning.recurring.sweep,
   { cursor: null },
 );
+crons.interval(
+  "Finite editorial experiment proof cleanup",
+  { minutes: 15 },
+  internal.performance.experiments.sweep,
+  { cursor: null },
+);
 export default crons;

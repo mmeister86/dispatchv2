@@ -146,7 +146,14 @@ export async function record(
     sourceUnavailable: false,
   };
   const proof = await evidence(ctx, row);
+  const workspace = (await ctx.db.get(ver.workspaceId))!;
+  // ponytail: one serialized workspace counter; partition only if measured feedback contention requires it.
+  const sequence = (workspace.feedbackSequence ?? 0) + 1;
+  if (!Number.isSafeInteger(sequence))
+    throw new ConvexError("FEEDBACK_SEQUENCE_LIMIT");
+  await ctx.db.patch(workspace._id, { feedbackSequence: sequence });
   await ctx.db.insert("contentFeedback", {
+    sequence,
     ...row,
     editExtent:
       kind === "edit" && resulting
@@ -158,6 +165,11 @@ export async function record(
 }
 async function remove(ctx: MutationCtx, row: Doc<"contentFeedback">) {
   await ctx.db.patch(row._id, { editExtent: null, sourceUnavailable: true });
+  await ctx.scheduler.runAfter(
+    0,
+    internal.performance.experiments.purgeFeedback,
+    { versionId: row.versionId, reviewerId: row.actorId },
+  );
   await ctx.scheduler.runAfter(0, internal.ai.styleProfiles.purgeFeedback, {
     feedbackId: row._id,
   });
@@ -215,6 +227,11 @@ export const purgeVersion = internalMutation({
   args: { versionId: v.id("draftVersions") },
   returns: v.null(),
   handler: async (ctx, a) => {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.performance.experiments.purgeVersion,
+      { versionId: a.versionId },
+    );
     let more = false;
     for (const field of ["versionId", "resultingVersionId"] as const) {
       const rows = await ctx.db

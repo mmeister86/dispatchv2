@@ -205,6 +205,7 @@ export async function seriesVersionProof(
   s: Doc<"planningSeries">,
   version: Doc<"planningSeriesVersions">,
   current = true,
+  walk = materialWalk(),
 ) {
   await seriesAuthority(ctx, s);
   if (
@@ -221,7 +222,6 @@ export async function seriesVersionProof(
     fail("SERIES_SOURCE_UNAVAILABLE");
   if (version.intentFingerprint !== (await versionFingerprint(version)))
     fail("SERIES_VERSION_CHANGED");
-  const walk = materialWalk();
   const style = await scopedStyleProof(ctx, s, version.style!, current, walk);
   if (
     !style.payload ||
@@ -247,6 +247,7 @@ export async function seriesVersionProof(
       },
       walk.budget.counted,
     );
+  walk.budget.remaining = 32 - walk.budget.counted.size;
   if (frame.reason === "EMBEDDING_FRAME_RESOURCE_CEILING") fail(frame.reason);
   if (
     !frame.complete ||
@@ -299,21 +300,34 @@ export async function frameFingerprint(
   }
   return sha256(JSON.stringify(manifest));
 }
-export async function seriesPlanProof(ctx: Ctx, plan: Doc<"contentPlans">) {
+export async function seriesPlanProof(
+  ctx: Ctx,
+  plan: Doc<"contentPlans">,
+  current = true,
+  walk = materialWalk(),
+  versions?: Map<
+    Id<"planningSeriesVersions">,
+    Awaited<ReturnType<typeof seriesVersionProof>>
+  >,
+) {
   if (!plan.series) return null;
   const s = await ctx.db.get(plan.series.seriesId),
     version = await ctx.db.get(plan.series.versionId);
   if (
     !s ||
     !version ||
-    !s.enabled ||
-    s.generation !== plan.series.generation ||
-    s.versionId !== version._id ||
+    (current &&
+      (!s.enabled ||
+        s.generation !== plan.series.generation ||
+        s.versionId !== version._id)) ||
     plan.sourceUnavailable ||
     !plan.semantic
   )
     fail("SERIES_VERSION_CHANGED");
-  const x = await seriesVersionProof(ctx, s, version);
+  const x =
+    versions?.get(version._id) ??
+    (await seriesVersionProof(ctx, s, version, current, walk));
+  versions?.set(version._id, x);
   const bindings = await ctx.db
     .query("semanticPlanBindings")
     .withIndex("by_planId", (q) => q.eq("planId", plan._id))

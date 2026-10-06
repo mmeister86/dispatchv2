@@ -1,6 +1,6 @@
 import { writeFileSync } from "node:fs";
 import { afterEach, expect, test, vi } from "vitest";
-import { api, internal } from "../_generated/api";
+import { api, internal, components } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { sourceFixture, send } from "../../tests/github-fixture";
 import { finiteSequence } from "./strategy";
@@ -1829,3 +1829,586 @@ test("definitive native CAS conflict recovers only with fresh reviewed revision/
     { revision: 2, generation: 2, versionId: receipt.versionId },
   );
 });
+
+test("experiment native two-of-three approval transaction assigns distinct feedback sequences and finite boundaries", async () => {
+  const f = await fixture(),
+    series = await f.create(),
+    planId = (await f.fire(series.seriesId))!;
+  const plan = await f.signed.query(api.planning.plans.get, {
+    workspaceId: f.workspaceId,
+    planId,
+  });
+  const accepted = await f.signed.mutation(api.planning.accept.selected, {
+    workspaceId: f.workspaceId,
+    planId,
+    mode: "approve_and_schedule",
+    selections: plan.items.slice(0, 2).map(({ item }) => ({
+      itemId: item._id,
+      versionId: item.versionId,
+      draftRevision: item.draftRevision,
+    })),
+  });
+  expect(accepted).toBeDefined();
+  const feedback = await f.t.run((ctx) =>
+    ctx.db.query("contentFeedback").collect(),
+  );
+  expect(feedback).toHaveLength(2);
+  expect(feedback.map((e) => e.sequence).sort()).toEqual([1, 2]);
+  expect(new Set(feedback.map((e) => e.createdAt)).size).toBe(1);
+  const manualDraft = await f.signed.mutation(api.editorial.create, {
+    workspaceId: f.workspaceId,
+    source: "Manual exact experiment unit",
+    content: {
+      accountId: f.accountId,
+      title: "Manual",
+      text: ["Explicit manual unit"],
+      media: [],
+      pillar: "Product",
+      strategy: "",
+    },
+  });
+  const manual = (await f.t.run((ctx) => ctx.db.get(manualDraft)))!
+      .currentVersionId!,
+    item = plan.items[2].item;
+  const scope = { workspaceId: f.workspaceId, accountId: f.accountId };
+  const declared = await f.signed.mutation(api.performance.experiments.change, {
+    ...scope,
+    expectedRevision: 0,
+    commandKey: "sequence-exp",
+    action: {
+      kind: "declare",
+      spec: {
+        hypothesis: "Synthetic native sequence",
+        dimension: "hook",
+        a: "Question",
+        b: "Observation",
+        outcome: "editorial-decision-v1",
+        startsAt: Date.now(),
+        endsAt: Date.now() + 3600000,
+        sampleCap: 2,
+        stopCondition: "Explicit hour end",
+        context: "Human explicitly binds exact third native series item",
+        frequency: "Actual finite series frequency, no new publishing",
+      },
+      units: [
+        {
+          versionId: item.versionId,
+          reviewerId: f.userId,
+          arm: "A",
+          planItemId: item._id,
+        },
+        { versionId: manual, reviewerId: f.userId, arm: "B", planItemId: null },
+      ],
+    },
+  });
+  const command = (kind: "start" | "stop", expectedRevision: number) =>
+    f.signed.mutation(api.performance.experiments.change, {
+      ...scope,
+      experimentId: declared.experimentId,
+      expectedRevision,
+      commandKey: `sequence-${kind}`,
+      action: { kind },
+    });
+  await command("start", 1);
+  await f.signed.mutation(api.content.feedback.decide, {
+    workspaceId: f.workspaceId,
+    versionId: item.versionId,
+    kind: "accept",
+  });
+  await command("stop", 2);
+  await f.signed.mutation(api.content.feedback.decide, {
+    workspaceId: f.workspaceId,
+    versionId: item.versionId,
+    kind: "reject",
+  });
+  const experiment = (await f.t.run((ctx) =>
+    ctx.db.get(declared.experimentId),
+  ))!;
+  expect(experiment.startSequence).toBe(2);
+  expect(experiment.stopSequence).toBe(3);
+  const detail = await f.signed.query(api.performance.experiments.get, {
+    ...scope,
+    experimentId: declared.experimentId,
+  });
+  expect(detail.counts).toMatchObject({
+    enrolled: 2,
+    accept: 1,
+    conflict: 0,
+    noFeedback: 1,
+  });
+  expect(detail.arms.A.accept).toBe(1);
+  const evidence = await f.t.run(async (ctx) => ({
+    schedules: await ctx.db.query("schedules").collect(),
+    approvals: await ctx.db.query("approvals").collect(),
+    budgets: await ctx.db.query("aiBudgets").collect(),
+    attempts: await ctx.db.query("aiAttempts").collect(),
+  }));
+  expect(evidence.schedules).toHaveLength(2);
+  expect(evidence.approvals).toHaveLength(2);
+  const bindings = await f.t.run((ctx) =>
+    ctx.db.query("editorialExperimentBindings").collect(),
+  );
+  expect(bindings).toHaveLength(5);
+  const vector = (await f.t.run((ctx) => ctx.db.get(bindings[0].vectorId!)))!;
+  await f.t.run((ctx) => ctx.db.delete(vector._id));
+  expect(
+    (
+      await f.signed.query(api.performance.experiments.get, {
+        ...scope,
+        experimentId: declared.experimentId,
+      })
+    ).spec,
+  ).toBeNull();
+  await f.t.mutation(internal.planning.recurring.purgeVector, {
+    vectorId: vector._id,
+    fingerprint: await vectorFingerprint(vector),
+    cursor: null,
+  });
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0), 1000);
+  expect(
+    (
+      await f.t.run((ctx) =>
+        ctx.db.query("editorialExperimentBindings").collect(),
+      )
+    ).every((b) => b.fingerprint === null),
+  ).toBe(true);
+  expect(
+    (
+      await f.t.run((ctx) =>
+        ctx.db.query("editorialExperimentAssignments").collect(),
+      )
+    ).every((a) => a.arm === null && a.style === null && a.planItemId === null),
+  ).toBe(true);
+  expect(
+    await f.t.run(async (ctx) => ({
+      schedules: await ctx.db.query("schedules").collect(),
+      approvals: await ctx.db.query("approvals").collect(),
+      budgets: await ctx.db.query("aiBudgets").collect(),
+      attempts: await ctx.db.query("aiAttempts").collect(),
+    })),
+  ).toEqual(evidence);
+});
+
+test("experiment optional native plan provenance preserves retained original style until actual plan scrub; draft-only units remain valid", async () => {
+  const f = await fixture(),
+    series = await f.create(),
+    planId = (await f.fire(series.seriesId))!;
+  const plan = await f.signed.query(api.planning.plans.get, {
+      workspaceId: f.workspaceId,
+      planId,
+    }),
+    scope = { workspaceId: f.workspaceId, accountId: f.accountId };
+  const spec = {
+    hypothesis: "Explicit exact context comparison",
+    dimension: "hook" as const,
+    a: "Question",
+    b: "Observation",
+    outcome: "editorial-decision-v1" as const,
+    startsAt: Date.now(),
+    endsAt: Date.now() + 3600000,
+    sampleCap: 2,
+    stopCondition: "Declared hour",
+    context: "Actual native reviewed context",
+    frequency: "Actual finite series reference without new publishing",
+  };
+  const create = (bound: boolean) =>
+    f.signed.mutation(api.performance.experiments.change, {
+      ...scope,
+      expectedRevision: 0,
+      commandKey: bound ? "bound-provenance" : "draft-only",
+      action: {
+        kind: "declare",
+        spec,
+        units: plan.items.slice(0, 2).map(({ item }, i) => ({
+          versionId: item.versionId,
+          reviewerId: f.userId,
+          arm: i ? ("B" as const) : ("A" as const),
+          planItemId: bound ? item._id : null,
+        })),
+      },
+    });
+  const bound = await create(true),
+    independent = await create(false),
+    get = (experimentId: Id<"editorialExperiments">) =>
+      f.signed.query(api.performance.experiments.get, {
+        ...scope,
+        experimentId,
+      });
+  const original = (await f.t.run((ctx) => ctx.db.get(f.style.versionId!)))!;
+  await f.signed.mutation(api.ai.styleProfiles.change, {
+    ...scope,
+    expectedRevision: 2,
+    commandKey: "experiment-retire-style",
+    action: {
+      kind: "retire",
+      versionId: f.style.versionId!,
+      reason: "Explicit ordinary retirement",
+    },
+  });
+  expect((await get(bound.experimentId)).spec).not.toBeNull();
+  expect((await get(independent.experimentId)).spec).not.toBeNull();
+  await f.t.mutation(internal.planning.recurring.sweep, { cursor: null });
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0), 1000);
+  expect((await get(bound.experimentId)).spec).toBeNull();
+  expect((await get(independent.experimentId)).spec).not.toBeNull();
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.style.versionId!)))!.payload,
+  ).toEqual(original.payload);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.style.versionId!)))!.sourceUnavailable,
+  ).toBe(false);
+  const rows = await f.t.run((ctx) =>
+    ctx.db.query("editorialExperimentAssignments").collect(),
+  );
+  expect(
+    rows
+      .filter((a) => a.experimentId === bound.experimentId)
+      .every((a) => a.arm === null && a.style === null),
+  ).toBe(true);
+  expect(
+    rows
+      .filter((a) => a.experimentId === independent.experimentId)
+      .every((a) => a.arm !== null && !a.sourceUnavailable),
+  ).toBe(true);
+});
+
+test("experiment indexed original vector/style/series descendants exceed one page and drain after roots are gone", async () => {
+  const f = await fixture(),
+    series = await f.create(),
+    planId = (await f.fire(series.seriesId))!;
+  const plan = await f.signed.query(api.planning.plans.get, {
+      workspaceId: f.workspaceId,
+      planId,
+    }),
+    scope = { workspaceId: f.workspaceId, accountId: f.accountId };
+  const declared = await f.signed.mutation(api.performance.experiments.change, {
+    ...scope,
+    expectedRevision: 0,
+    commandKey: "many-bound",
+    action: {
+      kind: "declare",
+      spec: {
+        hypothesis: "Explicit bound descendants",
+        dimension: "hook",
+        a: "Question",
+        b: "Observation",
+        outcome: "editorial-decision-v1",
+        startsAt: Date.now(),
+        endsAt: Date.now() + 3600000,
+        sampleCap: 2,
+        stopCondition: "Declared hour",
+        context: "Exact native plan source",
+        frequency: "Actual series frequency",
+      },
+      units: plan.items.slice(0, 2).map(({ item }, i) => ({
+        versionId: item.versionId,
+        reviewerId: f.userId,
+        arm: i ? ("B" as const) : ("A" as const),
+        planItemId: item._id,
+      })),
+    },
+  });
+  const originalVector = (await f.t.run((ctx) => ctx.db.get(f.vectorIds[0])))!,
+    fingerprint = await vectorFingerprint(originalVector);
+  await f.t.run(async (ctx) => {
+    const e = (await ctx.db.get(declared.experimentId))!,
+      assignment = (await ctx.db
+        .query("editorialExperimentAssignments")
+        .first())!,
+      binding = (await ctx.db
+        .query("editorialExperimentBindings")
+        .withIndex("by_vectorId_and_fingerprint", (q) =>
+          q.eq("vectorId", originalVector._id).eq("fingerprint", fingerprint),
+        )
+        .first())!;
+    for (let n = 0; n < 55; n++) {
+      const { _id: ei, _creationTime: ec, ...ef } = e,
+        { _id: ai, _creationTime: ac, ...af } = assignment,
+        { _id: bi, _creationTime: bc, ...bf } = binding;
+      const experimentId = await ctx.db.insert("editorialExperiments", ef);
+      const assignmentId = await ctx.db.insert(
+        "editorialExperimentAssignments",
+        { ...af, experimentId },
+      );
+      await ctx.db.insert("editorialExperimentBindings", {
+        ...bf,
+        assignmentId,
+      });
+    }
+    await ctx.db.delete(originalVector._id);
+  });
+  await f.t.mutation(internal.performance.experiments.purgeVector, {
+    vectorId: originalVector._id,
+    fingerprint,
+    cursor: null,
+  });
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0), 1000);
+  expect(
+    (
+      await f.t.run((ctx) =>
+        ctx.db.query("editorialExperimentBindings").collect(),
+      )
+    ).every((b) => b.sourceUnavailable && b.fingerprint === null),
+  ).toBe(true);
+  expect(
+    (
+      await f.t.run((ctx) =>
+        ctx.db.query("editorialExperimentAssignments").collect(),
+      )
+    ).every(
+      (a) =>
+        a.sourceUnavailable &&
+        a.arm === null &&
+        a.style === null &&
+        a.planItemId === null &&
+        a.seriesVersionId === null,
+    ),
+  ).toBe(true);
+  expect(
+    (
+      await f.t.run((ctx) => ctx.db.query("editorialExperiments").collect())
+    ).every((e) => e.spec === null),
+  ).toBe(true);
+});
+
+test("experiment actually consumed recent native schedule context has exact history-version proof and root-gone indexed cleanup", async () => {
+  const f = await fixture(6),
+    series = await f.create(),
+    firstId = (await f.fire(series.seriesId))!;
+  const first = await f.signed.query(api.planning.plans.get, {
+      workspaceId: f.workspaceId,
+      planId: firstId,
+    }),
+    initial = first.items[0].item;
+  await f.signed.mutation(api.planning.accept.selected, {
+    workspaceId: f.workspaceId,
+    planId: firstId,
+    mode: "approve_and_schedule",
+    selections: [
+      {
+        itemId: initial._id,
+        versionId: initial.versionId,
+        draftRevision: initial.draftRevision,
+      },
+    ],
+  });
+  await f.t.run(async (ctx) => {
+    const sessions = await ctx.runQuery(
+      components.betterAuth.adapter.findMany,
+      { model: "session", paginationOpts: { numItems: 100, cursor: null } },
+    );
+    for (const session of sessions.page)
+      await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+        input: {
+          model: "session",
+          where: [{ field: "_id", value: session._id }],
+          update: { expiresAt: Date.now() + 30 * 86400000 },
+        },
+      });
+  });
+  const secondId = (await f.fire(series.seriesId))!,
+    second = await f.signed.query(api.planning.plans.get, {
+      workspaceId: f.workspaceId,
+      planId: secondId,
+    });
+  expect(second.items.length).toBeGreaterThanOrEqual(2);
+  expect(second.items[0].item.historyVersionIds).toContain(initial.versionId);
+  const scope = { workspaceId: f.workspaceId, accountId: f.accountId },
+    spec = {
+      hypothesis: "Actual native recent context",
+      dimension: "hook" as const,
+      a: "Question",
+      b: "Observation",
+      outcome: "editorial-decision-v1" as const,
+      startsAt: Date.now(),
+      endsAt: Date.now() + 3600000,
+      sampleCap: 2,
+      stopCondition: "Declared hour",
+      context:
+        "Human binds actual second weekly plan and recent schedule context",
+      frequency: "Actual finite weekly series",
+    };
+  const create = (bound: boolean) =>
+    f.signed.mutation(api.performance.experiments.change, {
+      ...scope,
+      expectedRevision: 0,
+      commandKey: bound ? "recent-bound" : "recent-independent",
+      action: {
+        kind: "declare",
+        spec,
+        units: second.items.slice(0, 2).map(({ item }, i) => ({
+          versionId: item.versionId,
+          reviewerId: f.userId,
+          arm: i ? ("B" as const) : ("A" as const),
+          planItemId: bound ? item._id : null,
+        })),
+      },
+    });
+  const bound = await create(true),
+    independent = await create(false),
+    get = (experimentId: Id<"editorialExperiments">) =>
+      f.signed.query(api.performance.experiments.get, {
+        ...scope,
+        experimentId,
+      });
+  const bindings = await f.t.run((ctx) =>
+    ctx.db
+      .query("editorialExperimentBindings")
+      .withIndex("by_draftVersionId_and_sourceUnavailable", (q) =>
+        q
+          .eq("draftVersionId", initial.versionId)
+          .eq("sourceUnavailable", false),
+      )
+      .collect(),
+  );
+  expect(bindings).toHaveLength(2);
+  expect((await get(bound.experimentId)).spec).not.toBeNull();
+  const parents = await f.t.run(async (ctx) => ({
+    schedules: await ctx.db.query("schedules").collect(),
+    approvals: await ctx.db.query("approvals").collect(),
+    budgets: await ctx.db.query("aiBudgets").collect(),
+    attempts: await ctx.db.query("aiAttempts").collect(),
+  }));
+  await f.t.run((ctx) => ctx.db.delete(initial.versionId));
+  expect((await get(bound.experimentId)).spec).toBeNull();
+  expect((await get(independent.experimentId)).spec).not.toBeNull();
+  await f.t.mutation(internal.content.feedback.purgeVersion, {
+    versionId: initial.versionId,
+  });
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0), 1000);
+  expect(
+    await f.t.run((ctx) =>
+      ctx.db
+        .query("editorialExperimentBindings")
+        .withIndex("by_draftVersionId_and_sourceUnavailable", (q) =>
+          q
+            .eq("draftVersionId", initial.versionId)
+            .eq("sourceUnavailable", true),
+        )
+        .collect(),
+    ),
+  ).toHaveLength(2);
+  expect((await get(independent.experimentId)).spec).not.toBeNull();
+  expect(
+    await f.t.run(async (ctx) => ({
+      schedules: await ctx.db.query("schedules").collect(),
+      approvals: await ctx.db.query("approvals").collect(),
+      budgets: await ctx.db.query("aiBudgets").collect(),
+      attempts: await ctx.db.query("aiAttempts").collect(),
+    })),
+  ).toEqual(parents);
+});
+
+test("experiment actual 32 units reuse one complete 125-vector native frame inside unchanged read ceilings", async () => {
+  const f = await fixture(25, 4096, false, true, "2026-10-06T08:00:00Z", 7);
+  await fillHistory(f);
+  const series = await f.create(),
+    planId = (await f.fire(series.seriesId))!,
+    plan = await f.signed.query(api.planning.plans.get, {
+      workspaceId: f.workspaceId,
+      planId,
+    });
+  expect(plan.items.length).toBeGreaterThanOrEqual(2);
+  expect(plan.plan.semantic!.vectorCount).toBe(125);
+  const reviewers = await f.t.run(async (ctx) => {
+    const ids: Id<"users">[] = [];
+    for (let n = 0; n < 16; n++) {
+      const userId = await ctx.db.insert("users", {
+        authId: `synthetic-native-reviewer-${n}`,
+        defaultWorkspaceId: f.workspaceId,
+        activeWorkspaceId: f.workspaceId,
+      });
+      await ctx.db.insert("memberships", {
+        workspaceId: f.workspaceId,
+        userId,
+        role: "Editor",
+      });
+      ids.push(userId);
+    }
+    return ids;
+  });
+  const units = plan.items.slice(0, 2).flatMap(({ item }, i) =>
+    reviewers.map((reviewerId) => ({
+      versionId: item.versionId,
+      reviewerId,
+      arm: i ? ("B" as const) : ("A" as const),
+      planItemId: item._id,
+    })),
+  );
+  const scope = { workspaceId: f.workspaceId, accountId: f.accountId },
+    args = {
+      ...scope,
+      expectedRevision: 0,
+      commandKey: "max-native-experiment",
+      action: {
+        kind: "declare" as const,
+        spec: {
+          hypothesis: "Synthetic finite 32 exact human review units",
+          dimension: "hook" as const,
+          a: "Question",
+          b: "Observation",
+          outcome: "editorial-decision-v1" as const,
+          startsAt: Date.now(),
+          endsAt: Date.now() + 3600000,
+          sampleCap: 32,
+          stopCondition: "Explicit hour",
+          context: "Human declares exact native 125-vector series context",
+          frequency: "Actual configured weekly series; no new publishing",
+        },
+        units,
+      },
+    };
+  const limits = {
+    databaseQueries: 4096,
+    bytesRead: 16 * 1024 * 1024,
+    documentsRead: 32000,
+  };
+  const declaration = await f.signed.run(async (ctx) => ({
+    value: await ctx.runMutation(api.performance.experiments.change, args, {
+      transactionLimits: limits,
+    }),
+    metrics: await ctx.meta.getTransactionMetrics(),
+  }));
+  const start = await f.signed.run(async (ctx) => ({
+    value: await ctx.runMutation(
+      api.performance.experiments.change,
+      {
+        ...scope,
+        experimentId: declaration.value.experimentId,
+        expectedRevision: 1,
+        commandKey: "max-native-start",
+        action: { kind: "start" },
+      },
+      { transactionLimits: limits },
+    ),
+    metrics: await ctx.meta.getTransactionMetrics(),
+  }));
+  const detail = await f.signed.run(async (ctx) => ({
+    value: await ctx.runQuery(
+      api.performance.experiments.get,
+      { ...scope, experimentId: declaration.value.experimentId },
+      { transactionLimits: limits },
+    ),
+    metrics: await ctx.meta.getTransactionMetrics(),
+  }));
+  expect(detail.value.counts).toMatchObject({
+    enrolled: 32,
+    withdrawn: 0,
+    noFeedback: 32,
+  });
+  expect(detail.value.enrollmentCapped).toBe(true);
+  writeFileSync(
+    "/tmp/dispatch-47.1-native-frame-budget.json",
+    JSON.stringify(
+      {
+        qualification:
+          "32 native version+reviewer units: two exact eligible original GitHub drafts reviewed by16 actual synthetic native Editor membership rows each, one actual plan,125 native vectors with100 rich12000-byte injected history records/25 draft vectors,4096 dimensions,14 GitHub draft/idea nodes plus one fresh declared style; short synthetic policy/rights markers. This is not32 independent disjoint max ancestry roots or empirical independent samples.",
+        declaration: declaration.metrics,
+        start: start.metrics,
+        detail: detail.metrics,
+      },
+      null,
+      2,
+    ),
+  );
+}, 900000);

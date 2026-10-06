@@ -1156,7 +1156,10 @@ export async function preparedFrame(
     sourceLoss(e);
     return { ...base, reason: String((e as ConvexError<string>).data) };
   }
-  const protectedAncestors = new Set<string>(protectedNodes),
+  const protectedAncestors =
+      protectedNodes instanceof Set
+        ? protectedNodes
+        : new Set<string>(protectedNodes),
     candidates: Infer<typeof source>[] = [
       ...rows.map((r) => ({
         kind: "history" as const,

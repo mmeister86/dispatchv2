@@ -1,4 +1,10 @@
 import {
+  experimentFields,
+  commandFields as experimentCommandFields,
+  assignmentFields as experimentAssignmentFields,
+  bindingFields as experimentBindingFields,
+} from "./performance/experimentFields";
+import {
   controlFields as seriesControlFields,
   versionFields as seriesVersionFields,
   commandFields as seriesCommandFields,
@@ -238,6 +244,41 @@ export default defineSchema({
     ])
     .index("by_purposeId", ["purposeId"])
     .index("by_expiresAt", ["expiresAt"]),
+  editorialExperiments: defineTable(experimentFields).index(
+    "by_workspaceId_and_accountId",
+    ["workspaceId", "accountId"],
+  ),
+  editorialExperimentCommands: defineTable(experimentCommandFields)
+    .index("by_workspaceId_and_accountId_and_actorId_and_commandKey", [
+      "workspaceId",
+      "accountId",
+      "actorId",
+      "commandKey",
+    ])
+    .index("by_experimentId", ["experimentId"]),
+  editorialExperimentAssignments: defineTable(experimentAssignmentFields)
+    .index("by_experimentId", ["experimentId"])
+    .index("by_versionId_and_reviewerId", ["versionId", "reviewerId"])
+    .index("by_versionId_and_sourceUnavailable", [
+      "versionId",
+      "sourceUnavailable",
+    ])
+    .index("by_style_versionId_and_sourceUnavailable", [
+      "style.versionId",
+      "sourceUnavailable",
+    ])
+    .index("by_seriesVersionId_and_sourceUnavailable", [
+      "seriesVersionId",
+      "sourceUnavailable",
+    ])
+    .index("by_sourceUnavailable", ["sourceUnavailable"]),
+  editorialExperimentBindings: defineTable(experimentBindingFields)
+    .index("by_draftVersionId_and_sourceUnavailable", [
+      "draftVersionId",
+      "sourceUnavailable",
+    ])
+    .index("by_assignmentId", ["assignmentId"])
+    .index("by_vectorId_and_fingerprint", ["vectorId", "fingerprint"]),
   planningSeries: defineTable(seriesControlFields).index(
     "by_workspaceId_and_accountId",
     ["workspaceId", "accountId"],
@@ -285,6 +326,18 @@ export default defineSchema({
       "version",
     ]),
   contentFeedback: defineTable(contentFeedbackFields)
+    .index("by_versionId_and_actorId_and_kind_and_createdAt", [
+      "versionId",
+      "actorId",
+      "kind",
+      "createdAt",
+    ])
+    .index("by_versionId_and_actorId_and_kind_and_sequence", [
+      "versionId",
+      "actorId",
+      "kind",
+      "sequence",
+    ])
     .index("by_resultingVersionId_and_sourceUnavailable", [
       "resultingVersionId",
       "sourceUnavailable",
@@ -905,6 +958,7 @@ export default defineSchema({
     lifecycle: v.optional(
       v.union(v.literal("active"), v.literal("deleting"), v.literal("deleted")),
     ),
+    feedbackSequence: v.optional(v.number()),
     mediaReservedBytes: v.optional(v.number()),
     mediaAssetCount: v.optional(v.number()),
   }),

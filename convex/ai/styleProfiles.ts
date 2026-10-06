@@ -967,6 +967,12 @@ async function eraseVersion(
       versionId: row._id,
       cursor: null,
     });
+  if (!row.sourceUnavailable)
+    await ctx.scheduler.runAfter(
+      0,
+      internal.performance.experiments.purgeStyle,
+      { versionId: row._id },
+    );
   await ctx.db.patch(row._id, {
     payload: null,
     reason: "",

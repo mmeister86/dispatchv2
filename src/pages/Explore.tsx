@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { demoMode } from "@/lib/auth-client";
+import { RealExperiments } from "@/features/experiments/experiments";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowUpRight,
@@ -56,6 +58,9 @@ const freshExperiment: Experiment = {
   resultB: 0,
 };
 export function ExperimentsPage() {
+  return demoMode ? <DemoExperiments /> : <RealExperiments />;
+}
+function DemoExperiments() {
   const { state } = useStore();
   const editable = canEdit(state.role);
   const [experiments, setExperiments] = useWorkspaceLocalState<Experiment[]>(

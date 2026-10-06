@@ -89,6 +89,8 @@ import type * as performance_calibration from "../performance/calibration.js";
 import type * as performance_calibrationFields from "../performance/calibrationFields.js";
 import type * as performance_capabilities from "../performance/capabilities.js";
 import type * as performance_collect from "../performance/collect.js";
+import type * as performance_experimentFields from "../performance/experimentFields.js";
+import type * as performance_experiments from "../performance/experiments.js";
 import type * as performance_fields from "../performance/fields.js";
 import type * as performance_history from "../performance/history.js";
 import type * as performance_historyFields from "../performance/historyFields.js";
@@ -228,6 +230,8 @@ declare const fullApi: ApiFromModules<{
   "performance/calibrationFields": typeof performance_calibrationFields;
   "performance/capabilities": typeof performance_capabilities;
   "performance/collect": typeof performance_collect;
+  "performance/experimentFields": typeof performance_experimentFields;
+  "performance/experiments": typeof performance_experiments;
   "performance/fields": typeof performance_fields;
   "performance/history": typeof performance_history;
   "performance/historyFields": typeof performance_historyFields;

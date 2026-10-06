@@ -58,6 +58,12 @@ export async function scheduleNext(
   await ctx.db.patch(s._id, { nextAt: at, nextKey: key, scheduledJobId });
 }
 export async function scrubPlan(ctx: MutationCtx, plan: Doc<"contentPlans">) {
+  if (plan.series)
+    await ctx.scheduler.runAfter(
+      0,
+      internal.performance.experiments.purgeSeries,
+      { versionId: plan.series.versionId },
+    );
   await ctx.db.patch(plan._id, {
     sourceUnavailable: true,
     semantic: undefined,
@@ -114,6 +120,11 @@ export async function invalidateVersion(
       intentFingerprint: null,
       sourceUnavailable: true,
     });
+  await ctx.scheduler.runAfter(
+    0,
+    internal.performance.experiments.purgeSeries,
+    { versionId },
+  );
   await ctx.scheduler.runAfter(0, internal.planning.recurring.purgeVersion, {
     versionId,
     cursor: null,
@@ -171,6 +182,11 @@ export const purgeVector = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.performance.experiments.purgeVector,
+      a,
+    );
     // The immutable fingerprint targets old receipts even after deletion/replacement; fresh same-ID bindings survive.
     const page = await ctx.db
       .query("semanticPlanBindings")
