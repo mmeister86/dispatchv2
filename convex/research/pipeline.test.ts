@@ -235,7 +235,11 @@ test("actual registered Workflow and funded Agent use only two physical calls, s
     );
     expect(attempts).toHaveLength(2);
     expect(attempts[1].state).toBe("sent");
-    expect(attempts[1].researchOrderId).toBeUndefined();
+    expect(
+      "researchOrderId" in attempts[1]
+        ? attempts[1].researchOrderId
+        : undefined,
+    ).toBeUndefined();
     const output = await modelOutput(f, orderId);
     return Response.json({
       id: "semantic-result",
@@ -406,7 +410,7 @@ test("ordinary profile save during unresolved registered native transport preser
   ).toBe(true);
   expect(
     attempts
-      .filter((a) => a.runId === order.pipeline!.runId)
+      .filter((a) => "runId" in a && a.runId === order.pipeline!.runId)
       .map((a) => a.estimatedMicros),
   ).toEqual([30]);
   const future = await f.signed.mutation(api.research.pipeline.start, {
@@ -1824,7 +1828,7 @@ test("native budget overrun atomically cancels pipeline disposition and preserve
   });
   const attempt = (
     await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())
-  ).find((t) => t.researchOrderId === id)!;
+  ).find((t) => "researchOrderId" in t && t.researchOrderId === id)!;
   const receipt = {
     attemptId: attempt._id,
     units: null,

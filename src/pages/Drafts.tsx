@@ -1,3 +1,4 @@
+import { Similarity } from "@/features/content/Similarity";
 import { SavedAssessment } from "@/features/intelligence/assessments";
 import { IntelligenceProfiles } from "@/features/intelligence/profiles";
 import {
@@ -1394,28 +1395,40 @@ export function ComposerPage() {
                   abweichen.
                 </p>
               </div>
-              <Section title="Ähnliche Inhalte" className="mt-4">
-                {similar.length ? (
-                  similar.map((d) => (
-                    <Link
-                      className="mb-3 block text-xs hover:text-primary"
-                      key={d.id}
-                      to={`/drafts/${d.id}`}
-                    >
-                      {d.title}
-                      <ArrowRight size={12} className="ml-1 inline" />
-                    </Link>
-                  ))
-                ) : (
-                  <p className="text-xs muted">
-                    Noch keine historischen Vergleichsbeiträge.
+              {demoMode ? (
+                <Section title="Ähnliche Inhalte" className="mt-4">
+                  {similar.length ? (
+                    similar.map((d) => (
+                      <Link
+                        className="mb-3 block text-xs hover:text-primary"
+                        key={d.id}
+                        to={`/drafts/${d.id}`}
+                      >
+                        {d.title}
+                        <ArrowRight size={12} className="ml-1 inline" />
+                      </Link>
+                    ))
+                  ) : (
+                    <p className="text-xs muted">
+                      Noch keine historischen Vergleichsbeiträge.
+                    </p>
+                  )}
+                  <p className="mb-0 text-[10px] leading-relaxed muted">
+                    Gleicher Themenbereich. Prüfe Wiederholung und Abstand
+                    redaktionell; keine automatische Ähnlichkeitsanalyse.
                   </p>
-                )}
-                <p className="mb-0 text-[10px] leading-relaxed muted">
-                  Gleicher Themenbereich. Prüfe Wiederholung und Abstand
-                  redaktionell; keine automatische Ähnlichkeitsanalyse.
-                </p>
-              </Section>
+                </Section>
+              ) : (
+                <div className="mt-4">
+                  <Similarity
+                    accountId={accountId}
+                    versionId={v.id}
+                    blocked={
+                      dirty || conflict || saving || !!v.sourceUnavailable
+                    }
+                  />
+                </div>
+              )}
               <Section title="Quellen & Kontext" className="mt-4">
                 <p className="text-xs">
                   {draft.source ?? "Keine externe Quelle"}

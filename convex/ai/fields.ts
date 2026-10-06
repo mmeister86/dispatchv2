@@ -50,6 +50,7 @@ export const budgetFields = {
       v.literal("analyzer"),
       v.literal("own-metrics"),
       v.literal("own-history"),
+      v.literal("own-content-embedding"),
     ),
   ),
   approvedBy: v.optional(v.id("users")),

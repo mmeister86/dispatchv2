@@ -73,4 +73,10 @@ crons.interval(
   internal.ai.styleProfiles.sweep,
   { cursor: null, table: "proposals" },
 );
+crons.interval(
+  "Protected semantic coordinate cleanup",
+  { minutes: 15 },
+  internal.content.similarity.sweep,
+  { cursor: null, family: "vectors" },
+);
 export default crons;

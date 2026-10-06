@@ -1,4 +1,10 @@
 import {
+  policyFields as embeddingPolicyFields,
+  controlFields as embeddingControlFields,
+  vectorFields as embeddingVectorFields,
+  attemptFields as embeddingAttemptFields,
+} from "./content/similarityFields";
+import {
   versionFields as styleVersionFields,
   controlFields as styleControlFields,
   commandFields as styleCommandFields,
@@ -119,6 +125,23 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  embeddingPolicies: defineTable(embeddingPolicyFields)
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
+    .index("by_workspaceId_and_accountId_and_version", [
+      "workspaceId",
+      "accountId",
+      "version",
+    ]),
+  embeddingControls: defineTable(embeddingControlFields).index(
+    "by_workspaceId_and_accountId",
+    ["workspaceId", "accountId"],
+  ),
+  contentEmbeddings: defineTable(embeddingVectorFields)
+    .index("by_sourcePin_historyPostId", ["sourcePin.historyPostId"])
+    .index("by_sourcePin_draftVersionId", ["sourcePin.draftVersionId"])
+    .index("by_controlId", ["controlId"])
+    .index("by_actorId", ["actorId"])
+    .index("by_sourceUntil", ["sourceUntil"]),
   styleProfileVersions: defineTable(styleVersionFields)
     .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
     .index("by_proposalId_and_sourceUnavailable", [
@@ -257,6 +280,11 @@ export default defineSchema({
     .index("by_checkpointUntil", ["checkpointUntil"])
     .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"]),
   historyPosts: defineTable(historyPostFields)
+    .index("by_workspaceId_and_accountId_and_providerCreatedAt", [
+      "workspaceId",
+      "accountId",
+      "providerCreatedAt",
+    ])
     .index("by_workspaceId_and_accountId_and_externalId", [
       "workspaceId",
       "accountId",
@@ -585,8 +613,20 @@ export default defineSchema({
       v.object(jevAttemptFields),
       v.object(metricsAttemptFields),
       v.object(historyAttemptFields),
+      v.object(embeddingAttemptFields),
     ),
   )
+    .index("by_embedding_command", [
+      "owner",
+      "workspaceId",
+      "accountId",
+      "actorId",
+      "commandKey",
+    ])
+    .index("by_embedding_source_history", ["owner", "sourcePin.historyPostId"])
+    .index("by_embedding_source_draft", ["owner", "sourcePin.draftVersionId"])
+    .index("by_embedding_control", ["owner", "controlId"])
+    .index("by_embedding_cleanup", ["owner", "sourceUnavailable"])
     .index("by_jev_operation", [
       "owner",
       "workspaceId",
@@ -784,6 +824,7 @@ export default defineSchema({
     "updatedAt",
   ]),
   draftVersions: defineTable(versionFields)
+    .index("by_ideaVersionId", ["ideaVersionId"])
     .index("by_ideaVersionId_and_researchCleanupPending", [
       "ideaVersionId",
       "researchCleanupPending",

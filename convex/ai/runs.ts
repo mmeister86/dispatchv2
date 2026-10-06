@@ -570,6 +570,8 @@ export const settle = internalMutation({
   handler: async (ctx, a) => {
     const receipt = await ctx.db.get(a.attemptId);
     if (!receipt) throw new ConvexError("MODEL_ATTEMPT_NOT_FOUND");
+    if (receipt.owner === "own-content-embedding")
+      throw new ConvexError("MODEL_ATTEMPT_OWNER_INVALID");
     const attempt = await generationAttempt(
       ctx,
       receipt,

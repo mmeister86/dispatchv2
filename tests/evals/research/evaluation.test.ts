@@ -355,11 +355,11 @@ async function execute(
       policyVersion: a.policyVersion,
       units: a.owner === "native-search" ? a.units : null,
       inputTokens: a.owner === "native-search" ? null : a.inputTokens,
-      outputTokens: a.owner === "native-search" ? null : a.outputTokens,
-      reportedCost: a.owner === "jev-analyzer" ? null : a.reportedCost,
-      reportedCurrency: a.owner === "jev-analyzer" ? null : a.reportedCurrency,
+      outputTokens: "outputTokens" in a ? a.outputTokens : null,
+      reportedCost: "reportedCost" in a ? a.reportedCost : null,
+      reportedCurrency: "reportedCurrency" in a ? a.reportedCurrency : null,
       reportedCostInvalid:
-        a.owner === "jev-analyzer" ? false : a.reportedCostInvalid,
+        "reportedCostInvalid" in a ? a.reportedCostInvalid : false,
     })),
   });
   const check = (measure: string, passed: boolean, detail: string) =>

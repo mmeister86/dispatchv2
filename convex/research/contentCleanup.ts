@@ -6,6 +6,9 @@ import type { Id } from "../_generated/dataModel";
 async function scrubDraft(ctx: MutationCtx, id: Id<"draftVersions">) {
   const ver = await ctx.db.get(id);
   if (!ver || (!ver.researchCleanupPending && !ver.sourceUnavailable)) return;
+  await ctx.scheduler.runAfter(0, internal.content.similarity.purge, {
+    draftVersionId: id,
+  });
   await ctx.db.patch(id, {
     content: {
       ...ver.content,
@@ -70,6 +73,12 @@ export const version = internalMutation({
   returns: v.null(),
   handler: async (ctx, a) => {
     const ver = await ctx.db.get(a.versionId);
+    if (ver && !a.family)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.semanticDrafts,
+        { versionId: ver._id, cursor: null },
+      );
     if (
       !ver ||
       ver.sourceCleanupState === "complete" ||
@@ -338,3 +347,29 @@ export async function registerResearchCopies(
     });
   }
 }
+
+// The protected derivative edge is independent of whether an older cleanup already scrubbed the root.
+export const semanticDrafts = internalMutation({
+  args: {
+    versionId: v.id("ideaVersions"),
+    cursor: v.union(v.string(), v.null()),
+  },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const page = await ctx.db
+      .query("draftVersions")
+      .withIndex("by_ideaVersionId", (q) => q.eq("ideaVersionId", a.versionId))
+      .paginate({ cursor: a.cursor, numItems: 25 });
+    for (const row of page.page)
+      await ctx.scheduler.runAfter(0, internal.content.similarity.purge, {
+        draftVersionId: row._id,
+      });
+    if (!page.isDone)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.semanticDrafts,
+        { ...a, cursor: page.continueCursor },
+      );
+    return null;
+  },
+});

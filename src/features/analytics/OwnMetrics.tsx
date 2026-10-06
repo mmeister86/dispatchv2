@@ -1,4 +1,5 @@
 import { Baselines } from "./Baselines";
+import { Similarity } from "@/features/content/Similarity";
 import { aggregate } from "../../../convex/performance/metricDefinitions";
 const windows = [0.25, 1, 6, 24, 48] as const;
 import { useState, useEffect } from "react";
@@ -779,6 +780,11 @@ export function OwnMetrics() {
         <p role="alert" className="mt-4">
           {error}
         </p>
+      )}
+      {account && (
+        <div className="mt-6">
+          <Similarity accountId={account.id} />
+        </div>
       )}
     </div>
   );

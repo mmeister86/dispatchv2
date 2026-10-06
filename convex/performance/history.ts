@@ -23,6 +23,7 @@ import {
 import { credentialDoc } from "../integrations/x/fields";
 import { changeLiability } from "../ai/accounting";
 import { sha256 } from "../lib/crypto";
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 type Ctx = QueryCtx | MutationCtx;
 const positive = (n: number, max = 1e12) =>
   Number.isSafeInteger(n) && n > 0 && n <= max;
@@ -719,8 +720,12 @@ export const finish = internalMutation({
         metricsStatus: "not-observed" as const,
         removed: false,
       };
-      if (old) await ctx.db.replace(old._id, data);
-      else await ctx.db.insert("historyPosts", data);
+      if (old) {
+        await ctx.scheduler.runAfter(0, internal.content.similarity.purge, {
+          historyPostId: old._id,
+        });
+        await ctx.db.replace(old._id, data);
+      } else await ctx.db.insert("historyPosts", data);
       imported++;
     }
     const repeated =
@@ -856,32 +861,67 @@ export const clear = internalMutation({
     return null;
   },
 });
-async function retainedHorizon(ctx: Ctx, row: Doc<"historyPosts">) {
+export async function retainedHorizon(
+  ctx: Ctx,
+  row: Doc<"historyPosts">,
+  memo?: Map<string, number>,
+) {
+  // Read-only transaction memo: the exact account/job/generation shares current rights, never row material or its horizon.
+  if (row.removed || !row.text)
+    throw new ConvexError("OWN_HISTORY_SOURCE_UNAVAILABLE");
+  const key = JSON.stringify([
+    row.workspaceId,
+    row.accountId,
+    row.jobId,
+    row.generation,
+  ]);
+  const prior = memo?.get(key);
+  if (prior !== undefined) return Math.min(row.sourceUntil, prior);
   const j = await ctx.db.get(row.jobId),
     original = j ? await ctx.db.get(j.policyId) : null;
+  const c = await control(ctx, row);
   if (
+    row.removed ||
+    !row.text ||
+    !c ||
+    c.deletedThroughGeneration >= row.generation ||
     !j ||
     j.workspaceId !== row.workspaceId ||
     j.accountId !== row.accountId ||
+    j.generation !== row.generation ||
     !original ||
+    original.workspaceId !== row.workspaceId ||
+    original.accountId !== row.accountId ||
     (await hash(original)) !== j.policyFingerprint
   )
     throw new ConvexError("OWN_HISTORY_SOURCE_UNAVAILABLE");
   await admin(ctx, row.workspaceId, j.actorId);
+  await admin(ctx, row.workspaceId, original.approvedBy);
   const p = await policy(ctx, row),
     ids = await grants(ctx, p, false);
+  if (
+    original.providerIdentity !== p.providerIdentity ||
+    original.connectionSequence !== p.connectionSequence
+  )
+    throw new ConvexError("OWN_HISTORY_SOURCE_UNAVAILABLE");
   const currentCredential = await credential(ctx, row, p);
-  return Math.min(
-    row.sourceUntil,
+  const until = Math.min(
     j.sourceUntil,
+    j.createdAt + p.retentionMs,
+    original.expiresAt,
     p.expiresAt,
     currentCredential.expiresAt - 15000,
     ...(await Promise.all(ids.map((id) => ctx.db.get(id)))).map(
       (b) => b!.expiresAt,
     ),
   );
+  memo?.set(key, until);
+  return Math.min(row.sourceUntil, until);
 }
 async function scrub(ctx: MutationCtx, p: Doc<"historyPosts">) {
+  await ctx.scheduler.runAfter(0, internal.content.similarity.purge, {
+    historyPostId: p._id,
+  });
   // The financial graph refers to the job, not the text row: no raw-text tombstone is needed.
   await ctx.db.delete(p._id);
 }
@@ -940,8 +980,8 @@ export const expire = internalMutation({
       let until = 0;
       try {
         until = await retainedHorizon(ctx, row);
-      } catch {
-        /* Missing current rights require physical cleanup. */
+      } catch (error) {
+        rethrowUnexpectedSourceError(error);
       }
       if (until <= Date.now()) await scrub(ctx, row);
     }
