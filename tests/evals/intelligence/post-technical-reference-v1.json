@@ -1,0 +1,408 @@
+{
+  "datasetVersion": "jev-post-technical-reference-v1",
+  "questionVersion": "jev-post-analysis-v1",
+  "normalizationVersion": "jev-normalization-v1",
+  "formulaVersion": "dispatch-score-v1",
+  "origin": "AI_proposed_technical_reference",
+  "reviewStatus": "human_review_pending",
+  "inferenceExecuted": false,
+  "calibrationStatus": "uncalibrated",
+  "fixtures": [
+    {
+      "id": "launch",
+      "thread": [
+        {
+          "position": 0,
+          "text": "Today we launch Dispatch v1: write, review and schedule a complete thread in one workspace."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "announcement"
+      ],
+      "tags": [
+        "launch",
+        "announcement",
+        "strong_hook"
+      ],
+      "expectedRanges": {
+        "hookStrength": [
+          0.5,
+          1
+        ],
+        "promotionalTone": [
+          0.2,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "announcement",
+      "thread": [
+        {
+          "position": 0,
+          "text": "The community meetup is on Friday at 18:00. Registration closes Thursday."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "announcement"
+      ],
+      "tags": [
+        "announcement"
+      ],
+      "expectedRanges": {
+        "clarity": [
+          0.75,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "opinion",
+      "thread": [
+        {
+          "position": 0,
+          "text": "I think code review should prioritize correctness before style. A clear naming convention helps, but cannot repair a data-loss bug."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "opinion"
+      ],
+      "tags": [
+        "opinion"
+      ],
+      "expectedRanges": {
+        "clarity": [
+          0.5,
+          1
+        ],
+        "discussionPotential": [
+          0.25,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "education",
+      "thread": [
+        {
+          "position": 0,
+          "text": "A retry is safe only when the operation is idempotent. Assign one request key, save the result and return that result when the key repeats."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "educational"
+      ],
+      "tags": [
+        "educational",
+        "technical"
+      ],
+      "expectedRanges": {
+        "clarity": [
+          0.5,
+          1
+        ],
+        "originality": [
+          0.25,
+          0.75
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "story",
+      "thread": [
+        {
+          "position": 0,
+          "text": "Last Friday our queue stalled. We found one malformed message blocking every worker. Moving it aside let the remaining jobs finish."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "story"
+      ],
+      "tags": [
+        "story"
+      ],
+      "expectedRanges": {
+        "clarity": [
+          0.5,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "promotion",
+      "thread": [
+        {
+          "position": 0,
+          "text": "Buy our course today. Save 30% with code LEARN before Sunday."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "promotional"
+      ],
+      "tags": [
+        "promotion",
+        "strong_cta"
+      ],
+      "expectedRanges": {
+        "promotionalTone": [
+          0.75,
+          1
+        ],
+        "naturalCta": [
+          0.25,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "weak-hook",
+      "thread": [
+        {
+          "position": 0,
+          "text": "Some things happened. Here is another update about our project."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "update"
+      ],
+      "tags": [
+        "weak_hook"
+      ],
+      "expectedRanges": {
+        "hookStrength": [
+          0,
+          0.5
+        ],
+        "originality": [
+          0,
+          0.5
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "strong-hook",
+      "thread": [
+        {
+          "position": 0,
+          "text": "One duplicate payment exposed our retry bug. Here is the request-key check that prevents the same transfer from running twice."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "educational"
+      ],
+      "tags": [
+        "strong_hook",
+        "technical"
+      ],
+      "expectedRanges": {
+        "hookStrength": [
+          0.75,
+          1
+        ],
+        "clarity": [
+          0.5,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "clickbait",
+      "thread": [
+        {
+          "position": 0,
+          "text": "You will NEVER believe this secret. The shocking truth changes EVERYTHING. Click now to find out."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "other"
+      ],
+      "tags": [
+        "clickbait"
+      ],
+      "expectedRanges": {
+        "clickbait": [
+          0.75,
+          1
+        ],
+        "strongClaim": [
+          0.5,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "ambiguous",
+      "thread": [
+        {
+          "position": 0,
+          "text": "Maybe tomorrow. New possibilities, same questions. What next?"
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "other"
+      ],
+      "tags": [
+        "ambiguous"
+      ],
+      "expectedRanges": {
+        "clarity": [
+          0,
+          0.5
+        ],
+        "contentTypeConfidence": [
+          0,
+          0.7
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "technical",
+      "thread": [
+        {
+          "position": 0,
+          "text": "A unique database constraint makes duplicate request keys fail atomically. The application can then read the stored result for that key."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "educational"
+      ],
+      "tags": [
+        "technical"
+      ],
+      "expectedRanges": {
+        "clarity": [
+          0.5,
+          1
+        ],
+        "strongClaim": [
+          0.25,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "conversation",
+      "thread": [
+        {
+          "position": 0,
+          "text": "Which code review finding changed how you work? Share one concrete example and why it mattered."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "conversation"
+      ],
+      "tags": [
+        "conversational",
+        "strong_cta"
+      ],
+      "expectedRanges": {
+        "discussionPotential": [
+          0.75,
+          1
+        ],
+        "naturalCta": [
+          0.75,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "strong-claim",
+      "thread": [
+        {
+          "position": 0,
+          "text": "Our system is always faster than every competitor and will never lose data."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "opinion"
+      ],
+      "tags": [
+        "strong_claim"
+      ],
+      "expectedRanges": {
+        "strongClaim": [
+          0.75,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "no-cta",
+      "thread": [
+        {
+          "position": 0,
+          "text": "We fixed the export timeout and added a progress indicator. The release is available today."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "update"
+      ],
+      "tags": [
+        "absent_cta"
+      ],
+      "expectedRanges": {
+        "naturalCta": [
+          0.5,
+          0.5
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    },
+    {
+      "id": "complete-thread",
+      "thread": [
+        {
+          "position": 0,
+          "text": "We shipped the importer.\n\nIt worked for small files."
+        },
+        {
+          "position": 1,
+          "text": "A customer sent a larger file and exposed a timeout. We moved parsing into bounded batches."
+        }
+      ],
+      "media": [],
+      "proposedContentTypes": [
+        "story"
+      ],
+      "tags": [
+        "story",
+        "ordered_thread"
+      ],
+      "expectedRanges": {
+        "clarity": [
+          0.25,
+          1
+        ]
+      },
+      "reviewStatus": "human_review_pending"
+    }
+  ]
+}

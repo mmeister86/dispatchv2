@@ -8,7 +8,7 @@ const mocks = {
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';`,
   "@/lib/store": `import {useState,useEffect} from 'react';export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>{const role=window.role;useEffect(()=>{window.committedRole=role;},[role]);return {state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role,accounts:[{id:window.account,workspaceId:window.workspace,name:'Synthetic',channel:'X'}],drafts:[],ideas:[],schedules:[],preferences:{audience:'Personal preference'}},mutate:()=>{}};};`,
 };
-const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {OperationsPage} from '/src/pages/Operations.tsx';import {IntelligenceProfiles} from '/src/features/intelligence/profiles.tsx';window.workspace='workspace-one';window.account='account-one';window.role='Owner';window.queries=[];window.commands=[];window.profile=undefined;window.historyRows={page:[],isDone:true,continueCursor:''};window.view='operations';const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,window.view==='operations'?React.createElement(OperationsPage):React.createElement(IntelligenceProfiles,{readOnly:window.view==='readonly',audienceOnly:window.view==='audience'}))));window.render();`;
+const entry = `import "/src/index.css";import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {OperationsPage} from '/src/pages/Operations.tsx';import {IntelligenceProfiles} from '/src/features/intelligence/profiles.tsx';window.workspace='workspace-one';window.account='account-one';window.role='Owner';window.queries=[];window.commands=[];window.profile=undefined;window.historyRows={page:[],isDone:true,continueCursor:''};window.view='operations';const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,window.view==='operations'?React.createElement(OperationsPage):React.createElement(IntelligenceProfiles,{readOnly:window.view==='readonly',audienceOnly:window.view==='audience'}))));window.render();`;
 const server = await createServer({
   root,
   configFile: `${root}/vite.config.ts`,
@@ -187,6 +187,46 @@ try {
   await expect(page.getByLabel("Deklarierte Account-Zielgruppe")).toHaveValue(
     "New account buffer",
   );
+  await page.getByLabel("Profil-Kandidat").selectOption("post-analysis");
+  await page
+    .getByRole("button", { name: "Post-Analyse als Kandidat anlegen" })
+    .click();
+  const candidateInput = await page.evaluate(() => window.commands.at(-1).args);
+  expect(candidateInput.variant).toBe("post-analysis");
+  expect(candidateInput.accountId).toBe("account-two");
+  expect(candidateInput.expectedRevision).toBe(0);
+  await expect(page.getByLabel("Profil-Kandidat")).toBeDisabled();
+  await page.evaluate(() =>
+    window.commands.at(-1).reject(new Error("lost acknowledgement")),
+  );
+  await page
+    .getByRole("button", { name: "Ursprüngliche Anfrage wiederholen" })
+    .click();
+  expect(await page.evaluate(() => window.commands.at(-1).args)).toEqual(
+    candidateInput,
+  );
+  await page.evaluate(() =>
+    window.commands
+      .at(-1)
+      .resolve({ revision: 1, algorithmId: "candidate-one", audienceId: null }),
+  );
+  await expect(
+    page.getByText("Aktion bestätigt.", { exact: true }),
+  ).toHaveCount(0);
+  await page.evaluate(() => {
+    window.role = "Editor";
+    window.render();
+  });
+  await expect(page.getByLabel("Profil-Kandidat")).toBeDisabled();
+  await page.evaluate(() => {
+    window.role = "Owner";
+    window.render();
+  });
+  await expect(page.getByLabel("Profil-Kandidat")).toBeEnabled();
+  await page.screenshot({
+    path: "/tmp/task28.2-profile-candidate.png",
+    fullPage: true,
+  });
   await page.evaluate(() => {
     window.view = "readonly";
     window.render();
@@ -233,6 +273,7 @@ try {
     };
     window.render();
   }, empty);
+  await page.getByLabel("Profil-Kandidat").selectOption("public-context");
   await page.getByLabel("Entscheidungsgrund").fill("Explicit source review");
   await page.getByRole("button", { name: "Quellenprofil prüfen" }).click();
   const reviewInput = await page.evaluate(() => window.commands.at(-1).args);
@@ -320,7 +361,7 @@ try {
   ).toBe(false);
   expect(errors).toEqual([]);
   console.log(
-    "PASS: actual Operations profile tab, declared audience/read-only controls, exact retry, role withdrawal/restoration and account late ACK guards; registered mock transport, no live backend or analyzer.",
+    "PASS: new explicit post-analysis candidate with exact retry/current Editor guard, actual Operations profile tab, declared audience/read-only controls, exact retry, role withdrawal/restoration and account late ACK guards; registered mock transport, no live backend or analyzer.",
   );
 } finally {
   await browser?.close();

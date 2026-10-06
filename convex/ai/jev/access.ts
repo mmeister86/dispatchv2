@@ -249,6 +249,7 @@ export async function current(ctx: Ctx, a: Request) {
   const state = {
     thread: version!.content.text.map((text, position) => ({ position, text })),
     media,
+    network: "x" as const,
     audience: aud!.payload.description,
   };
   const body = JSON.stringify({
@@ -268,6 +269,8 @@ export async function current(ctx: Ctx, a: Request) {
       questions: definition.questions,
       policyFingerprint: await fingerprint(p),
       accountIdentity: account!.providerIdentity,
+      capability: account!.capability,
+      provenance: { version: version!.number, source: draft!.source },
       sourceUntil,
     }),
   );
@@ -277,6 +280,7 @@ export async function current(ctx: Ctx, a: Request) {
     state,
     questions: definition.questions,
     questionVersion: definition.version,
+    capability: { maxText: account!.capability.maxText },
     p,
     c,
     budgetIds: await grants(ctx, p),

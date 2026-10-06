@@ -1,3 +1,4 @@
+import { v } from "convex/values";
 import { begin, finish, replay } from "./profiles";
 import { workspaceMutation } from "../lib/authorization";
 import { commandArgs, result } from "./sharedFields";
@@ -58,11 +59,39 @@ const manifest = [
 ];
 const commit = "b412112d03f27acbfd668e0cc040abcafa1080c1" as const;
 export const create = workspaceMutation({
-  args: commandArgs,
+  args: {
+    ...commandArgs,
+    variant: v.optional(
+      v.union(v.literal("public-context"), v.literal("post-analysis")),
+    ),
+  },
   returns: result,
   handler: async (ctx, a) => {
     const b = await begin(ctx, a, { kind: "create-algorithm", ...a });
     if (b.receipt) return replay(b.receipt);
+    const refs = {
+      formula: "dispatch-score-v1" as const,
+      routing: "disabled-v1" as const,
+      verification: "disabled-v1" as const,
+    };
+    const executable = a.variant === "post-analysis";
+    const variantPayload = executable
+      ? {
+          version: "x-post-analysis-v1" as const,
+          refs: {
+            ...refs,
+            questionSet: "jev-post-analysis-v1" as const,
+            normalization: "jev-normalization-v1" as const,
+          },
+        }
+      : {
+          version: "x-public-context-v1" as const,
+          refs: {
+            ...refs,
+            questionSet: "unavailable-until-task28" as const,
+            normalization: "unavailable-until-task28" as const,
+          },
+        };
     const algorithmId = await ctx.db.insert("algorithmProfiles", {
       workspaceId: ctx.workspace._id,
       accountId: a.accountId,
@@ -74,7 +103,7 @@ export const create = workspaceMutation({
       review: null,
       retiredAt: null,
       payload: {
-        version: "x-public-context-v1",
+        ...variantPayload,
         repository: "xai-org/x-algorithm",
         commit,
         commitAt: Date.parse("2026-10-03T03:26:56Z"),
@@ -90,13 +119,6 @@ export const create = workspaceMutation({
           url: `https://github.com/xai-org/x-algorithm/blob/${commit}/${path}`,
         })),
         report: ".docs/reviews/task-27-44-public-x-source-review.md",
-        refs: {
-          questionSet: "unavailable-until-task28",
-          normalization: "unavailable-until-task28",
-          formula: "dispatch-score-v1",
-          routing: "disabled-v1",
-          verification: "disabled-v1",
-        },
       },
     });
     return finish(
@@ -104,7 +126,9 @@ export const create = workspaceMutation({
       a,
       b,
       "create-algorithm",
-      "Pinned public report candidate",
+      a.variant === "post-analysis"
+        ? "Explicit post-analysis rubric candidate; public context has no score influence"
+        : "Pinned public report candidate",
       { algorithmId, audienceId: null },
     );
   },

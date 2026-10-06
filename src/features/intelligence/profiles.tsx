@@ -74,6 +74,9 @@ function ProfileAccount({
   const [description, setDescription] = useState(""),
     [reason, setReason] = useState(""),
     [algorithm, setAlgorithm] = useState(""),
+    [variant, setVariant] = useState<"public-context" | "post-analysis">(
+      "public-context",
+    ),
     [audience, setAudience] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
@@ -175,8 +178,11 @@ function ProfileAccount({
         <p className="text-sm text-muted-foreground">
           Fehlend: {row.capture.missing.join(", ")}. Kein Gesamtscore; Audience
           Fit und Embeddings nicht verfügbar. Historie 0,5 ist eine
-          Cold-Start-Annahme, keine Messung. Fragen/Normalisierung nicht
-          implementiert; Routing und Verifikation ausgeschaltet.
+          Cold-Start-Annahme, keine Messung.{" "}
+          {selected?.payload.version === "x-post-analysis-v1"
+            ? "Post-Analyse-Rubrik v1 ausgewählt; Ausführung benötigt getrennte Providerfreigabe."
+            : "Ausgewählter Kontext enthält keine ausführbaren Analysefragen."}{" "}
+          Routing und Verifikation ausgeschaltet.
         </p>
         {selected && (
           <p className="text-sm">
@@ -224,21 +230,45 @@ function ProfileAccount({
                 />
               </label>
               {!audienceOnly && (
-                <Button
-                  onClick={() => {
-                    const input = {
-                      ...args,
-                      expectedRevision: row.capture.revision,
-                      commandKey: crypto.randomUUID(),
-                    };
-                    void run({
-                      execute: () => createAlgorithm(input),
-                      success: () => setCursor(null),
-                    });
-                  }}
-                >
-                  Öffentlichen Snapshot als Kandidat anlegen
-                </Button>
+                <>
+                  <label>
+                    Profil-Kandidat
+                    <select
+                      value={variant}
+                      onChange={(e) =>
+                        setVariant(
+                          e.target.value as "public-context" | "post-analysis",
+                        )
+                      }
+                      className="w-full rounded border p-2"
+                    >
+                      <option value="public-context">
+                        Öffentlicher Snapshot (ohne Analysefragen)
+                      </option>
+                      <option value="post-analysis">
+                        Post-Analyse v1 (Dispatch-Rubrik)
+                      </option>
+                    </select>
+                  </label>
+                  <Button
+                    onClick={() => {
+                      const input = {
+                        ...args,
+                        expectedRevision: row.capture.revision,
+                        commandKey: crypto.randomUUID(),
+                        variant,
+                      };
+                      void run({
+                        execute: () => createAlgorithm(input),
+                        success: () => setCursor(null),
+                      });
+                    }}
+                  >
+                    {variant === "post-analysis"
+                      ? "Post-Analyse als Kandidat anlegen"
+                      : "Öffentlichen Snapshot als Kandidat anlegen"}
+                  </Button>
+                </>
               )}
               <label>
                 Deklarierte Account-Zielgruppe

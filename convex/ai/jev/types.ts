@@ -142,6 +142,7 @@ export const contextResult = v.object({
         alt: v.string(),
       }),
     ),
+    network: v.literal("x"),
     audience: v.string(),
   }),
   questions: v.record(
@@ -169,6 +170,7 @@ export const contextResult = v.object({
       }),
     ),
   ),
+  capability: v.object({ maxText: v.number() }),
   questionVersion: v.string(),
   requestFingerprint: v.string(),
   budgetIds: v.array(v.id("aiBudgets")),

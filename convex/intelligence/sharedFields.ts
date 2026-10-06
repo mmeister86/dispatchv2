@@ -22,32 +22,51 @@ export const versionFields = {
   review,
   retiredAt: v.union(v.number(), v.null()),
 };
-export const refs = v.object({
-  questionSet: v.literal("unavailable-until-task28"),
-  normalization: v.literal("unavailable-until-task28"),
+const commonRefs = {
   formula: v.literal("dispatch-score-v1"),
   routing: v.literal("disabled-v1"),
   verification: v.literal("disabled-v1"),
+};
+export const oldRefs = v.object({
+  ...commonRefs,
+  questionSet: v.literal("unavailable-until-task28"),
+  normalization: v.literal("unavailable-until-task28"),
 });
+export const executableRefs = v.object({
+  ...commonRefs,
+  questionSet: v.literal("jev-post-analysis-v1"),
+  normalization: v.literal("jev-normalization-v1"),
+});
+export const refs = v.union(oldRefs, executableRefs);
+const algorithmPayloadFields = {
+  repository: v.literal("xai-org/x-algorithm"),
+  commit: v.literal("b412112d03f27acbfd668e0cc040abcafa1080c1"),
+  commitAt: v.number(),
+  observedAt: v.number(),
+  reviewDueAt: v.number(),
+  validityBasis: v.literal("operational_assumption"),
+  sourceScope: v.literal("public_code"),
+  productionState: v.literal("unknown"),
+  scoringInfluence: v.literal("none"),
+  evidence: v.array(
+    v.object({ path: v.string(), url: v.string(), sha256: v.string() }),
+  ),
+  report: v.string(),
+};
 export const algorithmFields = {
   ...versionFields,
-  payload: v.object({
-    version: v.literal("x-public-context-v1"),
-    repository: v.literal("xai-org/x-algorithm"),
-    commit: v.literal("b412112d03f27acbfd668e0cc040abcafa1080c1"),
-    commitAt: v.number(),
-    observedAt: v.number(),
-    reviewDueAt: v.number(),
-    validityBasis: v.literal("operational_assumption"),
-    sourceScope: v.literal("public_code"),
-    productionState: v.literal("unknown"),
-    scoringInfluence: v.literal("none"),
-    evidence: v.array(
-      v.object({ path: v.string(), url: v.string(), sha256: v.string() }),
-    ),
-    report: v.string(),
-    refs,
-  }),
+  payload: v.union(
+    v.object({
+      ...algorithmPayloadFields,
+      version: v.literal("x-public-context-v1"),
+      refs: oldRefs,
+    }),
+    v.object({
+      ...algorithmPayloadFields,
+      version: v.literal("x-post-analysis-v1"),
+      refs: executableRefs,
+    }),
+  ),
 };
 export const audienceFields = {
   ...versionFields,

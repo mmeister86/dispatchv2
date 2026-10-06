@@ -1,4 +1,5 @@
 import { ConvexError } from "convex/values";
+import { POST_ANALYSIS } from "./questions/postAnalysis";
 import type { Doc } from "../../_generated/dataModel";
 export type Definition = {
   version: string;
@@ -17,10 +18,20 @@ export type Definition = {
       }
   >;
 };
-// TASK-28.2 supplies executable immutable definitions and new reviewed profile payloads.
-// A TASK-27 context reference is not permission or an executable question version.
 export function resolveQuestions(
-  _profile: Doc<"algorithmProfiles">,
+  profile: Doc<"algorithmProfiles">,
 ): Definition {
-  throw new ConvexError("JEV_QUESTION_CONFIGURATION_REQUIRED");
+  const r = profile.payload.refs;
+  if (
+    profile.network !== "x" ||
+    profile.surface !== "for_you" ||
+    profile.payload.version !== "x-post-analysis-v1" ||
+    r.questionSet !== POST_ANALYSIS.version ||
+    r.normalization !== "jev-normalization-v1" ||
+    r.formula !== "dispatch-score-v1" ||
+    r.routing !== "disabled-v1" ||
+    r.verification !== "disabled-v1"
+  )
+    throw new ConvexError("JEV_QUESTION_CONFIGURATION_REQUIRED");
+  return POST_ANALYSIS;
 }
