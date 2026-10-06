@@ -53,7 +53,7 @@ export async function historyMaterial(
     !ver.content.text[pin.position]
   )
     throw new ConvexError("RESEARCH_HISTORY_CHANGED");
-  await draftResearchProof(ctx, ver, walk);
+  const proofUntil = await draftResearchProof(ctx, ver, walk);
   const text = ver.content.text[pin.position],
     title = ver.content.title;
   if (
@@ -67,6 +67,7 @@ export async function historyMaterial(
     title: title.slice(0, 120),
     text: text.slice(0, 400),
     confirmedAt: pin.confirmedAt,
+    proofUntil,
   };
 }
 async function materialAuthority(
@@ -76,15 +77,19 @@ async function materialAuthority(
 ) {
   if (!o.pipeline || o.pipeline.cleanupState !== "retained")
     throw new ConvexError("RESEARCH_MATERIAL_REMOVED");
+  let until = o.pipeline.retentionUntil ?? Number.MAX_SAFE_INTEGER;
   for (const pin of o.pipeline.history)
-    await historyMaterial(ctx, o, pin, walk);
+    until = Math.min(
+      until,
+      (await historyMaterial(ctx, o, pin, walk)).proofUntil ??
+        Number.MAX_SAFE_INTEGER,
+    );
   const profile = await ctx.db.get(o.profileId);
   if (
     !profile ||
     (profile.researchMaterialGeneration ?? 0) !== o.pipeline.materialGeneration
   )
     throw new ConvexError("RESEARCH_MATERIAL_REMOVED");
-  let until = o.pipeline.retentionUntil ?? Number.MAX_SAFE_INTEGER;
   if (
     o.pipeline.runId &&
     (!o.approval ||

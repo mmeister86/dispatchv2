@@ -11,6 +11,7 @@ import type { Doc, Id } from "../_generated/dataModel";
 import { orderAuthority } from "../research/providerAccess";
 import {
   currentMaterials,
+  currentMaterialProof,
   orderLiability,
   historyMaterial,
 } from "../research/pipelineAccess";
@@ -416,8 +417,16 @@ export const select = internalMutation({
         omitted: delivered - selected,
       }),
     );
+    const history = await Promise.all(
+      o.pipeline!.history.map((p) => historyMaterial(ctx, o, p)),
+    );
     const until = sourcePins.length
-      ? Math.min(...sourcePins.map((p) => p.until), Date.now() + 86400000)
+      ? Math.min(
+          ...sourcePins.map((p) => p.until),
+          ...history.map((p) => p.proofUntil ?? Number.MAX_SAFE_INTEGER),
+          o.pipeline!.retentionUntil ?? Number.MAX_SAFE_INTEGER,
+          Date.now() + 86400000,
+        )
       : null;
     await phase(ctx, o, 4, {
       sourcePins,
@@ -456,6 +465,7 @@ export const bindModel = internalMutation({
       });
       return null;
     }
+    const sourceProof = await currentMaterialProof(ctx, o);
     const sources = await sourceInputs(ctx, o),
       history = await Promise.all(
         o.pipeline!.history.map((p) => historyMaterial(ctx, o, p)),
@@ -463,7 +473,8 @@ export const bindModel = internalMutation({
       clusters = [];
     const contextPins: NonNullable<Order["pipeline"]>["contextPins"] = [],
       contextEvidence: NonNullable<Order["pipeline"]>["contextEvidence"] = [];
-    let clustersTruncated = o.pipeline!.clustersTruncated;
+    let clustersTruncated = o.pipeline!.clustersTruncated,
+      contextProofUntil = sourceProof.proofUntil;
     for (const pin of o.pipeline!.clusterPins) {
       const c = await ctx.db.get(pin.id);
       if (
@@ -480,7 +491,7 @@ export const bindModel = internalMutation({
         try {
           const prev = await ctx.db.get(e.orderId);
           if (!prev?.pipeline) continue;
-          await currentMaterials(ctx, prev);
+          const previousProof = await currentMaterialProof(ctx, prev);
           if (
             e.modelOrigin &&
             e.payload.model &&
@@ -494,12 +505,17 @@ export const bindModel = internalMutation({
                 until: Math.min(
                   p.until,
                   e.retentionUntil,
+                  previousProof.proofUntil,
                   prev.pipeline!.retentionUntil ?? p.until,
                 ),
               })),
               ...(prev.pipeline.contextPins ?? []).map((p) => ({
                 ...p,
-                until: Math.min(p.until, e.retentionUntil),
+                until: Math.min(
+                  p.until,
+                  e.retentionUntil,
+                  previousProof.proofUntil,
+                ),
               })),
             ];
             const fresh = dependencies.filter(
@@ -531,6 +547,11 @@ export const bindModel = internalMutation({
               clustersTruncated = true;
               continue;
             }
+            contextProofUntil = Math.min(
+              contextProofUntil,
+              previousProof.proofUntil,
+              e.retentionUntil,
+            );
             contextPins.push(...fresh);
             contextEvidence.push(
               ...(prev.pipeline.contextEvidence ?? []).filter(
@@ -565,6 +586,8 @@ export const bindModel = internalMutation({
       });
     const retentionUntil = Math.min(
       o.pipeline!.retentionUntil!,
+      contextProofUntil,
+      ...history.map((p) => p.proofUntil ?? Number.MAX_SAFE_INTEGER),
       ...contextPins.map((p) => p.until),
     );
     await phase(ctx, o, 4, {
@@ -617,7 +640,9 @@ export const bindModel = internalMutation({
       },
     });
     const run = (await ctx.db.get(runId))!;
-    await ctx.db.patch(runId, { deadline: Math.min(run.deadline, o.deadline) });
+    await ctx.db.patch(runId, {
+      deadline: Math.min(run.deadline, o.deadline, retentionUntil),
+    });
     await phase(ctx, bound, 5, { runId, clusterPins: suppliedClusterPins });
     await active(ctx, runId);
     return runId;

@@ -32,6 +32,7 @@ import { pipelineFixture, streamResponse } from "../../tests/research-fixture";
 import { api, internal, components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { sha256 } from "../lib/crypto";
+import { workflow } from "../ai/researchAgent";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
   vi.useRealTimers();
@@ -1880,3 +1881,382 @@ test.each(["active", "completed", "partial", "empty"] as const)(
     }
   },
 );
+
+test("published source horizon bounds descendant workflow, prompt, evidence and copied content through scheduled expiry", async () => {
+  const f = await pipelineFixture(20000, ["x-recent", "web-search"]);
+  const secret = "Distinctive inherited historical quote 231";
+  const fetch = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({
+      data: [
+        {
+          id: "123456789",
+          text: secret,
+          created_at: new Date(Date.now() - 60000).toISOString(),
+        },
+      ],
+    }),
+  );
+  const parentOrderId = await f.signed.mutation(api.research.native.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    operationKey: "history-parent",
+    query: "Parent",
+    language: "de",
+    operations: ["x-recent"],
+  });
+  await f.t.action(internal.research.execute.execute, {
+    orderId: parentOrderId,
+    generation: 1,
+  });
+  const source = (
+    await f.signed.query(api.research.native.results, {
+      workspaceId: f.workspaceId,
+      orderId: parentOrderId,
+    })
+  )[0].sources[0];
+  const evidenceId = await f.signed.mutation(api.research.evidence.create, {
+    workspaceId: f.workspaceId,
+    orderId: parentOrderId,
+    sourceId: source.sourceId,
+    expectedMaterialHash: source.materialHash,
+    commandKey: "history-evidence",
+    annotation: {
+      ...note,
+      claim: secret,
+      quote: secret,
+      interpretation: secret,
+    },
+  });
+  const handoff = {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    evidenceIds: [evidenceId],
+    intent: "Prepare unapproved historical proposal",
+    target: "draft" as const,
+    commandKey: "history-parent-copy",
+  };
+  const [parentCopy] = await f.signed.mutation(
+    api.research.handoff.consume,
+    handoff,
+  );
+  const parent = (await f.t.run((ctx) =>
+    ctx.db.get(parentCopy.draftVersionId!),
+  ))!;
+  const horizon = parent.researchProofUntil!;
+  // Controlled exact confirmed facts, no X publishing transport.
+  await f.t.run(async (ctx) => {
+    const approvalId = await ctx.db.insert("approvals", {
+      workspaceId: f.workspaceId,
+      draftId: parentCopy.draftId!,
+      versionId: parent._id,
+      accountId: f.accountId,
+      actorId: f.userId,
+      createdAt: Date.now(),
+      revokedAt: null,
+      revokedBy: null,
+    });
+    const scheduleId = await ctx.db.insert("schedules", {
+      purpose: "publishing",
+      workspaceId: f.workspaceId,
+      draftId: parentCopy.draftId!,
+      versionId: parent._id,
+      accountId: f.accountId,
+      approvalId,
+      actorId: f.userId,
+      generation: 1,
+      at: Date.now(),
+      timezone: "UTC",
+      localTime: "fixture",
+      state: "published",
+      publishedCount: 1,
+      errorCode: null,
+      jobId: null,
+    });
+    const attemptId = await ctx.db.insert("xPostAttempts", {
+      workspaceId: f.workspaceId,
+      scheduleId,
+      generation: 1,
+      versionId: parent._id,
+      accountId: f.accountId,
+      providerIdentity: "synthetic",
+      connectionSequence: 0,
+      position: 0,
+      attempt: 1,
+      claimSequence: 1,
+      leaseUntil: Date.now(),
+      deadline: Date.now(),
+      stage: "confirmed",
+      mediaIds: [],
+      externalId: "confirmed-history",
+      confirmedAt: Date.now(),
+      durationMs: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    await ctx.db.patch(scheduleId, {
+      externalPosts: [
+        {
+          position: 0,
+          externalId: "confirmed-history",
+          url: "https://x.com/synthetic/status/1",
+          attemptId,
+          confirmedAt: Date.now(),
+        },
+      ],
+    });
+  });
+  vi.setSystemTime(Date.now() + 100000);
+  let childOrderId: Id<"researchOrders">;
+  fetch.mockImplementation(async (_input, init) => {
+    const body = JSON.parse(String(init?.body));
+    if (body.tools?.[0]?.type === "web_search") return streamResponse();
+    const o = (await f.t.run((ctx) => ctx.db.get(childOrderId)))!;
+    expect(o.pipeline!.history).toHaveLength(1);
+    expect(JSON.stringify(body.messages)).toContain(secret);
+    const pin = o.pipeline!.sourcePins[0];
+    const output = JSON.stringify({
+      items: [
+        {
+          title: "Child history",
+          sourceId: pin.sourceId,
+          materialHash: pin.materialHash,
+          annotation: { ...note, claim: secret, interpretation: secret },
+          perspective: secret,
+          dynamics: "No series",
+          clusterId: null,
+          clusterRevision: null,
+          historyIds: [o.pipeline!.history[0].attemptId],
+          copySourceIds: [],
+          eventAt: null,
+          eventQuote: null,
+        },
+      ],
+    });
+    return Response.json({
+      id: "history-result",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({ text: output }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    });
+  });
+  childOrderId = await f.signed.mutation(api.research.pipeline.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    operationKey: "history-child",
+    language: "de",
+    operations: ["web-search"],
+  });
+  await driveUntil(f, childOrderId, (o) => o.state === "completed");
+  await vi.advanceTimersByTimeAsync(1000);
+  await f.t.finishInProgressScheduledFunctions();
+  const child = (await f.t.run((ctx) => ctx.db.get(childOrderId)))!;
+  const childEvidence = (await f.t.run((ctx) =>
+    ctx.db.get(child.pipeline!.evidenceIds[0]),
+  ))!;
+  const [copy] = await f.signed.mutation(api.research.handoff.consume, {
+    ...handoff,
+    evidenceIds: [childEvidence._id],
+    commandKey: "history-child-copy",
+  });
+  const copyVersion = (await f.t.run((ctx) => ctx.db.get(copy.ideaVersionId)))!;
+  const cached = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: copy.draftId!,
+  }))!;
+  expect(cached.versions[0].sourceUnavailable).not.toBe(true);
+  expect(child.pipeline!.retentionUntil).toBeLessThanOrEqual(horizon);
+  expect(childEvidence.retentionUntil).toBeLessThanOrEqual(horizon);
+  expect(copyVersion.researchProofUntil).toBeLessThanOrEqual(horizon);
+  expect(
+    copyVersion.source.kind === "research" && copyVersion.source.proofUntil,
+  ).toBeLessThanOrEqual(horizon);
+  expect(cached.versions[0].sourceProofUntil).toBeLessThanOrEqual(horizon);
+  const run = (await f.t.run((ctx) => ctx.db.get(child.pipeline!.runId!)))!;
+  expect(
+    (
+      await f.t.query(components.agent.messages.listMessagesByThreadId, {
+        threadId: run.threadId,
+        order: "asc",
+        paginationOpts: { cursor: null, numItems: 20 },
+      })
+    ).page.length,
+  ).toBeGreaterThan(1);
+  const nativeStatus = await f.t.run((ctx) =>
+    workflow.status(ctx, child.pipeline!.workflowId as WorkflowId),
+  );
+  expect(nativeStatus.type).toBe("completed");
+  console.log(
+    "Inherited history native Workflow before expiry:",
+    nativeStatus.type,
+  );
+  expect(run.deadline).toBeLessThanOrEqual(horizon);
+  const receipts = (ctx: import("../_generated/server").QueryCtx) =>
+    Promise.all([
+      ctx.db.query("aiAttempts").collect(),
+      ctx.db.query("aiBudgets").collect(),
+    ]);
+  const usageBefore = await f.t.run(receipts);
+  expect(usageBefore[0]).toHaveLength(3);
+  expect(usageBefore[0].every((a) => a.state === "settled")).toBe(true);
+  await vi.advanceTimersByTimeAsync(horizon - Date.now() + 1);
+  expect(cached.versions[0].sourceProofUntil!).toBeLessThan(Date.now());
+  expect(
+    (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: copy.draftId!,
+    }))!.versions[0].sourceUnavailable,
+  ).toBe(true);
+  await f.t.finishAllScheduledFunctions(
+    () => vi.advanceTimersByTime(100),
+    1000,
+  );
+  const cleaned = (await f.t.run((ctx) => ctx.db.get(childOrderId)))!;
+  expect(cleaned.pipeline).toMatchObject({
+    cleanupState: "complete",
+    agentCleaned: true,
+    workflowCleaned: true,
+    outcome: "completed",
+    pending: null,
+  });
+  expect(cleaned.state).toBe("completed");
+  const journal = await f.t.run((ctx) =>
+    workflow.listSteps(ctx, child.pipeline!.workflowId as WorkflowId, {
+      paginationOpts: { cursor: null, numItems: 1 },
+    }),
+  );
+  expect(journal.page).toEqual([]);
+  expect(journal.isDone).toBe(true);
+  console.log(
+    "Inherited history native Workflow after scheduled expiry: journal empty, isDone=true",
+  );
+  expect(
+    (
+      await f.t.query(components.agent.messages.listMessagesByThreadId, {
+        threadId: run.threadId,
+        order: "asc",
+        paginationOpts: { cursor: null, numItems: 20 },
+      })
+    ).page,
+  ).toEqual([]);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(childEvidence._id)))!.payload,
+  ).toBeNull();
+  const erased = await f.t.run(async (ctx) => ({
+    idea: await ctx.db.get(copy.ideaId),
+    ideaVersion: await ctx.db.get(copy.ideaVersionId),
+    draftVersion: await ctx.db.get(copy.draftVersionId!),
+    parentVersion: await ctx.db.get(parent._id),
+  }));
+  expect(JSON.stringify(erased)).not.toContain(secret);
+  expect(erased.draftVersion!.content.text).toEqual(["", ""]);
+  expect(await f.t.run(receipts)).toEqual(usageBefore);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("xPostAttempts").first()),
+  ).toMatchObject({
+    stage: "confirmed",
+    externalId: "confirmed-history",
+    durationMs: 1,
+  });
+  expect(fetch).toHaveBeenCalledTimes(3);
+});
+
+test("included cluster context with an already-present source pin still bounds retained descendant copies", async () => {
+  const f = await pipelineFixture();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+  const { first, old } = await seedCluster(f);
+  const horizon = Date.now() + 50000;
+  // Input-only fixture: two retained evidence dependencies share the same concrete
+  // native pins; the second has a shorter immutable evidence horizon. All child
+  // proof/retention capture, funded model receipts and public copies are registered.
+  const shortEvidenceId = await f.t.run(async (ctx) => {
+    const original = (await ctx.db.get(old.pipeline!.evidenceIds[0]))!;
+    const { _id, _creationTime, ...copy } = original;
+    const id = await ctx.db.insert("researchEvidence", {
+      ...copy,
+      commandKey: "fixture-short-context",
+      retentionUntil: horizon,
+    });
+    await ctx.db.patch(first, {
+      pipeline: {
+        ...old.pipeline!,
+        evidenceIds: [...old.pipeline!.evidenceIds, id],
+      },
+    });
+    await ctx.db.insert("researchClusters", {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      key: "zz-short-context",
+      revision: 1,
+      evidenceIds: [id],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    return id;
+  });
+  vi.mocked(globalThis.fetch).mockResolvedValue(
+    streamResponse([
+      {
+        url: "https://dedup-context.test/new",
+        title: "Independent child source",
+      },
+    ]),
+  );
+  const childId = await f.signed.mutation(api.research.pipeline.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 3,
+    operationKey: "dedup-context-child",
+    language: "de",
+    operations: ["web-search"],
+  });
+  const args = await prepared(f, childId);
+  await finishSemantic(f, childId, args);
+  const child = (await f.t.run((ctx) => ctx.db.get(childId)))!;
+  expect(child.pipeline!.contextPins).toHaveLength(1);
+  expect(child.pipeline!.contextPins![0].until).toBeGreaterThan(horizon);
+  expect(child.pipeline!.contextEvidence!.map((p) => p.evidenceId)).toEqual([
+    old.pipeline!.evidenceIds[0],
+    shortEvidenceId,
+  ]);
+  expect(child.pipeline!.retentionUntil).toBe(horizon);
+  const evidence = (await f.t.run((ctx) =>
+    ctx.db.get(child.pipeline!.evidenceIds[0]),
+  ))!;
+  expect(evidence.retentionUntil).toBe(horizon);
+  const [copy] = await f.signed.mutation(api.research.handoff.consume, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    evidenceIds: [evidence._id],
+    intent: "Prepare one unapproved context proposal",
+    target: "draft",
+    commandKey: "dedup-context-copy",
+  });
+  const idea = (await f.t.run((ctx) => ctx.db.get(copy.ideaVersionId)))!;
+  expect(idea.researchProofUntil).toBe(horizon);
+  expect(idea.source.kind === "research" && idea.source.proofUntil).toBe(
+    horizon,
+  );
+  expect(
+    (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: copy.draftId!,
+    }))!.versions[0].sourceProofUntil,
+  ).toBe(horizon);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(child.pipeline!.runId!)))!.deadline,
+  ).toBeLessThanOrEqual(horizon);
+  expect(globalThis.fetch).toHaveBeenCalledTimes(2);
+});

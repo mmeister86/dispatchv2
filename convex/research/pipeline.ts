@@ -345,8 +345,11 @@ export const purge = internalMutation({
         state: "stopped",
         generation: r.generation + 1,
       });
-    if (p.workflowId && !p.workflowCleaned)
-      await workflow.cancel(ctx, p.workflowId as WorkflowId);
+    if (p.workflowId && !p.workflowCleaned) {
+      const status = await workflow.status(ctx, p.workflowId as WorkflowId);
+      if (status.type === "inProgress")
+        await workflow.cancel(ctx, p.workflowId as WorkflowId);
+    }
     const copies = p.runId
       ? await ctx.db
           .query("researchEvidence")

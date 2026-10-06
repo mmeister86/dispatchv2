@@ -63,8 +63,7 @@ export async function draftResearchProof(
   const idea = await draftIdeaVersion(ctx, ver);
   if (!idea) return null;
   if (idea.source.kind !== "research") {
-    await currentIdeaSource(ctx, ver.workspaceId, idea.source);
-    return null;
+    return ideaProofUntil(ctx, idea);
   }
   if (
     ver.sourceUnavailable ||
@@ -110,9 +109,7 @@ export async function projectIdea(ctx: QueryCtx, ver: Doc<"ideaVersions">) {
 }
 export async function projectDraft(ctx: QueryCtx, ver: Doc<"draftVersions">) {
   try {
-    await draftResearchProof(ctx, ver);
-    const idea = await draftIdeaVersion(ctx, ver);
-    const until = idea ? await ideaProofUntil(ctx, idea) : null;
+    const until = await draftResearchProof(ctx, ver);
     return until === null ? ver : { ...ver, sourceProofUntil: until };
   } catch {
     return {
