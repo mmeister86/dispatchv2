@@ -4,7 +4,7 @@ title: Benachrichtigungen zuverlässig und konfigurierbar machen (P09.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 15:42'
+updated_date: '2026-10-06 16:04'
 labels:
   - p09
   - r3
@@ -53,4 +53,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: Global notification drawer, /settings/notifications. Local in-app issues/read state; email/in-app, weekly/research summary preferences and quiet times. Grenze: No emails, bounces, provider delivery lifecycle or executed quiet-time rules. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Root hat /tmp/dispatch-continuation-31-32-seams.md gelesen: reale publishingNotifications+Resendnotify existieren mit perRowIdempotencyKey/generischemCalendarBody, sent bedeutetnurHTTPaccepted—not delivered. KeinNativePrefs/Read/Dismiss/OccurrenceDedupe/DeadlineLease; workspaceResourceszeigtcurrentlylatest50allRecipientMetadata. MinimalnativeSelfPrefs/currentRecipientQuery+readDismiss/exactOccurrence first, optionalboundedquietSummary danach, bestehendenEmailtransportnuractualConfig/HumanPrefs/currentMember/Lifecycle/ParentProof hardenen; unknownAcceptance nichtautomatischresenden. Authreset/verification separateRequestedTransaction; keineactualMailaufrufe/ProviderConfig/SDK/NeuerChannel. IntroducedProtectedCopiesMask/Purge vorProducer, whole33/36manualoffen. AktuellerReportread-only keinefreshTests.
+
+Rootcontract .docs/operations-notifications-contract.md konkretisiert sequenziell SelfPreferences+RecipientInApp, finiteOptInSummary/IANAquiet, dann bestehendeResendHärtung mit echten offiziellenProviderReceipts. Legacy sent=HTTPaccepted weder delivered noch read; scheduleBoundRows nicht alsGenericNotification missbrauchen. CurrentRecipient/pref/lifecycle/domain/privateActor vorcallback/send, sourcecopyindexedphysicalCleanup vorProducer. MissingConfigsichtbar, keineActualEmail/Provideraktivierung/zweiterService;32Source/Test/ManualDone weiterhin offen.
 <!-- SECTION:NOTES:END -->

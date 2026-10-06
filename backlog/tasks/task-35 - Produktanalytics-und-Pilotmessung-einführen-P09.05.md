@@ -4,7 +4,7 @@ title: Produktanalytics und Pilotmessung einführen (P09.05)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 16:01'
+updated_date: '2026-10-06 16:04'
 labels:
   - p09
   - r3
@@ -59,4 +59,6 @@ Jev-Produktmetriken umfassen Analyse-Nutzung, Latenz, Erfolg, Fallback, Flag-Dea
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Pilot-Auswertung. Local draft/review/calendar indicators plus manually entered edit effort, time saving and cost per accepted draft. Grenze: No Rybbit/remote telemetry, automatic time measurement or real pilot results. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Root read-only sequel /tmp/dispatch-continuation-35-seams.md erstellt: kein productEvents/Rybbit/metric-definitions Backend vorhanden; native editorial/plan/recommendation/Jev/publication receipts liefern Teilfakten, keine kompletten Kohorten oder gemessenen Aufwand/Zeitersparnis. Nach31/32 Ereignis-/Recipient-Scope bestehende Fakten/prospektive47Outcomes dedupliziert nutzen, keine zweite Eventbus-/Finanzledger und keine private/nestedPayloads/externeTelemetry-Seeding. ThreadPositionen≠vollePublication, cancelledLateConfirm und readOnlyMatch als tatsächlicheBelege getrennt; PlanReplay/lateFinance nie neueCounts. LegacyFeedbackaccept Approval-vs-explicit ambiguous,TextDistance≠Effort,UsersProvisionTime≠SignupCohort undmutableDraftsource≠SourceAttribution. BoundedwindowCoverage/denominators/unknownCosts/currencies/originalSourceMask+physicalintroducedcopyCleanup beforeconsumer; tatsächliche Pilot/Provider/Abnahme offen. KeineSourceImplementation/Testclaim diesesReports.
+
+Weiterer konsolidierter Vertrag .docs/operations-notifications-contract.md bindet ProductMeasurement an bestehende Domain/finite31Occurrence/explicit47Outcomes. Keine externeAnalytics- oder SessionReplay-Entscheidung/SDK durch diesen Vertrag. VollständigeProducerprüfung/final45-50/67-68ProofReconciliation und separate native SourceUnits bleiben vorImplementierung Pflicht.
 <!-- SECTION:NOTES:END -->
