@@ -4,7 +4,7 @@ title: 'Kommentare, Zuweisungen und Freigaberegeln ergänzen (P13.02)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 14:43'
+updated_date: '2026-10-06 16:14'
 labels:
   - p13
   - r6
@@ -63,4 +63,6 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /team, /drafts/:id, /plans. Version-bound comments/assignments, review queue, configurable editorial/brand stages and final approval gates; comment resolution is separate from approval. Grenze: No live collaboration or remote notifications. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Read-only49/50-Seamreport vollständig vonRoot gelesen: tatsächliche editorial.addComment/resolveComment/assign plus echte resources.members/Composer bereits vorhanden, wiederverwenden. Native staged reviewPolicy/decisions/queue/teamNotifications fehlen; Mock-Stages erzwingen keine native approveTransaction/checkApproval. Minimalversionierte exact version/account/stage/current reviewer guards am shared approve/check boundary müssen Composer, planning.accept, scheduler gemeinsam decken; commentResolution≠Approval, neue Version/Account braucht eigene Reviews. Keine guest/support mock permission. Future49 invite→verified accept→Editor comment/assign→exact reviews→Owner/Admin approval nativ prüfen; noch keine Implementierungs-/Manual-/J10-Abnahme und kein NotificationMailversand.
+
+Root wählt ausdrücklich .docs/team-review-continuation-contract.md P1Frozen-Vertrag: heutigePolicy für neueApprovals/neueSchedules/explicitContinuation, existierenderP1/legacyOFFFrozenSnapshot+pureMove behältPin mit currentReviewer/Source; keineAutoCancel/Rewrite, P1Approval unterP2nichtneuSchedule.50.1SharedReviewProof deckt ordinary/Planning/FirstWrite/confirm UND reconcile.continueThread eigenerApprovalInsert;50.2actualQueue/nativeRecipientNotices. Konkrete ToDoSubtasks erstellt; final45-47ProofReconciliation+49PublicInvite bevorSource, currenteffectiveBadge≠historicUnrevoked. GeenEmail/GuestSupport/Source/Test/Done diesesReports.
 <!-- SECTION:NOTES:END -->
