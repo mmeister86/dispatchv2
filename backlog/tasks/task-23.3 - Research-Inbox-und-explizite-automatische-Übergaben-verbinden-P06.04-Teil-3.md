@@ -4,7 +4,7 @@ title: 'Research-Inbox und explizite automatische Übergaben verbinden (P06.04, 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 02:26'
+updated_date: '2026-10-06 02:29'
 labels: []
 dependencies:
   - TASK-23.2
@@ -62,4 +62,6 @@ Selfreview sibling selected-order author/reviewer proof/manual inherited horizon
 Final readiness ROOTread593/30 PASS04:22:47, static/type/lint/format/build/bundle/codegen/posttypes+5actualReactbrowserPASS; existingEUDev04:23:46/posttypesPASS. Genuine laststatusRED04:22:24 staleusage reason afteractualsettlement, separateGREEN04:22:45 awaitsHumanReview. Knownlate undercap recovery/overcap selection absent validated, no newqueue. Content wrongfilename MODULE_NOT_FOUND commanderror retained separately, correct actualfixturePASS. Exact24sourcehashes independentlymatch rawinventorySHA934dfff62f931c2f943f61ced1b96c9f28be6c56575ef76a617893942bcddd0b. Emptyindex/diffcheckPASS; sourcewindow/freshSPEC→QUALITY pending. No AC/Done.
 
 SOURCE e99c56eae5e0169e93c2d4513479018e8c90b202 exact24approvedpaths on master, independentROOT scopedcommit/tree/index clean check. Frozen593/30/5browser/static/EUDev04:23:46. Fresh Backend Architect SPEC research_inbox_spec dispatched BASE734dce2 with complete contract/requirements/inventory/proof chronology. QUALITY onlyafterSPEC PASS, no AC/Done.
+
+FreshSPEC confirms24hashes. ROOT clarifies accidental replay-barrier wording: currentowner/account/activehistory+source proof before receipt, all executionFinished barriers before NEW append; committedreceipt replay allowed with no newnative/money/horizon effect. Original04:27 replay expectation log preserved as prompt ambiguity, independent invariants underway. Actual manual-descendant cleanupRED /tmp/dispatch-spec-independent-manual-cleanup.log04:28:10: public evidence.create on realreResearch child retainsprotectedpayload after ancestorsecondarywithdrawal/purgecomplete. Reads alreadyfenced; physical manual/contentcopies omitted by modelOrigin-only scan. Required minimal existingorder-index all-evidence retirement/copycleanup; no sourceedit untilcompleteSPEC findings. No AC/Done, QUALITYnotstarted.
 <!-- SECTION:NOTES:END -->
