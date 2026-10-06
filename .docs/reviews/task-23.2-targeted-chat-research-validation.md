@@ -65,3 +65,8 @@ The shared guard now receives the existing MaterialWalk and compound checks trav
 ## Corrected readiness before source freeze
 
 ROOT read final full log: **577/577 tests in30 files PASS03:38:20**, and existing EU Dev ready **03:39:01**. Implementer reports all static/build/bundle/codegen/post-type checks PASS. Current29-path source inventory `/tmp/task232-source-inventory.json` digest60be0dddd3526c21e42d1761971c9c3529c19379cdee1a40bf2af14f1e007698 includes only the necessary additional existing pipelineAccess.ts. Prior576 readiness logs are retained separately under pre-correction-final names; genuine archive RED remains unchanged. UI bytes unchanged since actual browser receipts, explicitly reused. Exact source freeze and fresh SPEC then QUALITY still required; no AC/Done.
+
+
+## Corrected SOURCE freeze and fresh SPEC dispatch
+
+SOURCE **caec14dd9c80ff65a53efe26da8f2327019b175b** on master contains exactly29 approved paths; inventory digest60be0dddd3526c21e42d1761971c9c3529c19379cdee1a40bf2af14f1e007698 verified before staging. ROOT independently read scoped commit and clean tree/index. Fresh Backend Architect SPEC reviewer targeted_chat_spec starts from functional BASE977bb28fc27bd4a8f9f5292db9be5fb960022daa and accepted23.1 prerequisite6fde7a93, with full AC/release/current contract, exact inventory, genuine correction RED and retained final checks. QUALITY follows only after SPEC PASS. Source freeze remains, no AC/Done.

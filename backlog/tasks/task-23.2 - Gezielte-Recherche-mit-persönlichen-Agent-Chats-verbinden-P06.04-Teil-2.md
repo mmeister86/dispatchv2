@@ -4,7 +4,7 @@ title: 'Gezielte Recherche mit persönlichen Agent-Chats verbinden (P06.04, Teil
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 01:42'
+updated_date: '2026-10-06 01:43'
 labels: []
 dependencies:
   - TASK-23.1
@@ -66,4 +66,6 @@ First readiness: 576/30 full PASS03:31:25; type/lint/format/build/bundle/codegen
 ROOT read genuine product RED /tmp/task232-correction-red.log03:35:17: upstream Research archive left actual derived Draft/get readable. Separate earlier wrong editorial.version fixture fixed. Registered correction GREEN03:38:00: repeated primitive/version refs and actual controlled published-history remain valid; archive masks Draft/get/history evidence and denies approval. Shared32-node accepted/33 rejected/active-cycle rejected using explicitly input-only cache-hit ancestry rows, not extra transport claims. Existing MaterialWalk factory/passing and sequential shared guard correction adds only pipelineAccess.ts as29th source path. New full/static/codegen/Dev readiness pending; no source commit/AC/Done.
 
 Corrected final readiness:577/577 tests30 files PASS03:38:20; full static/build/bundle/codegen/posttypes reported PASS; ROOT read EUDev ready03:39:01. New29-path inventory digest60be0dddd3526c21e42d1761971c9c3529c19379cdee1a40bf2af14f1e007698 matches bytes. Prior576 logs kept as pre-correction, genuine archive RED retained; unchanged UI browser receipts explicitly reused. Exact source freeze then fresh SPEC and QUALITY required; no AC/Done.
+
+SOURCE caec14dd9c80ff65a53efe26da8f2327019b175b exactly29 approved paths on master; ROOT independently read scoped commit/clean tree/index. Fresh Backend Architect SPEC targeted_chat_spec dispatched from BASE977bb28 with complete AC/current contract/inventory/checks/real correctionRED. QUALITY onlyafterSPEC PASS. No AC/Done.
 <!-- SECTION:NOTES:END -->
