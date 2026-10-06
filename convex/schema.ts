@@ -1,3 +1,4 @@
+import { contentPerformancePolicyFields } from "./content/performanceFields";
 import {
   historyPolicyFields,
   historyControlFields,
@@ -102,6 +103,13 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  performanceContentPolicies: defineTable(contentPerformancePolicyFields)
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
+    .index("by_workspaceId_and_accountId_and_version", [
+      "workspaceId",
+      "accountId",
+      "version",
+    ]),
   contentFeedback: defineTable(contentFeedbackFields)
     .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
     .index("by_versionId_and_sourceUnavailable", [

@@ -1,3 +1,4 @@
+import { PerformanceContext } from "@/features/signals/performance";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -240,6 +241,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
           </Button>
         }
       />
+      <PerformanceContext workspaceId={workspaceId} />
       <div className="flex flex-wrap gap-2">
         {[
           ["new", "Neue Ideen"],

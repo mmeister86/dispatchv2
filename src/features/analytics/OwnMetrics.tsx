@@ -1,3 +1,4 @@
+import { Baselines } from "./Baselines";
 import { aggregate } from "../../../convex/performance/metricDefinitions";
 const windows = [0.25, 1, 6, 24, 48] as const;
 import { useState, useEffect } from "react";
@@ -15,6 +16,10 @@ export function OwnMetrics() {
   const [chosen, setChosen] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const [from, setFrom] = useState(""),
+    [to, setTo] = useState(""),
+    [age, setAge] = useState("24"),
+    [format, setFormat] = useState("all");
   const account = accounts.find((a) => a.id === chosen) ?? accounts[0],
     args = account
       ? {
@@ -22,7 +27,27 @@ export function OwnMetrics() {
           accountId: account.id as Id<"socialAccounts">,
         }
       : ("skip" as const);
+  const rangeInvalid = !!(
+    from &&
+    to &&
+    (Date.parse(to) < Date.parse(from) ||
+      Date.parse(to) - Date.parse(from) > 365 * 86400000)
+  );
   const data = useQuery(api.performance.snapshots.overview, args),
+    baselineData = useQuery(
+      api.performance.snapshots.overview,
+      typeof args === "string" || rangeInvalid
+        ? "skip"
+        : {
+            ...args,
+            ...(from ? { from: Date.parse(`${from}T00:00:00Z`) } : {}),
+            ...(to ? { to: Date.parse(`${to}T23:59:59.999Z`) } : {}),
+            windowHours: Number(age),
+            ...(format === "all"
+              ? {}
+              : { format: format as "post" | "thread" }),
+          },
+    ),
     history = useQuery(api.performance.history.overview, args),
     startHistory = useMutation(api.performance.history.start),
     manageHistory = useMutation(api.performance.history.manage),
@@ -34,6 +59,7 @@ export function OwnMetrics() {
   const [clock, setClock] = useState(Date.now());
   const nextWake = Math.min(
     ...[
+      ...(baselineData?.baseline?.cohorts.map((c) => c.until) ?? []),
       ...(data?.posts.map(
         (p) => p.knowledge?.assessment?.sourceUntil ?? Infinity,
       ) ?? []),
@@ -146,7 +172,7 @@ export function OwnMetrics() {
                 Freigabe.
               </p>
             )}
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 disabled={
                   !admin ||
@@ -183,7 +209,71 @@ export function OwnMetrics() {
               </Button>
             </div>
           </Section>
-          <div className="mt-6">
+          <div className="mt-6 space-y-4">
+            <div className="flex flex-wrap gap-3">
+              <label>
+                Publiziert ab (UTC)
+                <input
+                  aria-label="Publiziert ab (UTC)"
+                  type="date"
+                  value={from}
+                  max={to || undefined}
+                  onChange={(e) => setFrom(e.target.value)}
+                  className="native-select"
+                />
+              </label>
+              <label>
+                Publiziert bis (UTC)
+                <input
+                  aria-label="Publiziert bis (UTC)"
+                  type="date"
+                  value={to}
+                  min={from || undefined}
+                  onChange={(e) => setTo(e.target.value)}
+                  className="native-select"
+                />
+              </label>
+              <label>
+                Beobachtungsalter
+                <select
+                  aria-label="Beobachtungsalter"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  className="native-select"
+                >
+                  {windows.map((w) => (
+                    <option key={w} value={w}>
+                      {w === 0.25 ? "15 Minuten" : `${w} Stunden`}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Vergleichsformat
+                <select
+                  aria-label="Vergleichsformat"
+                  value={format}
+                  onChange={(e) => setFormat(e.target.value)}
+                  className="native-select"
+                >
+                  <option value="all">Alle getrennten Formate</option>
+                  <option value="post">Einzelbeiträge</option>
+                  <option value="thread">Ganze Threads</option>
+                </select>
+              </label>
+            </div>
+            <p className="text-xs muted">
+              Publikationsfilter: {from || "offener Beginn"} bis{" "}
+              {to || "offenes Ende"}; maximal 366 Tage pro gewähltem Zeitraum.
+              Daten bleiben eine begrenzte Teilmenge.
+            </p>
+            {rangeInvalid ? (
+              <p role="alert">
+                Wähle einen geordneten Zeitraum von höchstens 366 Tagen.
+              </p>
+            ) : (
+              <Baselines data={baselineData?.baseline} clock={clock} />
+            )}
             <Section
               title="Veröffentlichte Beiträge"
               description="Ein Strich bedeutet unbekannt, nur ausdrücklich gemessene Werte können 0 sein. Thread-Positionen bleiben getrennt; keine unbelegten Summen oder Erfolgsprognosen."
@@ -210,7 +300,7 @@ export function OwnMetrics() {
                           ? "Thread-Mitglied"
                           : "Beitrag"}{" "}
                         · Medien{" "}
-                        {p.mediaType === "none" ? "keine" : "unbekannt"} ·
+                        {p.mediaType === "none" ? "keine" : p.mediaType} ·
                         Thread-Position {p.position + 1} ·{" "}
                         {p.coverage?.confirmed ?? "—"}/
                         {p.coverage?.total ?? "—"} bestätigt · Version{" "}
@@ -235,6 +325,20 @@ export function OwnMetrics() {
                         (p.knowledge.assessment.sourceUntil ?? Infinity) >
                           clock && (
                           <p className="muted text-xs">
+                            Inhaltsbewertung damals:{" "}
+                            {p.knowledge.assessment.result.score?.aggregate ==
+                            null
+                              ? "—"
+                              : Math.round(
+                                  p.knowledge.assessment.result.score.aggregate,
+                                )}{" "}
+                            / 100 (unkalibrierte Heuristik; keine
+                            Reichweitenprognose). Historischer Startwert bleibt{" "}
+                            {p.knowledge.assessment.result.score?.history
+                              ?.value ?? "unbekannt"}
+                            ; Audience Fit nicht validiert. Kenntnis{" "}
+                            {p.knowledge.id ?? "unbekannt"}, Analyse{" "}
+                            {p.knowledge.assessmentId}.{" "}
                             {p.knowledge.assessment.provenance.resolvedModel ??
                               p.knowledge.assessment.provenance
                                 .requestedModel}{" "}
@@ -359,7 +463,7 @@ export function OwnMetrics() {
                           </div>
                         );
                       })}
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           variant="outline"
                           disabled={!editor || busy}
@@ -444,7 +548,7 @@ export function OwnMetrics() {
                   · {history.reason}
                 </p>
               )}
-              <div className="flex gap-2 my-3">
+              <div className="flex flex-wrap gap-2 my-3">
                 <Button
                   disabled={
                     !admin ||
@@ -490,7 +594,7 @@ export function OwnMetrics() {
                     importiert · {j.rejected} ausgelassen{" "}
                     {j.reason && `· ${j.reason}`}
                   </p>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {["queued", "reading"].includes(j.state) && (
                       <Button
                         variant="outline"
@@ -570,7 +674,7 @@ export function OwnMetrics() {
                     {p.contentType === "reply"
                       ? "eigene Antwort"
                       : "eigener Originalbeitrag"}{" "}
-                    · Medien {p.mediaType === "none" ? "keine" : "unbekannt"} ·
+                    · Medien {p.mediaType === "none" ? "keine" : p.mediaType} ·
                     veröffentlicht{" "}
                     {new Date(p.providerCreatedAt).toLocaleString("de-DE")} ·
                     importiert {new Date(p.observedAt).toLocaleString("de-DE")}{" "}

@@ -33,6 +33,8 @@ export const policyFields = {
   allocatedProviderLimitMicros: v.number(),
 };
 export const controlFields = {
+  contentPolicyId: v.optional(v.id("performanceContentPolicies")),
+  contentApprovedBy: v.optional(v.id("users")),
   deletedThroughGeneration: v.optional(v.number()),
   ...scope,
   enabled: v.boolean(),

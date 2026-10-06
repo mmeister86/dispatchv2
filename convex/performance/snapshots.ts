@@ -1,3 +1,4 @@
+import { describe, baselineView, type BaselinePost } from "./baselines";
 import { ConvexError, v } from "convex/values";
 import {
   internalMutation,
@@ -8,7 +9,14 @@ import {
 import { internal } from "../_generated/api";
 import { workspaceQuery, requireReference } from "../lib/authorization";
 import type { Doc } from "../_generated/dataModel";
-import { authority, policy, fingerprint } from "./capabilities";
+import {
+  authority,
+  policy,
+  fingerprint,
+  grants,
+  credential,
+  admin,
+} from "./capabilities";
 import { scope, snapshotDoc, field, dialect, windows } from "./fields";
 import { changeLiability } from "../ai/accounting";
 import { draftResearchProof } from "../research/contentProof";
@@ -420,6 +428,7 @@ export const expire = internalMutation({
   },
 });
 const knowledgeView = v.object({
+  id: v.id("publicationKnowledge"),
   capturedAt: v.number(),
   assessmentId: v.union(v.id("jevAssessments"), v.null()),
   applicable: v.boolean(),
@@ -427,8 +436,15 @@ const knowledgeView = v.object({
   assessment: v.union(assessmentDoc, v.null()),
 });
 export const overview = workspaceQuery({
-  args: { accountId: scope.accountId },
+  args: {
+    accountId: scope.accountId,
+    from: v.optional(v.number()),
+    to: v.optional(v.number()),
+    windowHours: v.optional(v.number()),
+    format: v.optional(v.union(v.literal("post"), v.literal("thread"))),
+  },
   returns: v.object({
+    baseline: baselineView,
     enabled: v.boolean(),
     reason: v.union(v.string(), v.null()),
     configuration: v.union(
@@ -450,7 +466,13 @@ export const overview = workspaceQuery({
           v.literal("thread-member"),
           v.literal("unknown"),
         ),
-        mediaType: v.union(v.literal("none"), v.literal("unknown")),
+        mediaType: v.union(
+          v.literal("none"),
+          v.literal("image"),
+          v.literal("video"),
+          v.literal("mixed"),
+          v.literal("unknown"),
+        ),
         scheduleId: v.id("schedules"),
         postAttemptId: v.id("xPostAttempts"),
         externalId: v.string(),
@@ -466,161 +488,261 @@ export const overview = workspaceQuery({
       }),
     ),
   }),
-  handler: async (ctx, a) => {
-    const args = { workspaceId: ctx.workspace._id, accountId: a.accountId };
-    requireReference(args.workspaceId, await ctx.db.get(a.accountId));
-    const control = await ctx.db
-      .query("performanceControls")
-      .withIndex("by_workspaceId_and_accountId", (q) =>
-        q.eq("workspaceId", args.workspaceId).eq("accountId", args.accountId),
+  handler: (ctx, a) =>
+    readOverview(ctx, { workspaceId: ctx.workspace._id, ...a }),
+});
+export async function readOverview(
+  ctx: QueryCtx,
+  a: {
+    workspaceId: Doc<"workspaces">["_id"];
+    accountId: Doc<"socialAccounts">["_id"];
+    from?: number;
+    to?: number;
+    windowHours?: number;
+    format?: "post" | "thread";
+  },
+) {
+  const args = { workspaceId: a.workspaceId, accountId: a.accountId };
+  if (
+    (a.from !== undefined && !Number.isFinite(a.from)) ||
+    (a.to !== undefined && !Number.isFinite(a.to)) ||
+    (a.from !== undefined &&
+      a.to !== undefined &&
+      (a.to < a.from || a.to - a.from > 366 * 86400000)) ||
+    (a.windowHours !== undefined && !windows.some((w) => w === a.windowHours))
+  )
+    throw new ConvexError("BASELINE_FILTER_INVALID");
+  requireReference(args.workspaceId, await ctx.db.get(a.accountId));
+  const control = await ctx.db
+    .query("performanceControls")
+    .withIndex("by_workspaceId_and_accountId", (q) =>
+      q.eq("workspaceId", args.workspaceId).eq("accountId", args.accountId),
+    )
+    .unique();
+  let reason: string | null = null,
+    configured: Doc<"performancePolicies"> | null = null;
+  try {
+    configured = await policy(ctx, args);
+    if (control?.enabled) await authority(ctx, args);
+  } catch (e) {
+    reason =
+      e instanceof ConvexError ? String(e.data) : "OWN_METRICS_UNAVAILABLE";
+  }
+  const rows = await ctx.db
+      .query("xPostAttempts")
+      .withIndex("by_workspaceId_and_accountId_and_stage", (q) =>
+        q
+          .eq("workspaceId", args.workspaceId)
+          .eq("accountId", args.accountId)
+          .eq("stage", "confirmed"),
       )
-      .unique();
-    let reason: string | null = null,
-      configured: Doc<"performancePolicies"> | null = null;
-    try {
-      configured = await policy(ctx, args);
-      if (control?.enabled) await authority(ctx, args);
-    } catch (e) {
-      reason =
-        e instanceof ConvexError ? String(e.data) : "OWN_METRICS_UNAVAILABLE";
-    }
-    const rows = await ctx.db
-        .query("xPostAttempts")
-        .withIndex("by_workspaceId_and_accountId_and_stage", (q) =>
-          q
-            .eq("workspaceId", args.workspaceId)
-            .eq("accountId", args.accountId)
-            .eq("stage", "confirmed"),
-        )
-        .order("desc")
-        .take(20),
-      posts = [];
-    for (const c of rows) {
-      if (!c.externalId || !c.confirmedAt) continue;
-      const publication = await ctx.db.get(c.scheduleId);
-      const prefix = publication?.externalPosts?.find((p) => p.position === 0);
-      const k = prefix
-        ? await ctx.db
-            .query("publicationKnowledge")
-            .withIndex("by_postAttemptId", (q) =>
-              q.eq("postAttemptId", prefix.attemptId),
-            )
-            .unique()
-        : null;
-      let assessment = k?.assessmentId
-        ? await ctx.db.get(k.assessmentId)
-        : null;
-      if (assessment) {
-        try {
-          const ver = await ctx.db.get(c.versionId);
-          if (
-            !ver ||
-            ver.sourceUnavailable ||
-            assessment.draftVersionId !== c.versionId ||
-            assessment.workspaceId !== c.workspaceId ||
-            assessment.accountId !== c.accountId
+      .order("desc")
+      .take(20),
+    posts = [];
+  const baselinePosts: BaselinePost[] = [];
+  for (const c of rows) {
+    if (!c.externalId || !c.confirmedAt) continue;
+    const publication = await ctx.db.get(c.scheduleId);
+    const prefix = publication?.externalPosts?.find((p) => p.position === 0);
+    const k = prefix
+      ? await ctx.db
+          .query("publicationKnowledge")
+          .withIndex("by_postAttemptId", (q) =>
+            q.eq("postAttemptId", prefix.attemptId),
           )
-            throw new Error();
-          const horizon = Math.min(
-            assessment.sourceUntil ?? Infinity,
-            (await draftResearchProof(ctx, ver)) ?? Infinity,
-          );
-          if (horizon <= Date.now()) throw new Error();
-          assessment = {
-            ...assessment,
-            sourceUntil: Number.isFinite(horizon) ? horizon : null,
-          };
-        } catch {
-          assessment = null;
-        }
-      }
-      const snapshots = [];
-      for (const windowHours of windows) {
-        const r = await ctx.db
-          .query("performanceSnapshots")
-          .withIndex("by_postAttemptId_and_windowHours", (q) =>
-            q.eq("postAttemptId", c._id).eq("windowHours", windowHours),
-          )
-          .unique();
+          .unique()
+      : null;
+    let assessment = k?.assessmentId ? await ctx.db.get(k.assessmentId) : null;
+    if (assessment) {
+      try {
+        const ver = await ctx.db.get(c.versionId);
         if (
-          r &&
-          r.state !== "removed" &&
-          !control?.deleted &&
-          r.generation > (control?.deletedThroughGeneration ?? -1)
+          !ver ||
+          ver.sourceUnavailable ||
+          assessment.draftVersionId !== c.versionId ||
+          assessment.workspaceId !== c.workspaceId ||
+          assessment.accountId !== c.accountId
         )
-          snapshots.push(
-            r.expiresAt > Date.now()
-              ? {
-                  ...r,
-                  late:
-                    r.late ??
-                    (r.observedAt !== null && r.observedAt > r.dueAt + 60000),
-                  ...(r.observedAt !== null
-                    ? { observedAgeMs: r.observedAt - r.confirmedAt }
-                    : {}),
-                }
-              : {
-                  ...r,
-                  fields: [],
-                  state: "removed" as const,
-                  reason: "OWN_METRICS_RETENTION_EXPIRED",
-                },
-          );
+          throw new Error();
+        const horizon = Math.min(
+          assessment.sourceUntil ?? Infinity,
+          (await draftResearchProof(ctx, ver)) ?? Infinity,
+        );
+        if (horizon <= Date.now()) throw new Error();
+        assessment = {
+          ...assessment,
+          sourceUntil: Number.isFinite(horizon) ? horizon : null,
+        };
+      } catch {
+        assessment = null;
       }
-      const publishedVersion = await ctx.db.get(c.versionId);
-      posts.push({
-        network: "x" as const,
-        accountSize: null,
-        contentType: publishedVersion
-          ? publishedVersion.content.text.length > 1
-            ? ("thread-member" as const)
-            : ("post" as const)
-          : ("unknown" as const),
-        mediaType:
-          publishedVersion?.content.media.length === 0
-            ? ("none" as const)
-            : ("unknown" as const),
-        scheduleId: c.scheduleId,
-        postAttemptId: c._id,
-        externalId: c.externalId,
-        position: c.position,
-        confirmedAt: c.confirmedAt,
-        coverage: {
-          confirmed: publication?.externalPosts?.length ?? 0,
-          total: (await ctx.db.get(c.versionId))?.content.text.length ?? null,
-        },
-        versionId: c.versionId,
-        knowledge: k
-          ? {
-              capturedAt: k.capturedAt,
-              assessmentId: k.assessmentId,
-              applicable: k.applicable,
-              reason:
-                k.assessmentId && !assessment
-                  ? "ASSESSMENT_SOURCE_UNAVAILABLE"
-                  : k.reason,
-              assessment,
-            }
-          : null,
-        snapshots,
-      });
     }
-    return {
-      enabled: control?.enabled ?? false,
-      reason: reason ?? (control?.enabled ? null : "OWN_METRICS_PAUSED"),
-      configuration: configured
+    const snapshots = [];
+    for (const windowHours of windows) {
+      const r = await ctx.db
+        .query("performanceSnapshots")
+        .withIndex("by_postAttemptId_and_windowHours", (q) =>
+          q.eq("postAttemptId", c._id).eq("windowHours", windowHours),
+        )
+        .unique();
+      if (
+        r &&
+        r.state !== "removed" &&
+        !control?.deleted &&
+        r.generation > (control?.deletedThroughGeneration ?? -1)
+      )
+        snapshots.push(
+          r.expiresAt > Date.now()
+            ? {
+                ...r,
+                late:
+                  r.late ??
+                  (r.observedAt !== null && r.observedAt > r.dueAt + 60000),
+                ...(r.observedAt !== null
+                  ? { observedAgeMs: r.observedAt - r.confirmedAt }
+                  : {}),
+              }
+            : {
+                ...r,
+                fields: [],
+                state: "removed" as const,
+                reason: "OWN_METRICS_RETENTION_EXPIRED",
+              },
+        );
+    }
+    const publishedVersion = await ctx.db.get(c.versionId);
+
+    let mediaType: "none" | "image" | "video" | "mixed" | "unknown" =
+      publishedVersion?.content.media.length === 0 ? "none" : "unknown";
+    if (publishedVersion?.content.media.length) {
+      const types: ("image" | "video")[] = [];
+      for (const [i, ref] of publishedVersion.content.media.entries()) {
+        const immutable = publishedVersion.mediaChecksums?.[i],
+          asset = await ctx.db.get(ref.assetId);
+        if (
+          !immutable ||
+          immutable.assetId !== ref.assetId ||
+          !asset ||
+          asset.workspaceId !== a.workspaceId ||
+          asset.state !== "ready" ||
+          asset.checksum !== immutable.checksum ||
+          asset.objectKey !== immutable.objectKey
+        ) {
+          types.length = 0;
+          break;
+        }
+        types.push(asset.type);
+      }
+      if (types.length)
+        mediaType = new Set(types).size === 1 ? types[0] : "mixed";
+    }
+    let topic: string | null = null,
+      topicUntil = Infinity;
+    try {
+      if (!publishedVersion || publishedVersion.sourceUnavailable)
+        throw new Error();
+      topicUntil =
+        (await draftResearchProof(ctx, publishedVersion)) ?? Infinity;
+      if (topicUntil <= Date.now()) throw new Error();
+      topic = publishedVersion.content.pillar || null;
+    } catch {
+      topic = null;
+    }
+    const retained = [];
+    for (const r of snapshots) {
+      try {
+        const horizon = await retainedSnapshotHorizon(ctx, r);
+        if (horizon > Date.now()) retained.push({ ...r, expiresAt: horizon });
+      } catch {
+        /* Baselines require current independent numeric rights. */
+      }
+    }
+    baselinePosts.push({
+      scheduleId: c.scheduleId,
+      versionId: c.versionId,
+      externalId: c.externalId,
+      position: c.position,
+      coverage: {
+        confirmed: publication?.externalPosts?.length ?? 0,
+        total: publishedVersion?.content.text.length ?? null,
+      },
+      mediaType,
+      topic,
+      topicUntil,
+      timezone: publication?.timezone ?? null,
+      snapshots: retained,
+    });
+    posts.push({
+      network: "x" as const,
+      accountSize: null,
+      contentType: publishedVersion
+        ? publishedVersion.content.text.length > 1
+          ? ("thread-member" as const)
+          : ("post" as const)
+        : ("unknown" as const),
+      mediaType,
+      scheduleId: c.scheduleId,
+      postAttemptId: c._id,
+      externalId: c.externalId,
+      position: c.position,
+      confirmedAt: c.confirmedAt,
+      coverage: {
+        confirmed: publication?.externalPosts?.length ?? 0,
+        total: (await ctx.db.get(c.versionId))?.content.text.length ?? null,
+      },
+      versionId: c.versionId,
+      knowledge: k
         ? {
-            id: configured._id,
-            fingerprint: await fingerprint(configured),
-            windows: configured.windows ?? [24, 48],
-            unitMicros: configured.unitMicros,
-            currency: configured.currency,
+            id: k._id,
+            capturedAt: k.capturedAt,
+            assessmentId: k.assessmentId,
+            applicable: k.applicable,
+            reason:
+              k.assessmentId && !assessment
+                ? "ASSESSMENT_SOURCE_UNAVAILABLE"
+                : k.reason,
+            assessment,
           }
         : null,
-      posts,
-    };
-  },
-});
+      snapshots,
+    });
+  }
+  return {
+    baseline: describe(
+      baselinePosts
+        .filter(
+          (p) =>
+            a.format === undefined ||
+            (p.coverage.total === 1 ? "post" : "thread") === a.format,
+        )
+        .map((p) => ({
+          ...p,
+          snapshots: p.snapshots.filter(
+            (r) =>
+              (a.windowHours === undefined ||
+                r.windowHours === a.windowHours) &&
+              (r.providerCreatedAt === null ||
+                ((a.from === undefined || r.providerCreatedAt >= a.from) &&
+                  (a.to === undefined || r.providerCreatedAt <= a.to))),
+          ),
+        })),
+      Date.now(),
+      a.accountId,
+    ),
+    enabled: control?.enabled ?? false,
+    reason: reason ?? (control?.enabled ? null : "OWN_METRICS_PAUSED"),
+    configuration: configured
+      ? {
+          id: configured._id,
+          fingerprint: await fingerprint(configured),
+          windows: configured.windows ?? [24, 48],
+          unitMicros: configured.unitMicros,
+          currency: configured.currency,
+        }
+      : null,
+    posts,
+  };
+}
 
 export const block = internalMutation({
   args: {
@@ -665,3 +787,77 @@ export const timeout = internalMutation({
     return null;
   },
 });
+
+async function retainedSnapshotHorizon(
+  ctx: QueryCtx,
+  row: Doc<"performanceSnapshots">,
+) {
+  const c = await ctx.db.get(row.postAttemptId),
+    s = await ctx.db.get(row.scheduleId),
+    t = row.attemptId ? await ctx.db.get(row.attemptId) : null;
+  const control = await ctx.db
+    .query("performanceControls")
+    .withIndex("by_workspaceId_and_accountId", (q) =>
+      q.eq("workspaceId", row.workspaceId).eq("accountId", row.accountId),
+    )
+    .unique();
+  if (
+    !control ||
+    control.deleted ||
+    row.generation <= (control.deletedThroughGeneration ?? -1) ||
+    row.state !== "observed" ||
+    !c ||
+    c.stage !== "confirmed" ||
+    c.workspaceId !== row.workspaceId ||
+    c.accountId !== row.accountId ||
+    c.scheduleId !== row.scheduleId ||
+    c.versionId !== row.versionId ||
+    c.externalId !== row.externalId ||
+    !s ||
+    s.workspaceId !== row.workspaceId ||
+    s.accountId !== row.accountId ||
+    s.versionId !== row.versionId ||
+    !s.externalPosts?.some(
+      (x) =>
+        x.attemptId === c._id &&
+        x.externalId === row.externalId &&
+        x.position === row.position,
+    ) ||
+    !t ||
+    t.owner !== "own-metrics" ||
+    t.state !== "settled" ||
+    t.snapshotId !== row._id ||
+    t.workspaceId !== row.workspaceId ||
+    t.accountId !== row.accountId ||
+    t.generation !== row.generation
+  )
+    throw new Error("OWN_METRICS_SOURCE_UNAVAILABLE");
+  const original = await ctx.db.get(t.policyId);
+  if (
+    !original ||
+    original.workspaceId !== row.workspaceId ||
+    original.accountId !== row.accountId ||
+    original.version !== row.definitionVersion ||
+    original.dialect !== row.dialect ||
+    (await fingerprint(original)) !== t.policyFingerprint
+  )
+    throw new Error("OWN_METRICS_SOURCE_UNAVAILABLE");
+  await admin(ctx, row.workspaceId, control.actorId);
+  const current = await policy(ctx, row),
+    ids = await grants(ctx, current, false),
+    cred = await credential(ctx, row, current);
+  if (
+    c.providerIdentity !== current.providerIdentity ||
+    original.providerIdentity !== current.providerIdentity
+  )
+    throw new Error("OWN_METRICS_SOURCE_UNAVAILABLE");
+  return Math.min(
+    row.expiresAt,
+    original.expiresAt,
+    current.expiresAt,
+    cred.expiresAt - 15000,
+    ...(await Promise.all(ids.map((id) => ctx.db.get(id)))).map(
+      (b) => b!.expiresAt,
+    ),
+  );
+}
