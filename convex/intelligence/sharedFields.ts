@@ -40,7 +40,7 @@ export const executableRefs = v.object({
 export const refs = v.union(oldRefs, executableRefs);
 const algorithmPayloadFields = {
   repository: v.literal("xai-org/x-algorithm"),
-  commit: v.literal("b412112d03f27acbfd668e0cc040abcafa1080c1"),
+  commit: v.string(),
   commitAt: v.number(),
   observedAt: v.number(),
   reviewDueAt: v.number(),
@@ -55,6 +55,12 @@ const algorithmPayloadFields = {
 };
 export const algorithmFields = {
   ...versionFields,
+  update: v.optional(
+    v.object({
+      proposalId: v.id("intelligenceSourceUpdates"),
+      evaluationId: v.id("intelligenceSourceUpdates"),
+    }),
+  ),
   payload: v.union(
     v.object({
       ...algorithmPayloadFields,
@@ -127,4 +133,125 @@ export const result = v.object({
   revision: v.number(),
   algorithmId: v.union(v.id("algorithmProfiles"), v.null()),
   audienceId: v.union(v.id("audienceProfiles"), v.null()),
+});
+
+export const sourceVariant = v.union(
+  v.literal("public-context"),
+  v.literal("post-analysis"),
+);
+export const sourceEvidence = v.object({
+  path: v.string(),
+  url: v.string(),
+  sha256: v.string(),
+});
+export const sourceObservation = v.object({
+  commit: v.string(),
+  commitAt: v.number(),
+  observedAt: v.number(),
+  reviewDueAt: v.number(),
+  compareUrl: v.string(),
+  complete: v.boolean(),
+  issues: v.array(v.string()),
+  evidence: v.array(sourceEvidence),
+  changes: v.array(
+    v.object({
+      path: v.string(),
+      status: v.string(),
+      url: v.string(),
+      patch: v.string(),
+      patchState: v.union(
+        v.literal("complete"),
+        v.literal("clipped"),
+        v.literal("missing"),
+      ),
+    }),
+  ),
+});
+export const sourceState = v.union(
+  ...(
+    [
+      "pending",
+      "up_to_date",
+      "proposed",
+      "failed",
+      "unknown",
+      "incomplete",
+      "rate_limited",
+    ] as const
+  ).map(v.literal),
+);
+export const sourceBaseFields = {
+  ...scope,
+  actorId: v.id("users"),
+  commandKey: v.string(),
+  fingerprint: v.string(),
+  baseProfileId: v.id("algorithmProfiles"),
+  baseIdentity: v.string(),
+  baseCommit: v.string(),
+  headCommit: v.union(v.string(), v.null()),
+  createdAt: v.number(),
+};
+export const sourceCheckFields = {
+  ...sourceBaseFields,
+  kind: v.literal("check"),
+  expectedPaths: v.array(v.string()),
+  full: v.boolean(),
+  state: sourceState,
+  deadline: v.number(),
+  notBefore: v.number(),
+  finishedAt: v.union(v.number(), v.null()),
+  requests: v.number(),
+  bytes: v.number(),
+  error: v.union(v.string(), v.null()),
+  proposalId: v.union(v.id("intelligenceSourceUpdates"), v.null()),
+  observation: v.union(sourceObservation, v.null()),
+};
+export const sourceProposalFields = {
+  ...sourceBaseFields,
+  kind: v.literal("proposal"),
+  checkId: v.id("intelligenceSourceUpdates"),
+  observation: sourceObservation,
+};
+export const sourceEvaluationFields = {
+  ...sourceBaseFields,
+  kind: v.literal("evaluation"),
+  proposalId: v.id("intelligenceSourceUpdates"),
+  variant: sourceVariant,
+  refs,
+  interpretation: v.string(),
+  impact: v.string(),
+  rationale: v.string(),
+  fullSourceReview: v.literal(true),
+  reference: v.object({
+    version: v.literal("source-compatibility-v1"),
+    contract: v.string(),
+    passed: v.boolean(),
+    outcomes: v.array(
+      v.object({
+        case: v.string(),
+        outcome: v.string(),
+        aggregate: v.union(v.number(), v.null()),
+      }),
+    ),
+  }),
+};
+export const sourceUpdateFields = v.union(
+  v.object(sourceCheckFields),
+  v.object(sourceProposalFields),
+  v.object(sourceEvaluationFields),
+);
+export const sourceUpdateDoc = v.union(
+  ...[sourceCheckFields, sourceProposalFields, sourceEvaluationFields].map(
+    (fields) =>
+      v.object({
+        _id: v.id("intelligenceSourceUpdates"),
+        _creationTime: v.number(),
+        ...fields,
+      }),
+  ),
+);
+export const sourceCheckDoc = v.object({
+  _id: v.id("intelligenceSourceUpdates"),
+  _creationTime: v.number(),
+  ...sourceCheckFields,
 });

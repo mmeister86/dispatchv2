@@ -1456,3 +1456,227 @@ test("Admin restoration cannot replace an unknown terminal check after protected
     }),
   ).rejects.toThrow("CALIBRATION_MONITORING_CHECK_FINAL");
 });
+
+test("TASK44 source-only observation preserves genuine active-model/publication/assessment state; new reviewed profile misses cache and falls back to static", async () => {
+  const f = await qualifiedCorpus(),
+    evaluator = await signedAdmin(f);
+  const { monitoringSnapshotId } = await f.mature();
+  const checkId = await f.signed.mutation(
+    api.performance.models.checkMonitoring,
+    {
+      ...f.args,
+      declarationId: f.declarationId,
+      snapshotId: monitoringSnapshotId,
+      block: 1,
+      commandKey: "source-native-monitor",
+    },
+  );
+  await f.signed.mutation(api.performance.models.activate, {
+    ...f.args,
+    evaluationId: f.evaluationId,
+    declarationId: f.declarationId,
+    checkId,
+    expectedRevision: 0,
+    commandKey: "source-native-activate",
+  });
+  const initial = await f.signed.query(api.intelligence.profiles.get, f.args);
+  await f.signed.mutation(api.intelligence.profiles.change, {
+    ...f.args,
+    expectedRevision: initial.capture.revision,
+    commandKey: "source-original-pair",
+    action: {
+      kind: "select",
+      algorithmId: f.request.algorithmId,
+      audienceId: f.request.audienceId,
+      reason: "Record an actual historical pair before source observation",
+    },
+  });
+  const t = await targetSchedule(f);
+  expect(
+    await f.t.mutation(internal.publishing.attempts.beforeSend, t.send),
+  ).toBe(true);
+  const snapshot = () =>
+    f.t.run(async (ctx) => ({
+      profiles: await ctx.db.query("algorithmProfiles").take(20),
+      selections: await ctx.db.query("intelligenceSelections").take(20),
+      assessments: await ctx.db.query("jevAssessments").take(100),
+      models: await ctx.db.query("calibrationModels").take(100),
+      knowledge: await ctx.db.query("publicationKnowledge").take(100),
+      budgets: await ctx.db.query("aiBudgets").take(20),
+      attempts: await ctx.db.query("aiAttempts").take(100),
+      controls: await ctx.db.query("calibrationControls").take(20),
+    }));
+  const before = await snapshot();
+  const baseCommit = "b412112d03f27acbfd668e0cc040abcafa1080c1",
+    headCommit = "e62790c99484b51424c2eccc488ed4e7517e8778";
+  const sourceFetch = vi.fn(async (url: string, init: RequestInit) => {
+    expect(init.redirect).toBe("error");
+    if (url.includes("commits/main"))
+      return new Response(
+        JSON.stringify({
+          sha: headCommit,
+          commit: { committer: { date: "2026-10-06T04:59:30Z" } },
+        }),
+      );
+    if (url.includes("/compare/"))
+      return new Response(
+        JSON.stringify({
+          status: "ahead",
+          total_commits: 1,
+          ahead_by: 1,
+          behind_by: 0,
+          base_commit: { sha: baseCommit },
+          merge_base_commit: { sha: baseCommit },
+          commits: [{ sha: headCommit }],
+          files: [
+            {
+              filename: "README.md",
+              status: "modified",
+              patch: "Synthetic bounded source difference",
+            },
+          ],
+        }),
+      );
+    expect(url).toMatch(
+      /^https:\/\/raw\.githubusercontent\.com\/xai-org\/x-algorithm\//,
+    );
+    return new Response(
+      "Synthetic public source bytes; no live source or empirical qualification",
+    );
+  });
+  vi.stubGlobal("fetch", sourceFetch);
+  const receipt = await f.signed.action(api.intelligence.profileUpdates.check, {
+    ...f.args,
+    baseProfileId: f.request.algorithmId,
+    commandKey: "source-native-observation",
+    full: false,
+  });
+  expect(receipt.state).toBe("proposed");
+  expect(sourceFetch).toHaveBeenCalledTimes(15);
+  expect(await snapshot()).toEqual(before);
+  expect(
+    await f.signed.action(api.intelligence.assessments.analyze, {
+      ...t.args,
+      operationKey: "source-still-original-cache",
+    }),
+  ).toMatchObject({ cached: true });
+  expect(sourceFetch).toHaveBeenCalledTimes(15);
+  const evaluationId = await evaluator.mutation(
+    api.intelligence.profileUpdates.evaluate,
+    {
+      ...f.args,
+      proposalId: receipt.proposalId!,
+      commandKey: "source-native-evaluation",
+      variant: "post-analysis",
+      interpretation: "Synthetic full linked-source review",
+      impact: "Source context maintenance only; exact Dispatch refs retained",
+      rationale:
+        "Synthetic human attestation of complete comparison and all 13 evidence files",
+      fullSourceReview: true,
+    },
+  );
+  const current = await f.signed.query(api.intelligence.profiles.get, f.args);
+  const draft = await f.signed.mutation(
+    api.intelligence.algorithmProfiles.create,
+    {
+      ...f.args,
+      expectedRevision: current.capture.revision,
+      commandKey: "source-native-draft",
+      proposalId: receipt.proposalId!,
+      evaluationId,
+      variant: "post-analysis",
+    },
+  );
+  const reviewed = await f.signed.mutation(api.intelligence.profiles.change, {
+    ...f.args,
+    expectedRevision: draft.revision,
+    commandKey: "source-native-review",
+    action: {
+      kind: "review-algorithm",
+      algorithmId: draft.algorithmId!,
+      reason: "Independent source profile review; no empirical model claim",
+    },
+  });
+  const selected = await f.signed.mutation(api.intelligence.profiles.change, {
+    ...f.args,
+    expectedRevision: reviewed.revision,
+    commandKey: "source-native-select",
+    action: {
+      kind: "select",
+      algorithmId: draft.algorithmId!,
+      audienceId: f.request.audienceId,
+      reason: "Explicit reviewed fresh source variant",
+    },
+  });
+  const provider = vi.fn(async () => nativeAnalysisResponse());
+  vi.stubGlobal("fetch", provider);
+  expect(
+    await f.signed.action(api.intelligence.assessments.analyze, {
+      ...t.args,
+      operationKey: "source-new-identity-cache-miss",
+    }),
+  ).toMatchObject({ cached: false, outcome: "success" });
+  expect(provider).toHaveBeenCalledTimes(1);
+  const after = await f.signed.query(api.intelligence.assessments.get, t.args);
+  expect(after.assessment?.algorithmId).toBe(draft.algorithmId);
+  expect(after.assessment?.semanticKey).not.toBe(t.assessment.semanticKey);
+  const projection = await f.t.query(internal.performance.models.projection, {
+    ...f.args,
+    actorId: f.userId,
+    assessmentId: after.assessment!._id,
+  });
+  expect(projection).toMatchObject({
+    state: "static",
+    reason: "CALIBRATION_TARGET_STRATUM_CHANGED",
+    pin: null,
+    score: after.assessment!.result.score!.aggregate,
+  });
+  const preserved = await snapshot();
+  expect(preserved.models).toEqual(before.models);
+  expect(preserved.knowledge).toEqual(before.knowledge);
+  expect(preserved.controls).toEqual(before.controls);
+  expect(await f.t.run((ctx) => ctx.db.get(t.assessment._id))).toEqual(
+    t.assessment,
+  );
+  const ev = await f.t.run((ctx) => ctx.db.get(evaluationId));
+  if (!ev || ev.kind !== "evaluation")
+    throw new Error("Missing source evaluation");
+  await changeRole(f, ev.actorId, "Viewer");
+  await expect(
+    f.t.query(internal.ai.jev.access.context, {
+      ...f.request,
+      algorithmId: draft.algorithmId!,
+      selectionRevision: selected.revision,
+      operationKey: "source-revoked-evaluator",
+      deadline: Date.now() + 2500,
+    }),
+  ).rejects.toThrow("JEV_PROFILE_CHANGED");
+  expect(
+    (await f.signed.query(api.ai.jev.access.availability, f.args)).status,
+  ).toBe("configuration_required");
+  const rollback = await f.signed.mutation(api.intelligence.profiles.change, {
+    ...f.args,
+    expectedRevision: selected.revision,
+    commandKey: "source-original-valid-rollback",
+    action: {
+      kind: "rollback",
+      algorithmId: f.request.algorithmId,
+      audienceId: f.request.audienceId,
+      reason: "Restore exact valid historical pair",
+    },
+  });
+  expect(rollback.algorithmId).toBe(f.request.algorithmId);
+  await expect(
+    f.signed.mutation(api.intelligence.profiles.change, {
+      ...f.args,
+      expectedRevision: rollback.revision,
+      commandKey: "source-invalid-rollback",
+      action: {
+        kind: "rollback",
+        algorithmId: draft.algorithmId!,
+        audienceId: f.request.audienceId,
+        reason: "Withdrawn evaluator cannot resurrect source candidate",
+      },
+    }),
+  ).rejects.toThrow("CURRENT_REVIEW_REQUIRED");
+});

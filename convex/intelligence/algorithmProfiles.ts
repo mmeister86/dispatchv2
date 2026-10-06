@@ -1,9 +1,9 @@
 import { v } from "convex/values";
-import { begin, finish, replay } from "./profiles";
+import { begin, finish, replay, updateProof } from "./profiles";
 import { workspaceMutation } from "../lib/authorization";
 import { commandArgs, result } from "./sharedFields";
 // This pinned report is candidate content. Its source review is not current account activation.
-const manifest = [
+export const manifest = [
   [
     "README.md",
     "78cfe634123654bf5da0dec8a2b10a48d683cb4b42cc3f0e95a3fc362c659010",
@@ -61,6 +61,8 @@ const commit = "b412112d03f27acbfd668e0cc040abcafa1080c1" as const;
 export const create = workspaceMutation({
   args: {
     ...commandArgs,
+    proposalId: v.optional(v.id("intelligenceSourceUpdates")),
+    evaluationId: v.optional(v.id("intelligenceSourceUpdates")),
     variant: v.optional(
       v.union(v.literal("public-context"), v.literal("post-analysis")),
     ),
@@ -92,7 +94,10 @@ export const create = workspaceMutation({
             normalization: "unavailable-until-task28" as const,
           },
         };
-    const algorithmId = await ctx.db.insert("algorithmProfiles", {
+    const candidate: Omit<
+      import("../_generated/dataModel").Doc<"algorithmProfiles">,
+      "_id" | "_creationTime"
+    > = {
       workspaceId: ctx.workspace._id,
       accountId: a.accountId,
       network: "x",
@@ -120,6 +125,42 @@ export const create = workspaceMutation({
         })),
         report: ".docs/reviews/task-27-44-public-x-source-review.md",
       },
+    };
+    if (!!a.proposalId !== !!a.evaluationId)
+      throw new Error("INTELLIGENCE_SOURCE_REVIEW_REQUIRED");
+    let update;
+    if (a.proposalId && a.evaluationId) {
+      const proposal = await ctx.db.get(a.proposalId),
+        evaluation = await ctx.db.get(a.evaluationId);
+      if (
+        !proposal ||
+        proposal.kind !== "proposal" ||
+        !evaluation ||
+        evaluation.kind !== "evaluation"
+      )
+        throw new Error("INTELLIGENCE_SOURCE_REVIEW_REQUIRED");
+      const observation = proposal.observation;
+      candidate.payload = {
+        ...candidate.payload,
+        commit: observation.commit,
+        commitAt: observation.commitAt,
+        observedAt: observation.observedAt,
+        reviewDueAt: observation.reviewDueAt,
+        evidence: observation.evidence,
+        report: `source-proposal:${proposal._id};evaluation:${evaluation._id}`,
+      };
+      update = { proposalId: proposal._id, evaluationId: evaluation._id };
+      if (
+        !(await updateProof(ctx, {
+          ...candidate,
+          update,
+        } as import("../_generated/dataModel").Doc<"algorithmProfiles">))
+      )
+        throw new Error("INTELLIGENCE_SOURCE_REVIEW_REQUIRED");
+    }
+    const algorithmId = await ctx.db.insert("algorithmProfiles", {
+      ...candidate,
+      ...(update ? { update } : {}),
     });
     return finish(
       ctx,

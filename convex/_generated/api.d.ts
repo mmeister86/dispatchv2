@@ -60,6 +60,7 @@ import type * as intelligence_algorithmProfiles from "../intelligence/algorithmP
 import type * as intelligence_assessmentFields from "../intelligence/assessmentFields.js";
 import type * as intelligence_assessments from "../intelligence/assessments.js";
 import type * as intelligence_audienceProfiles from "../intelligence/audienceProfiles.js";
+import type * as intelligence_profileUpdates from "../intelligence/profileUpdates.js";
 import type * as intelligence_profiles from "../intelligence/profiles.js";
 import type * as intelligence_recommendationEdits from "../intelligence/recommendationEdits.js";
 import type * as intelligence_recommendations from "../intelligence/recommendations.js";
@@ -188,6 +189,7 @@ declare const fullApi: ApiFromModules<{
   "intelligence/assessmentFields": typeof intelligence_assessmentFields;
   "intelligence/assessments": typeof intelligence_assessments;
   "intelligence/audienceProfiles": typeof intelligence_audienceProfiles;
+  "intelligence/profileUpdates": typeof intelligence_profileUpdates;
   "intelligence/profiles": typeof intelligence_profiles;
   "intelligence/recommendationEdits": typeof intelligence_recommendationEdits;
   "intelligence/recommendations": typeof intelligence_recommendations;

@@ -34,6 +34,7 @@ import {
   attemptFields as jevAttemptFields,
 } from "./ai/jev/types";
 import {
+  sourceUpdateFields,
   algorithmFields as intelligenceAlgorithmFields,
   audienceFields as intelligenceAudienceFields,
   selectionFields as intelligenceSelectionFields,
@@ -254,6 +255,22 @@ export default defineSchema({
       "draftId",
     ])
     .index("by_sourceUntil", ["sourceUntil"]),
+  intelligenceSourceUpdates: defineTable(sourceUpdateFields)
+    .index("by_scope_kind", [
+      "workspaceId",
+      "accountId",
+      "network",
+      "surface",
+      "kind",
+    ])
+    .index("by_command", ["workspaceId", "accountId", "actorId", "commandKey"])
+    .index("by_base_head_kind", [
+      "workspaceId",
+      "accountId",
+      "baseProfileId",
+      "headCommit",
+      "kind",
+    ]),
   algorithmProfiles: defineTable(intelligenceAlgorithmFields).index(
     "by_scope",
     ["workspaceId", "accountId", "network", "surface"],

@@ -1,3 +1,4 @@
+import { resolveQuestions } from "../ai/jev/questions";
 import { sha256 } from "../lib/crypto";
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
@@ -18,7 +19,7 @@ import {
   receiptDoc,
   refs,
 } from "./sharedFields";
-async function authorized(
+export async function authorized(
   ctx: QueryCtx,
   ws: Id<"workspaces">,
   id: Id<"users">,
@@ -32,6 +33,107 @@ async function authorized(
     .unique();
   return !!user && !!m && (m.role === "Owner" || m.role === "Admin");
 }
+// Legacy profiles have no update provenance and retain their original contract.
+export async function updateProof(ctx: QueryCtx, p: Doc<"algorithmProfiles">) {
+  if (!p.update) return true;
+  const proposal = await ctx.db.get(p.update.proposalId),
+    evaluation = await ctx.db.get(p.update.evaluationId);
+  if (
+    !proposal ||
+    proposal.kind !== "proposal" ||
+    !evaluation ||
+    evaluation.kind !== "evaluation"
+  )
+    return false;
+  const original = await ctx.db.get(proposal.baseProfileId),
+    receipt = await ctx.db.get(proposal.checkId);
+  const variant =
+    p.payload.version === "x-post-analysis-v1"
+      ? "post-analysis"
+      : "public-context";
+  const scopeMatches = (r: typeof proposal | typeof evaluation) =>
+    r.workspaceId === p.workspaceId &&
+    r.accountId === p.accountId &&
+    r.network === p.network &&
+    r.surface === p.surface;
+  if (
+    !original ||
+    !receipt ||
+    receipt.kind !== "check" ||
+    receipt.state !== "proposed" ||
+    receipt.proposalId !== proposal._id ||
+    receipt.workspaceId !== p.workspaceId ||
+    receipt.accountId !== p.accountId ||
+    receipt.baseIdentity !== proposal.baseIdentity ||
+    receipt.baseProfileId !== proposal.baseProfileId ||
+    JSON.stringify(receipt.observation) !==
+      JSON.stringify(proposal.observation) ||
+    (p.review !== null && p.review.actorId === evaluation.actorId) ||
+    !scopeMatches(proposal) ||
+    !scopeMatches(evaluation) ||
+    original.workspaceId !== p.workspaceId ||
+    original.accountId !== p.accountId ||
+    original.network !== p.network ||
+    original.surface !== p.surface ||
+    evaluation.proposalId !== proposal._id ||
+    evaluation.baseProfileId !== proposal.baseProfileId ||
+    evaluation.baseIdentity !== proposal.baseIdentity ||
+    evaluation.baseCommit !== proposal.baseCommit ||
+    evaluation.headCommit !== proposal.headCommit ||
+    evaluation.variant !== variant ||
+    proposal.baseCommit !== original.payload.commit ||
+    proposal.baseIdentity !==
+      (await sha256(JSON.stringify(original.payload))) ||
+    proposal.headCommit !== proposal.observation.commit ||
+    !proposal.observation.complete ||
+    proposal.observation.issues.length ||
+    proposal.observation.evidence.length !== 13 ||
+    proposal.observation.reviewDueAt !==
+      proposal.observation.observedAt + 7 * 86400000 ||
+    p.payload.commit !== proposal.observation.commit ||
+    !/^[a-f0-9]{40}$/.test(p.payload.commit) ||
+    p.payload.commitAt !== proposal.observation.commitAt ||
+    p.payload.observedAt !== proposal.observation.observedAt ||
+    p.payload.reviewDueAt !== proposal.observation.reviewDueAt ||
+    p.payload.reviewDueAt <= Date.now() ||
+    JSON.stringify(p.payload.evidence) !==
+      JSON.stringify(proposal.observation.evidence) ||
+    Object.entries(p.payload.refs).some(
+      ([key, value]) =>
+        evaluation.refs[key as keyof typeof evaluation.refs] !== value,
+    ) ||
+    !evaluation.fullSourceReview ||
+    !evaluation.interpretation.trim() ||
+    !evaluation.impact.trim() ||
+    !evaluation.rationale.trim() ||
+    evaluation.createdAt < proposal.createdAt ||
+    evaluation.createdAt >= proposal.observation.reviewDueAt ||
+    !evaluation.reference.passed ||
+    evaluation.reference.version !== "source-compatibility-v1" ||
+    !(await authorized(ctx, p.workspaceId, evaluation.actorId))
+  )
+    return false;
+  const contract = await sourceReferenceContract(p);
+  return evaluation.reference.contract === contract;
+}
+export async function sourceReferenceContract(p: Doc<"algorithmProfiles">) {
+  const r = p.payload.refs;
+  const refs = [
+    r.questionSet,
+    r.normalization,
+    r.formula,
+    r.routing,
+    r.verification,
+  ];
+  return sha256(
+    JSON.stringify({
+      refs,
+      definition:
+        p.payload.version === "x-post-analysis-v1" ? resolveQuestions(p) : null,
+      version: "source-compatibility-v1",
+    }),
+  );
+}
 async function usable(
   ctx: QueryCtx,
   p: Doc<"algorithmProfiles"> | Doc<"audienceProfiles">,
@@ -41,7 +143,9 @@ async function usable(
     p.review !== null &&
     (await authorized(ctx, p.workspaceId, p.createdBy)) &&
     (await authorized(ctx, p.workspaceId, p.review.actorId)) &&
-    (!("reviewDueAt" in p.payload) || fresh(p as Doc<"algorithmProfiles">))
+    (!("reviewDueAt" in p.payload) ||
+      (fresh(p as Doc<"algorithmProfiles">) &&
+        (await updateProof(ctx, p as Doc<"algorithmProfiles">))))
   );
 }
 async function version<T extends "algorithmProfiles" | "audienceProfiles">(
@@ -165,6 +269,15 @@ export const change = workspaceMutation({
         throw new ConvexError("INTELLIGENCE_SOURCE_REVIEW_EXPIRED");
       if (!(await authorized(ctx, p.workspaceId, p.createdBy)))
         throw new ConvexError("INTELLIGENCE_AUTHOR_REVIEW_REQUIRED");
+      if (alg?.update) {
+        const evaluation = await ctx.db.get(alg.update.evaluationId);
+        if (
+          !(await updateProof(ctx, alg)) ||
+          !evaluation ||
+          evaluation.actorId === ctx.user._id
+        )
+          throw new ConvexError("INTELLIGENCE_SOURCE_REVIEW_REQUIRED");
+      }
       await ctx.db.patch(p._id, {
         status: "reviewed",
         review: { actorId: ctx.user._id, at: Date.now(), reason: x.reason },

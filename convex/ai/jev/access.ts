@@ -16,7 +16,7 @@ import {
 } from "../../lib/authorization";
 import { sha256 } from "../../lib/crypto";
 import { draftResearchProof } from "../../research/contentProof";
-import { selection } from "../../intelligence/profiles";
+import { selection, updateProof } from "../../intelligence/profiles";
 import { changeLiability } from "../accounting";
 import { requestFields, outcome, contextResult } from "./types";
 import { resolveQuestions } from "./questions";
@@ -211,7 +211,8 @@ export async function current(ctx: Ctx, a: Request) {
     await admin(ctx, a.workspaceId, p!.createdBy);
     await admin(ctx, a.workspaceId, p!.review!.actorId);
   }
-  if (alg!.payload.reviewDueAt <= Date.now()) fail("JEV_PROFILE_CHANGED");
+  if (alg!.payload.reviewDueAt <= Date.now() || !(await updateProof(ctx, alg!)))
+    fail("JEV_PROFILE_CHANGED");
   const c = await controls(ctx, a.workspaceId, a.accountId),
     p = await policy(ctx, c);
   const definition = resolveQuestions(alg!);
@@ -596,7 +597,11 @@ export const availability = workspaceQuery({
         await admin(ctx, ctx.workspace._id, profile.createdBy);
         await admin(ctx, ctx.workspace._id, profile.review!.actorId);
       }
-      if (alg!.payload.reviewDueAt <= Date.now()) fail("JEV_PROFILE_CHANGED");
+      if (
+        alg!.payload.reviewDueAt <= Date.now() ||
+        !(await updateProof(ctx, alg!))
+      )
+        fail("JEV_PROFILE_CHANGED");
       validQuestions(resolveQuestions(alg!).questions);
     } catch (e) {
       return {
