@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 03:21'
 labels:
   - p08
   - jev
@@ -56,10 +56,22 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Pin verified official SDK and prove server Action runtime with intercepted transport.
+2. Implement strict normalization, absolute call bounds, default-off flags and bounded circuit with visible missing processing/configuration state.
+3. Extend the existing single attempt ledger/shared three-scope counters for narrowly owned Jev attempts, exact current-purpose admission and safe late settlement.
+4. Run meaningful registered financial/source/SDK controls, full checks and existing EU Dev; freeze exact source and independent SPEC then QUALITY.
+5. Document software evidence; retain manual Done and actual EU-processing acceptance open.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 2026-09-19 D04: Nutzer verlangt Intelligence bereits im Dispatch-MVP/R2. Release-Zuordnung aktualisiert; keine Umsetzung oder Provideraktivierung. Maßgeblich: .docs/decisions/release-scope.md.
 
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence, /operations. Supporting disabled/provider-failure/low-confidence and local cost/bounded-attempt states. Grenze: No TypeSafe SDK integration, EU-only data-path approval, circuit breaker or provider accounting. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+ROOT readonly preparation: current official SDK0.6.0/current primary source and Context7 docs mapped, no install or runtime acceptance yet. Release waits final27 review loop. Missing EU-processing evidence keeps real calls disabled; user preference visible configuration guidance. New concrete analyzer-purpose owner must reuse sole aiAttempts ledger/shared counters, not generation/native-search grants. No AC/Done/live processing claimed.
 <!-- SECTION:NOTES:END -->
