@@ -746,7 +746,7 @@ export const finish = internalMutation({
       seenCursors:
         state === "queued" && a.nextCursor
           ? [...j.seenCursors, a.nextCursor].slice(0, 3)
-          : j.seenCursors,
+          : [],
       attemptId: null,
       updatedAt: Date.now(),
       reason: repeated

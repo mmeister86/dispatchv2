@@ -411,6 +411,78 @@ test("TASK41 foreign tenant query/manage deny and foreign author response import
   await read(f, id);
   expect(fetch).toHaveBeenCalledTimes(1);
 });
+test.each(["completed", "page-limit", "repeat", "rejected"] as const)(
+  "TASK41 terminal %s clears prior provider cursors immediately and after original horizon",
+  async (mode) => {
+    const f = await fixture(),
+      id = await f.start();
+    const responses = [page([row("881")], "sensitive_cursor_A")];
+    if (mode === "page-limit") {
+      responses.push(
+        page([row("882")], "sensitive_cursor_B"),
+        page([row("883")], "sensitive_cursor_C"),
+      );
+    } else if (mode === "repeat") {
+      responses.push(page([row("882")], "sensitive_cursor_A"));
+    } else if (mode === "rejected") {
+      responses.push(
+        page(
+          [
+            row("882"),
+            row("883", {
+              referenced_tweets: [{ type: "retweeted", id: "880" }],
+            }),
+          ],
+          "sensitive_cursor_B",
+        ),
+      );
+    } else responses.push(page([row("882")]));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => responses.shift()!),
+    );
+    await read(f, id);
+    expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({
+      state: "queued",
+      cursor: "sensitive_cursor_A",
+      seenCursors: ["sensitive_cursor_A"],
+    });
+    await read(f, id);
+    if (mode === "page-limit") await read(f, id);
+    const terminal = (await f.t.run((ctx) => ctx.db.get(id)))!;
+    const attempts = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    const financial = await budgets(f);
+    expect(terminal.state).toBe(mode === "completed" ? "completed" : "partial");
+    expect((await view(f)).posts).toHaveLength(mode === "page-limit" ? 3 : 2);
+    expect(
+      financial.every(
+        (b) =>
+          b.spentMicros ===
+            (mode === "page-limit" || mode === "rejected" ? 30 : 20) &&
+          b.heldMicros === 0,
+      ),
+    ).toBe(true);
+    vi.setSystemTime(terminal.sourceUntil + 1);
+    await f.t.mutation(internal.performance.history.expire, {});
+    await f.t.mutation(internal.performance.history.expire, { jobs: true });
+    expect((await view(f)).posts).toHaveLength(0);
+    const expired = (await f.t.run((ctx) => ctx.db.get(id)))!;
+    expect({
+      terminal: terminal.seenCursors,
+      expired: expired.seenCursors,
+    }).toEqual({ terminal: [], expired: [] });
+    expect({ cursor: terminal.cursor, expired: expired.cursor }).toEqual({
+      cursor: null,
+      expired: null,
+    });
+    expect(
+      await f.t.run((ctx) => ctx.db.query("aiAttempts").collect()),
+    ).toEqual(attempts);
+    expect(await budgets(f)).toEqual(financial);
+  },
+);
 test("TASK41 queued pause/resume/cancel durable control; unknown paid page cannot resume", async () => {
   const f = await fixture(),
     id = await f.start();
