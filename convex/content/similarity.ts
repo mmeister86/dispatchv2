@@ -805,6 +805,11 @@ export const commit = internalMutation({
       vector: a.vector,
     };
     if (old) {
+      await ctx.scheduler.runAfter(0, internal.planning.recurring.purgeVector, {
+        vectorId: old._id,
+        fingerprint: await vectorFingerprint(old),
+        cursor: null,
+      });
       await ctx.db.replace(old._id, data);
       return old._id;
     }
@@ -825,7 +830,7 @@ async function scrubAttempt(ctx: MutationCtx, t: EmbeddingAttempt) {
     sourceUnavailable: true,
   });
 }
-async function currentVector(
+export async function currentVector(
   ctx: Ctx,
   row: Doc<"contentEmbeddings">,
   walk?: MaterialWalk,
@@ -930,6 +935,15 @@ export const purge = internalMutation({
           await ctx.db.patch(row._id, { sourceUntil: until });
       } catch (e) {
         sourceLoss(e);
+        await ctx.scheduler.runAfter(
+          0,
+          internal.planning.recurring.purgeVector,
+          {
+            vectorId: row._id,
+            fingerprint: await vectorFingerprint(row),
+            cursor: null,
+          },
+        );
         await ctx.db.delete(row._id);
       }
     }
@@ -990,6 +1004,15 @@ export const sweep = internalMutation({
           await ctx.db.patch(row._id, { sourceUntil: until });
       } catch (e) {
         sourceLoss(e);
+        await ctx.scheduler.runAfter(
+          0,
+          internal.planning.recurring.purgeVector,
+          {
+            vectorId: row._id,
+            fingerprint: await vectorFingerprint(row),
+            cursor: null,
+          },
+        );
         await ctx.db.delete(row._id);
       }
     }
@@ -1045,212 +1068,252 @@ export const frame = workspaceQuery({
     matches: v.array(frameItem),
   }),
   handler: async (ctx, a) => {
-    const args = { workspaceId: ctx.workspace._id, accountId: a.accountId };
-    requireReference(args.workspaceId, await ctx.db.get(a.accountId));
-    const base = {
-      reason: null as string | null,
-      overflow: false,
-      complete: false,
-      partial: true,
-      from: a.from,
-      to: a.to,
-      scanned: 0,
-      eligible: 0,
-      prepared: 0,
-      missing: 0,
-      unavailable: 0,
-      identity: null as Infer<typeof identity> | null,
-      sourceUntil: null as number | null,
-      items: [] as Infer<typeof frameItem>[],
-      matches: [] as Infer<typeof frameItem>[],
-    };
-    if (
-      !Number.isSafeInteger(a.from) ||
-      !Number.isSafeInteger(a.to) ||
-      a.from < 0 ||
-      a.to < a.from ||
-      !positive(a.topK, 5) ||
-      new Set(a.candidateVersionIds).size !== a.candidateVersionIds.length
-    )
-      fail("EMBEDDING_FRAME_INVALID");
-    if (a.candidateVersionIds.length > 25)
-      return { ...base, overflow: true, reason: "EMBEDDING_FRAME_OVERFLOW" };
-    const rows = await ctx.db
-      .query("historyPosts")
-      .withIndex("by_workspaceId_and_accountId_and_providerCreatedAt", (q) =>
-        q
-          .eq("workspaceId", args.workspaceId)
-          .eq("accountId", args.accountId)
-          .gte("providerCreatedAt", a.from)
-          .lte("providerCreatedAt", a.to),
-      )
-      .take(101);
-    if (rows.length > 100)
-      return {
-        ...base,
-        scanned: 101 + a.candidateVersionIds.length,
-        overflow: true,
-        reason: "EMBEDDING_FRAME_OVERFLOW",
-      };
-    let auth;
-    try {
-      auth = await authority(ctx, args);
-    } catch (e) {
-      sourceLoss(e);
-      return { ...base, reason: String((e as ConvexError<string>).data) };
-    }
-    const protectedAncestors = new Set<string>(),
-      candidates: Infer<typeof source>[] = [
-        ...rows.map((r) => ({
-          kind: "history" as const,
-          historyPostId: r._id,
-        })),
-        ...a.candidateVersionIds.map((id) => ({
-          kind: "draft" as const,
-          draftVersionId: id,
-        })),
-      ];
-    const vectors = new Map<string, number[]>(),
-      receipts: ReceiptMemo = { policies: new Map(), budgets: new Map() },
-      historyRights = new Map<string, number>();
-    base.identity = auth.p.identity;
-    base.scanned = candidates.length;
-    base.sourceUntil = auth.until;
-    // Each source retains its own 32-ancestor proof. A larger aggregate frame is explicitly unavailable, never declared a source loss.
-    for (const s of candidates) {
-      if (s.kind === "history" ? !auth.c.ownHistory : !auth.c.draftVersions) {
-        base.unavailable++;
-        continue;
-      }
-      let material;
-      try {
-        const walk = materialWalk();
-        material = await sourceProof(ctx, args, s, walk, historyRights);
-        for (const id of walk.budget.counted) protectedAncestors.add(id);
-        if (protectedAncestors.size > 32)
-          return {
-            ...base,
-            reason: "EMBEDDING_FRAME_RESOURCE_CEILING",
-            items: [],
-            matches: [],
-            complete: false,
-            partial: true,
-          };
-      } catch (e) {
-        if (resourceLimit(e))
-          return {
-            ...base,
-            reason: "EMBEDDING_FRAME_RESOURCE_CEILING",
-            items: [],
-            matches: [],
-            complete: false,
-            partial: true,
-          };
-        sourceLoss(e);
-        base.unavailable++;
-        continue;
-      }
-      base.eligible++;
-      const row =
-        s.kind === "history"
-          ? await ctx.db
-              .query("contentEmbeddings")
-              .withIndex("by_sourcePin_historyPostId", (q) =>
-                q.eq("sourcePin.historyPostId", s.historyPostId),
-              )
-              .unique()
-          : await ctx.db
-              .query("contentEmbeddings")
-              .withIndex("by_sourcePin_draftVersionId", (q) =>
-                q.eq("sourcePin.draftVersionId", s.draftVersionId),
-              )
-              .unique();
-      let ready = false,
-        until = Math.min(auth.until, material.until ?? Infinity),
-        id: Id<"contentEmbeddings"> | null = null;
-      if (row) {
-        const t = await embeddingAttempt(ctx, row.attemptId, receipts);
-        // Immutable native settlement plus current scope/source are required; each actor is checked even in a shared frame.
-        if (
-          t?.owner === "own-content-embedding" &&
-          t.state === "settled" &&
-          !t.sourceUnavailable &&
-          t.estimatedMicros !== null &&
-          t.sourceUntil !== null &&
-          row.workspaceId === args.workspaceId &&
-          row.accountId === args.accountId &&
-          row.actorId === t.actorId &&
-          t.workspaceId === args.workspaceId &&
-          t.accountId === args.accountId &&
-          t.providerIdentity === auth.acc.providerIdentity &&
-          t.connectionSequence ===
-            (auth.acc.xEvidence?.connectionSequence ?? 0) &&
-          t.controlId === auth.c._id &&
-          row.controlId === auth.c._id &&
-          t.generation === auth.c.generation &&
-          row.generation === auth.c.generation &&
-          t.policyId === auth.p._id &&
-          row.policyId === auth.p._id &&
-          t.policyFingerprint === auth.fingerprint &&
-          row.policyFingerprint === auth.fingerprint &&
-          t.materialFingerprint === material.materialFingerprint &&
-          row.materialFingerprint === material.materialFingerprint &&
-          t.sourcePin !== null &&
-          pinKey(t.sourcePin) === pinKey(material.sourcePin) &&
-          pinKey(row.sourcePin) === pinKey(material.sourcePin) &&
-          sameIdentity(t.identity, auth.p.identity) &&
-          sameIdentity(row.identity, auth.p.identity) &&
-          validVector(row.vector, auth.p.identity.dimension)
-        ) {
-          try {
-            await actor(ctx, args.workspaceId, t.actorId);
-            until = Math.min(until, row.sourceUntil, t.sourceUntil);
-            ready = until > Date.now();
-          } catch (e) {
-            sourceLoss(e);
-          }
-        }
-        if (ready) {
-          id = row._id;
-          vectors.set(sourceKey(s), row.vector);
-        }
-      }
-      if (ready) base.prepared++;
-      else base.missing++;
-      base.sourceUntil = Math.min(base.sourceUntil!, until);
-      base.items.push({
-        source: s,
-        pin: material.sourcePin,
-        vectorId: id,
-        sourceUntil: until,
-        text: material.text.slice(0, 240),
-        score: null,
-      });
-    }
-    const query = vectors.get(sourceKey(a.source));
-    if (!query) {
-      base.reason = "EMBEDDING_QUERY_UNAVAILABLE";
-      return base;
-    }
-    base.matches = base.items
-      .filter(
-        (item) =>
-          sourceKey(item.source) !== sourceKey(a.source) &&
-          item.vectorId !== null,
-      )
-      .map((item) => ({
-        ...item,
-        score: cosine(query, vectors.get(sourceKey(item.source))!),
-      }))
-      .sort(
-        (a, b) =>
-          b.score! - a.score! ||
-          sourceKey(a.source).localeCompare(sourceKey(b.source)),
-      )
-      .slice(0, a.topK);
-    base.complete = base.missing === 0 && base.unavailable === 0;
-    base.partial = !base.complete;
-    base.reason = base.complete ? null : "EMBEDDING_PARTIAL_COVERAGE";
-    return base;
+    const { native: _native, ...view } = await preparedFrame(
+      ctx,
+      ctx.workspace._id,
+      a,
+    );
+    return view;
   },
 });
+export async function vectorFingerprint(row: Doc<"contentEmbeddings">) {
+  const { sourceUntil: _until, ...immutable } = row;
+  return sha256(JSON.stringify(immutable));
+}
+export async function preparedFrame(
+  ctx: Ctx,
+  workspaceId: Id<"workspaces">,
+  a: {
+    accountId: Id<"socialAccounts">;
+    source: Infer<typeof source>;
+    from: number;
+    to: number;
+    candidateVersionIds: Id<"draftVersions">[];
+    topK: number;
+  },
+  protectedNodes: Iterable<string> = [],
+) {
+  const args = { workspaceId: workspaceId, accountId: a.accountId };
+  requireReference(args.workspaceId, await ctx.db.get(a.accountId));
+  const base = {
+    native: {
+      rows: [] as {
+        row: Doc<"contentEmbeddings">;
+        receiptFingerprint: string;
+        attempt: EmbeddingAttempt;
+        until: number;
+      }[],
+      control: null as Doc<"embeddingControls"> | null,
+    },
+    reason: null as string | null,
+    overflow: false,
+    complete: false,
+    partial: true,
+    from: a.from,
+    to: a.to,
+    scanned: 0,
+    eligible: 0,
+    prepared: 0,
+    missing: 0,
+    unavailable: 0,
+    identity: null as Infer<typeof identity> | null,
+    sourceUntil: null as number | null,
+    items: [] as Infer<typeof frameItem>[],
+    matches: [] as Infer<typeof frameItem>[],
+  };
+  if (
+    !Number.isSafeInteger(a.from) ||
+    !Number.isSafeInteger(a.to) ||
+    a.from < 0 ||
+    a.to < a.from ||
+    !positive(a.topK, 5) ||
+    new Set(a.candidateVersionIds).size !== a.candidateVersionIds.length
+  )
+    fail("EMBEDDING_FRAME_INVALID");
+  if (a.candidateVersionIds.length > 25)
+    return { ...base, overflow: true, reason: "EMBEDDING_FRAME_OVERFLOW" };
+  const rows = await ctx.db
+    .query("historyPosts")
+    .withIndex("by_workspaceId_and_accountId_and_providerCreatedAt", (q) =>
+      q
+        .eq("workspaceId", args.workspaceId)
+        .eq("accountId", args.accountId)
+        .gte("providerCreatedAt", a.from)
+        .lte("providerCreatedAt", a.to),
+    )
+    .take(101);
+  if (rows.length > 100)
+    return {
+      ...base,
+      scanned: 101 + a.candidateVersionIds.length,
+      overflow: true,
+      reason: "EMBEDDING_FRAME_OVERFLOW",
+    };
+  let auth;
+  try {
+    auth = await authority(ctx, args);
+  } catch (e) {
+    sourceLoss(e);
+    return { ...base, reason: String((e as ConvexError<string>).data) };
+  }
+  const protectedAncestors = new Set<string>(protectedNodes),
+    candidates: Infer<typeof source>[] = [
+      ...rows.map((r) => ({
+        kind: "history" as const,
+        historyPostId: r._id,
+      })),
+      ...a.candidateVersionIds.map((id) => ({
+        kind: "draft" as const,
+        draftVersionId: id,
+      })),
+    ];
+  const vectors = new Map<string, number[]>(),
+    receipts: ReceiptMemo = { policies: new Map(), budgets: new Map() },
+    historyRights = new Map<string, number>();
+  base.native.control = auth.c;
+  base.identity = auth.p.identity;
+  base.scanned = candidates.length;
+  base.sourceUntil = auth.until;
+  // Each source retains its own 32-ancestor proof. A larger aggregate frame is explicitly unavailable, never declared a source loss.
+  for (const s of candidates) {
+    if (s.kind === "history" ? !auth.c.ownHistory : !auth.c.draftVersions) {
+      base.unavailable++;
+      continue;
+    }
+    let material;
+    try {
+      const walk = materialWalk();
+      material = await sourceProof(ctx, args, s, walk, historyRights);
+      for (const id of walk.budget.counted) protectedAncestors.add(id);
+      if (protectedAncestors.size > 32)
+        return {
+          ...base,
+          reason: "EMBEDDING_FRAME_RESOURCE_CEILING",
+          items: [],
+          matches: [],
+          complete: false,
+          partial: true,
+        };
+    } catch (e) {
+      if (resourceLimit(e))
+        return {
+          ...base,
+          reason: "EMBEDDING_FRAME_RESOURCE_CEILING",
+          items: [],
+          matches: [],
+          complete: false,
+          partial: true,
+        };
+      sourceLoss(e);
+      base.unavailable++;
+      continue;
+    }
+    base.eligible++;
+    const row =
+      s.kind === "history"
+        ? await ctx.db
+            .query("contentEmbeddings")
+            .withIndex("by_sourcePin_historyPostId", (q) =>
+              q.eq("sourcePin.historyPostId", s.historyPostId),
+            )
+            .unique()
+        : await ctx.db
+            .query("contentEmbeddings")
+            .withIndex("by_sourcePin_draftVersionId", (q) =>
+              q.eq("sourcePin.draftVersionId", s.draftVersionId),
+            )
+            .unique();
+    let ready = false,
+      until = Math.min(auth.until, material.until ?? Infinity),
+      id: Id<"contentEmbeddings"> | null = null;
+    if (row) {
+      const t = await embeddingAttempt(ctx, row.attemptId, receipts);
+      // Immutable native settlement plus current scope/source are required; each actor is checked even in a shared frame.
+      if (
+        t?.owner === "own-content-embedding" &&
+        t.state === "settled" &&
+        !t.sourceUnavailable &&
+        t.estimatedMicros !== null &&
+        t.sourceUntil !== null &&
+        row.workspaceId === args.workspaceId &&
+        row.accountId === args.accountId &&
+        row.actorId === t.actorId &&
+        t.workspaceId === args.workspaceId &&
+        t.accountId === args.accountId &&
+        t.providerIdentity === auth.acc.providerIdentity &&
+        t.connectionSequence ===
+          (auth.acc.xEvidence?.connectionSequence ?? 0) &&
+        t.controlId === auth.c._id &&
+        row.controlId === auth.c._id &&
+        t.generation === auth.c.generation &&
+        row.generation === auth.c.generation &&
+        t.policyId === auth.p._id &&
+        row.policyId === auth.p._id &&
+        t.policyFingerprint === auth.fingerprint &&
+        row.policyFingerprint === auth.fingerprint &&
+        t.materialFingerprint === material.materialFingerprint &&
+        row.materialFingerprint === material.materialFingerprint &&
+        t.sourcePin !== null &&
+        pinKey(t.sourcePin) === pinKey(material.sourcePin) &&
+        pinKey(row.sourcePin) === pinKey(material.sourcePin) &&
+        sameIdentity(t.identity, auth.p.identity) &&
+        sameIdentity(row.identity, auth.p.identity) &&
+        validVector(row.vector, auth.p.identity.dimension)
+      ) {
+        try {
+          await actor(ctx, args.workspaceId, t.actorId);
+          until = Math.min(until, row.sourceUntil, t.sourceUntil);
+          ready = until > Date.now();
+        } catch (e) {
+          sourceLoss(e);
+        }
+      }
+      if (ready) {
+        id = row._id;
+        vectors.set(sourceKey(s), row.vector);
+        base.native.rows.push({
+          row,
+          receiptFingerprint: t.receiptFingerprint!,
+          attempt: t,
+          until,
+        });
+      }
+    }
+    if (ready) base.prepared++;
+    else base.missing++;
+    base.sourceUntil = Math.min(base.sourceUntil!, until);
+    base.items.push({
+      source: s,
+      pin: material.sourcePin,
+      vectorId: id,
+      sourceUntil: until,
+      text: material.text.slice(0, 240),
+      score: null,
+    });
+  }
+  const query = vectors.get(sourceKey(a.source));
+  if (!query) {
+    base.reason = "EMBEDDING_QUERY_UNAVAILABLE";
+    return base;
+  }
+  base.matches = base.items
+    .filter(
+      (item) =>
+        sourceKey(item.source) !== sourceKey(a.source) &&
+        item.vectorId !== null,
+    )
+    .map((item) => ({
+      ...item,
+      score: cosine(query, vectors.get(sourceKey(item.source))!),
+    }))
+    .sort(
+      (a, b) =>
+        b.score! - a.score! ||
+        sourceKey(a.source).localeCompare(sourceKey(b.source)),
+    )
+    .slice(0, a.topK);
+  base.complete = base.missing === 0 && base.unavailable === 0;
+  base.partial = !base.complete;
+  base.reason = base.complete ? null : "EMBEDDING_PARTIAL_COVERAGE";
+  return base;
+}

@@ -79,4 +79,10 @@ crons.interval(
   internal.content.similarity.sweep,
   { cursor: null, family: "vectors" },
 );
+crons.interval(
+  "Finite proposal proof cleanup",
+  { minutes: 15 },
+  internal.planning.recurring.sweep,
+  { cursor: null },
+);
 export default crons;

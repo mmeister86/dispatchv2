@@ -10,7 +10,7 @@ import {
   validateTime,
 } from "../editorial";
 import { validateProposedItem } from "./plans";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 
 const selection = v.object({
   itemId: v.id("contentPlanItems"),
@@ -45,6 +45,7 @@ export const selected = workspaceMutation({
       await ctx.db.get(a.planId),
     ) as Doc<"contentPlans">;
     const readBudget = { remaining: 256 };
+    const seriesProofs = new Map<Id<"contentPlans">, number | null>();
     const result = [];
     for (const selected of a.selections) {
       const item = requireReference(
@@ -97,7 +98,7 @@ export const selected = workspaceMutation({
       if (item.status !== "proposed")
         throw new ConvexError("PLAN_ITEM_REJECTED");
       validateTime(item.at, item.timezone, item.localTime);
-      await validateProposedItem(ctx, item, readBudget);
+      await validateProposedItem(ctx, item, readBudget, true, seriesProofs);
       const approvalId =
         selected.approvalId ??
         (await approveTransaction(ctx, ctx.workspace._id, ctx.user._id, {

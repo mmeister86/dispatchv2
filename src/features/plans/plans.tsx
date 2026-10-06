@@ -1,3 +1,4 @@
+import { FiniteSeries } from "./series";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
@@ -12,6 +13,8 @@ import { PageHeader, Section, Status, EmptyState } from "@/components/shared";
 import { addCivilDays, defaultSchedule } from "@/lib/time";
 import { useGithubSourceProofClock } from "@/lib/github-source-proof";
 const reasons: Record<string, string> = {
+  SEMANTIC_REPEAT:
+    "Deklarierte Cosinusgrenze erreicht oder bereits in dieser Serie gewählt",
   UNVERIFIED_LINEAGE: "Quellenbezug nicht verifiziert",
   RESEARCH_REVIEW_REQUIRED:
     "Research benötigt eine gültige menschliche Bewertung",
@@ -444,6 +447,15 @@ function PlanForm({
                   dokumentiert.
                 </p>
               )}
+              {detail.plan.semantic && !detail.plan.sourceUnavailable && (
+                <p className="text-xs muted">
+                  Endliche Serie · {detail.plan.semantic.vectorCount} exakt
+                  gebundene Vektoren · deklarierte Cosinusgrenze{" "}
+                  {detail.plan.semantic.threshold} · gewünschtes Format{" "}
+                  {detail.plan.semantic.desiredFormat} (unbelegt). Timing und
+                  Neuheit nicht belegt.
+                </p>
+              )}
               {detail.plan.coveragePartial && (
                 <p className="text-xs muted">
                   Ausschnitt: Nur die letzten 25 Workspace-Entwürfe wurden
@@ -649,11 +661,11 @@ function PlanForm({
               </p>
             )}
           </Section>
-          <Section title="Wiederkehrende Serien">
-            <p className="text-xs muted">
-              Serienplanung ist noch nicht verfügbar.
-            </p>
-          </Section>
+          <FiniteSeries
+            workspaceId={workspaceId}
+            accountId={accountId}
+            preferenceId={context.preferenceId}
+          />
         </aside>
       </div>
     </div>

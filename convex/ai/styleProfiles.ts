@@ -958,6 +958,11 @@ async function eraseVersion(
   row: Doc<"styleProfileVersions">,
 ) {
   if (!row.sourceUnavailable)
+    await ctx.scheduler.runAfter(0, internal.planning.recurring.purgeStyle, {
+      versionId: row._id,
+      cursor: null,
+    });
+  if (!row.sourceUnavailable)
     await ctx.scheduler.runAfter(0, internal.ai.styleProfiles.purgeRuns, {
       versionId: row._id,
       cursor: null,
@@ -1210,8 +1215,16 @@ export async function runStyleProof(
   current = false,
   w: MaterialWalk = materialWalk(),
 ) {
-  const pin = r.styleContext;
-  if (!pin) return { payload: null, sourceUntil: null };
+  if (!r.styleContext) return { payload: null, sourceUntil: null };
+  return scopedStyleProof(ctx, r, r.styleContext, current, w);
+}
+export async function scopedStyleProof(
+  ctx: QueryCtx,
+  r: { workspaceId: Id<"workspaces">; accountId: Id<"socialAccounts"> },
+  pin: NonNullable<Doc<"agentRuns">["styleContext"]>,
+  current = false,
+  w: MaterialWalk = materialWalk(),
+) {
   await authorized(ctx, r.workspaceId, pin.selectedBy);
   const receipt = await scoped(
     ctx,

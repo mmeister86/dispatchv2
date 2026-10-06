@@ -1,6 +1,13 @@
+import { seriesPlanProof, sourceLoss } from "./strategy";
+import {
+  cosine,
+  vectorFingerprint,
+  type preparedFrame,
+} from "../content/similarity";
+import { occurrence, semantic } from "./strategyFields";
 import { proposalFamily } from "../research/handoff";
 import { runSourceKey } from "../ai/sourceAccess";
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import {
   workspaceMutation,
   workspaceQuery,
@@ -8,7 +15,7 @@ import {
   requireRole,
 } from "../lib/authorization";
 import type { Doc, Id } from "../_generated/dataModel";
-import type { QueryCtx } from "../_generated/server";
+import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { requestFields, planFields, itemFields } from "./fields";
 import { sha256 } from "../lib/crypto";
 import {
@@ -25,6 +32,7 @@ import {
   scheduleBlocksSlot,
 } from "../editorial";
 import { addCivilDays, resolveLocalTime } from "../../src/lib/time";
+const vRequest = v.object(requestFields);
 const planDoc = v.object({
   _id: v.id("contentPlans"),
   _creationTime: v.number(),
@@ -183,6 +191,29 @@ async function candidate(
     : sources.every((s) => !("kind" in s))
       ? "work"
       : "mixed";
+  let pending = false;
+  for (const p of previous) {
+    if (
+      p.status !== "proposed" ||
+      p.sourceUnavailable ||
+      p.at <= Date.now() ||
+      Math.min(p.proofUntil, p.validityUntil) <= Date.now()
+    )
+      continue;
+    const plan = await ctx.db.get(p.planId);
+    if (plan?.series) {
+      const series = await ctx.db.get(plan.series.seriesId);
+      if (
+        plan.sourceUnavailable ||
+        !series?.enabled ||
+        series.versionId !== plan.series.versionId ||
+        series.generation !== plan.series.generation
+      )
+        continue;
+    }
+    pending = true;
+    break;
+  }
   return {
     draft,
     ver,
@@ -191,12 +222,7 @@ async function candidate(
     families,
     rootEvidenceIds,
     kind,
-    pending: previous.some(
-      (p) =>
-        p.status === "proposed" &&
-        p.at > Date.now() &&
-        Math.min(p.proofUntil, p.validityUntil) > Date.now(),
-    ),
+    pending,
     proofUntil: until,
     validityUntil: validity,
   };
@@ -234,7 +260,17 @@ export async function validateProposedItem(
   item: Doc<"contentPlanItems">,
   readBudget?: { remaining: number },
   checkUnplanned = true,
+  seriesProofs?: Map<Id<"contentPlans">, number | null>,
 ) {
+  const plan = await ctx.db.get(item.planId);
+  if (plan?.series) {
+    const until = seriesProofs?.has(plan._id)
+      ? seriesProofs.get(plan._id)!
+      : await seriesPlanProof(ctx, plan);
+    seriesProofs?.set(plan._id, until);
+    if (item.sourceUnavailable || until === null || until <= item.at)
+      throw new ConvexError("PLAN_SOURCE_EXPIRED");
+  }
   const draft = requireReference(
     item.workspaceId,
     await ctx.db.get(item.draftId),
@@ -298,226 +334,330 @@ export const propose = workspaceMutation({
   returns: v.id("contentPlans"),
   handler: async (ctx, a) => {
     requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
-    const slots = days(a);
-    if (!/^[A-Za-z0-9_-]{1,100}$/.test(a.commandKey))
-      throw new ConvexError("INVALID_PLAN_COMMAND");
-    requireReference(ctx.workspace._id, await ctx.db.get(a.accountId));
-    const preference = await ctx.db.get(a.preferenceId);
-    if (
-      !preference ||
-      preference.workspaceId !== ctx.workspace._id ||
-      preference.userId !== ctx.user._id
+    return proposeTransaction(ctx, ctx.workspace._id, ctx.user._id, a);
+  },
+});
+export type SeriesPins = {
+  series: Infer<typeof occurrence>;
+  semantic: Infer<typeof semantic>;
+  frame: Awaited<ReturnType<typeof preparedFrame>>;
+  candidateVersionIds: Id<"draftVersions">[];
+  previousVersionIds: Id<"draftVersions">[];
+  slots: string[];
+};
+export async function proposeTransaction(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  actorId: Id<"users">,
+  a: Infer<typeof vRequest> & { commandKey: string },
+  pins?: SeriesPins,
+) {
+  const slots = pins?.slots ?? days(a);
+  if (!/^[A-Za-z0-9_-]{1,100}$/.test(a.commandKey))
+    throw new ConvexError("INVALID_PLAN_COMMAND");
+  requireReference(workspaceId, await ctx.db.get(a.accountId));
+  const preference = await ctx.db.get(a.preferenceId);
+  if (
+    !preference ||
+    preference.workspaceId !== workspaceId ||
+    preference.userId !== actorId
+  )
+    throw new ConvexError("REFERENCE_ACCESS_DENIED");
+  const { commandKey, ...request } = a;
+  const fingerprint = await sha256(
+    JSON.stringify(pins ? [request, pins.series] : request),
+  );
+  const existing = await ctx.db
+    .query("contentPlans")
+    .withIndex("by_workspaceId_and_actorId_and_commandKey", (q) =>
+      q
+        .eq("workspaceId", workspaceId)
+        .eq("actorId", actorId)
+        .eq("commandKey", commandKey),
     )
-      throw new ConvexError("REFERENCE_ACCESS_DENIED");
-    const { commandKey, ...request } = a;
-    const fingerprint = await sha256(JSON.stringify(request));
-    const existing = await ctx.db
-      .query("contentPlans")
-      .withIndex("by_workspaceId_and_actorId_and_commandKey", (q) =>
-        q
-          .eq("workspaceId", ctx.workspace._id)
-          .eq("actorId", ctx.user._id)
-          .eq("commandKey", commandKey),
+    .unique();
+  if (existing) {
+    if (existing.fingerprint !== fingerprint)
+      throw new ConvexError("PLAN_OPERATION_CONFLICT");
+    return existing._id;
+  }
+  // ponytail: finite selection uses 25 drafts and 10 recent terms; broader history needs a separate bounded design.
+  const readBudget = { remaining: 256 };
+  const recent = await ctx.db
+    .query("schedules")
+    .withIndex("by_workspaceId_and_accountId_and_at", (q) =>
+      q.eq("workspaceId", workspaceId).eq("accountId", a.accountId),
+    )
+    .order("desc")
+    .take(11);
+  readBudget.remaining -= recent.length;
+  const previousTopics: Awaited<ReturnType<typeof historyTopic>>[] = [];
+  const historyContext = {
+    scanned: Math.min(10, recent.length),
+    available: 0,
+    unavailable: 0,
+    partial: recent.length > 10,
+  };
+  for (const row of recent.slice(0, 10))
+    try {
+      if (
+        ![
+          "scheduled",
+          "publishing",
+          "partially_published",
+          "reconciliation_required",
+          "published",
+        ].includes(row.state) &&
+        !row.externalPosts?.length &&
+        !row.publishedCount
       )
-      .unique();
-    if (existing) {
-      if (existing.fingerprint !== fingerprint)
-        throw new ConvexError("PLAN_OPERATION_CONFLICT");
-      return existing._id;
+        throw new Error("No known scheduled content");
+      const previous = await historyTopic(
+        ctx,
+        workspaceId,
+        a.accountId,
+        row.versionId,
+      );
+      if (previous.proofUntil <= Date.now())
+        throw new Error("Expired history source");
+      previousTopics.push(previous);
+      historyContext.available++;
+    } catch {
+      historyContext.unavailable++;
     }
-    // ponytail: finite selection uses 25 drafts and 10 recent terms; broader history needs a separate bounded design.
-    const readBudget = { remaining: 256 };
-    const recent = await ctx.db
-      .query("schedules")
-      .withIndex("by_workspaceId_and_accountId_and_at", (q) =>
-        q.eq("workspaceId", ctx.workspace._id).eq("accountId", a.accountId),
+  const shortages = new Map<string, number>();
+  const skip = (code: string) =>
+    shortages.set(code, (shortages.get(code) ?? 0) + 1);
+  const rows = pins
+    ? await Promise.all(
+        pins.candidateVersionIds.map(async (id) => {
+          const version = await ctx.db.get(id);
+          requireReference(workspaceId, version);
+          const draft = await ctx.db.get(version!.draftId);
+          requireReference(workspaceId, draft);
+          if (draft!.currentVersionId !== id)
+            throw new ConvexError("PLAN_VERSION_CHANGED");
+          return draft!;
+        }),
       )
-      .order("desc")
-      .take(11);
-    readBudget.remaining -= recent.length;
-    const previousTopics: Awaited<ReturnType<typeof historyTopic>>[] = [];
-    const historyContext = {
-      scanned: Math.min(10, recent.length),
-      available: 0,
-      unavailable: 0,
-      partial: recent.length > 10,
-    };
-    for (const row of recent.slice(0, 10))
-      try {
-        if (
-          ![
-            "scheduled",
-            "publishing",
-            "partially_published",
-            "reconciliation_required",
-            "published",
-          ].includes(row.state) &&
-          !row.externalPosts?.length &&
-          !row.publishedCount
+    : await ctx.db
+        .query("drafts")
+        .withIndex("by_workspaceId_and_updatedAt", (q) =>
+          q.eq("workspaceId", workspaceId),
         )
-          throw new Error("No known scheduled content");
-        const previous = await historyTopic(
-          ctx,
-          ctx.workspace._id,
-          a.accountId,
-          row.versionId,
-        );
-        if (previous.proofUntil <= Date.now())
-          throw new Error("Expired history source");
-        previousTopics.push(previous);
-        historyContext.available++;
-      } catch {
-        historyContext.unavailable++;
-      }
-    const shortages = new Map<string, number>();
-    const skip = (code: string) =>
-      shortages.set(code, (shortages.get(code) ?? 0) + 1);
-    const rows = await ctx.db
-      .query("drafts")
-      .withIndex("by_workspaceId_and_updatedAt", (q) =>
-        q.eq("workspaceId", ctx.workspace._id),
-      )
-      .order("desc")
-      .take(26);
-    const candidates: Awaited<ReturnType<typeof candidate>>[] = [];
-    for (const draft of rows.slice(0, 25))
-      try {
-        const c = await candidate(ctx, draft, a.accountId, readBudget);
-        if (c.pending) {
-          skip("ALREADY_PROPOSED");
-          continue;
-        }
-        if (a.mode !== "mixed" && c.kind !== a.mode) {
-          skip("SOURCE_MIX_MISMATCH");
-          continue;
-        }
-        if (a.topics && c.ver.content.pillar !== a.topics) {
-          skip("TOPIC_MISMATCH");
-          continue;
-        }
-        candidates.push(c);
-      } catch (e) {
-        if (e instanceof ConvexError && e.data === "SLOT_SCAN_LIMIT") throw e;
-        skip(e instanceof ConvexError ? String(e.data) : "SOURCE_UNAVAILABLE");
-      }
-    const selected: {
-      c: (typeof candidates)[number];
-      at: number;
-      localTime: string;
-      history: typeof previousTopics;
-    }[] = [];
-    const topics = new Set<string>(),
-      families = new Set<string>();
-    for (const localTime of slots) {
-      let matches: string[];
-      try {
-        matches = resolveLocalTime(localTime, a.timezone);
-      } catch {
-        throw new ConvexError("INVALID_TIMEZONE");
-      }
-      if (matches.length !== 1) {
-        skip(
-          matches.length ? "AMBIGUOUS_LOCAL_TIME" : "NONEXISTENT_LOCAL_TIME",
-        );
+        .order("desc")
+        .take(26);
+  const candidates: Awaited<ReturnType<typeof candidate>>[] = [];
+  for (const draft of rows.slice(0, 25))
+    try {
+      const c = await candidate(ctx, draft, a.accountId, readBudget);
+      if (c.pending) {
+        skip("ALREADY_PROPOSED");
         continue;
       }
-      const at = Date.parse(matches[0]);
-      if (at <= Date.now()) {
-        skip("SLOT_IN_PAST");
-        continue;
-      }
-      if (!candidates.length) {
-        skip("NO_SUITABLE_MATERIAL");
+      if (a.mode !== "mixed" && c.kind !== a.mode) {
+        skip("SOURCE_MIX_MISMATCH");
         continue;
       }
       if (
-        await occupied(
-          ctx,
-          ctx.workspace._id,
-          a.accountId,
-          at,
-          undefined,
-          readBudget,
-        )
+        pins &&
+        (pins.previousVersionIds.includes(c.ver._id) ||
+          pins.frame.native.rows
+            .filter(
+              (p) =>
+                p.row.sourcePin.kind === "history" ||
+                (p.row.sourcePin.kind === "draft" &&
+                  pins.previousVersionIds.includes(
+                    p.row.sourcePin.draftVersionId,
+                  )),
+            )
+            .some(
+              (p) =>
+                cosine(
+                  pins.frame.native.rows.find(
+                    (p) =>
+                      p.row.sourcePin.kind === "draft" &&
+                      p.row.sourcePin.draftVersionId === c.ver._id,
+                  )!.row.vector,
+                  p.row.vector,
+                ) >= pins.semantic.threshold,
+            ))
       ) {
-        skip("SLOT_OCCUPIED");
+        skip("SEMANTIC_REPEAT");
         continue;
       }
-      const eligible = candidates.filter(
-        (c) => c.proofUntil > at && c.validityUntil > at,
-      );
-      if (!eligible.length) {
-        skip(
-          candidates.length
-            ? "SOURCE_VALIDITY_BEFORE_SLOT"
-            : "NO_SUITABLE_MATERIAL",
-        );
+      if (!pins && a.topics && c.ver.content.pillar !== a.topics) {
+        skip("TOPIC_MISMATCH");
         continue;
       }
-      const history = previousTopics.filter((p) => p.proofUntil > at);
-      const slotTopics = new Set([...topics, ...history.map((p) => p.topic)]);
-      eligible.sort(
-        (a, b) =>
-          Number(slotTopics.has(a.ver.content.pillar)) -
-            Number(slotTopics.has(b.ver.content.pillar)) ||
-          a.families.filter((x) => families.has(x)).length -
-            b.families.filter((x) => families.has(x)).length,
-      );
-      const c = eligible[0];
-      selected.push({ c, at, localTime, history });
-      topics.add(c.ver.content.pillar);
-      c.families.forEach((x) => families.add(x));
-      candidates.splice(candidates.indexOf(c), 1);
-      if (selected.length === a.desiredCount) break;
+      candidates.push(c);
+    } catch (e) {
+      if (e instanceof ConvexError && e.data === "SLOT_SCAN_LIMIT") throw e;
+      skip(e instanceof ConvexError ? String(e.data) : "SOURCE_UNAVAILABLE");
     }
-    const planId = await ctx.db.insert("contentPlans", {
-      workspaceId: ctx.workspace._id,
-      actorId: ctx.user._id,
-      commandKey,
-      fingerprint,
-      createdAt: Date.now(),
-      ...request,
-      preferences: {
-        timezone: preference.timezone,
-        language: preference.language,
-        audience: preference.audience,
-        tone: preference.tone,
-        topics: preference.topics,
-      },
-      historyContext,
-      selectedCount: selected.length,
-      candidateCount: Math.min(25, rows.length),
-      coveragePartial: rows.length > 25,
-      shortages: [...shortages].map(([code, count]) => ({ code, count })),
+  const selected: {
+    c: (typeof candidates)[number];
+    at: number;
+    localTime: string;
+    history: typeof previousTopics;
+  }[] = [];
+  const topics = new Set<string>(),
+    families = new Set<string>();
+  for (const localTime of slots) {
+    let matches: string[];
+    try {
+      matches = resolveLocalTime(localTime, a.timezone);
+    } catch {
+      throw new ConvexError("INVALID_TIMEZONE");
+    }
+    if (matches.length !== 1) {
+      skip(matches.length ? "AMBIGUOUS_LOCAL_TIME" : "NONEXISTENT_LOCAL_TIME");
+      continue;
+    }
+    const at = Date.parse(matches[0]);
+    if (at <= Date.now()) {
+      skip("SLOT_IN_PAST");
+      continue;
+    }
+    if (!candidates.length) {
+      skip("NO_SUITABLE_MATERIAL");
+      continue;
+    }
+    if (
+      await occupied(ctx, workspaceId, a.accountId, at, undefined, readBudget)
+    ) {
+      skip("SLOT_OCCUPIED");
+      continue;
+    }
+    const eligible = candidates.filter((c) => {
+      if (
+        c.proofUntil <= at ||
+        c.validityUntil <= at ||
+        (pins && pins.series.sourceUntil <= at)
+      )
+        return false;
+      if (pins) {
+        const vector = pins.frame.native.rows.find(
+          (p) =>
+            p.row.sourcePin.kind === "draft" &&
+            p.row.sourcePin.draftVersionId === c.ver._id,
+        )!.row.vector;
+        if (
+          selected.some(
+            (p) =>
+              cosine(
+                vector,
+                pins.frame.native.rows.find(
+                  (v) =>
+                    v.row.sourcePin.kind === "draft" &&
+                    v.row.sourcePin.draftVersionId === p.c.ver._id,
+                )!.row.vector,
+              ) >= pins.semantic.threshold,
+          )
+        ) {
+          skip("SEMANTIC_REPEAT");
+          return false;
+        }
+      }
+      return true;
     });
-    for (const { c, at, localTime, history } of selected)
-      await ctx.db.insert("contentPlanItems", {
-        workspaceId: ctx.workspace._id,
-        planId,
+    if (!eligible.length) {
+      skip(
+        candidates.length
+          ? "SOURCE_VALIDITY_BEFORE_SLOT"
+          : "NO_SUITABLE_MATERIAL",
+      );
+      continue;
+    }
+    const history = previousTopics.filter((p) => p.proofUntil > at);
+    const slotTopics = new Set([...topics, ...history.map((p) => p.topic)]);
+    eligible.sort(
+      (a, b) =>
+        Number(slotTopics.has(a.ver.content.pillar)) -
+          Number(slotTopics.has(b.ver.content.pillar)) ||
+        a.families.filter((x) => families.has(x)).length -
+          b.families.filter((x) => families.has(x)).length,
+    );
+    const c = eligible[0];
+    selected.push({ c, at, localTime, history });
+    topics.add(c.ver.content.pillar);
+    c.families.forEach((x) => families.add(x));
+    candidates.splice(candidates.indexOf(c), 1);
+    if (selected.length === a.desiredCount) break;
+  }
+  const planId = await ctx.db.insert("contentPlans", {
+    workspaceId: workspaceId,
+    actorId: actorId,
+    commandKey,
+    fingerprint,
+    createdAt: Date.now(),
+    ...request,
+    preferences: {
+      timezone: preference.timezone,
+      language: preference.language,
+      audience: preference.audience,
+      tone: preference.tone,
+      topics: preference.topics,
+    },
+    historyContext,
+    selectedCount: selected.length,
+    candidateCount: Math.min(25, rows.length),
+    coveragePartial: rows.length > 25,
+    ...(pins
+      ? {
+          series: pins.series,
+          semantic: pins.semantic,
+          sourceUnavailable: false,
+        }
+      : {}),
+    shortages: [...shortages].map(([code, count]) => ({ code, count })),
+  });
+  if (pins)
+    for (const p of pins.frame.native.rows)
+      await ctx.db.insert("semanticPlanBindings", {
+        workspaceId,
         accountId: a.accountId,
-        draftId: c.draft._id,
-        versionId: c.ver._id,
-        versionNumber: c.ver.number,
-        draftRevision: c.draft.revision,
-        ideaVersionId: c.idea._id,
-        sources: c.sources,
-        families: c.families,
-        rootEvidenceIds: c.rootEvidenceIds,
-        at,
-        timezone: a.timezone,
-        localTime,
-        proofUntil: c.proofUntil,
-        validityUntil: c.validityUntil,
-        historyVersionIds: history.map((p) => p.versionId),
-        contextProofUntil: history.length
-          ? Math.min(...history.map((p) => p.proofUntil))
-          : null,
-        reason: `Geprüfter ${c.kind === "work" ? "Arbeits" : c.kind === "research" ? "Research" : "gemischter"} Entwurf; Themenvielfalt gegenüber höchstens 10 aktuell lesbaren früheren Terminen und Quellenvielfalt im Plan bevorzugt; erstes freies Tagesfenster.`,
-        status: "proposed",
+        planId,
+        vectorId: p.row._id,
+        fingerprint: await vectorFingerprint(p.row),
+        attemptId: p.row.attemptId,
+        receiptFingerprint: p.receiptFingerprint,
+        materialFingerprint: p.row.materialFingerprint,
+        sourcePin: p.row.sourcePin,
+        sourceUntil: Math.min(p.until, pins.series.sourceUntil),
+        sourceUnavailable: false,
       });
-    return planId;
-  },
-});
+  for (const { c, at, localTime, history } of selected)
+    await ctx.db.insert("contentPlanItems", {
+      workspaceId: workspaceId,
+      planId,
+      accountId: a.accountId,
+      draftId: c.draft._id,
+      versionId: c.ver._id,
+      versionNumber: c.ver.number,
+      draftRevision: c.draft.revision,
+      ideaVersionId: c.idea._id,
+      sources: c.sources,
+      families: c.families,
+      rootEvidenceIds: c.rootEvidenceIds,
+      at,
+      timezone: a.timezone,
+      localTime,
+      proofUntil: Math.min(c.proofUntil, pins?.series.sourceUntil ?? Infinity),
+      validityUntil: Math.min(
+        c.validityUntil,
+        pins?.series.sourceUntil ?? Infinity,
+      ),
+      historyVersionIds: history.map((p) => p.versionId),
+      contextProofUntil: history.length
+        ? Math.min(...history.map((p) => p.proofUntil))
+        : null,
+      reason: `Geprüfter ${c.kind === "work" ? "Arbeits" : c.kind === "research" ? "Research" : "gemischter"} Entwurf; Themenvielfalt gegenüber höchstens 10 aktuell lesbaren früheren Terminen und Quellenvielfalt im Plan bevorzugt; erstes freies Tagesfenster.`,
+      status: "proposed",
+    });
+  return planId;
+}
+
 export const context = workspaceQuery({
   args: {},
   returns: v.union(
@@ -539,15 +679,60 @@ export const list = workspaceQuery({
   returns: v.array(planDoc),
   handler: async (ctx, a) => {
     requireReference(ctx.workspace._id, await ctx.db.get(a.accountId));
-    return await ctx.db
+    const plans = await ctx.db
       .query("contentPlans")
       .withIndex("by_workspaceId_and_accountId_and_createdAt", (q) =>
         q.eq("workspaceId", ctx.workspace._id).eq("accountId", a.accountId),
       )
       .order("desc")
       .take(25);
+    return plans.map((p) => (p.series ? redactPlan(p) : p));
   },
 });
+function redactPlan(plan: Doc<"contentPlans">) {
+  return {
+    ...plan,
+    semantic: undefined,
+    sourceUnavailable: true,
+    fingerprint: "",
+    topics: "",
+    preferences: {
+      timezone: plan.preferences.timezone,
+      language: "",
+      audience: "",
+      tone: "",
+      topics: "",
+    },
+  };
+}
+export async function projectPlan(
+  ctx: QueryCtx,
+  plan: Doc<"contentPlans">,
+  items: Doc<"contentPlanItems">[],
+) {
+  if (!plan.series) return plan;
+  try {
+    const until = await seriesPlanProof(ctx, plan);
+    if (until! <= Date.now() || items.some((item) => item.at >= until!))
+      throw new ConvexError("SERIES_SOURCE_UNAVAILABLE");
+    return {
+      ...plan,
+      series: {
+        ...plan.series,
+        sourceUntil: Math.min(plan.series.sourceUntil, until!),
+      },
+      semantic: plan.semantic
+        ? {
+            ...plan.semantic,
+            sourceUntil: Math.min(plan.semantic.sourceUntil, until!),
+          }
+        : undefined,
+    };
+  } catch (e) {
+    sourceLoss(e);
+    return redactPlan(plan);
+  }
+}
 export const get = workspaceQuery({
   args: { planId: v.id("contentPlans") },
   returns: v.object({
@@ -571,6 +756,7 @@ export const get = workspaceQuery({
       .withIndex("by_planId", (q) => q.eq("planId", a.planId))
       .take(8);
     if (items.length > 7) throw new ConvexError("PLAN_ITEM_LIMIT");
+    const projectedPlan = await projectPlan(ctx, plan!, items);
     const projections = [];
     for (const item of items) {
       const approvalId =
@@ -598,6 +784,15 @@ export const get = workspaceQuery({
         item.contextProofUntil ?? Infinity,
       );
       try {
+        if (projectedPlan.sourceUnavailable || item.sourceUnavailable)
+          throw new ConvexError("SERIES_SOURCE_UNAVAILABLE");
+        if (projectedPlan.series && projectedPlan.series.sourceUntil <= item.at)
+          throw new ConvexError("SERIES_SOURCE_UNAVAILABLE");
+        if (projectedPlan.series)
+          displayUntil = Math.min(
+            displayUntil,
+            projectedPlan.series.sourceUntil,
+          );
         const d = await ctx.db.get(item.draftId);
         requireReference(ctx.workspace._id, d);
         if (
@@ -672,9 +867,31 @@ export const get = workspaceQuery({
       }
       if (item.status === "rejected") state = "rejected";
       if (item.status === "accepted") state = "accepted";
-      projections.push({ item, title, text, state, displayUntil, approvalId });
+      const unavailable =
+        !!projectedPlan.sourceUnavailable ||
+        !!item.sourceUnavailable ||
+        (plan!.series && !title);
+      projections.push({
+        item: unavailable
+          ? {
+              ...item,
+              sources: [],
+              families: [],
+              rootEvidenceIds: [],
+              reason: "",
+              historyVersionIds: [],
+            }
+          : item,
+        title,
+        text,
+        state,
+        displayUntil: unavailable
+          ? Math.min(displayUntil, Date.now())
+          : displayUntil,
+        approvalId,
+      });
     }
-    return { plan: plan!, items: projections };
+    return { plan: projectedPlan, items: projections };
   },
 });
 export const reject = workspaceMutation({

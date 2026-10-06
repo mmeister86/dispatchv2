@@ -1,4 +1,10 @@
 import {
+  controlFields as seriesControlFields,
+  versionFields as seriesVersionFields,
+  commandFields as seriesCommandFields,
+  bindingFields as semanticBindingFields,
+} from "./planning/strategyFields";
+import {
   policyFields as embeddingPolicyFields,
   controlFields as embeddingControlFields,
   vectorFields as embeddingVectorFields,
@@ -232,6 +238,24 @@ export default defineSchema({
     ])
     .index("by_purposeId", ["purposeId"])
     .index("by_expiresAt", ["expiresAt"]),
+  planningSeries: defineTable(seriesControlFields).index(
+    "by_workspaceId_and_accountId",
+    ["workspaceId", "accountId"],
+  ),
+  planningSeriesVersions: defineTable(seriesVersionFields)
+    .index("by_seriesId", ["seriesId"])
+    .index("by_style_versionId", ["style.versionId"])
+    .index("by_sourceUnavailable", ["sourceUnavailable"]),
+  planningSeriesCommands: defineTable(seriesCommandFields)
+    .index("by_seriesId_and_actorId_and_commandKey", [
+      "seriesId",
+      "actorId",
+      "commandKey",
+    ])
+    .index("by_versionId", ["versionId"]),
+  semanticPlanBindings: defineTable(semanticBindingFields)
+    .index("by_vectorId_and_fingerprint", ["vectorId", "fingerprint"])
+    .index("by_planId", ["planId"]),
   contentPlans: defineTable(planFields)
     .index("by_workspaceId_and_accountId_and_createdAt", [
       "workspaceId",
@@ -242,7 +266,14 @@ export default defineSchema({
       "workspaceId",
       "actorId",
       "commandKey",
-    ]),
+    ])
+    .index("by_series_seriesId_and_series_generation_and_series_at", [
+      "series.seriesId",
+      "series.generation",
+      "series.at",
+    ])
+    .index("by_series_versionId", ["series.versionId"])
+    .index("by_series_seriesId", ["series.seriesId"]),
   contentPlanItems: defineTable(itemFields)
     .index("by_planId", ["planId"])
     .index("by_versionId", ["versionId"]),

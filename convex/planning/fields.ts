@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { occurrence, semantic } from "./strategyFields";
 import { source } from "../ai/fields";
 export const requestFields = {
   accountId: v.id("socialAccounts"),
@@ -13,6 +14,9 @@ export const requestFields = {
 };
 export const shortage = v.object({ code: v.string(), count: v.number() });
 export const planFields = {
+  series: v.optional(occurrence),
+  semantic: v.optional(semantic),
+  sourceUnavailable: v.optional(v.boolean()),
   workspaceId: v.id("workspaces"),
   actorId: v.id("users"),
   commandKey: v.string(),
@@ -40,6 +44,7 @@ export const planFields = {
   shortages: v.array(shortage),
 };
 export const itemFields = {
+  sourceUnavailable: v.optional(v.boolean()),
   workspaceId: v.id("workspaces"),
   planId: v.id("contentPlans"),
   accountId: v.id("socialAccounts"),
