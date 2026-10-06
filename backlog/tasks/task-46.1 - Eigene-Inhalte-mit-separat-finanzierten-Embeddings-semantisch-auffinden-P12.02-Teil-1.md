@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 15:21'
-updated_date: '2026-10-06 21:51'
+updated_date: '2026-10-06 21:53'
 labels: []
 dependencies: []
 references:
@@ -27,12 +27,12 @@ Nach akzeptiertem48 und45: konkretes default-OFF EmbeddingPurpose/Policy/Consent
 - [x] #1 Ohne tatsächliche Policy, Zweckfreigabe, Modellidentität, Dimension und drei Budgets erfolgt kein Embedding-Aufruf; genaue Calls werden vorI/O reserviert und exakt einmal reconciled.
 - [x] #2 Kompatible echte Vektoren liefern account-isolierte begrenzte Ähnlichkeit mit explizitem Frame, fehlenden Daten und originalen Quellhorizonten; Testvektoren beweisen keine Live-Semantikqualität.
 - [x] #3 Source-/Purpose-/Actorverlust maskiert und entfernt geschützte Vektoren/Abkömmlinge physisch ohne finanzielle oder Publishing-Eltern zu verlieren.
-- [ ] #4 Native Scope/Replay/Transport/Ledger/Lifecycle und tatsächliche styled UI sowie frisches SPEC/QUALITY und exaktes bestehendes EUDev sind dokumentiert; manuelle Done-Bestätigung bleibt erforderlich.
+- [x] #4 Native Scope/Replay/Transport/Ledger/Lifecycle und tatsächliche styled UI sowie frisches SPEC/QUALITY und exaktes bestehendes EUDev sind dokumentiert; manuelle Done-Bestätigung bleibt erforderlich.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Automatisierte Prüfungen und noch offene manuelle Abnahme sind konkret dokumentiert.
+- [x] #1 Automatisierte Prüfungen und noch offene manuelle Abnahme sind konkret dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
@@ -64,4 +64,6 @@ SPEC-P1 minimal behoben: shared retainedHorizon enthält jetzt original historyJ
 Final backend freeze e6701c9f9c174d582a64fdb735d702d77e1d3e7a7dc57db0ef929d58fb15cb38:950Tests/49Files PASS724.46s Exit0;308Hashes unverändert. Fresh SPEC und distinct QUALITY akzeptieren Quellen-/Finanz-/Transport-/Lifecycle-Verhalten; unabhängige55 bzw26Native und17BrowserChecks PASS. Nachreview P2: replay kann nie gesendeten cancelledReserved-Beleg meinen, daher ausschließlich neutralen UI-Satz korrigieren; backend/nativeFreeze bleibt identisch. Frische fokussierte Copy-SPEC/QUALITY, finaler Gesamtfreeze, Commit und exaktes EUDev noch offen; keine Done-Schließung.
 
 Final wholeSourceFreeze308files SHA9123cc748977628ce645bf5732c1ebdd409bd5c73bbddcde5a86e2c8a32abf69. FreshfocusedSPEC und distinctQUALITY PASS: exakt ein neutraler Replay-Satz geändert,307andereDateien/backend/native byte-identisch zur950/49PASS-Suite.17actualstyledBrowser/AppTS/Format und finale originale Bundle-Assertions PASS. Reviewberichte dauerhaft .docs/reviews/task-46.1-spec.md und -quality.md; keine weiterenP0/P1/P2. TechnischeAC1–3 geprüft; AC4/exaktesEUDev noch offen, manualDone bleibt offen.
+
+GeprüfterSourceCommit1700ee70ddeca61a361533b7b300482548bc963f auf bestehendesEUDev accurate-lion-749.eu-west-1.convex.cloud am2026-10-06T21:52:40UTC synchronisiert Exit0; exactCommit/Ziel/308HashGuard. Readonlyfunction-spec bestätigt363Entries und alle13 neuenPublic/InternalInterfaces;308Quellhashes unverändert. Keine Policy/Consent/Grant-Aktivierung, keine DomainMutation/Provider/PublishingCalls. Alle technischenAC geprüft; DoD1 automatisierteChecks+offeneManualAbnahme dokumentiert. Status bleibtInProgress, DoD2/manualDone ausdrücklich offen. Weiter mit46.2.
 <!-- SECTION:NOTES:END -->

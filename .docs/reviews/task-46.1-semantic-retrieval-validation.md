@@ -1,6 +1,6 @@
 # TASK-46.1 — separately funded own-content retrieval
 
-Continuation of reviewed TASK-45.2 on the user's requested `master`. TASK-46.1 remains In Progress pending explicit manual acceptance. Exact existing EU Dev synchronization is still pending; source/static/native evidence is recorded below.
+Continuation of reviewed TASK-45.2 on the user's requested `master`. TASK-46.1 remains In Progress pending explicit manual acceptance. Technical source/static/native/UI and exact existing EU Dev verification are complete; explicit manual acceptance remains open.
 
 ## Concrete boundary
 
@@ -24,4 +24,12 @@ Fresh SPEC accepted the retention repair and independently ran55 affected tests.
 
 Native codegen, App/Convex TypeScript, configured formatting plus the new UI/browser files, Vite build and original bundle-secret assertions PASS. The temporary bundle runner only substitutes installed Vite for the pnpm launcher. Styled desktop/390px/Draft evidence uses the actual components with intercepted transport;17 browser checks passed and the narrow-screen DOM contains one semantic section with no horizontal overflow. These are controlled integration checks, not authenticated live or empirical semantic-quality evidence.
 
-The17 browser checks, App TypeScript and UI formatting PASS after the literal correction. Original bundle-secret assertions with the installed Vite launcher PASS again on the final freeze. Root reverified all308 source hashes after these checks. Exact existing EU Dev receipt will be recorded before release. Actual policy/provider evidence, authenticated manual checks and explicit Backlog Done confirmation remain open.
+The17 browser checks, App TypeScript and UI formatting PASS after the literal correction. Original bundle-secret assertions with the installed Vite launcher PASS again on the final freeze. Root reverified all308 source hashes after these checks.  Actual policy/provider evidence, authenticated manual checks and explicit Backlog Done confirmation remain open.
+
+## Exact existing EU Dev synchronization
+
+Reviewed source commit `1700ee70ddeca61a361533b7b300482548bc963f` synchronized to `https://accurate-lion-749.eu-west-1.convex.cloud` (`dev:accurate-lion-749`) on2026-10-06 at21:52:40UTC, exit0. The script checked the exact current commit, target configuration and all308 frozen source hashes before `node node_modules/convex/bin/main.js dev --once`. Receipt `/tmp/dispatch-continuation-46.1-dev-sync-receipt.json`; log `/tmp/dispatch-continuation-46.1-dev-sync.log`.
+
+Read-only `function-spec --deployment accurate-lion-749` confirmed that exact URL and363 deployed metadata entries. All13 introduced interfaces were checked: public execute/consent/availability/prepare/frame; internal-only configure/claim/context/settle/commit/purge/sweep and Research semanticDrafts cleanup. Metadata `/tmp/dispatch-continuation-46.1-dev-function-spec.json`; verification `/tmp/dispatch-continuation-46.1-dev-metadata-verification.json`. All308 source hashes remained unchanged afterward. No domain mutation, policy/consent/grant activation, model/provider call or publishing operation was invoked by release verification.
+
+TASK-46.1 technical acceptance criteria are checked; status remains In Progress and manual Definition of Done remains unchecked. TASK-46.2 can now consume this technically accepted native boundary without waiting for fictional semantic/provider/manual facts.

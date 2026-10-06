@@ -3,10 +3,10 @@ id: TASK-46.2
 title: >-
   Endliche Serienvorschläge mit vorbereitetem semantischem Kontext planen
   (P12.02, Teil 2)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-06 15:21'
-updated_date: '2026-10-06 21:31'
+updated_date: '2026-10-06 21:53'
 labels: []
 dependencies:
   - TASK-46.1
@@ -51,4 +51,6 @@ Nach separat akzeptiertem46.1 und finalem45: native konkrete Serienversion/CAS/R
 
 <!-- SECTION:NOTES:BEGIN -->
 Read-only Vorarbeit /tmp/dispatch-46.2-preflight.md vorhanden. Kein46.2Source-Writer freigegeben, Status bleibtToDo bis46.1 technisch geprüft ist. Minimal drei Serienfamilien plus normalisierte Vektor→Plan-Abhängigkeiten; vorhandene contentPlans dienen als Proposal-/Occurrence-Beleg. Kein zweiter Planner, Occurrence-/Frame-Ledger, Provider im Callback, automatische Annahme oder Terminänderung. Disable zieht unangenommene Serienvorschläge fail-closed zurück, bereits angenommene native Termine bleiben erhalten. Tatsächliche Style/Pillars, Themenzuordnung, gewünschtesFormat, Frequenz/IANA/Zeiten/Zeitraum/Threshold sind explizite Produktangaben und werden nicht erfunden.
+
+46.1 technisch akzeptiert:Source1700ee7,950Tests/49FilesPASS, freshSPEC/distinctQUALITY/finalUICopy,17styledBrowser/static/codegen/bundle, exaktesbestehendesEUDev21:52:40UTC/363MetadataEntries. Final46.1 helpers/proofs/indices sind maßgeblich; movingPreflight nurVorarbeit. SourceBrief /tmp/dispatch-46.2-writer-brief.md vorbereitet; genau ein neuerSourceWriter wird nachRoot-Verifikationscommit freigegeben. KeinParallelSchemaWriter/ProviderCallback/autoschedule; manualDone bleibt offen.
 <!-- SECTION:NOTES:END -->
