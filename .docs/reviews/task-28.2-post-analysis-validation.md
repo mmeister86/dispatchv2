@@ -1,0 +1,9 @@
+# TASK-28.2 — versioned post analyzer validation
+
+## Implementation release
+
+Original fullscope userauthorization/master/regularscopedcommits/SDD/Convex/Ponytail. Previous28.1 correctedSOURCE72a412ca SAME SPEC andfreshQUALITY PASS, boundedsoftwareAC1–5 checked, full620/34/static/build/bundle/codegen/existingEUDev05:56:23. AdapteractualSDKlocalintercept notlivecustomer/cloudHTTP, fullEUprocessingapproval absent/defaultOFF. Approved .docs/decisions/analysis-contract.md authoritative; guide snippets areproposal andwrongclamp/earlyrounding replacedbyapprovedstrictmath.
+
+One freshsolewriter for immutablepostquestions, realinternalanalyzer anddeterministiccomponents/dispatch-score-v1. Existingprofileversion refs unavailable remainimmutable; newexecutablepayloadcandidate requirescurrentOwnerAdminreview/select, noautoactivation. Reusecurrentthread/source/media/profileproof/client/financialledger, noProviderfactory/Agentprompthistory/secondcacheledger. Later28.3 handlesdurableassessments/semanticidentity/atomiclatewrites/cache/current/historical sourceprojections andphysicalwithdrawalcleanup. Read-only28.3 map ROOTreadcomplete, notruntimeacceptance.
+
+ActualAC3 contains HUMAN-reviewedexpectedranges: clearlyAItechnicalfixedreferences cannotfulfillthatpart; wholeAC3 remainsuncheckedpendingactualhumanreview. OtherAC/evidencechecksonlyafterfrozenSOURCE/freshSPECthenQUALITY; allmanualDoneopen. Sourcecommitwindowclosed untilROOT independently verifiesexactinventory/readiness andexplicitlyauthorizesscopedcommit. NoSDKpaidcalls/grantpolicyprocessingactivation/screenshotkey→consent inference.

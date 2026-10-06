@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-06 04:00'
+updated_date: '2026-10-06 04:03'
 labels:
   - p08
   - jev
@@ -43,11 +43,11 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Gepinnter SDK-/Runtime-Durchstich ist dokumentiert; reale Kundendatenaufrufe erfordern den EU-only-/Datenschutznachweis aus TASK-1.
-- [ ] #2 Contract-Tests unterscheiden choice-/score-Confidence und noul-Wahrscheinlichkeit und weisen fehlende oder ungültige Antworten zurück.
-- [ ] #3 Tests für Timeout, Rate Limit, Providerfehler und SDK-Retries belegen Gesamtzeit-, Versuchs- und Kostenlimits sowie Circuit-Breaker-Erholung.
-- [ ] #4 Usage wird je tatsächlichem Versuch höchstens einmal verbucht und jeder weitere Versuch benötigt Budgetdeckung.
-- [ ] #5 Flags können Jev ohne Deployment deaktivieren. API-Schlüssel gelangen weder ins Frontend noch in Assessments oder Logs; Assessments und allgemeine Telemetrie speichern keine zusätzlichen privaten Draft-/Prompt-Kopien. Die autorisierte Darstellung und Bearbeitung von Entwürfen im Composer bleibt möglich.
+- [x] #1 Gepinnter SDK-/Runtime-Durchstich ist dokumentiert; reale Kundendatenaufrufe erfordern den EU-only-/Datenschutznachweis aus TASK-1.
+- [x] #2 Contract-Tests unterscheiden choice-/score-Confidence und noul-Wahrscheinlichkeit und weisen fehlende oder ungültige Antworten zurück.
+- [x] #3 Tests für Timeout, Rate Limit, Providerfehler und SDK-Retries belegen Gesamtzeit-, Versuchs- und Kostenlimits sowie Circuit-Breaker-Erholung.
+- [x] #4 Usage wird je tatsächlichem Versuch höchstens einmal verbucht und jeder weitere Versuch benötigt Budgetdeckung.
+- [x] #5 Flags können Jev ohne Deployment deaktivieren. API-Schlüssel gelangen weder ins Frontend noch in Assessments oder Logs; Assessments und allgemeine Telemetrie speichern keine zusätzlichen privaten Draft-/Prompt-Kopien. Die autorisierte Darstellung und Bearbeitung von Entwürfen im Composer bleibt möglich.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -88,4 +88,6 @@ Fresh independent SPEC FAIL: actual registered SDK HTTP200 JSONnull becomes prov
 Original writer correction SOURCE72a412c exact3paths frozen and ROOT verified23current/committed SHA/20unchanged. Genuine permanentnull+validator REDtwofail05:54:27 thenGREENtwopass05:54:35; focused17/3/full620/34/static/build/bundle/newofficialcodegen/existingEUDevready05:56:23/posttypesPASS. InitialTS issuetest-only reflective method fixed no productioncast. SAME SPEC recheck released; freshQUALITY waitsPASS. No newfrontend/browser/liveprovider/EUapproval claimed. AllAC/manualDone open.
 
 SAME SPEC correction PASS atSOURCE72a412ca: unchanged7 independentcontrols7PASS+focused17PASS05:58:25; bothnullclassification andreturnvalidatorfindingsclosed; exact23current/committedSHA/tree/16logs verified. ROOTreadfullreceipt879cef29. FreshindependentQUALITY jev_adapter_quality released. Sourcefrozen, allAC/manualDoneopen; no actualprovider/EU/humanapproval.
+
+ROOT bounded software acceptance: correctedSOURCE72a412ca SAME SPEC7controlsPASS+freshQUALITY3independentsecurity/financecontrolsPASS/nofindings;17focused/full620/34/static/build/bundle/codegen/existingEUDev05:56:23. AC1–5softwareverified; actualEUprocessing/providercloudHTTP/customer/humanexpectedranges notapproved, defaultOFF andquestionspending28.2. StatusInProgress/manualDoneopen. Continue28.2actualquestions/math then28.3assessments/cache.
 <!-- SECTION:NOTES:END -->

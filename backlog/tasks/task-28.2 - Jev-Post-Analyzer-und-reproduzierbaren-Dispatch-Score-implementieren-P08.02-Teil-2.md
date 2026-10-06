@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-06 03:29'
+updated_date: '2026-10-06 04:03'
 labels:
   - p08
   - jev
@@ -71,4 +71,6 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence. Hook/clarity/discussion/originality/natural CTA/structure/history dimensions, fixed weighted illustrative score, missing values and declared 50 cold-start standard. Grenze: All semantic values are hypothetical; no evaluated model, audience match or reach prediction. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 ROOT preparation only, actual implementation waits reviewed28.1 adapter/sourcecontract. Current TASK27 unavailable executable refs must not be silently reinterpreted; genuine new immutable profile payloads require explicit review/select. Whole ordered thread and descriptive media, no measured Audience Fit/reach. Actual AC3 includes HUMAN reviewed expected ranges; synthetic/AI technical fixtures do not satisfy that portion or justify whole checkbox. No SDK/provider activation or human acceptance claimed.
+
+Implementation release after accepted28.1SOURCE72a412ca SAME SPEC/freshQUALITYPASS. Freshsolewriter to implement immutable8choice/5fivelevelscore/3noul questions, explicitnewprofilecandidate through existingreview/select, wholethreaddeterministicstructure anddispatch-score-v1. No autoenable/provider/grants. HumanexpectedrangesAC3wholecheckbox remainsopen despite technicalfixtures;28.3durableassessment/current/cacheboundary later. Full/static/EUDev/freshSPECthenQUALITY beforesoftwareAC.
 <!-- SECTION:NOTES:END -->
