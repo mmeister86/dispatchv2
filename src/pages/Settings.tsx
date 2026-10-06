@@ -1,3 +1,4 @@
+import { IntelligenceProfiles } from "@/features/intelligence/profiles";
 import { GithubSources } from "@/features/settings/github";
 import { ModelConfiguration } from "@/features/settings/models";
 import {
@@ -245,6 +246,7 @@ function ProfileSettings() {
   const readOnly = state.role === "Viewer";
   return (
     <>
+      {!demoMode && <IntelligenceProfiles audienceOnly />}
       <Section
         title="Dein Profil"
         description="So möchtest du arbeiten — und so soll Dispatch dich verstehen."

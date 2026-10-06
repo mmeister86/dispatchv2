@@ -1,3 +1,9 @@
+import {
+  algorithmFields as intelligenceAlgorithmFields,
+  audienceFields as intelligenceAudienceFields,
+  selectionFields as intelligenceSelectionFields,
+  receiptFields as intelligenceReceiptFields,
+} from "./intelligence/sharedFields";
 import { clusterFields, bindingFields } from "./research/pipelineFields";
 import { evidenceFields } from "./research/evidenceFields";
 import {
@@ -71,6 +77,32 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  algorithmProfiles: defineTable(intelligenceAlgorithmFields).index(
+    "by_scope",
+    ["workspaceId", "accountId", "network", "surface"],
+  ),
+  audienceProfiles: defineTable(intelligenceAudienceFields).index("by_scope", [
+    "workspaceId",
+    "accountId",
+    "network",
+    "surface",
+  ]),
+  intelligenceSelections: defineTable(intelligenceSelectionFields).index(
+    "by_scope",
+    ["workspaceId", "accountId", "network", "surface"],
+  ),
+  intelligenceProfileReceipts: defineTable(intelligenceReceiptFields)
+    .index("by_scope", ["workspaceId", "accountId", "network", "surface"])
+    .index("by_command", ["workspaceId", "accountId", "actorId", "commandKey"])
+    .index("by_selection", [
+      "workspaceId",
+      "accountId",
+      "network",
+      "surface",
+      "algorithmId",
+      "audienceId",
+      "action",
+    ]),
   researchCopyBindings: defineTable({
     evidenceId: v.id("researchEvidence"),
     orderId: v.optional(v.id("researchOrders")),

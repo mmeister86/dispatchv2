@@ -1,3 +1,4 @@
+import { IntelligenceProfiles } from "@/features/intelligence/profiles";
 import {
   FirstWriteConfirmation,
   PublishingResults,
@@ -755,6 +756,9 @@ export function ComposerPage() {
         draft={draft}
         disabled={dirty || conflict || saving || !!v.sourceUnavailable}
       />
+      {!demoMode && (
+        <IntelligenceProfiles readOnly accountId={draft.accountId} />
+      )}
       {!demoMode && (
         <PublishingResults
           schedules={state.schedules.filter((s) => s.draftId === draft.id)}

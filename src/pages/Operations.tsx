@@ -1,3 +1,5 @@
+import { IntelligenceProfiles } from "@/features/intelligence/profiles";
+import { demoMode } from "@/lib/auth-client";
 import { useState } from "react";
 import { Activity, ArrowRight, Check, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -94,7 +96,11 @@ export function OperationsPage() {
           <CalibrationPanel admin={admin} />
         </TabsContent>
         <TabsContent value="algorithm">
-          <AlgorithmPanel admin={admin} />
+          {demoMode ? (
+            <AlgorithmPanel admin={admin} />
+          ) : (
+            <IntelligenceProfiles />
+          )}
         </TabsContent>
       </Tabs>
     </>
