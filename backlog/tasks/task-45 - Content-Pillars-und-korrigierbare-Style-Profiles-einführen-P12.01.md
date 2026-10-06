@@ -4,7 +4,7 @@ title: Content Pillars und korrigierbare Style Profiles einführen (P12.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 13:21'
 labels:
   - p12
   - r5
@@ -52,4 +52,6 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/strategy. Editable pillars/weights, writing samples, forbidden phrases and positioning; separate committed/form state, version history, suggestion accept/reject/reset/undo. Grenze: No automatic style learning or inferred biography. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Fortsetzungsvorbereitung 2026-10-06, keine Implementierung: Root hat /tmp/dispatch-continuation-45-47-seams.md und reale Settings/Feedback/Generation-Verbraucher gelesen. StrategySettings ist weiterhin lokal; persönliches preferences/audience/tone darf nicht automatisch accountweite Autorität werden. Nach43.3/44 zunächst kleiner nativer deklarierter Account-Stilvertrag mit expliziter Autorenschaft, unveränderlichen Versionen, menschlich bestätigten Korrekturvorschlägen und Rollback. Säulen können im gemeinsam versionierten Payload liegen; kein eigener Tabellenapparat nötig. Gewünschter Ton/Beispiele sind keine nachgewiesene Biografie. Tatsächlicher Generator liest derzeit mutable tone; exakter Stil-Pin und aktuelle Quellen-/Zweckprüfung gehören in ein separat freigegebenes Folgepaket, keine automatische Provider- oder Lernfreigabe. Vor Writerstart konkrete Unteraufgaben/AC und Vertrag erstellen. TASK46/47 erst danach; Label-Diversität/Codepoint-Änderungen sind keine semantische Ähnlichkeit, Editing-Zeit oder unabhängige Experimentproben.
 <!-- SECTION:NOTES:END -->
