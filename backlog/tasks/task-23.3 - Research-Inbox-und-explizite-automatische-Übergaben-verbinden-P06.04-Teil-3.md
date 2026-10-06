@@ -4,7 +4,7 @@ title: 'Research-Inbox und explizite automatische Übergaben verbinden (P06.04, 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 02:43'
+updated_date: '2026-10-06 02:45'
 labels: []
 dependencies:
   - TASK-23.2
@@ -70,4 +70,6 @@ ROOT read complete freshSPEC NEEDS_FIXES: oneP1 only manual descendant physicalc
 ROOT read genuine correctionRED /tmp/task23-3-correction-original-red.log04:38:16: actual manual child physical state review after read fence. Two owned-path correction uses existing order index for all review evidence and matching continuation; historical complete marker cannot suppress remaining rows. Permanent actual registered21manual+model continuation GREEN04:39:07; separately controlled historical-complete input variant and95/2 affectedPASS04:40:19 reported. No API/UI/index/finance-store change, original5 frozen browser receipts reused honestly for backend-only purge selection. Final594/30/staticGREEN reported, codegen/EUDev/posttype readiness pending. Sourcewindowclosed, SAME SPEC thenfreshQUALITY; no AC/Done.
 
 ROOT independently reverified corrected SOURCE d9caca72ba34ae2f90ab9e98bf18965defcbb89e exact2 path bytes against rawinventorye7c1d9b66925e3c4532058fac67ba28a5ad06f372b317ce882840ecedc2fdee8, scopedcommit and clean tree/index. Readfinal95/2 affected04:40:19,594/30full04:40:30, types/lint/2pathformat/build/bundle/officialcodegen/posttype PASS and existingEUDev04:41:35/posttypePASS. Original24inventory/593/e99c56e receipts retained, unchangedUI/API fivebrowserreceipts honestlyreused. SAME SPEC dispatched original independentphysicalcopyprobe/newcontinuation/historicalcomplete guard recheck; freshQUALITYonlyafterPASS. Sourcewindowclosed/no AC/Done.
+
+ROOT read complete SAME SPEC correctionPASS /tmp/dispatch-research-inbox-spec-correction-receipt.md SHA62deff98ee4fc52a25f7e805fbc275ab2689cd57cfd945c4e7182e4f90a68651: all24 actualSOURCEd9caca72bytes match2overrides+22original. Unmodified independent manualchild/copiedcontentREDs and clarifiedsafe replay now3PASS04:43:26; correctedactual95/2PASS04:43:27. Bounded20all-order retirement/matchingremain+historicalcomplete guard solvesrootcause, existingcopy/native/finance preserved. Broad594/static/Dev inspected, fiveunchangedUIbrowserreceipts reusedhonestly. Fresh independent AppSec quality research_inbox_quality dispatched entire24pathscope fromBASE734dce2; noAC/Done untilfinalQUALITY.
 <!-- SECTION:NOTES:END -->
