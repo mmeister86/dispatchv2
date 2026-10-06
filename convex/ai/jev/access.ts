@@ -1,3 +1,4 @@
+import { hasAnalysisContent } from "../../../shared/analysisMinimum";
 import { ConvexError, v, type Infer } from "convex/values";
 import {
   internalMutation,
@@ -219,6 +220,7 @@ export async function current(ctx: Ctx, a: Request) {
     fail("JEV_QUESTION_CONFIGURATION_REQUIRED");
   const media = [];
   if (
+    !hasAnalysisContent(version!.content.text) ||
     !version!.content.text.length ||
     version!.content.text.length > account!.capability.maxThread ||
     version!.content.media.length > account!.capability.maxMedia

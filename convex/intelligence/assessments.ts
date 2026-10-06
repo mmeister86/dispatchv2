@@ -1,3 +1,10 @@
+import { sha256 } from "../lib/crypto";
+import {
+  recommendations,
+  edits,
+  recommendationProof,
+  RULE_VERSION,
+} from "./recommendationEdits";
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import {
@@ -49,7 +56,7 @@ async function source(
   const sourceUntil = await draftResearchProof(ctx, ver);
   return { draft, ver, sourceUntil };
 }
-async function request(
+export async function request(
   ctx: QueryCtx | MutationCtx,
   workspaceId: Id<"workspaces">,
   actorId: Id<"users">,
@@ -283,6 +290,7 @@ export const get = workspaceQuery({
   args: targetFields,
   returns: v.object({
     assessment: v.union(assessmentDoc, v.null()),
+    recommendations: v.union(recommendations, v.null()),
     applicable: v.boolean(),
     sourceUntil: v.union(v.number(), v.null()),
   }),
@@ -291,7 +299,12 @@ export const get = workspaceQuery({
     try {
       proof = await source(ctx, ctx.workspace._id, a);
     } catch {
-      return { assessment: null, applicable: false, sourceUntil: null };
+      return {
+        assessment: null,
+        recommendations: null,
+        applicable: false,
+        sourceUntil: null,
+      };
     }
     const rows = await ctx.db
       .query("jevAssessments")
@@ -329,14 +342,42 @@ export const get = workspaceQuery({
               .eq("semanticKey", x.semanticKey),
         )
         .first();
+      const receipt = matched ? await ctx.db.get(matched.attemptId) : null;
+      const usable =
+        matched &&
+        receipt?.owner === "jev-analyzer" &&
+        receipt.policyFingerprint === (await sha256(JSON.stringify(x.p)));
       return {
         assessment: matched ?? retained,
+        recommendations: usable
+          ? {
+              assessmentId: matched._id,
+              revision: proof.draft.revision,
+              proof: await recommendationProof(
+                x,
+                proof.ver,
+                proof.draft.revision,
+                (await selection(ctx, ctx.workspace._id, a.accountId))!
+                  .revision,
+              ),
+              ruleVersion: RULE_VERSION,
+              candidates: edits(
+                proof.ver.content,
+                (
+                  await Promise.all(
+                    proof.ver.content.media.map((m) => ctx.db.get(m.assetId)),
+                  )
+                ).flatMap((asset, i) => (asset?.type === "image" ? [i] : [])),
+              ),
+            }
+          : null,
         applicable: !!matched,
         sourceUntil: proof.sourceUntil,
       };
     } catch {
       return {
         assessment: retained,
+        recommendations: null,
         applicable: false,
         sourceUntil: proof.sourceUntil,
       };

@@ -57,6 +57,8 @@ import type * as intelligence_assessmentFields from "../intelligence/assessmentF
 import type * as intelligence_assessments from "../intelligence/assessments.js";
 import type * as intelligence_audienceProfiles from "../intelligence/audienceProfiles.js";
 import type * as intelligence_profiles from "../intelligence/profiles.js";
+import type * as intelligence_recommendationEdits from "../intelligence/recommendationEdits.js";
+import type * as intelligence_recommendations from "../intelligence/recommendations.js";
 import type * as intelligence_sharedFields from "../intelligence/sharedFields.js";
 import type * as lib_authorization from "../lib/authorization.js";
 import type * as lib_crypto from "../lib/crypto.js";
@@ -160,6 +162,8 @@ declare const fullApi: ApiFromModules<{
   "intelligence/assessments": typeof intelligence_assessments;
   "intelligence/audienceProfiles": typeof intelligence_audienceProfiles;
   "intelligence/profiles": typeof intelligence_profiles;
+  "intelligence/recommendationEdits": typeof intelligence_recommendationEdits;
+  "intelligence/recommendations": typeof intelligence_recommendations;
   "intelligence/sharedFields": typeof intelligence_sharedFields;
   "lib/authorization": typeof lib_authorization;
   "lib/crypto": typeof lib_crypto;

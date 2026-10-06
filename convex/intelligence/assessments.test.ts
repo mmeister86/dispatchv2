@@ -65,6 +65,34 @@ function target(f: Awaited<ReturnType<typeof jevFixture>>) {
   const { workspaceId, accountId, draftId, draftVersionId } = f.request;
   return { workspaceId, accountId, draftId, draftVersionId };
 }
+test("TASK29 current assessment exposes genuine bounded recommendations without changing saved text", async () => {
+  const f = await jevFixture(true);
+  const original = [
+    "Exact paragraph\n\nExact paragraph",
+    "A second unchanged segment",
+  ];
+  await f.t.run(async (ctx) => {
+    const v = (await ctx.db.get(f.request.draftVersionId))!;
+    await ctx.db.patch(v._id, { content: { ...v.content, text: original } });
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => response()),
+  );
+  await f.signed.action(analyze, {
+    ...target(f),
+    operationKey: "task29-analysis-red",
+  });
+  const row = await f.signed.query(get, target(f));
+  expect(row.recommendations?.candidates).toEqual([
+    expect.objectContaining({ kind: "duplicate", segment: 0 }),
+  ]);
+  expect(
+    await f.t.run(
+      async (ctx) => (await ctx.db.get(f.request.draftVersionId))!.content.text,
+    ),
+  ).toEqual(original);
+});
 test("authorized exact-version cache is stable across operation/actor/selection revision and stores no text; normalized math reproduces", async () => {
   const f = await jevFixture(true);
   const transport = vi.fn(async () => response());
@@ -665,4 +693,39 @@ test("bounded descriptor sweep removes a missing workspace parent without deleti
   expect(
     await f.t.run((ctx) => ctx.db.query("aiAttempts").collect()),
   ).toHaveLength(1);
+});
+
+test("TASK29 minimum processing input uses 20 non-whitespace Unicode codepoints over whole thread and never calls provider below threshold", async () => {
+  const f = await jevFixture(true);
+  const transport = vi.fn(async () => response());
+  vi.stubGlobal("fetch", transport);
+  await f.t.run(async (ctx) => {
+    const v = (await ctx.db.get(f.request.draftVersionId))!;
+    await ctx.db.patch(v._id, {
+      content: {
+        ...v.content,
+        text: ["😀".repeat(9), " \n " + "a".repeat(10)],
+      },
+    });
+  });
+  await expect(
+    f.signed.action(analyze, {
+      ...target(f),
+      operationKey: "minimum-below-boundary",
+    }),
+  ).rejects.toThrow(/JEV_INPUT_LIMIT/);
+  expect(transport).not.toHaveBeenCalled();
+  await f.t.run(async (ctx) => {
+    const v = (await ctx.db.get(f.request.draftVersionId))!;
+    await ctx.db.patch(v._id, {
+      content: { ...v.content, text: ["😀".repeat(10), "a".repeat(10)] },
+    });
+  });
+  expect(
+    await f.signed.action(analyze, {
+      ...target(f),
+      operationKey: "minimum-at-boundary",
+    }),
+  ).toEqual({ outcome: "success", cached: false });
+  expect(transport).toHaveBeenCalledTimes(1);
 });

@@ -543,6 +543,66 @@ export const create = workspaceMutation({
     return createDraftTransaction(ctx, ctx.workspace._id, ctx.user._id, a);
   },
 });
+export async function saveDraftTransaction(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  actorId: Id<"users">,
+  a: {
+    draftId: Id<"drafts">;
+    expectedRevision: number;
+    content: Doc<"draftVersions">["content"];
+    reason: string;
+  },
+) {
+  const d = requireReference(
+    workspaceId,
+    await ctx.db.get(a.draftId),
+  ) as Doc<"drafts">;
+  if (d.revision !== a.expectedRevision) throw new ConvexError("SAVE_CONFLICT");
+  const currentVersion = d.currentVersionId
+    ? await ctx.db.get(d.currentVersionId)
+    : null;
+  if (
+    !currentVersion ||
+    currentVersion.workspaceId !== workspaceId ||
+    currentVersion.draftId !== d._id
+  )
+    throw new ConvexError("DRAFT_VERSION_CHANGED");
+  await checkContentSource(ctx, currentVersion);
+  if (
+    currentVersion?.researchProofUntil &&
+    a.content.accountId !== currentVersion.content.accountId
+  )
+    throw new ConvexError("RESEARCH_CONTENT_ACCOUNT_CHANGED");
+  await validateContent(ctx, workspaceId, a.content);
+  if (a.reason.length > 500) throw new ConvexError("INVALID_REASON");
+  const sourceIdeaVersion = await draftIdeaVersion(ctx, currentVersion);
+  const versionId = await ctx.db.insert("draftVersions", {
+    workspaceId: workspaceId,
+    draftId: d._id,
+    number: d.revision + 1,
+    ...(sourceIdeaVersion ? { ideaVersionId: sourceIdeaVersion._id } : {}),
+    ...(currentVersion?.researchProofUntil
+      ? {
+          researchProofUntil: currentVersion.researchProofUntil,
+          researchCleanupPending: true,
+        }
+      : {}),
+    content: a.content,
+    mediaChecksums: await mediaSnapshot(ctx, a.content),
+    authorId: actorId,
+    createdAt: Date.now(),
+    reason: a.reason,
+  });
+  await recordMediaReferences(ctx, workspaceId, versionId, a.content);
+  await ctx.db.patch(d._id, {
+    revision: d.revision + 1,
+    currentVersionId: versionId,
+    updatedAt: Date.now(),
+  });
+  await event(ctx, workspaceId, d._id, "VERSION_SAVED", actorId);
+  return versionId;
+}
 export const save = workspaceMutation({
   args: {
     draftId: v.id("drafts"),
@@ -553,55 +613,7 @@ export const save = workspaceMutation({
   returns: v.id("draftVersions"),
   handler: async (ctx, a) => {
     requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
-    const d = requireReference(
-      ctx.workspace._id,
-      await ctx.db.get(a.draftId),
-    ) as Doc<"drafts">;
-    if (d.revision !== a.expectedRevision)
-      throw new ConvexError("SAVE_CONFLICT");
-    const currentVersion = d.currentVersionId
-      ? await ctx.db.get(d.currentVersionId)
-      : null;
-    if (
-      !currentVersion ||
-      currentVersion.workspaceId !== ctx.workspace._id ||
-      currentVersion.draftId !== d._id
-    )
-      throw new ConvexError("DRAFT_VERSION_CHANGED");
-    await checkContentSource(ctx, currentVersion);
-    if (
-      currentVersion?.researchProofUntil &&
-      a.content.accountId !== currentVersion.content.accountId
-    )
-      throw new ConvexError("RESEARCH_CONTENT_ACCOUNT_CHANGED");
-    await validateContent(ctx, ctx.workspace._id, a.content);
-    if (a.reason.length > 500) throw new ConvexError("INVALID_REASON");
-    const sourceIdeaVersion = await draftIdeaVersion(ctx, currentVersion);
-    const versionId = await ctx.db.insert("draftVersions", {
-      workspaceId: ctx.workspace._id,
-      draftId: d._id,
-      number: d.revision + 1,
-      ...(sourceIdeaVersion ? { ideaVersionId: sourceIdeaVersion._id } : {}),
-      ...(currentVersion?.researchProofUntil
-        ? {
-            researchProofUntil: currentVersion.researchProofUntil,
-            researchCleanupPending: true,
-          }
-        : {}),
-      content: a.content,
-      mediaChecksums: await mediaSnapshot(ctx, a.content),
-      authorId: ctx.user._id,
-      createdAt: Date.now(),
-      reason: a.reason,
-    });
-    await recordMediaReferences(ctx, ctx.workspace._id, versionId, a.content);
-    await ctx.db.patch(d._id, {
-      revision: d.revision + 1,
-      currentVersionId: versionId,
-      updatedAt: Date.now(),
-    });
-    await event(ctx, ctx.workspace._id, d._id, "VERSION_SAVED", ctx.user._id);
-    return versionId;
+    return saveDraftTransaction(ctx, ctx.workspace._id, ctx.user._id, a);
   },
 });
 export const approve = workspaceMutation({

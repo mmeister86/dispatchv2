@@ -1,3 +1,4 @@
+import { receiptFields as recommendationReceiptFields } from "./intelligence/recommendationEdits";
 import {
   assessmentFields,
   assessmentRequestFields,
@@ -86,6 +87,10 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  recommendationReceipts: defineTable(recommendationReceiptFields).index(
+    "by_workspaceId_and_actorId_and_operationKey",
+    ["workspaceId", "actorId", "operationKey"],
+  ),
   jevAssessmentRequests: defineTable(assessmentRequestFields)
     .index("by_request_draftVersionId", ["request.draftVersionId"])
     .index("by_createdAt", ["createdAt"])

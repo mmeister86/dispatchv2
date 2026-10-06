@@ -1,3 +1,8 @@
+import {
+  hasAnalysisContent,
+  MIN_ANALYSIS_CHARACTERS,
+} from "../../../shared/analysisMinimum";
+import { Recommendations } from "./recommendations";
 import { useAction, useQuery } from "convex/react";
 import { useEffect, useRef, useState } from "react";
 import type { FunctionReturnType } from "convex/server";
@@ -108,7 +113,11 @@ function AssessmentVersion({
     [error, setError] = useState(""),
     [clock, setClock] = useState(Date.now());
   const mounted = useRef(false),
-    pending = useRef(false);
+    pending = useRef(false),
+    epoch = useRef(0);
+  useEffect(() => {
+    epoch.current++;
+  }, [blocked]);
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -134,10 +143,13 @@ function AssessmentVersion({
     return () => clearTimeout(timer);
   }, [nextWake, clock]);
   const protectedUnavailable = until <= clock;
-  const writable = canEdit(state.role) && !blocked && !protectedUnavailable;
+  const minimumMet = hasAnalysisContent(version.text);
+  const writable =
+    canEdit(state.role) && !blocked && !protectedUnavailable && minimumMet;
   const execute = async () => {
     if (!writable || pending.current) return;
     pending.current = true;
+    const startedEpoch = epoch.current;
     setBusy(true);
     setError("");
     setMessage("");
@@ -146,7 +158,7 @@ function AssessmentVersion({
         ...args,
         operationKey: crypto.randomUUID(),
       });
-      if (!mounted.current) return;
+      if (!mounted.current || epoch.current !== startedEpoch) return;
       if (result.outcome === "success" || result.outcome === "low_confidence")
         setMessage(
           result.cached
@@ -158,7 +170,7 @@ function AssessmentVersion({
           "Bewertung nicht verfügbar. Erneut versuchen; manuelles Veröffentlichen bleibt möglich.",
         );
     } catch {
-      if (mounted.current)
+      if (mounted.current && epoch.current === startedEpoch)
         setError(
           "Bewertung nicht verfügbar. Prüfe aktuelle Version, Profile und Analysekonfiguration; manuelles Veröffentlichen bleibt möglich.",
         );
@@ -180,6 +192,13 @@ function AssessmentVersion({
       {availability && availability.status !== "ready" && (
         <p role="status" className="text-xs">
           {availability.guidance}
+        </p>
+      )}
+      {!minimumMet && (
+        <p role="status" className="text-xs">
+          Analyse ab {MIN_ANALYSIS_CHARACTERS} Zeichen ohne Leerraum im gesamten
+          gespeicherten Thread. Diese Startgrenze bewertet keine
+          Inhaltsqualität.
         </p>
       )}
       {blocked && (
@@ -221,6 +240,17 @@ function AssessmentVersion({
               : "Veraltete / derzeit nicht anwendbare Bewertung"}
           </p>
           <AssessmentResult row={assessment} />
+          {row?.recommendations && (
+            <Recommendations
+              workspaceId={workspaceId}
+              accountId={accountId}
+              draftId={draftId}
+              draftVersionId={version.id as Id<"draftVersions">}
+              proposals={row.recommendations}
+              mediaIds={version.mediaIds}
+              allowed={writable && row.applicable && !busy && !error}
+            />
+          )}
         </>
       ) : (
         <p className="mt-4 text-xs muted">
@@ -302,9 +332,53 @@ function AssessmentResult({ row }: { row: Assessment }) {
         </div>
         <div className="flex justify-between">
           <dt>Historische Passung (angenommener Startwert)</dt>
-          <dd>50</dd>
+          <dd>
+            {result.score?.history
+              ? Math.round(result.score.history.value * 100)
+              : "nicht verfügbar"}
+          </dd>
         </div>
       </dl>
+      <details className="mt-3 text-xs">
+        <summary>Berechnung und Strukturbefunde</summary>
+        <p className="text-[11px] muted">
+          Gewichtete Inhaltskomponenten mit redaktionellen Startannahmen.
+          Schwellen sind nicht anhand von Reichweite kalibriert.
+          Strukturhinweise erlauben allein keine automatische Änderung.
+        </p>
+        <p className="text-[11px]">
+          {Object.entries(result.score?.weights ?? {})
+            .map(
+              ([key, weight]) =>
+                `${key === "structure" ? "Struktur" : key === "history" ? "Historischer Startwert" : (labels[key] ?? key)}: ${Math.round(weight * 100)} %`,
+            )
+            .join(" · ")}
+        </p>
+        {typeof result.score?.minimumConfidence === "number" && (
+          <p className="text-[11px]">
+            Mindest-Sicherheit für semantische Komponenten:{" "}
+            {Math.round(result.score.minimumConfidence * 100)} %; darunter
+            bleibt die Gesamtbewertung leer.
+          </p>
+        )}
+        {result.deterministic.segments.map((segment) => (
+          <p key={segment.position} className="text-[11px]">
+            Segment {segment.position + 1}: Länge {segment.length} (
+            {segment.lengthValid ? "innerhalb des Limits" : "Limit prüfen"}),{" "}
+            {segment.hashtags} Hashtags, {segment.mentions} Erwähnungen,{" "}
+            {segment.links} Links.{" "}
+            {segment.repeatedParagraphs
+              ? "Normalisierte Absatzwiederholung erkannt; bewusste Wiederholung möglich."
+              : "Keine normalisierte Absatzwiederholung."}
+          </p>
+        ))}
+        <p className="text-[11px]">
+          Medien: {result.deterministic.media.images} Bilder,{" "}
+          {result.deterministic.media.videos} Videos;{" "}
+          {result.deterministic.media.withAlt} von{" "}
+          {result.deterministic.media.count} mit Alt-Text.
+        </p>
+      </details>
       <p className="mt-3 text-[10px] muted">
         Audience Fit: nicht verfügbar. Fragen {result.questionVersion} ·
         Normalisierung {result.normalizationVersion} · Formel{" "}
