@@ -4,7 +4,7 @@ title: 'Research-Evidenz sicher in Ideen und Entwürfe übergeben (P06.04, Teil 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:37'
-updated_date: '2026-10-06 00:51'
+updated_date: '2026-10-06 00:59'
 labels: []
 dependencies:
   - TASK-22.3
@@ -65,4 +65,6 @@ Fresh SPEC independently reproduced inherited published-research-draft deadline 
 Fresh SPEC finalNEEDS_FIXES/ReadyNo oneP1 /tmp/dispatch-research-content-spec-receipt.md: history source proof AND actual ai/researchTools pipeline retention omit earliestancestor, child100000ms later; freshservermasks butcachedsnapshot99999ms remain.73registered+canonicalown+browserPASS/all29hashunchanged. Original implementer correction released forsharedhistory/proof/retention/allactualconsumers; permanentactualboundary regression, sameSPECrerunbeforefreshQUALITY. OriginalREDfrozen, noAC/Done.
 
 Permanent actual Workflow/native/model ancestor regression RED /tmp/task231-history-red.log retained. After horizonfix publicexpiry finds secondactualrollback: pipeline.purge cancels nativealready-completedWorkflow→Workflow not running→Agent/journalerasure rolledback; /tmp/task231-history-scheduler-diagnostic.log. ROOT permits sixthcorrectionpathpipeline.ts existingstatus/inProgress guard, actualcleanup/isDonepending retained. SameSPEC mustverify, QUALITYnotstarted, noAC/Done.
+
+Correction SOURCE6fde7a93e92814b0482326da5722b28f0668e56c exact6paths, clean index/tree; inherited history and dedup-context horizons propagated; existing status check avoids completed-native cancellation rollback while actual cleanup retained. Permanent real Workflow/native/model/history/public scheduled expiry GREEN with journal/isDone/Agent erasure + financial/confirmed IDs retained; distinct labeled context MockLanguageModel GREEN and isolated genuineRED retained. Final554/30 +75/3/static/codegen/posttypes PASS, actualEUDev02:57:21. SAME SPEC correction verification active, freshQUALITY gatedPASS; noAC/Done/newbrowser/paid/prod.
 <!-- SECTION:NOTES:END -->
