@@ -1,9 +1,11 @@
+import { source as agentSource } from "../ai/fields";
 import { v } from "convex/values";
 import {
   researchContentSource,
   researchCopyFields,
 } from "../research/contentFields";
 export const ideaSource = v.union(
+  v.object({ kind: v.literal("context-set"), sources: v.array(agentSource) }),
   researchContentSource,
   v.object({ kind: v.literal("context"), contextId: v.id("githubContexts") }),
   v.object({ kind: v.literal("note") }),

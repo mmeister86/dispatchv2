@@ -83,6 +83,12 @@ function ChatSession({
     workspaceId,
     paginationOpts: { numItems: 25, cursor: null },
   });
+  const researchProfile = useQuery(api.research.profiles.get, scope);
+  const [topic, setTopic] = useState("");
+  const [language, setLanguage] = useState("");
+  const [researchOperations, setResearchOperations] = useState<
+    ("web-search" | "x-recent" | "x-trends")[]
+  >(["web-search"]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const create = useMutation(api.ai.conversations.create),
@@ -90,13 +96,22 @@ function ChatSession({
     rename = useMutation(api.ai.conversations.rename),
     remove = useMutation(api.ai.conversations.remove),
     stop = useMutation(api.ai.conversations.stop),
-    resume = useMutation(api.ai.conversations.resume);
+    resume = useMutation(api.ai.conversations.resume),
+    research = useMutation(api.ai.conversations.research),
+    stopResearch = useMutation(api.research.runs.stop),
+    resumeResearch = useMutation(api.research.pipeline.resume),
+    cleanupUnavailable = useMutation(api.ai.conversations.cleanupUnavailable);
   const current =
     list?.page.find((c) => c.conversationId === selected) ??
     list?.page.find((c) => c.state === "active");
   const selection = current?.conversationId ?? null;
-  const latest = useRef({ selection, editable });
-  latest.current = { selection, editable };
+  const latest = useRef({ selection, editable, epoch: 0 });
+  latest.current = {
+    selection,
+    editable,
+    epoch:
+      latest.current.epoch + (latest.current.editable === editable ? 0 : 1),
+  };
   const alive = useRef(true);
   useEffect(() => {
     alive.current = true;
@@ -107,6 +122,13 @@ function ChatSession({
   const operations = useQuery(
     api.ai.conversations.status,
     selection ? { ...scope, conversationId: selection } : "skip",
+  );
+  const researchOrders = useQuery(
+    api.ai.conversations.researchStatus,
+    selection ? { ...scope, conversationId: selection } : "skip",
+  );
+  const researchRunning = researchOrders?.some(
+    (o) => o.state === "queued" || o.state === "running",
   );
   const operation = operations?.[0];
   const running =
@@ -125,6 +147,36 @@ function ChatSession({
       : "skip",
     { initialNumItems: 20, stream: true },
   );
+  useEffect(() => {
+    if (projection && !readable) {
+      setPrompt("");
+      setTopic("");
+      setTitle("");
+      setIdeaId("");
+      setAllowIdeaCreation(false);
+      setRenaming(false);
+      if (selection && current?.state === "active")
+        void cleanupUnavailable({
+          workspaceId,
+          accountId,
+          conversationId: selection,
+        }).catch(() => {});
+    }
+  }, [
+    projection?.authorized,
+    projection?.proofExpiresAt,
+    readable,
+    selection,
+    current?.state,
+    cleanupUnavailable,
+    workspaceId,
+    accountId,
+  ]);
+  const researchKey = useRef({
+    payload: "",
+    key: crypto.randomUUID(),
+    revision: 0,
+  });
   const createKey = useRef(crypto.randomUUID()),
     sendKey = useRef({ payload: "", key: crypto.randomUUID() });
   async function command(
@@ -133,7 +185,8 @@ function ChatSession({
     ignoreSelection = false,
   ) {
     if (!editable || pending) return;
-    const before = selection;
+    const before = selection,
+      epoch = latest.current.epoch;
     setPending(true);
     setError("");
     try {
@@ -141,6 +194,7 @@ function ChatSession({
       if (
         alive.current &&
         latest.current.editable &&
+        latest.current.epoch === epoch &&
         (ignoreSelection || latest.current.selection === before)
       )
         done?.();
@@ -148,6 +202,7 @@ function ChatSession({
       if (
         alive.current &&
         latest.current.editable &&
+        latest.current.epoch === epoch &&
         (ignoreSelection || latest.current.selection === before)
       )
         setError(failure(e));
@@ -170,7 +225,7 @@ function ChatSession({
     );
   }
   async function submit() {
-    if (!selection || !prompt.trim() || running) return;
+    if (!selection || !prompt.trim() || running || researchRunning) return;
     const payload = JSON.stringify({ prompt, allowIdeaCreation, ideaId });
     if (payload !== sendKey.current.payload)
       sendKey.current = { payload, key: crypto.randomUUID() };
@@ -187,6 +242,52 @@ function ChatSession({
       () => {
         setPrompt("");
         sendKey.current = { payload: "", key: crypto.randomUUID() };
+      },
+    );
+  }
+  async function requestResearch() {
+    if (
+      !selection ||
+      !researchProfile ||
+      !topic.trim() ||
+      researchRunning ||
+      running
+    )
+      return;
+    const selectedLanguage =
+      language || researchProfile.version.config.languages[0];
+    const payload = JSON.stringify({
+      selection,
+      topic,
+      language: selectedLanguage,
+      operations: researchOperations,
+      profileId: researchProfile.profile._id,
+    });
+    if (payload !== researchKey.current.payload)
+      researchKey.current = {
+        payload,
+        key: crypto.randomUUID(),
+        revision: researchProfile.profile.revision,
+      };
+    await command(
+      () =>
+        research({
+          ...scope,
+          conversationId: selection,
+          profileId: researchProfile.profile._id,
+          expectedRevision: researchKey.current.revision,
+          operationKey: researchKey.current.key,
+          topic,
+          language: selectedLanguage,
+          operations: researchOperations,
+        }),
+      () => {
+        setTopic("");
+        researchKey.current = {
+          payload: "",
+          key: crypto.randomUUID(),
+          revision: 0,
+        };
       },
     );
   }
@@ -446,6 +547,139 @@ function ChatSession({
             Ungeprüfter Quellenhinweis: {params.get("source")}
           </p>
         )}
+        <div className="border-t p-5 space-y-3">
+          <p className="text-sm font-semibold">
+            Gezielte Recherche in dieser Unterhaltung
+          </p>
+          {!researchProfile ? (
+            <Link to="/research" className="text-sm text-primary">
+              Gespeichertes Rechercheprofil und Quellenbudgets auf der
+              Recherche-Seite einrichten.
+            </Link>
+          ) : (
+            <>
+              <Input
+                aria-label="Recherchethema"
+                value={topic}
+                maxLength={450}
+                onChange={(e) => setTopic(e.target.value)}
+                disabled={
+                  !editable ||
+                  pending ||
+                  running ||
+                  researchRunning ||
+                  !readable
+                }
+              />
+              <label className="text-xs">
+                Recherchesprache{" "}
+                <select
+                  aria-label="Recherchesprache"
+                  value={
+                    language || researchProfile.version.config.languages[0]
+                  }
+                  onChange={(e) => setLanguage(e.target.value)}
+                  disabled={!editable || pending || researchRunning}
+                >
+                  {researchProfile.version.config.languages.map((l) => (
+                    <option key={l} value={l}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex gap-4 text-xs">
+                {(["web-search", "x-recent", "x-trends"] as const).map((op) => (
+                  <label key={op}>
+                    <input
+                      type="checkbox"
+                      checked={researchOperations.includes(op)}
+                      disabled={!editable || pending || researchRunning}
+                      onChange={(e) =>
+                        setResearchOperations(
+                          e.target.checked
+                            ? [...researchOperations, op]
+                            : researchOperations.filter((x) => x !== op),
+                        )
+                      }
+                    />{" "}
+                    {op}
+                  </label>
+                ))}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={requestResearch}
+                disabled={
+                  !editable ||
+                  pending ||
+                  running ||
+                  researchRunning ||
+                  !readable ||
+                  !selection ||
+                  !topic.trim() ||
+                  !researchOperations.length ||
+                  !researchProfile.version.config.cap ||
+                  researchProfile.profile.paused
+                }
+              >
+                Recherche starten
+              </Button>
+              {!researchProfile.version.config.cap && (
+                <Link to="/research" className="text-sm text-primary">
+                  Recherchelimit im gespeicherten Profil einrichten.
+                </Link>
+              )}
+              <p className="muted text-xs">
+                Einmaliges Thema, gespeichertes Profil und eigene
+                Recherchebudgets. Review bleibt ungeprüft; deine anschließende
+                Nachricht benötigt separate Chat-Freigaben und einen verbundenen
+                Account.
+              </p>
+            </>
+          )}
+          {researchOrders?.map((o) => (
+            <div key={o.orderId} className="text-xs space-y-2">
+              <p>
+                Rechercheauftrag {o.orderId} · {o.state} · {o.outcome}
+                {o.usagePending ? " · Verbrauchsabgleich offen" : ""}
+                {o.messageSaved ? " · Ergebnisnachricht gespeichert" : ""}
+              </p>
+              {(o.state === "queued" || o.state === "running") && (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!editable || pending}
+                    onClick={() =>
+                      command(() =>
+                        stopResearch({ workspaceId, orderId: o.orderId }),
+                      )
+                    }
+                  >
+                    Recherche anhalten
+                  </Button>{" "}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!editable || pending || o.usagePending}
+                    onClick={() =>
+                      command(() =>
+                        resumeResearch({ workspaceId, orderId: o.orderId }),
+                      )
+                    }
+                  >
+                    Recherchefortsetzung prüfen
+                  </Button>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
         <form
           className="border-t p-5"
           onSubmit={(e) => {
@@ -467,6 +701,7 @@ function ChatSession({
               !editable ||
               pending ||
               running ||
+              researchRunning ||
               !selection ||
               !readable ||
               current?.state !== "active"

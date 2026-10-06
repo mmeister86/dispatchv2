@@ -299,7 +299,11 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                   ? "Signiertes GitHub-Ereignis"
                   : row.version.source.kind === "context"
                     ? "Signierter Push mit menschlich freigegebenen Patch-Auszügen"
-                    : "Manuelle Notiz"}
+                    : row.version.source.kind === "research"
+                      ? "Recherche · ungeprüfte Review"
+                      : row.version.source.kind === "context-set"
+                        ? "Gebundene Quellen aus dem persönlichen Chat"
+                        : "Manuelle Notiz"}
               </p>
               {row.version.originals.map((o, i) => (
                 <p key={i} className="text-sm">
@@ -591,7 +595,11 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                         ? "Signiertes Ereignis"
                         : v.source.kind === "context"
                           ? "Freigegebene Patch-Auszüge"
-                          : "Manuelle Notiz"}{" "}
+                          : v.source.kind === "research"
+                            ? "Recherche · ungeprüfte Review"
+                            : v.source.kind === "context-set"
+                              ? "Gebundene Chat-Quellen"
+                              : "Manuelle Notiz"}{" "}
                       ·{" "}
                       {v.runId
                         ? "Modellinterpretation, Klärung erforderlich"

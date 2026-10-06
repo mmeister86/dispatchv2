@@ -1,4 +1,5 @@
-import type { MaterialWalk } from "./pipelineAccess";
+import { currentRunSources } from "../ai/sourceAccess";
+import { materialWalk, type MaterialWalk } from "./pipelineAccess";
 import { sha256 } from "../lib/crypto";
 import { ConvexError } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
@@ -10,7 +11,7 @@ export async function researchSourceProof(
   ctx: QueryCtx,
   ws: Id<"workspaces">,
   source: Extract<Doc<"ideaVersions">["source"], { kind: "research" }>,
-  walk?: MaterialWalk,
+  walk: MaterialWalk = materialWalk(),
 ) {
   const p = await currentEvidence(
     ctx,
@@ -58,28 +59,60 @@ export async function draftIdeaVersion(
 export async function draftResearchProof(
   ctx: QueryCtx,
   ver: Doc<"draftVersions">,
-  walk?: MaterialWalk,
+  walk: MaterialWalk = materialWalk(),
 ) {
   const idea = await draftIdeaVersion(ctx, ver);
   if (!idea) return null;
-  if (idea.source.kind !== "research") {
-    return ideaProofUntil(ctx, idea);
+  if (
+    idea.source.kind !== "research" &&
+    (idea.source.kind !== "context-set" ||
+      !idea.source.sources.some((s) => "kind" in s))
+  ) {
+    return ideaProofUntil(ctx, idea, walk);
   }
   if (
     ver.sourceUnavailable ||
     (ver.researchProofUntil ?? 0) <= Date.now() ||
-    ver.content.accountId !== idea.source.accountId
+    (idea.source.kind === "research"
+      ? ver.content.accountId !== idea.source.accountId
+      : idea.source.sources.some(
+          (s) => "kind" in s && s.accountId !== ver.content.accountId,
+        ))
   )
     throw new ConvexError("RESEARCH_CONTENT_SOURCE_CHANGED");
   return Math.min(
     ver.researchProofUntil!,
-    await researchSourceProof(ctx, ver.workspaceId, idea.source, walk),
+    idea.source.kind === "research"
+      ? await researchSourceProof(ctx, ver.workspaceId, idea.source, walk)
+      : Math.min(
+          ...(await currentRunSources(
+            ctx,
+            ver.workspaceId,
+            null,
+            idea.source.sources,
+            walk,
+          )),
+        ),
   );
 }
-export async function ideaProofUntil(ctx: QueryCtx, ver: Doc<"ideaVersions">) {
-  await currentIdeaSource(ctx, ver.workspaceId, ver.source);
+export async function ideaProofUntil(
+  ctx: QueryCtx,
+  ver: Doc<"ideaVersions">,
+  walk: MaterialWalk = materialWalk(),
+) {
+  await currentIdeaSource(ctx, ver.workspaceId, ver.source, walk);
+  if (ver.source.kind === "context-set")
+    return Math.min(
+      ...(await currentRunSources(
+        ctx,
+        ver.workspaceId,
+        null,
+        ver.source.sources,
+        walk,
+      )),
+    );
   if (ver.source.kind === "research")
-    return researchSourceProof(ctx, ver.workspaceId, ver.source);
+    return researchSourceProof(ctx, ver.workspaceId, ver.source, walk);
   if (ver.source.kind === "note") return null;
   const repositoryId =
     ver.source.kind === "signal"
@@ -126,4 +159,32 @@ export async function projectDraft(ctx: QueryCtx, ver: Doc<"draftVersions">) {
       reason: "",
     };
   }
+}
+
+export async function evidenceSource(
+  ctx: QueryCtx,
+  ws: Id<"workspaces">,
+  id: Id<"researchEvidence">,
+  accountId: Id<"socialAccounts">,
+) {
+  const proof = await currentEvidence(ctx, ws, id, accountId),
+    { e, proofUntil } = proof;
+  return {
+    ...proof,
+    source: {
+      kind: "research" as const,
+      evidenceId: e._id,
+      evidenceFingerprint: e.fingerprint,
+      accountId: e.accountId,
+      orderId: e.orderId,
+      sourceId: e.sourceId,
+      materialHash: e.materialHash,
+      sourceGeneration: e.sourceGeneration,
+      ...(e.modelOrigin ? { modelOrigin: e.modelOrigin } : {}),
+      ...(e.assessment
+        ? { assessmentFingerprint: await sha256(JSON.stringify(e.assessment)) }
+        : {}),
+      proofUntil,
+    },
+  };
 }

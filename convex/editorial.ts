@@ -495,8 +495,13 @@ export async function createDraftTransaction(
   if (sourceVersion) {
     await currentIdeaSource(ctx, workspaceId, sourceVersion.source);
     if (
-      sourceVersion.source.kind === "research" &&
-      a.content.accountId !== sourceVersion.source.accountId
+      (sourceVersion.source.kind === "research" ||
+        sourceVersion.source.kind === "context-set") &&
+      (sourceVersion.source.kind === "research"
+        ? a.content.accountId !== sourceVersion.source.accountId
+        : sourceVersion.source.sources.some(
+            (s) => "kind" in s && s.accountId !== a.content.accountId,
+          ))
     )
       throw new ConvexError("RESEARCH_CONTENT_ACCOUNT_CHANGED");
   }

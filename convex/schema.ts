@@ -21,6 +21,7 @@ import {
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 import {
+  source as agentSource,
   policyFields,
   budgetFields,
   runFields,
@@ -70,6 +71,13 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  researchCopyBindings: defineTable({
+    evidenceId: v.id("researchEvidence"),
+    conversationId: v.optional(v.id("conversations")),
+    ideaVersionId: v.optional(v.id("ideaVersions")),
+    runId: v.optional(v.id("agentRuns")),
+    state: v.union(v.literal("retained"), v.literal("removed")),
+  }).index("by_evidenceId_and_state", ["evidenceId", "state"]),
   researchContentHandoffs: defineTable({
     workspaceId: v.id("workspaces"),
     actorId: v.id("users"),
@@ -132,6 +140,10 @@ export default defineSchema({
     ["profileId", "actorId", "commandKey"],
   ),
   researchOrders: defineTable(researchOrderFields)
+    .index("by_targetedChat_conversationId_and_createdAt", [
+      "targetedChat.conversationId",
+      "createdAt",
+    ])
     .index("by_profileId_and_actorId_and_operationKey", [
       "profileId",
       "actorId",
@@ -163,13 +175,7 @@ export default defineSchema({
     threadId: v.string(),
     title: v.string(),
     revision: v.number(),
-    sources: v.array(
-      v.object({
-        repositoryId: v.id("githubRepositories"),
-        generation: v.number(),
-        contextId: v.optional(v.id("githubContexts")),
-      }),
-    ),
+    sources: v.array(agentSource),
     ideaVersionIds: v.array(v.id("ideaVersions")),
     turns: v.number(),
     activeRunId: v.union(v.id("agentRuns"), v.null()),

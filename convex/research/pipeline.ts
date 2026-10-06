@@ -1,3 +1,4 @@
+import { conversationAccess } from "../ai/conversationAccess";
 import { policy, grants, fingerprint } from "./providerAccess";
 import { planSchedule } from "./schedules";
 import { ConvexError, v } from "convex/values";
@@ -38,6 +39,7 @@ export async function admitPipeline(
     operationKey: string;
     language: string;
     operations: Doc<"researchSourcePolicies">["operation"][];
+    targetedChat?: Doc<"researchOrders">["targetedChat"];
   },
   workspaceId: Doc<"workspaces">["_id"],
   actorId: Doc<"users">["_id"],
@@ -51,7 +53,7 @@ export async function admitPipeline(
   );
   const id = await admitNative(
       ctx,
-      { ...a, query: deriveQuestion(version.config) },
+      { ...a, query: a.targetedChat?.topic ?? deriveQuestion(version.config) },
       workspaceId,
       actorId,
       true,
@@ -133,6 +135,13 @@ export const resume = workspaceMutation({
     requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
     const o = await ctx.db.get(a.orderId);
     requireReference(ctx.workspace._id, o);
+    if (o!.targetedChat)
+      await conversationAccess(
+        ctx,
+        ctx.workspace._id,
+        o!.accountId,
+        o!.targetedChat.conversationId,
+      );
     if (
       !o!.pipeline?.workflowId ||
       o!.pipeline.cleanupState !== "retained" ||
@@ -194,6 +203,13 @@ export const results = workspaceQuery({
   handler: async (ctx, a) => {
     const o = await ctx.db.get(a.orderId);
     requireReference(ctx.workspace._id, o);
+    if (o!.targetedChat)
+      await conversationAccess(
+        ctx,
+        ctx.workspace._id,
+        o!.accountId,
+        o!.targetedChat.conversationId,
+      );
     if (!o!.pipeline) return null;
     const money = await orderLiability(ctx, o!);
     let readable = true,

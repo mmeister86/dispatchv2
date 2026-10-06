@@ -28,8 +28,9 @@ export async function fixture(
     "web-search",
   ],
   cap = 300,
+  base?: Awaited<ReturnType<typeof mediaFixture>>,
 ) {
-  const f = await mediaFixture();
+  const f = base ?? (await mediaFixture());
   vi.stubEnv("REQUESTY_API_KEY", "synthetic-key");
   vi.stubEnv("X_APP_BEARER_TOKEN", "synthetic-x-key");
   const accountId = await f.t.run((ctx) =>
@@ -186,8 +187,9 @@ export async function pipelineFixture(
   cap = 20000,
   operations: Doc<"researchSourcePolicies">["operation"][] = ["web-search"],
   topicCount?: number,
+  base?: Awaited<ReturnType<typeof mediaFixture>>,
 ) {
-  const f = await fixture(operations, cap);
+  const f = await fixture(operations, cap, base);
   workflowComponent.register(f.t);
   agentComponent.register(f.t);
   await f.t.run(async (ctx) => {

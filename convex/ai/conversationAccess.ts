@@ -1,3 +1,4 @@
+import { materialWalk } from "../research/pipelineAccess";
 import { ConvexError } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -7,6 +8,7 @@ import {
   requireRole,
 } from "../lib/authorization";
 import { generationAttempt } from "./accounting";
+import { currentRunSources } from "./sourceAccess";
 import { currentIdeaSource } from "../content/ideas";
 export async function conversationAccess(
   ctx: QueryCtx | MutationCtx,
@@ -29,6 +31,8 @@ export async function historyAuthority(
   c: Doc<"conversations">,
 ) {
   if (c.state !== "active") throw new ConvexError("CHAT_INACTIVE");
+  const walk = materialWalk();
+  await currentRunSources(ctx, c.workspaceId, c.accountId, c.sources, walk);
   for (const id of c.ideaVersionIds) {
     const version = await ctx.db.get(id);
     requireReference(c.workspaceId, version);
@@ -36,7 +40,7 @@ export async function historyAuthority(
     requireReference(c.workspaceId, idea);
     if (idea!.status === "archived")
       throw new ConvexError("CHAT_HISTORY_SOURCE_WITHDRAWN");
-    await currentIdeaSource(ctx, c.workspaceId, version!.source);
+    await currentIdeaSource(ctx, c.workspaceId, version!.source, walk);
   }
 }
 export async function operationRun(

@@ -2260,3 +2260,1199 @@ test("included cluster context with an already-present source pin still bounds r
   ).toBeLessThanOrEqual(horizon);
   expect(globalThis.fetch).toHaveBeenCalledTimes(2);
 });
+
+test("personal targeted command admits an immutable topic into the registered workflow and exact replay returns its order", async () => {
+  const f = await pipelineFixture();
+  const conversationId = await f.signed.mutation(api.ai.conversations.create, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    operationKey: "target-chat-create",
+  });
+  const request = {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    conversationId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    operationKey: "target-chat-request",
+    topic: "Explicit synthetic topic",
+    language: "de",
+    operations: ["web-search" as const],
+  };
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse([]));
+  const orderId = await f.signed.mutation(
+    api.ai.conversations.research,
+    request,
+  );
+  expect(await f.signed.mutation(api.ai.conversations.research, request)).toBe(
+    orderId,
+  );
+  await expect(
+    f.signed.mutation(api.ai.conversations.research, {
+      ...request,
+      topic: "different",
+    }),
+  ).rejects.toThrow("CONFLICT");
+  await f.t.finishAllScheduledFunctions(
+    () => vi.advanceTimersByTime(100),
+    1000,
+  );
+  const o = (await f.t.run((ctx) => ctx.db.get(orderId)))!;
+  expect(o.native?.query).toBe(request.topic);
+  expect(o.targetedChat).toMatchObject({
+    conversationId,
+    topic: request.topic,
+  });
+  expect(o.pipeline?.outcome).toBe("empty");
+  expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  const messages = await f.signed.query(api.ai.conversations.messages, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    threadId: conversationId,
+    paginationOpts: { numItems: 10, cursor: null },
+  });
+  expect(messages.page.some((m) => m.text?.includes(String(orderId)))).toBe(
+    true,
+  );
+});
+
+import {
+  sourceFixture,
+  send as deliverGithub,
+  release,
+} from "../../tests/github-fixture";
+function syntheticChat(toolArgs?: object) {
+  const base = {
+    id: "chat-result",
+    object: "chat.completion.chunk",
+    created: 1791210000,
+    model: "synthetic/model",
+  };
+  const data = [
+    {
+      ...base,
+      choices: [
+        {
+          index: 0,
+          delta: {
+            role: "assistant",
+            ...(toolArgs
+              ? {
+                  tool_calls: [
+                    {
+                      index: 0,
+                      id: "call-create",
+                      type: "function",
+                      function: {
+                        name: "create_idea",
+                        arguments: JSON.stringify(toolArgs),
+                      },
+                    },
+                  ],
+                }
+              : { content: "Unverified personal perspective" }),
+          },
+          finish_reason: null,
+        },
+      ],
+    },
+    {
+      ...base,
+      choices: [
+        {
+          index: 0,
+          delta: {},
+          finish_reason: toolArgs ? "tool_calls" : "stop",
+        },
+      ],
+    },
+    {
+      ...base,
+      choices: [],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    },
+  ];
+  return new Response(
+    data.map((d) => `data: ${JSON.stringify(d)}\n\n`).join("") +
+      "data: [DONE]\n\n",
+    { headers: { "content-type": "text/event-stream" } },
+  );
+}
+async function targetedSetup(withGithub = false) {
+  const g = withGithub ? await sourceFixture() : undefined;
+  const f = await pipelineFixture(20000, ["web-search"], undefined, g);
+  await f.t.run(async (ctx) => {
+    const p = (await ctx.db.query("aiPolicies").first())!;
+    await ctx.db.patch(p._id, { purposes: ["research", "chat", "draft"] });
+    for (const b of await ctx.db.query("aiBudgets").collect())
+      if (b.purposes.includes("research"))
+        await ctx.db.patch(b._id, { purposes: ["research", "chat", "draft"] });
+  });
+  const scope = { workspaceId: f.workspaceId, accountId: f.accountId },
+    conversationId = await f.signed.mutation(api.ai.conversations.create, {
+      ...scope,
+      operationKey: "j05-personal-chat",
+    });
+  const target = { ...scope, conversationId };
+  let orderId: Id<"researchOrders">,
+    nativeCalls = 0,
+    semanticCalls = 0,
+    chatCalls = 0,
+    toolNext = false;
+  const toolArgs = {
+    title: "Compound sourced idea",
+    perspective: "Unverified own perspective",
+    rationale: "Open interpretation",
+    questions: ["What remains unverified?"],
+  };
+  const physical = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async (input, init) => {
+      expect(String(input)).toBe(
+        "https://router.eu.requesty.ai/v1/chat/completions",
+      );
+      const body = JSON.parse(String(init?.body));
+      if (body.tools?.[0]?.type === "web_search") {
+        nativeCalls++;
+        return streamResponse([
+          {
+            url: `https://example.test/topic-${nativeCalls}`,
+            title: `Current distinct topic ${nativeCalls}`,
+          },
+        ]);
+      }
+      if (body.stream) {
+        chatCalls++;
+        const useTool = toolNext;
+        toolNext = false;
+        return syntheticChat(useTool ? toolArgs : undefined);
+      }
+      semanticCalls++;
+      expect(JSON.stringify(body.messages)).toContain(
+        "Explicit targeted topic",
+      );
+      return Response.json({
+        id: "semantic-result",
+        object: "chat.completion",
+        created: 1791210000,
+        model: "synthetic/model",
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: JSON.stringify({ text: await modelOutput(f, orderId) }),
+            },
+            finish_reason: "stop",
+          },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+      });
+    });
+  if (g) {
+    await g.signed.mutation(api.integrations.github.repositories.configure, {
+      workspaceId: g.workspaceId,
+      repositoryId: g.repositories[0],
+      expectedGeneration: 1,
+      access: true,
+      monitoring: true,
+      content: true,
+      contextRead: false,
+      communicableContext: "Explicit factual context",
+    });
+    await deliverGithub(g, release, "release");
+    const receipt = (await g.t.run((ctx) =>
+      ctx.db.query("githubWebhookReceipts").first(),
+    ))!;
+    await g.t.mutation(internal.integrations.github.deliveries.process, {
+      receiptId: receipt._id,
+    });
+    const signal = (await g.t.run((ctx) =>
+      ctx.db.query("githubSignals").first(),
+    ))!;
+    const ideaId = await f.signed.mutation(api.content.ideas.create, {
+      workspaceId: f.workspaceId,
+      title: "Release discussion",
+      perspective: "Human interpretation",
+      note: "Unverified human claim",
+      priority: "normal",
+      source: { kind: "signal", signalId: signal._id },
+      operationKey: "j05-earlier-github",
+    });
+    const runId = await f.signed.mutation(api.ai.conversations.send, {
+      ...target,
+      prompt: "Discuss this earlier factual release",
+      allowIdeaCreation: false,
+      ideaId,
+      operationKey: "j05-github-chat",
+    });
+    await f.t.action(internal.ai.provider.execute, { runId });
+  }
+  const request = async (n: number) => {
+    const args = {
+      ...target,
+      profileId: f.profileId,
+      expectedRevision: 2,
+      operationKey: `j05-targeted-${n}`,
+      topic: `Explicit targeted topic ${n}`,
+      language: "de",
+      operations: ["web-search" as const],
+    };
+    orderId = await f.signed.mutation(api.ai.conversations.research, args);
+    await driveUntil(f, orderId, (o) => o.state === "completed");
+    await f.t.mutation(internal.ai.conversations.researchResult, { orderId });
+    return {
+      orderId,
+      args,
+      order: (await f.t.run((ctx) => ctx.db.get(orderId)))!,
+    };
+  };
+  return {
+    ...f,
+    g,
+    target,
+    scope,
+    conversationId,
+    request,
+    physical,
+    toolArgs,
+    toolNext: () => {
+      toolNext = true;
+    },
+    calls: () => ({ nativeCalls, semanticCalls, chatCalls }),
+  };
+}
+test("J05 actual native Workflow semantic evidence and personal summaries fund a later Agent idea with all historical research/GitHub sources; secondary withdrawal cleans actual copies", async () => {
+  const f = await targetedSetup(true),
+    first = await f.request(1),
+    second = await f.request(2);
+  expect(f.calls()).toEqual({ nativeCalls: 2, semanticCalls: 2, chatCalls: 1 });
+  for (const r of [first, second]) {
+    expect(r.order.pipeline).toMatchObject({
+      outcome: "completed",
+      inboxReady: true,
+    });
+    expect(r.order.config.topics).toBe("Product");
+    const e = (await f.t.run((ctx) =>
+      ctx.db.get(r.order.pipeline!.evidenceIds[0]),
+    ))!;
+    expect(e.payload!.perspective.topics).toBe(r.args.topic);
+    expect(await f.signed.mutation(api.ai.conversations.research, r.args)).toBe(
+      r.orderId,
+    );
+  }
+  const c = (await f.t.run((ctx) => ctx.db.get(f.conversationId)))!;
+  expect(c.sources).toHaveLength(3);
+  const native = await f.signed.query(api.ai.conversations.messages, {
+    ...f.scope,
+    threadId: f.conversationId,
+    paginationOpts: { cursor: null, numItems: 50 },
+  });
+  expect(JSON.stringify(native)).toContain(
+    String(first.order.pipeline!.evidenceIds[0]),
+  );
+  expect(JSON.stringify(native)).toContain(
+    String(second.order.pipeline!.evidenceIds[0]),
+  );
+  expect(JSON.stringify(native)).toContain("unknown");
+  f.toolNext();
+  const runId = await f.signed.mutation(api.ai.conversations.send, {
+    ...f.target,
+    prompt: "Save one own perspective from this history",
+    allowIdeaCreation: true,
+    operationKey: "j05-save-perspective",
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(runId)))!.sources).toEqual(
+    c.sources,
+  );
+  await f.t.action(internal.ai.provider.execute, { runId });
+  const status = await f.signed.query(api.ai.conversations.status, f.target),
+    ideaId = status[0].resultIdeaId!;
+  expect(ideaId).not.toBeNull();
+  expect(status[0].usagePending).toBe(false);
+  const idea = await f.signed.query(api.content.ideas.get, {
+    workspaceId: f.workspaceId,
+    ideaId,
+  });
+  expect(idea!.version.source).toEqual({
+    kind: "context-set",
+    sources: c.sources,
+  });
+  const draftId = await f.signed.mutation(api.content.ideas.handoff, {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    intent: "Prepare a human-reviewed draft",
+    draftText: "Protected compound draft text",
+    clarificationConfirmed: true,
+  });
+  await f.signed.mutation(api.research.cache.invalidate, {
+    workspaceId: f.workspaceId,
+    sourceId: second.order.pipeline!.sourcePins[0].sourceId,
+    reason: "blocked",
+  });
+  expect(
+    await f.signed.query(api.ai.conversations.projection, f.target),
+  ).toEqual({ authorized: false, proofExpiresAt: 0 });
+  expect(
+    (
+      await f.signed.query(api.ai.conversations.messages, {
+        ...f.scope,
+        threadId: f.conversationId,
+        paginationOpts: { cursor: null, numItems: 50 },
+        streamArgs: { kind: "list" },
+      })
+    ).page,
+  ).toEqual([]);
+  await expect(
+    f.signed.mutation(api.ai.conversations.send, {
+      ...f.target,
+      prompt: "Source-free bypass",
+      allowIdeaCreation: true,
+      operationKey: "j05-denied-later",
+    }),
+  ).rejects.toThrow();
+  await f.t.finishAllScheduledFunctions(
+    () => vi.advanceTimersByTime(100),
+    1000,
+  );
+  const erased = await f.t.query(
+    components.agent.messages.listMessagesByThreadId,
+    {
+      threadId: c.threadId,
+      order: "asc",
+      paginationOpts: { cursor: null, numItems: 50 },
+    },
+  );
+  expect(erased.page).toEqual([]);
+  expect(erased.isDone).toBe(true);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(idea!.version._id)))!.perspective,
+  ).toBe("");
+  const draft = await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: draftId.draftId,
+  });
+  expect(draft!.versions[0].content.text.every((t) => t === "")).toBe(true);
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())).every(
+      (a) => a.state === "settled",
+    ),
+  ).toBe(true);
+  expect(f.calls()).toEqual({ nativeCalls: 2, semanticCalls: 2, chatCalls: 3 });
+});
+
+test.each([
+  "native-policy",
+  "native-provider-grant",
+  "native-workspace-grant",
+  "native-account-grant",
+  "generation-policy",
+  "generation-provider-grant",
+  "generation-workspace-grant",
+  "generation-account-grant",
+  "account",
+  "author",
+  "expiry",
+])(
+  "targeted history and all new funding fail closed after current %s withdrawal",
+  async (mode) => {
+    const f = await targetedSetup(),
+      r = await f.request(1),
+      before = f.calls();
+    await f.t.run(async (ctx) => {
+      if (mode === "native-policy") {
+        const p = (await ctx.db.get(f.policies[0]))!;
+        await ctx.db.patch(p._id, { enabled: false });
+      } else if (mode === "generation-policy") {
+        const p = (await ctx.db.query("aiPolicies").first())!;
+        await ctx.db.patch(p._id, { enabled: false });
+      } else if (mode.includes("grant")) {
+        const scope = mode.includes("provider")
+          ? "provider"
+          : mode.includes("workspace")
+            ? "workspace"
+            : "account";
+        const captured = mode.startsWith("native")
+          ? r.order.native!.approvals[0]!.budgetIds
+          : r.order.approval!.budgetIds;
+        const b = (await ctx.db.get(
+          captured[scope === "provider" ? 0 : scope === "workspace" ? 1 : 2],
+        ))!;
+        await ctx.db.patch(b._id, { purposes: [] });
+      } else if (mode === "account")
+        await ctx.db.patch(f.accountId, { connection: "disconnected" });
+      else if (mode === "author") {
+        const m = (await ctx.db
+          .query("memberships")
+          .withIndex("by_userId_and_workspaceId", (q) =>
+            q.eq("userId", f.userId).eq("workspaceId", f.workspaceId),
+          )
+          .unique())!;
+        await ctx.db.patch(m._id, { role: "Viewer" });
+      } else {
+        const e = (await ctx.db.get(r.order.pipeline!.evidenceIds[0]))!;
+        await ctx.db.patch(e._id, { retentionUntil: Date.now() - 1 });
+      }
+    });
+    expect(
+      (await f.signed.query(api.ai.conversations.projection, f.target))
+        .authorized,
+    ).toBe(false);
+    const history = await f.signed.query(api.ai.conversations.messages, {
+      ...f.scope,
+      threadId: f.conversationId,
+      paginationOpts: { cursor: null, numItems: 50 },
+      streamArgs: { kind: "list" },
+    });
+    expect(history.page).toEqual([]);
+    expect(JSON.stringify(history.streams)).not.toContain("unverified claim");
+    await expect(
+      f.signed.mutation(api.ai.conversations.send, {
+        ...f.target,
+        prompt: "Cannot launder retained context",
+        allowIdeaCreation: true,
+        operationKey: "target-source-less",
+      }),
+    ).rejects.toThrow();
+    expect(f.calls()).toEqual(before);
+    await f.signed.mutation(api.ai.conversations.cleanupUnavailable, f.target);
+    await f.t.mutation(internal.ai.conversations.cleanup, {
+      conversationId: f.conversationId,
+    });
+    expect((await f.t.run((ctx) => ctx.db.get(f.conversationId)))!.state).toBe(
+      "deleted",
+    );
+  },
+);
+test("research source-aware existing Ideas generation preserves the exact compound source in its actual run and result", async () => {
+  const f = await targetedSetup(),
+    one = await f.request(1),
+    two = await f.request(2);
+  f.toolNext();
+  const chatRun = await f.signed.mutation(api.ai.conversations.send, {
+    ...f.target,
+    prompt: "Create my own idea",
+    allowIdeaCreation: true,
+    operationKey: "ideas-input-chat",
+  });
+  await f.t.action(internal.ai.provider.execute, { runId: chatRun });
+  const ideaId = (
+    await f.signed.query(api.ai.conversations.status, f.target)
+  )[0].resultIdeaId!;
+  const before = (await f.signed.query(api.content.ideas.get, {
+    workspaceId: f.workspaceId,
+    ideaId,
+  }))!;
+  const runId = await f.signed.mutation(api.content.ideas.generate, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    ideaId,
+    expectedRevision: 1,
+    intent: "Explore another explicit perspective",
+    operationKey: "compound-generation",
+  });
+  const bound = (await f.t.run((ctx) => ctx.db.get(runId)))!.sources;
+  expect(bound).toHaveLength(4);
+  expect(
+    bound.filter((s) => s.ideaVersionId === before.version._id),
+  ).toHaveLength(2);
+  f.physical.mockResolvedValue(
+    Response.json({
+      id: "perspective",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({
+              text: JSON.stringify({
+                title: "Follow-up idea",
+                perspective: "Unverified",
+                rationale: "Question",
+                questions: ["What remains?"],
+              }),
+            }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    }),
+  );
+  await f.t.action(internal.ai.provider.execute, { runId });
+  const request = (await f.t.run((ctx) =>
+    ctx.db
+      .query("contentRequests")
+      .withIndex("by_runId", (q) => q.eq("runId", runId))
+      .unique(),
+  ))!;
+  const result = (await f.signed.query(api.content.ideas.get, {
+    workspaceId: f.workspaceId,
+    ideaId: request.resultIdeaId!,
+  }))!;
+  expect(result.version.source).toEqual({
+    kind: "context-set",
+    sources: bound,
+  });
+  expect(result.version.researchProofUntil).toBeLessThanOrEqual(
+    before.version.researchProofUntil!,
+  );
+  await f.signed.mutation(api.research.cache.invalidate, {
+    workspaceId: f.workspaceId,
+    sourceId: two.order.pipeline!.sourcePins[0].sourceId,
+    reason: "blocked",
+  });
+  await f.t.finishAllScheduledFunctions(
+    () => vi.advanceTimersByTime(100),
+    1000,
+  );
+  const run = (await f.t.run((ctx) => ctx.db.get(runId)))!;
+  expect(run.sourceCleanupState).toBe("complete");
+  expect(
+    (
+      await f.t.query(components.agent.messages.listMessagesByThreadId, {
+        threadId: run.threadId,
+        order: "asc",
+        paginationOpts: { cursor: null, numItems: 50 },
+      })
+    ).page,
+  ).toEqual([]);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(result.version._id)))!.perspective,
+  ).toBe("");
+  expect(one.order.pipeline!.evidenceIds[0]).not.toBe(
+    two.order.pipeline!.evidenceIds[0],
+  );
+});
+test("source withdrawal keeps native cleanup pending until an incarnation finishes and permits exactly-once late settlement", async () => {
+  const f = await targetedSetup(),
+    r = await f.request(1),
+    runId = await f.signed.mutation(api.ai.conversations.send, {
+      ...f.target,
+      prompt: "Explicit own follow-up",
+      allowIdeaCreation: true,
+      operationKey: "pending-source-chat",
+    });
+  const control = { runId, generation: 1, executionKey: "pending-execution" };
+  await f.t.mutation(internal.ai.runs.claim, {
+    runId,
+    executionKey: control.executionKey,
+  });
+  const attemptId = await f.t.mutation(internal.ai.runs.fund, {
+    ...control,
+    key: "pending-attempt",
+  });
+  await f.signed.mutation(api.research.cache.invalidate, {
+    workspaceId: f.workspaceId,
+    sourceId: r.order.pipeline!.sourcePins[0].sourceId,
+    reason: "blocked",
+  });
+  await f.signed.mutation(api.ai.conversations.cleanupUnavailable, f.target);
+  await f.t.mutation(internal.ai.conversations.cleanup, {
+    conversationId: f.conversationId,
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(f.conversationId)))!.state).toBe(
+    "deleting",
+  );
+  await expect(
+    f.t.mutation(internal.ai.conversations.createIdea, {
+      ...control,
+      ...f.toolArgs,
+    }),
+  ).rejects.toThrow();
+  await f.t.mutation(internal.ai.runs.settle, {
+    attemptId,
+    inputTokens: null,
+    outputTokens: null,
+    errorCode: "MODEL_PROVIDER_UNAVAILABLE",
+  });
+  const held = (await f.t.run((ctx) => ctx.db.get(attemptId)))!.heldMicros;
+  expect(held).toBeGreaterThan(0);
+  await f.t.mutation(internal.ai.runs.finish, { ...control, failed: true });
+  await f.t.mutation(internal.ai.conversations.cleanup, {
+    conversationId: f.conversationId,
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(f.conversationId)))!.state).toBe(
+    "deleted",
+  );
+  expect((await f.t.run((ctx) => ctx.db.get(attemptId)))!.heldMicros).toBe(
+    held,
+  );
+  const receipt = {
+    attemptId,
+    inputTokens: 10,
+    outputTokens: 20,
+    errorCode: null,
+  };
+  await f.t.mutation(internal.ai.runs.settle, receipt);
+  await f.t.mutation(internal.ai.runs.settle, receipt);
+  expect((await f.t.run((ctx) => ctx.db.get(attemptId)))!).toMatchObject({
+    state: "settled",
+    heldMicros: 0,
+    estimatedMicros: 30,
+  });
+});
+
+async function otherEditor(f: Awaited<ReturnType<typeof targetedSetup>>) {
+  const identity = await f.t.run(async (ctx) => {
+    const user = await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "user",
+        data: {
+          name: "Other editor",
+          email: "targeted-other@example.test",
+          emailVerified: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      },
+    });
+    const session = await ctx.runMutation(
+      components.betterAuth.adapter.create,
+      {
+        input: {
+          model: "session",
+          data: {
+            userId: user._id,
+            token: "targeted-other-session",
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            expiresAt: Date.now() + 86400000,
+          },
+        },
+      },
+    );
+    return { subject: user._id, sessionId: session._id };
+  });
+  const signed = f.t.withIdentity(identity),
+    userId = await signed.mutation(api.users.bootstrap, {});
+  await f.t.run((ctx) =>
+    ctx.db.insert("memberships", {
+      workspaceId: f.workspaceId,
+      userId,
+      role: "Editor",
+    }),
+  );
+  return signed;
+}
+test("targeted domain admission and actual order reads/stop/resume reject raw foreign thread, same-workspace other actor and wrong account", async () => {
+  const f = await targetedSetup(),
+    r = await f.request(1),
+    other = await otherEditor(f),
+    c = (await f.t.run((ctx) => ctx.db.get(f.conversationId)))!;
+  const foreignAccount = await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...a } = (await ctx.db.get(f.accountId))!;
+    return ctx.db.insert("socialAccounts", { ...a, providerIdentity: "other" });
+  });
+  await expect(
+    f.signed.mutation(api.ai.conversations.research, {
+      ...r.args,
+      accountId: foreignAccount,
+      operationKey: "wrong-account",
+    }),
+  ).rejects.toThrow("CHAT_ACCESS_DENIED");
+  await expect(
+    f.signed.mutation(api.ai.conversations.research, {
+      ...r.args,
+      conversationId: c.threadId as Id<"conversations">,
+      operationKey: "raw-thread",
+    }),
+  ).rejects.toThrow();
+  for (const action of [
+    () =>
+      other.mutation(api.ai.conversations.research, {
+        ...r.args,
+        operationKey: "wrong-actor",
+      }),
+    () => other.query(api.ai.conversations.researchStatus, f.target),
+    () =>
+      other.query(api.research.pipeline.results, {
+        workspaceId: f.workspaceId,
+        orderId: r.orderId,
+      }),
+    () =>
+      other.query(api.research.native.results, {
+        workspaceId: f.workspaceId,
+        orderId: r.orderId,
+      }),
+    () =>
+      other.mutation(api.research.runs.stop, {
+        workspaceId: f.workspaceId,
+        orderId: r.orderId,
+      }),
+    () =>
+      other.mutation(api.research.pipeline.resume, {
+        workspaceId: f.workspaceId,
+        orderId: r.orderId,
+      }),
+  ])
+    await expect(action()).rejects.toThrow("CHAT_ACCESS_DENIED");
+  expect(f.calls()).toEqual({ nativeCalls: 1, semanticCalls: 1, chatCalls: 0 });
+});
+test("unknown native receipt prevents a key-rotated identical topic from repeating paid transport; exact retry retains actual order", async () => {
+  const f = await targetedSetup();
+  let calls = 0;
+  f.physical.mockImplementation(async () => {
+    calls++;
+    throw new Error("synthetic lost response");
+  });
+  const r = await f.request(1);
+  expect(await f.signed.mutation(api.ai.conversations.research, r.args)).toBe(
+    r.orderId,
+  );
+  const again = await f.signed.mutation(api.ai.conversations.research, {
+    ...r.args,
+    operationKey: "rotated-identical-topic",
+  });
+  await driveUntil(f, again, (o) => !!o.finishedAt);
+  expect(calls).toBe(1);
+  const receipts = await f.t.run((ctx) => ctx.db.query("aiAttempts").collect());
+  expect(receipts).toHaveLength(1);
+  expect(receipts[0].state).toBe("unknown");
+  expect(receipts[0].heldMicros).toBeGreaterThan(0);
+  await expect(
+    f.signed.mutation(api.research.pipeline.resume, {
+      workspaceId: f.workspaceId,
+      orderId: r.orderId,
+    }),
+  ).rejects.toThrow("RESUME_UNAVAILABLE");
+});
+test("removing the original personal chat while native transport is sent fences semantic model and summary delivery without losing confirmed usage", async () => {
+  const f = await targetedSetup();
+  let calls = 0;
+  f.physical.mockImplementation(async () => {
+    calls++;
+    expect(
+      (await f.t.run((ctx) => ctx.db.query("aiAttempts").first()))!.state,
+    ).toBe("sent");
+    await f.signed.mutation(api.ai.conversations.remove, f.target);
+    return streamResponse();
+  });
+  const orderId = await f.signed.mutation(api.ai.conversations.research, {
+    ...f.target,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    operationKey: "delete-in-native",
+    topic: "Explicit targeted topic removal",
+    language: "de",
+    operations: ["web-search"],
+  });
+  await driveUntil(f, orderId, (o) => !!o.finishedAt);
+  await f.t.mutation(internal.ai.conversations.researchResult, { orderId });
+  const o = (await f.t.run((ctx) => ctx.db.get(orderId)))!;
+  expect(o.pipeline!.runId).toBeNull();
+  expect(o.targetedChat!.messageId).toBeNull();
+  expect(calls).toBe(1);
+  const receipt = (await f.t.run((ctx) => ctx.db.query("aiAttempts").first()))!;
+  expect(receipt.state).toBe("settled");
+  expect(receipt.estimatedMicros).toBe(20);
+  await f.t.run((ctx) => ctx.db.patch(f.conversationId, { cleanupAfter: 0 }));
+  await f.t.mutation(internal.ai.conversations.cleanup, {
+    conversationId: f.conversationId,
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(f.conversationId)))!.state).toBe(
+    "deleted",
+  );
+});
+test("missing semantic configuration has an honest partial result with no second paid chat and no source-free summary", async () => {
+  const f = await targetedSetup();
+  await f.t.run(async (ctx) => {
+    const p = (await ctx.db.query("aiPolicies").first())!;
+    await ctx.db.patch(p._id, { purposes: ["chat"] });
+  });
+  const r = await f.request(1);
+  expect(r.order.pipeline!.runId).toBeNull();
+  expect(r.order.pipeline!.evidenceIds).toEqual([]);
+  expect(f.calls()).toEqual({ nativeCalls: 1, semanticCalls: 0, chatCalls: 0 });
+  const c = (await f.t.run((ctx) => ctx.db.get(f.conversationId)))!;
+  expect(c.sources).toEqual([]);
+  const native = await f.signed.query(api.ai.conversations.messages, {
+    ...f.scope,
+    threadId: f.conversationId,
+    paginationOpts: { cursor: null, numItems: 50 },
+  });
+  expect(JSON.stringify(native)).toContain("Keine belegte Zusammenfassung");
+  expect(JSON.stringify(native)).not.toContain("unverified claim");
+});
+
+test("new immutable GitHub capture expiry remains closed after repository proof renewal for server history, compound reads and physical follow-ups", async () => {
+  const f = await targetedSetup(true);
+  f.toolNext();
+  const runId = await f.signed.mutation(api.ai.conversations.send, {
+    ...f.target,
+    prompt: "Create one idea from the earlier release",
+    allowIdeaCreation: true,
+    operationKey: "gh-captured-result",
+  });
+  await f.t.action(internal.ai.provider.execute, { runId });
+  const ideaId = (
+    await f.signed.query(api.ai.conversations.status, f.target)
+  )[0].resultIdeaId!;
+  const c = (await f.t.run((ctx) => ctx.db.get(f.conversationId)))!,
+    pin = c.sources.find((s) => !("kind" in s))!;
+  expect("signalId" in pin && pin.signalId).toBeTruthy();
+  expect(pin.ideaVersionId).toBe(c.ideaVersionIds[0]);
+  const expiry = pin.proofUntil!;
+  const before = f.calls();
+  vi.setSystemTime(expiry + 1);
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.g!.repositories[0], { proofExpiresAt: Date.now() + 900000 }),
+  );
+  expect(
+    (await f.signed.query(api.ai.conversations.projection, f.target))
+      .authorized,
+  ).toBe(false);
+  expect(
+    (
+      await f.signed.query(api.ai.conversations.messages, {
+        ...f.scope,
+        threadId: f.conversationId,
+        paginationOpts: { cursor: null, numItems: 50 },
+      })
+    ).page,
+  ).toEqual([]);
+  expect(
+    (await f.signed.query(api.content.ideas.get, {
+      workspaceId: f.workspaceId,
+      ideaId,
+    }))!.version.sourceUnavailable,
+  ).toBe(true);
+  await expect(
+    f.signed.mutation(api.ai.conversations.send, {
+      ...f.target,
+      prompt: "Expired capture cannot be renewed",
+      allowIdeaCreation: true,
+      operationKey: "gh-renewed-bypass",
+    }),
+  ).rejects.toThrow("MODEL_SOURCE_EXPIRED");
+  await expect(
+    f.signed.mutation(api.content.ideas.generate, {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      ideaId,
+      expectedRevision: 1,
+      intent: "A funded source-aware follow-up",
+      operationKey: "gh-expired-generation",
+    }),
+  ).rejects.toThrow("MODEL_SOURCE_EXPIRED");
+  expect(f.calls()).toEqual(before);
+});
+test("immutable earlier idea version remains part of compound provenance after native cleanup and its archive fences the descendant", async () => {
+  const f = await targetedSetup(true),
+    r = await f.request(1);
+  f.toolNext();
+  const runId = await f.signed.mutation(api.ai.conversations.send, {
+    ...f.target,
+    prompt: "Keep earlier source version and research",
+    allowIdeaCreation: true,
+    operationKey: "lineage-result",
+  });
+  await f.t.action(internal.ai.provider.execute, { runId });
+  const ideaId = (
+      await f.signed.query(api.ai.conversations.status, f.target)
+    )[0].resultIdeaId!,
+    c = (await f.t.run((ctx) => ctx.db.get(f.conversationId)))!;
+  const original = (await f.t.run((ctx) => ctx.db.get(c.ideaVersionIds[0])))!;
+  const result = (await f.signed.query(api.content.ideas.get, {
+    workspaceId: f.workspaceId,
+    ideaId,
+  }))!;
+  expect(result.version.source.kind).toBe("context-set");
+  if (result.version.source.kind !== "context-set")
+    throw new Error("missing source contract");
+  expect(
+    result.version.source.sources.some(
+      (s) =>
+        s.ideaVersionId === original._id &&
+        !("kind" in s) &&
+        s.signalId ===
+          (original.source.kind === "signal" ? original.source.signalId : null),
+    ),
+  ).toBe(true);
+  await f.signed.mutation(api.ai.conversations.remove, f.target);
+  await f.t.run((ctx) => ctx.db.patch(f.conversationId, { cleanupAfter: 0 }));
+  await f.t.mutation(internal.ai.conversations.cleanup, {
+    conversationId: f.conversationId,
+  });
+  expect(
+    (await f.signed.query(api.content.ideas.get, {
+      workspaceId: f.workspaceId,
+      ideaId,
+    }))!.version.sourceUnavailable,
+  ).not.toBe(true);
+  await f.signed.mutation(api.content.ideas.archive, {
+    workspaceId: f.workspaceId,
+    ideaId: original.ideaId,
+    expectedRevision: 1,
+    archived: true,
+    feedback: "Withdraw this earlier input",
+  });
+  expect(
+    (await f.signed.query(api.content.ideas.get, {
+      workspaceId: f.workspaceId,
+      ideaId,
+    }))!.version.sourceUnavailable,
+  ).toBe(true);
+  expect(r.order.pipeline!.evidenceIds.length).toBe(1);
+});
+
+test("targeted semantic funding rechecks an earlier chat source withdrawn during native search", async () => {
+  const f = await targetedSetup(true);
+  let calls = 0;
+  f.physical.mockImplementation(async () => {
+    calls++;
+    await f.t.run((ctx) =>
+      ctx.db.patch(f.g!.repositories[0], { access: false }),
+    );
+    return streamResponse();
+  });
+  const orderId = await f.signed.mutation(api.ai.conversations.research, {
+    ...f.target,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    operationKey: "earlier-source-withdrawal",
+    topic: "Explicit targeted topic with earlier context",
+    language: "de",
+    operations: ["web-search"],
+  });
+  await driveUntil(f, orderId, (o) => !!o.finishedAt);
+  const o = (await f.t.run((ctx) => ctx.db.get(orderId)))!;
+  expect(o.pipeline!.runId).toBeNull();
+  expect(calls).toBe(1);
+  await f.t.mutation(internal.ai.conversations.researchResult, { orderId });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(orderId)))!.targetedChat!.messageId,
+  ).toBeNull();
+  expect(
+    (await f.signed.query(api.ai.conversations.projection, f.target))
+      .authorized,
+  ).toBe(false);
+});
+
+test("compound Draft proof retains upstream Research version ownership and shares overlapping material walk", async () => {
+  const f = await targetedSetup();
+  const r = await f.request(1);
+  const [upstream] = await f.signed.mutation(api.research.handoff.consume, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    evidenceIds: [r.order.pipeline!.evidenceIds[0]],
+    target: "idea",
+    intent: "Retain original Review",
+    commandKey: "compound-upstream",
+  });
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.conversationId, {
+      ideaVersionIds: [upstream.ideaVersionId!],
+    }),
+  );
+  f.toolNext();
+  const runId = await f.signed.mutation(api.ai.conversations.send, {
+    ...f.target,
+    prompt: "Save this sourced perspective",
+    allowIdeaCreation: true,
+    operationKey: "compound-version-followup",
+  });
+  await f.t.action(internal.ai.provider.execute, { runId });
+  const ideaId = (
+    await f.signed.query(api.ai.conversations.status, f.target)
+  )[0].resultIdeaId!;
+  const d = await f.signed.mutation(api.content.ideas.handoff, {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    intent: "Prepare Review",
+    draftText: "Protected lineage draft",
+    clarificationConfirmed: true,
+  });
+  // The same retained order occurs in a primitive and an exact version pin.
+  const before = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: d.draftId,
+  }))!;
+  expect(before.versions[0].sourceUnavailable).not.toBe(true);
+  // Controlled exact confirmed facts, no X publishing transport.
+  const historyPin = await f.t.run(async (ctx) => {
+    const approvalId = await ctx.db.insert("approvals", {
+      workspaceId: f.workspaceId,
+      draftId: d.draftId,
+      versionId: before.versions[0]._id,
+      accountId: f.accountId,
+      actorId: f.userId,
+      createdAt: Date.now(),
+      revokedAt: null,
+      revokedBy: null,
+    });
+    const scheduleId = await ctx.db.insert("schedules", {
+      purpose: "publishing",
+      workspaceId: f.workspaceId,
+      draftId: d.draftId,
+      versionId: before.versions[0]._id,
+      accountId: f.accountId,
+      approvalId,
+      actorId: f.userId,
+      generation: 1,
+      at: Date.now(),
+      timezone: "UTC",
+      localTime: "fixture",
+      state: "published",
+      publishedCount: 1,
+      errorCode: null,
+      jobId: null,
+    });
+    const attemptId = await ctx.db.insert("xPostAttempts", {
+      workspaceId: f.workspaceId,
+      scheduleId,
+      generation: 1,
+      versionId: before.versions[0]._id,
+      accountId: f.accountId,
+      providerIdentity: "synthetic",
+      connectionSequence: 0,
+      position: 0,
+      attempt: 1,
+      claimSequence: 1,
+      leaseUntil: Date.now(),
+      deadline: Date.now(),
+      stage: "confirmed",
+      mediaIds: [],
+      externalId: "confirmed-history",
+      confirmedAt: Date.now(),
+      durationMs: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    await ctx.db.patch(scheduleId, {
+      externalPosts: [
+        {
+          position: 0,
+          externalId: "confirmed-history",
+          url: "https://x.com/synthetic/status/1",
+          attemptId,
+          confirmedAt: Date.now(),
+        },
+      ],
+    });
+    return {
+      scheduleId,
+      attemptId,
+      versionId: before.versions[0]._id,
+      position: 0,
+      externalId: "confirmed-history",
+      confirmedAt: Date.now(),
+      materialHash: await sha256(
+        JSON.stringify([
+          before.versions[0].content.title,
+          before.versions[0].content.text[0],
+          Date.now(),
+          "confirmed-history",
+        ]),
+      ),
+    };
+  });
+  const second = await f.request(2);
+  await f.t.run((ctx) =>
+    ctx.db.patch(second.order._id, {
+      pipeline: { ...second.order.pipeline!, history: [historyPin] },
+    }),
+  );
+  const currentHistory = () =>
+    f.signed.query(api.research.evidence.list, {
+      workspaceId: f.workspaceId,
+      orderId: second.order._id,
+    });
+  expect((await currentHistory())[0].payload).not.toBeNull();
+  // Controlled retained cache-hit ancestors exercise the existing 32-order bound.
+  const ancestors = await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...base } = r.order;
+    const ids: Id<"researchOrders">[] = [];
+    for (let i = 0; i < 31; i++) {
+      const ancestor = await ctx.db.insert("researchOrders", {
+        ...base,
+        operationKey: `compound-ancestor-${i}`,
+        native: {
+          ...base.native!,
+          outcomes: base.native!.outcomes.map((o) => ({
+            ...o,
+            cacheHit: true,
+          })),
+        },
+        pipeline: {
+          ...base.pipeline!,
+          runId: null,
+          history: [],
+          contextEvidence: [],
+          contextPins: [
+            { ...base.pipeline!.sourcePins[0], orderId: ids.at(-1) ?? _id },
+          ],
+        },
+      });
+      ids.push(ancestor);
+    }
+    await ctx.db.patch(second.order._id, {
+      pipeline: {
+        ...second.order.pipeline!,
+        history: [historyPin],
+        contextPins: [{ ...r.order.pipeline!.sourcePins[0], orderId: ids[30] }],
+      },
+    });
+    return ids;
+  });
+  // second + original + 31 retained ancestors exceeds the shared 32-order budget.
+  expect((await currentHistory())[0].payload).toBeNull();
+  await f.t.run((ctx) =>
+    ctx.db.patch(second.order._id, {
+      pipeline: {
+        ...second.order.pipeline!,
+        history: [historyPin],
+        contextPins: [
+          { ...r.order.pipeline!.sourcePins[0], orderId: ancestors[29] },
+        ],
+      },
+    }),
+  );
+  expect((await currentHistory())[0].payload).not.toBeNull();
+  await f.t.run(async (ctx) => {
+    const cycle = (await ctx.db.get(ancestors[29]))!;
+    await ctx.db.patch(cycle._id, {
+      pipeline: {
+        ...cycle.pipeline!,
+        contextPins: [
+          { ...r.order.pipeline!.sourcePins[0], orderId: cycle._id },
+        ],
+      },
+    });
+  });
+  expect((await currentHistory())[0].payload).toBeNull();
+  await f.t.run((ctx) =>
+    ctx.db.patch(second.order._id, {
+      pipeline: { ...second.order.pipeline!, history: [historyPin] },
+    }),
+  );
+  expect((await currentHistory())[0].payload).not.toBeNull();
+  await f.signed.mutation(api.content.ideas.archive, {
+    workspaceId: f.workspaceId,
+    ideaId: upstream.ideaId,
+    expectedRevision: 1,
+    archived: true,
+    feedback: "Withdraw original Review",
+  });
+  expect(
+    (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: d.draftId,
+    }))!.versions[0].sourceUnavailable,
+  ).toBe(true);
+  expect((await currentHistory())[0].payload).toBeNull();
+  await expect(
+    f.signed.mutation(api.editorial.approve, {
+      workspaceId: f.workspaceId,
+      versionId: before.versions[0]._id,
+      accountId: f.accountId,
+    }),
+  ).rejects.toThrow("IDEA_SOURCE_CHANGED");
+});

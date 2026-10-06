@@ -19,6 +19,9 @@ export type MaterialWalk = {
     }
   >;
 };
+export function materialWalk(): MaterialWalk {
+  return { remaining: 32, active: new Set(), resolved: new Map() };
+}
 
 export async function historyMaterial(
   ctx: Ctx,
@@ -122,11 +125,7 @@ async function materialAuthority(
 export async function currentMaterialProof(
   ctx: Ctx,
   o: Doc<"researchOrders">,
-  walk: MaterialWalk = {
-    remaining: 32,
-    active: new Set(),
-    resolved: new Map(),
-  },
+  walk: MaterialWalk = materialWalk(),
 ) {
   const prior = walk.resolved.get(o._id);
   if (prior) return prior;

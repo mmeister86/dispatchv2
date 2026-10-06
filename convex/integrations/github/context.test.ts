@@ -579,9 +579,21 @@ test("explicit later perspective reuses approved actual excerpts and shared cont
     operationKey: "context-followup",
   });
   const run = await f.t.run((ctx) => ctx.db.get(runId));
-  expect(run!.sources).toEqual([
-    { repositoryId: f.repositories[0], generation: 2, contextId: c._id },
-  ]);
+  expect(run!.sources).toHaveLength(2);
+  for (const source of run!.sources) {
+    expect(source).toMatchObject({
+      repositoryId: f.repositories[0],
+      generation: 2,
+      contextId: c._id,
+      signalId: c.signalId,
+    });
+    expect(source.proofUntil).toBeGreaterThan(Date.now());
+  }
+  const originalIdea = await f.t.run((ctx) => ctx.db.get(c.resultIdeaId!));
+  expect(run!.sources.filter((s) => !s.ideaVersionId)).toHaveLength(1);
+  expect(run!.sources.find((s) => s.ideaVersionId)?.ideaVersionId).toBe(
+    originalIdea!.currentVersionId,
+  );
   const messages = await f.t.query(
     components.agent.messages.listMessagesByThreadId,
     {

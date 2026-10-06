@@ -1,3 +1,4 @@
+import { historyAuthority } from "../ai/conversationAccess";
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -157,6 +158,18 @@ export async function orderAuthority(
     (generation !== undefined && generation !== o.generation)
   )
     throw new ConvexError("RESEARCH_ORDER_INACTIVE");
+  if (o.targetedChat) {
+    const c = await ctx.db.get(o.targetedChat.conversationId);
+    if (
+      !c ||
+      c.state !== "active" ||
+      c.workspaceId !== o.workspaceId ||
+      c.accountId !== o.accountId ||
+      c.actorId !== o.actorId
+    )
+      throw new ConvexError("RESEARCH_CHAT_OWNER_UNAVAILABLE");
+    await historyAuthority(ctx, c);
+  }
   const p = await ctx.db.get(o.profileId),
     version = await ctx.db.get(o.profileVersionId),
     actor = await ctx.db.get(o.actorId);

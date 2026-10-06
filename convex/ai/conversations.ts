@@ -1,3 +1,10 @@
+import { currentRunSources, runSourceKey } from "./sourceAccess";
+import { orderLiability } from "../research/pipelineAccess";
+import { registerResearchCopies } from "../research/contentCleanup";
+import { admitPipeline } from "../research/pipeline";
+import { operation } from "../research/providerFields";
+import { currentProfile } from "../research/access";
+import { evidenceSource } from "../research/contentProof";
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import {
@@ -349,8 +356,6 @@ export const send = mutation({
       inputVersionId = idea!.currentVersionId;
       const version = await ctx.db.get(inputVersionId);
       requireReference(c.workspaceId, version);
-      if (version!.source.kind === "research")
-        throw new ConvexError("RESEARCH_CHAT_NOT_CONFIGURED");
       await currentIdeaSource(ctx, c.workspaceId, version!.source);
       if (!versions.includes(inputVersionId)) versions.push(inputVersionId);
       context = {
@@ -366,7 +371,7 @@ export const send = mutation({
       };
     }
     if (versions.length > 10) throw new ConvexError("CHAT_SOURCE_LIMIT");
-    const sources: Doc<"agentRuns">["sources"] = [];
+    const sources: Doc<"agentRuns">["sources"] = [...c.sources];
     for (const id of versions) {
       const version = (await ctx.db.get(id))!;
       for (const s of await currentIdeaSource(
@@ -374,9 +379,26 @@ export const send = mutation({
         c.workspaceId,
         version.source,
       ))
-        if (!sources.some((x) => JSON.stringify(x) === JSON.stringify(s)))
-          sources.push(s);
+        for (const pin of s.ideaVersionId
+          ? [s, { ...s, ideaVersionId: id }]
+          : [{ ...s, ideaVersionId: id }])
+          if (!sources.some((x) => runSourceKey(x) === runSourceKey(pin)))
+            sources.push(pin);
     }
+    const deadlines = await currentRunSources(
+      ctx,
+      c.workspaceId,
+      c.accountId,
+      sources,
+    );
+    for (let i = 0; i < sources.length; i++)
+      sources[i] = { ...sources[i], proofUntil: deadlines[i] };
+    sources.splice(
+      0,
+      sources.length,
+      ...new Map(sources.map((s) => [runSourceKey(s), s])).values(),
+    );
+    if (sources.length > 10) throw new ConvexError("CHAT_SOURCE_LIMIT");
     // Save exactly once in the same transaction as the operation/run binding.
     const prompt =
       a.prompt +
@@ -416,6 +438,12 @@ export const send = mutation({
       existingPrompt: { threadId: c.threadId, messageId: saved.messageId },
     });
     await ctx.db.patch(opId, { runIds: [runId] });
+    for (const s of sources)
+      if (
+        "kind" in s &&
+        !c.sources.some((old) => runSourceKey(old) === runSourceKey(s))
+      )
+        await registerResearchCopies(ctx, s, { conversationId: c._id });
     await ctx.db.patch(c._id, {
       sources,
       ideaVersionIds: versions,
@@ -642,6 +670,12 @@ export const status = query({
       )
       .order("desc")
       .take(50);
+    let historyReadable = true;
+    try {
+      await historyAuthority(ctx, c);
+    } catch {
+      historyReadable = false;
+    }
     const rows = await Promise.all(
       operations.map(async (op) => {
         if (
@@ -692,7 +726,7 @@ export const status = query({
           heldMicros: attempts.reduce((n, x) => n + x.heldMicros, 0),
           usagePending: attempts.some((x) => x.state !== "settled"),
           operationUsagePending,
-          resultIdeaId: op.resultIdeaId,
+          resultIdeaId: historyReadable ? op.resultIdeaId : null,
         }));
       }),
     );
@@ -740,6 +774,9 @@ export const createIdea = internalMutation({
     const version = op.inputVersionId
       ? await ctx.db.get(op.inputVersionId)
       : null;
+    const source = r.sources.length
+      ? { kind: "context-set" as const, sources: r.sources }
+      : (version?.source ?? { kind: "note" as const });
     const id = await insertIdea(
       ctx,
       r.workspaceId,
@@ -751,7 +788,7 @@ export const createIdea = internalMutation({
         perspective: a.perspective,
         note: version?.note ?? "",
         priority: "normal",
-        source: version?.source ?? { kind: "note" },
+        source,
         originals: version?.originals ?? [],
         rationale: a.rationale,
         questions: a.questions,
@@ -781,14 +818,310 @@ export const projection = query({
     try {
       await historyAuthority(ctx, c);
       let proofExpiresAt = Number.MAX_SAFE_INTEGER;
-      for (const s of c.sources) {
-        const repo = await ctx.db.get(s.repositoryId);
-        if (!repo) throw new ConvexError("CHAT_HISTORY_SOURCE_WITHDRAWN");
-        proofExpiresAt = Math.min(proofExpiresAt, repo.proofExpiresAt);
-      }
+      proofExpiresAt = Math.min(
+        proofExpiresAt,
+        ...(await currentRunSources(
+          ctx,
+          c.workspaceId,
+          c.accountId,
+          c.sources,
+        )),
+      );
       return { authorized: true, proofExpiresAt };
     } catch {
       return { authorized: false, proofExpiresAt: 0 };
     }
+  },
+});
+
+// Explicit domain command; the model cannot acquire research authority from text or a tool call.
+export const research = mutation({
+  args: {
+    ...target,
+    profileId: v.id("researchProfiles"),
+    expectedRevision: v.number(),
+    operationKey: v.string(),
+    topic: v.string(),
+    language: v.string(),
+    operations: v.array(operation),
+  },
+  returns: v.id("researchOrders"),
+  handler: async (ctx, a) => {
+    const { c, user } = await conversationAccess(
+      ctx,
+      a.workspaceId,
+      a.accountId,
+      a.conversationId,
+      true,
+    );
+    await historyAuthority(ctx, c);
+    key(a.operationKey);
+    text(a.topic, 450);
+    const { profile } = await currentProfile(ctx, c.workspaceId, a.profileId);
+    if (profile.accountId !== c.accountId)
+      throw new ConvexError("CHAT_ACCESS_DENIED");
+    const old = await ctx.db
+      .query("researchOrders")
+      .withIndex("by_profileId_and_actorId_and_operationKey", (q) =>
+        q
+          .eq("profileId", a.profileId)
+          .eq("actorId", user._id)
+          .eq("operationKey", a.operationKey),
+      )
+      .unique();
+    if (!old) {
+      if (c.turns >= 50) throw new ConvexError("CHAT_CONVERSATION_LIMIT");
+      if (c.activeRunId) {
+        const run = await ctx.db.get(c.activeRunId);
+        if (run?.state === "ready" || run?.state === "running")
+          throw new ConvexError("CHAT_BUSY");
+      }
+    }
+    const id = await admitPipeline(
+      ctx,
+      {
+        profileId: a.profileId,
+        expectedRevision: a.expectedRevision,
+        operationKey: a.operationKey,
+        language: a.language,
+        operations: a.operations,
+        targetedChat: {
+          conversationId: c._id,
+          topic: a.topic,
+          messageId: null,
+        },
+      },
+      c.workspaceId,
+      user._id,
+      "agent",
+    );
+    if (!old)
+      await ctx.db.patch(c._id, { turns: c.turns + 1, updatedAt: Date.now() });
+    return id;
+  },
+});
+export const researchResult = internalMutation({
+  args: { orderId: v.id("researchOrders") },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const o = await ctx.db.get(a.orderId);
+    if (
+      !o?.targetedChat ||
+      o.targetedChat.messageId ||
+      !o.finishedAt ||
+      !o.pipeline
+    )
+      return null;
+    const c = await ctx.db.get(o.targetedChat.conversationId);
+    if (
+      !c ||
+      c.actorId !== o.actorId ||
+      c.accountId !== o.accountId ||
+      c.workspaceId !== o.workspaceId
+    )
+      return null;
+    try {
+      const actor = await ctx.db.get(o.actorId);
+      if (!actor) return null;
+      requireRole(
+        (await requireWorkspace(ctx, c.workspaceId, actor)).membership,
+        ["Owner", "Admin", "Editor"],
+      );
+      await historyAuthority(ctx, c);
+    } catch {
+      return null;
+    }
+    // Wait for every native incarnation, including a stopped older run that can still finish SDK persistence.
+    const ops = await ctx.db
+      .query("chatOperations")
+      .withIndex("by_conversationId_and_createdAt", (q) =>
+        q.eq("conversationId", c._id),
+      )
+      .take(50);
+    const runs = await Promise.all(
+      ops.flatMap((op) => op.runIds).map((id) => ctx.db.get(id)),
+    );
+    if (
+      runs.some(
+        (run) =>
+          run &&
+          (["ready", "running"].includes(run.state) ||
+            (run.executionKey && !run.executionFinishedAt)),
+      )
+    ) {
+      await ctx.scheduler.runAfter(
+        1000,
+        internal.ai.conversations.researchResult,
+        a,
+      );
+      return null;
+    }
+    let content = `Rechercheauftrag ${o._id}: ${o.pipeline.outcome}. Keine belegte Zusammenfassung verfügbar.`,
+      sources = [...c.sources];
+    if (
+      o.pipeline.inboxReady &&
+      o.pipeline.cleanupState === "retained" &&
+      o.pipeline.evidenceIds.length
+    ) {
+      try {
+        const proofs = await Promise.all(
+          o.pipeline.evidenceIds.map((id) =>
+            evidenceSource(ctx, c.workspaceId, id, c.accountId),
+          ),
+        );
+        if (sources.length + proofs.length > 10)
+          throw new ConvexError("CHAT_SOURCE_LIMIT");
+        content =
+          `Rechercheauftrag ${o._id}: ${o.pipeline.outcome}. Ungeprüfte Review; keine Wahrheits- oder Veröffentlichungsfreigabe.\n` +
+          proofs
+            .map(({ e, s }) => {
+              const p = e.payload!;
+              return JSON.stringify({
+                evidenceId: e._id,
+                source: s.url,
+                sourceSupport:
+                  s.text === null
+                    ? "metadata only; cannot support factual claims"
+                    : "unverified source text",
+                sourceAssertion: p.annotation.claim,
+                literalQuote: p.annotation.quote,
+                interpretation: p.annotation.interpretation,
+                perspective: p.model?.perspective ?? null,
+                gaps: p.annotation.gaps,
+                uncertainty: p.annotation.uncertainty,
+                publication: s.publishedAt ?? "unknown",
+                event: p.model?.eventAt ?? "unknown",
+                observedAt: s.observedAt,
+              });
+            })
+            .join("\n");
+        sources.push(...proofs.map((p) => p.source));
+      } catch {
+        content = `Rechercheauftrag ${o._id}: Quelle nicht mehr aktuell oder Kontextgrenze erreicht. Keine belegte Zusammenfassung übernommen.`;
+      }
+    }
+    const deadlines = await currentRunSources(
+      ctx,
+      c.workspaceId,
+      c.accountId,
+      sources,
+    );
+    for (let i = 0; i < sources.length; i++)
+      sources[i] = { ...sources[i], proofUntil: deadlines[i] };
+    sources.splice(
+      0,
+      sources.length,
+      ...new Map(sources.map((s) => [runSourceKey(s), s])).values(),
+    );
+    const saved = await saveMessage(ctx, components.agent, {
+      threadId: c.threadId,
+      userId: c.actorId,
+      message: { role: "assistant", content },
+    });
+    await ctx.db.patch(o._id, {
+      targetedChat: { ...o.targetedChat, messageId: saved.messageId },
+    });
+    for (const s of sources)
+      if (
+        "kind" in s &&
+        !c.sources.some((old) => runSourceKey(old) === runSourceKey(s))
+      )
+        await registerResearchCopies(ctx, s, { conversationId: c._id });
+    await ctx.db.patch(c._id, { sources, updatedAt: Date.now() });
+    if (sources.some((s) => "kind" in s)) {
+      const until = Math.min(
+        ...(await currentRunSources(ctx, c.workspaceId, c.accountId, sources)),
+      );
+      await ctx.scheduler.runAt(until, internal.ai.conversations.expireSource, {
+        conversationId: c._id,
+      });
+    }
+    return null;
+  },
+});
+export const expireSource = internalMutation({
+  args: { conversationId: v.id("conversations") },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const c = await ctx.db.get(a.conversationId);
+    if (!c || c.state !== "active") return null;
+    try {
+      await historyAuthority(ctx, c);
+      return null;
+    } catch {
+      /* conservative whole-history fence */
+    }
+    await stopCurrent(ctx, c);
+    await ctx.db.patch(c._id, {
+      state: "deleting",
+      cleanupAfter: Date.now(),
+      updatedAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.ai.conversations.cleanup, a);
+    return null;
+  },
+});
+
+export const researchStatus = query({
+  args: target,
+  returns: v.array(
+    v.object({
+      orderId: v.id("researchOrders"),
+      state: v.string(),
+      outcome: v.string(),
+      usagePending: v.boolean(),
+      messageSaved: v.boolean(),
+    }),
+  ),
+  handler: async (ctx, a) => {
+    const { c } = await conversationAccess(
+      ctx,
+      a.workspaceId,
+      a.accountId,
+      a.conversationId,
+    );
+    const orders = await ctx.db
+      .query("researchOrders")
+      .withIndex("by_targetedChat_conversationId_and_createdAt", (q) =>
+        q.eq("targetedChat.conversationId", c._id),
+      )
+      .order("desc")
+      .take(5);
+    return Promise.all(
+      orders.map(async (o) => {
+        if (
+          o.workspaceId !== c.workspaceId ||
+          o.accountId !== c.accountId ||
+          o.actorId !== c.actorId
+        )
+          throw new ConvexError("CHAT_ACCESS_DENIED");
+        return {
+          orderId: o._id,
+          state: o.state,
+          outcome: o.pipeline?.outcome ?? "pending",
+          usagePending: (await orderLiability(ctx, o)).usagePending,
+          messageSaved: !!o.targetedChat?.messageId,
+        };
+      }),
+    );
+  },
+});
+
+// A read-only member may request erasure of their own history after its source fence closes.
+export const cleanupUnavailable = mutation({
+  args: target,
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const { c } = await conversationAccess(
+      ctx,
+      a.workspaceId,
+      a.accountId,
+      a.conversationId,
+    );
+    if (c.state === "active")
+      await ctx.runMutation(internal.ai.conversations.expireSource, {
+        conversationId: c._id,
+      });
+    return null;
   },
 });

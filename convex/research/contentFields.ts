@@ -3,6 +3,7 @@ import { evidenceFields } from "./evidenceFields";
 // One immutable evidence record per proposal; canonical copies are evidence provenance.
 export const researchContentSource = v.object({
   kind: v.literal("research"),
+  ideaVersionId: v.optional(v.id("ideaVersions")),
   evidenceId: v.id("researchEvidence"),
   evidenceFingerprint: v.string(),
   accountId: v.id("socialAccounts"),

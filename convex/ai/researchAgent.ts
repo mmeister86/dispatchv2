@@ -60,6 +60,9 @@ export const completed = internalMutation({
         ...a.context,
         cancelled: a.result.kind === "canceled",
       });
+    await ctx.scheduler.runAfter(0, internal.ai.conversations.researchResult, {
+      orderId: a.context.orderId,
+    });
     return null;
   },
 });

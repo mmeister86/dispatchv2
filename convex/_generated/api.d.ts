@@ -16,6 +16,7 @@ import type * as ai_provider from "../ai/provider.js";
 import type * as ai_researchAgent from "../ai/researchAgent.js";
 import type * as ai_researchTools from "../ai/researchTools.js";
 import type * as ai_runs from "../ai/runs.js";
+import type * as ai_sourceAccess from "../ai/sourceAccess.js";
 import type * as auth from "../auth.js";
 import type * as content_ideaFields from "../content/ideaFields.js";
 import type * as content_ideas from "../content/ideas.js";
@@ -102,6 +103,7 @@ declare const fullApi: ApiFromModules<{
   "ai/researchAgent": typeof ai_researchAgent;
   "ai/researchTools": typeof ai_researchTools;
   "ai/runs": typeof ai_runs;
+  "ai/sourceAccess": typeof ai_sourceAccess;
   auth: typeof auth;
   "content/ideaFields": typeof content_ideaFields;
   "content/ideas": typeof content_ideas;

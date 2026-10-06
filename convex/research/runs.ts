@@ -1,3 +1,4 @@
+import { conversationAccess } from "../ai/conversationAccess";
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import { internal } from "../_generated/api";
@@ -173,6 +174,14 @@ export const stop = workspaceMutation({
     requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
     const o = await ctx.db.get(a.orderId);
     requireReference(ctx.workspace._id, o);
+    if (o!.targetedChat)
+      await conversationAccess(
+        ctx,
+        ctx.workspace._id,
+        o!.accountId,
+        o!.targetedChat.conversationId,
+        true,
+      );
     if (o!.state !== "queued" && o!.state !== "running") return null;
     await ctx.db.patch(o!._id, {
       state: "cancelled",
@@ -226,18 +235,21 @@ export const history = workspaceQuery({
       .order("desc")
       .paginate(a.paginationOpts);
     return {
-      page: result.page.map(
-        ({
-          native,
-          pipeline,
-          approval,
-          actorId,
-          accountSequence,
-          fingerprint,
-          operationKey,
-          ...safe
-        }) => safe,
-      ),
+      page: result.page
+        .filter((o) => !o.targetedChat || o.actorId === ctx.user._id)
+        .map(
+          ({
+            targetedChat,
+            native,
+            pipeline,
+            approval,
+            actorId,
+            accountSequence,
+            fingerprint,
+            operationKey,
+            ...safe
+          }) => safe,
+        ),
       isDone: result.isDone,
       continueCursor: result.continueCursor,
     };

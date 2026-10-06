@@ -4,12 +4,12 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='ai/conversations:list')return window.list;if(name==='ai/conversations:status')return window.runs;if(name==='ai/conversations:projection')return window.projection;if(name==='content/ideas:list')return {page:[],isDone:true,continueCursor:''};if(name==='ai/runs:recent')return [];if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
+  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='ai/conversations:list')return window.list;if(name==='ai/conversations:status')return window.runs;if(name==='ai/conversations:researchStatus')return window.researchOrders;if(name==='research/profiles:get')return window.researchProfile;if(name==='ai/conversations:projection')return window.projection;if(name==='content/ideas:list')return {page:[],isDone:true,continueCursor:''};if(name==='ai/runs:recent')return [];if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};};const mutations=new Map();export const useMutation=ref=>{const name=getFunctionName(ref);if(!mutations.has(name))mutations.set(name,args=>name==='ai/conversations:cleanupUnavailable'?(window.cleanupRequests.push(args),Promise.resolve(null)):new Promise((resolve,reject)=>window.commands.push({name,args,resolve,reject})));return mutations.get(name);};`,
   "@convex-dev/agent/react": `export const useUIMessages=(ref,args)=>({results:args==='skip'?[]:window.messages,status:'Exhausted',loadMore:()=>{}});`,
   "@/lib/auth-client": `export const demoMode=false;`,
   "@/lib/store": `import {useState} from 'react';export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:'account-one',workspaceId:window.workspace,name:'Synthetic',channel:'X'},{id:'account-two',workspaceId:window.workspace,name:'Second',channel:'X'}]}});`,
 };
-const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {AgentPage} from '/src/pages/Agent.tsx';window.workspace='workspace-one';window.account='account-one';window.role='Owner';window.queries=[];window.commands=[];window.list={page:[],isDone:true,continueCursor:''};window.runs=[];window.messages=[];window.projection={authorized:true,proofExpiresAt:Number.MAX_SAFE_INTEGER};const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(AgentPage))));window.render();`;
+const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {AgentPage} from '/src/pages/Agent.tsx';window.workspace='workspace-one';window.account='account-one';window.role='Owner';window.queries=[];window.commands=[];window.list={page:[],isDone:true,continueCursor:''};window.runs=[];window.researchOrders=[];window.researchProfile=null;window.cleanupRequests=[];window.messages=[];window.projection={authorized:true,proofExpiresAt:Number.MAX_SAFE_INTEGER};const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(AgentPage))));window.render();`;
 const server = await createServer({
   root,
   configFile: `${root}/vite.config.ts`,
@@ -268,9 +268,138 @@ try {
   );
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(prompt).toHaveValue("");
+  await page.goto("http://127.0.0.1:5174/chat-fixture");
+  await expect(
+    page.getByRole("link", { name: /Gespeichertes Rechercheprofil/ }),
+  ).toHaveAttribute("href", "/research");
+  await page.evaluate(() => {
+    window.list = {
+      page: [
+        {
+          conversationId: "targeted-personal",
+          title: "Targeted personal",
+          revision: 1,
+          state: "active",
+          turns: 0,
+          updatedAt: Date.now(),
+        },
+      ],
+      isDone: true,
+      continueCursor: "",
+    };
+    window.researchProfile = {
+      profile: { _id: "saved-profile", revision: 2, paused: false },
+      version: {
+        config: {
+          languages: ["de", "en"],
+          cap: { currency: "USD", limitMicros: 20000 },
+        },
+      },
+    };
+    window.render();
+  });
+  const topic = page.getByLabel("Recherchethema"),
+    researchButton = page.getByRole("button", {
+      name: "Recherche starten",
+      exact: true,
+    });
+  await topic.fill("Explicit personal topic");
+  await researchButton.click();
+  const initialResearch = await page.evaluate(() => window.commands[0].args);
+  expect(initialResearch).toMatchObject({
+    conversationId: "targeted-personal",
+    profileId: "saved-profile",
+    expectedRevision: 2,
+    topic: "Explicit personal topic",
+    language: "de",
+    operations: ["web-search"],
+  });
+  await expect(researchButton).toBeDisabled();
+  await page.evaluate(() => {
+    window.commands[0].reject(new Error("RESEARCH_CONFIGURATION_REQUIRED"));
+    window.researchProfile.profile.revision = 3;
+    window.render();
+  });
+  await expect(topic).toHaveValue("Explicit personal topic");
+  await researchButton.click();
+  expect(await page.evaluate(() => window.commands[1].args.operationKey)).toBe(
+    initialResearch.operationKey,
+  );
+  expect(
+    await page.evaluate(() => window.commands[1].args.expectedRevision),
+  ).toBe(2);
+  await page.evaluate(() => {
+    window.commands[1].resolve("actual-research-order");
+    window.researchOrders = [
+      {
+        orderId: "actual-research-order",
+        state: "running",
+        outcome: "pending",
+        usagePending: true,
+        messageSaved: false,
+      },
+    ];
+    window.render();
+  });
+  await expect(topic).toHaveValue("");
+  await expect(page.getByText(/actual-research-order/)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Recherchefortsetzung prüfen" }),
+  ).toBeDisabled();
+  await page.getByRole("button", { name: "Recherche anhalten" }).click();
+  expect(await page.evaluate(() => window.commands[2])).toMatchObject({
+    name: "research/runs:stop",
+    args: { workspaceId: "workspace-one", orderId: "actual-research-order" },
+  });
+  await page.evaluate(() => {
+    window.commands[2].resolve(null);
+    window.researchOrders[0].state = "cancelled";
+    window.researchOrders[0].outcome = "cancelled";
+    window.render();
+  });
+  await expect(
+    page.getByRole("button", { name: "Recherchefortsetzung prüfen" }),
+  ).toHaveCount(0);
+  await topic.fill("Role epoch buffer");
+  await researchButton.click();
+  await page.evaluate(() => {
+    window.role = "Viewer";
+    window.render();
+  });
+  await expect(topic).toBeDisabled();
+  await page.evaluate(() => {
+    window.role = "Owner";
+    window.render();
+  });
+  await page.evaluate(() => window.commands[3].resolve("late-role-order"));
+  await expect(topic).toHaveValue("Role epoch buffer");
+  await page
+    .getByLabel("Nachricht an Agent")
+    .fill("Protected follow-up buffer");
+  await page.evaluate(() => {
+    window.messages = [
+      {
+        key: "source-summary",
+        role: "assistant",
+        text: "Current evidence-bound summary",
+        status: "success",
+        parts: [],
+      },
+    ];
+    window.projection = { authorized: true, proofExpiresAt: Date.now() + 150 };
+    window.render();
+  });
+  await expect(page.getByText("Current evidence-bound summary")).toBeVisible();
+  await expect(page.getByText("Current evidence-bound summary")).toHaveCount(0);
+  await expect(topic).toHaveValue("");
+  await expect(page.getByLabel("Nachricht an Agent")).toHaveValue("");
+  expect(
+    await page.evaluate(() => window.cleanupRequests.length),
+  ).toBeGreaterThan(0);
+  await expect(researchButton).toBeDisabled();
   expect(errors).toEqual([]);
   console.log(
-    "Actual real Agent chat: loading/create acknowledgment/replay key/send buffer/config/persistent message/stop/resume/actual idea/rename CAS/Viewer/workspace late reply PASS; no provider call.",
+    "Actual real Agent chat: existing chat regressions plus targeted personal request/profile guidance/captured revision and stable retry/actual order receipt/stop/unknown resume/role epoch/idle source expiry and buffer cleanup PASS; mocked Convex transport, no provider call.",
   );
 } finally {
   await browser?.close();

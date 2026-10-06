@@ -1,4 +1,5 @@
-import { v } from "convex/values";
+import type { Doc } from "../_generated/dataModel";
+import { ConvexError, v } from "convex/values";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -52,7 +53,11 @@ export const version = internalMutation({
   returns: v.null(),
   handler: async (ctx, a) => {
     const ver = await ctx.db.get(a.versionId);
-    if (!ver || ver.source.kind !== "research") return null;
+    if (
+      !ver ||
+      (ver.source.kind !== "research" && ver.source.kind !== "context-set")
+    )
+      return null;
     if (ver.researchCleanupPending) {
       await ctx.db.patch(ver._id, {
         title: "",
@@ -102,6 +107,31 @@ export const evidence = internalMutation({
   args: { evidenceId: v.id("researchEvidence") },
   returns: v.null(),
   handler: async (ctx, a) => {
+    const bindings = await ctx.db
+      .query("researchCopyBindings")
+      .withIndex("by_evidenceId_and_state", (q) =>
+        q.eq("evidenceId", a.evidenceId).eq("state", "retained"),
+      )
+      .take(25);
+    for (const b of bindings) {
+      await ctx.db.patch(b._id, { state: "removed" });
+      if (b.conversationId)
+        await ctx.scheduler.runAfter(
+          0,
+          internal.ai.conversations.expireSource,
+          { conversationId: b.conversationId },
+        );
+      if (b.runId)
+        await ctx.scheduler.runAfter(0, internal.ai.runs.purgeSource, {
+          runId: b.runId,
+        });
+      if (b.ideaVersionId)
+        await ctx.scheduler.runAfter(
+          0,
+          internal.research.contentCleanup.version,
+          { versionId: b.ideaVersionId },
+        );
+    }
     const versions = await ctx.db
       .query("ideaVersions")
       .withIndex("by_source_evidenceId_and_researchCleanupPending", (q) =>
@@ -116,7 +146,7 @@ export const evidence = internalMutation({
         internal.research.contentCleanup.version,
         { versionId: ver._id },
       );
-    if (versions.length === 25)
+    if (versions.length === 25 || bindings.length === 25)
       await ctx.scheduler.runAfter(
         1000,
         internal.research.contentCleanup.evidence,
@@ -152,3 +182,45 @@ export const expired = internalMutation({
     return null;
   },
 });
+
+export async function registerResearchCopies(
+  ctx: MutationCtx,
+  source: Doc<"ideaVersions">["source"],
+  target: {
+    conversationId?: Id<"conversations">;
+    ideaVersionId?: Id<"ideaVersions">;
+    runId?: Id<"agentRuns">;
+  },
+) {
+  if (Object.values(target).filter(Boolean).length !== 1)
+    throw new ConvexError("RESEARCH_COPY_TARGET_INVALID");
+  const owner = target.conversationId
+    ? await ctx.db.get(target.conversationId)
+    : target.ideaVersionId
+      ? await ctx.db.get(target.ideaVersionId)
+      : target.runId
+        ? await ctx.db.get(target.runId)
+        : null;
+  if (!owner) throw new ConvexError("RESEARCH_COPY_TARGET_INVALID");
+  const refs =
+    source.kind === "research"
+      ? [source]
+      : source.kind === "context-set"
+        ? source.sources.filter((s) => "kind" in s)
+        : [];
+  for (const s of refs) {
+    const e = await ctx.db.get(s.evidenceId);
+    if (
+      !e ||
+      e.workspaceId !== owner.workspaceId ||
+      e.accountId !== s.accountId ||
+      ("accountId" in owner && owner.accountId !== s.accountId)
+    )
+      throw new ConvexError("RESEARCH_COPY_TARGET_INVALID");
+    await ctx.db.insert("researchCopyBindings", {
+      evidenceId: s.evidenceId,
+      ...target,
+      state: "retained",
+    });
+  }
+}

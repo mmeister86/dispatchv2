@@ -609,6 +609,13 @@ export const bindModel = internalMutation({
       Math.min(o.config.topicCount, 20) +
       " distinct topics (same existing cluster, local topicKey, or exact declared title); at most one item per primary source; return items:[] if no relevant material.\n" +
       JSON.stringify({
+        task: o.targetedChat
+          ? {
+              topic: o.targetedChat.topic,
+              requirement:
+                "Analyze relevance to this explicit topic, using the saved profile only for account perspective.",
+            }
+          : null,
         profile: o.config,
         query: o.native!.query,
         window: { start: o.windowStart, end: o.windowEnd },
@@ -834,7 +841,7 @@ export const evidence = internalMutation({
           perspective: {
             profileVersionId: o.profileVersionId,
             audience: o.config.audience,
-            topics: o.config.topics,
+            topics: o.targetedChat?.topic ?? o.config.topics,
             project: o.config.project,
           },
           model: {

@@ -75,6 +75,13 @@ export const versionFields = {
   createdAt: v.number(),
 };
 export const orderFields = {
+  targetedChat: v.optional(
+    v.object({
+      conversationId: v.id("conversations"),
+      topic: v.string(),
+      messageId: v.union(v.string(), v.null()),
+    }),
+  ),
   native: v.optional(nativeOrder),
   pipeline: v.optional(pipeline),
   approval,
@@ -134,6 +141,7 @@ export const versionDoc = v.object({
   ...versionFields,
 });
 const {
+  targetedChat: _targetedChat,
   native: _native,
   pipeline: _pipeline,
   approval: _orderApproval,

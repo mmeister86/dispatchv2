@@ -1,3 +1,4 @@
+import { conversationAccess } from "../ai/conversationAccess";
 import { orderLiability } from "./pipelineAccess";
 import { materialHash } from "./evidence";
 import { ConvexError, v } from "convex/values";
@@ -40,6 +41,7 @@ export async function admitNative(
     query: string;
     language: string;
     operations: Doc<"researchSourcePolicies">["operation"][];
+    targetedChat?: Doc<"researchOrders">["targetedChat"];
   },
   workspaceId: Doc<"workspaces">["_id"],
   actorId: Doc<"users">["_id"],
@@ -107,6 +109,7 @@ export async function admitNative(
   const now = Date.now(),
     acc = await ctx.db.get(p.accountId);
   const id = await ctx.db.insert("researchOrders", {
+    ...(a.targetedChat ? { targetedChat: a.targetedChat } : {}),
     workspaceId: p.workspaceId,
     accountId: p.accountId,
     profileId: p._id,
@@ -344,6 +347,13 @@ export const results = workspaceQuery({
   handler: async (ctx, a) => {
     const o = await ctx.db.get(a.orderId);
     requireReference(ctx.workspace._id, o);
+    if (o!.targetedChat)
+      await conversationAccess(
+        ctx,
+        ctx.workspace._id,
+        o!.accountId,
+        o!.targetedChat.conversationId,
+      );
     if (!o!.native) return [];
     const p = await ctx.db.get(o!.profileId);
     requireReference(ctx.workspace._id, p);

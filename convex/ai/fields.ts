@@ -1,12 +1,19 @@
 import { v } from "convex/values";
+import { researchContentSource } from "../research/contentFields";
 export const generationPurpose = v.union(
   ...(["summary", "research", "draft", "plan", "chat"] as const).map(v.literal),
 );
-export const source = v.object({
-  contextId: v.optional(v.id("githubContexts")),
-  repositoryId: v.id("githubRepositories"),
-  generation: v.number(),
-});
+export const source = v.union(
+  researchContentSource,
+  v.object({
+    contextId: v.optional(v.id("githubContexts")),
+    signalId: v.optional(v.id("githubSignals")),
+    ideaVersionId: v.optional(v.id("ideaVersions")),
+    proofUntil: v.optional(v.number()),
+    repositoryId: v.id("githubRepositories"),
+    generation: v.number(),
+  }),
+);
 export const policyFields = {
   key: v.literal("requesty-generation"),
   version: v.string(),
@@ -44,6 +51,9 @@ export const budgetFields = {
   spentMicros: v.number(),
 };
 export const runFields = {
+  sourceCleanupState: v.optional(
+    v.union(v.literal("pending"), v.literal("complete")),
+  ),
   research: v.optional(
     v.object({
       orderId: v.id("researchOrders"),

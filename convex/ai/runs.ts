@@ -1,3 +1,5 @@
+import { registerResearchCopies } from "../research/contentCleanup";
+import { currentRunSources, runSourceKey } from "./sourceAccess";
 import { currentMaterials, orderLiability } from "../research/pipelineAccess";
 import { orderAuthority } from "../research/providerAccess";
 import { changeLiability, generationAttempt } from "./accounting";
@@ -5,7 +7,6 @@ import {
   conversationAccess,
   conversationAuthority,
 } from "./conversationAccess";
-import { currentContext } from "../integrations/github/contextAccess";
 import { ConvexError, v } from "convex/values";
 import { createThread, saveMessage } from "@convex-dev/agent";
 import {
@@ -24,7 +25,6 @@ import {
   requireRole,
   requireReference,
 } from "../lib/authorization";
-import { checkSource } from "../integrations/github/repositories";
 import { sha256 } from "../lib/crypto";
 import { generationPurpose, source, runFields, policyFields } from "./fields";
 
@@ -131,24 +131,7 @@ async function authority(
     if (!o.config.cap || money.total > o.config.cap.limitMicros)
       throw new ConvexError("RESEARCH_ORDER_BUDGET_EXHAUSTED");
   }
-  for (const s of r.sources) {
-    if (s.contextId) {
-      const { c } = await currentContext(ctx, s.contextId, true);
-      if (
-        c.workspaceId !== r.workspaceId ||
-        c.repositoryId !== s.repositoryId ||
-        c.generation !== s.generation
-      )
-        throw new ConvexError("GITHUB_CONTEXT_CHANGED");
-    }
-    await checkSource(
-      ctx,
-      r.workspaceId,
-      s.repositoryId,
-      s.generation,
-      "content",
-    );
-  }
+  await currentRunSources(ctx, r.workspaceId, r.accountId, r.sources);
 }
 export async function active(
   ctx: QueryCtx | MutationCtx,
@@ -251,10 +234,24 @@ export async function createRun(
     a.sources.length > 10
   )
     throw new ConvexError("MODEL_INPUT_INVALID");
+  const deadlines = await currentRunSources(
+    ctx,
+    a.workspaceId,
+    a.accountId,
+    a.sources,
+  );
+  const sources = [
+    ...new Map(
+      a.sources.map((s, i) => {
+        const pin = { ...s, proofUntil: deadlines[i] };
+        return [runSourceKey(pin), pin] as const;
+      }),
+    ).values(),
+  ];
   const account = await ctx.db.get(a.accountId);
   requireReference(a.workspaceId, account);
   const accountConnectionSequence = account!.xEvidence?.connectionSequence ?? 0;
-  await authority(ctx, { ...a, accountConnectionSequence });
+  await authority(ctx, { ...a, sources, accountConnectionSequence });
   const budgetIds: Id<"aiBudgets">[] = [];
   for (const [scope, key] of [
     ["provider", "provider"],
@@ -299,6 +296,7 @@ export async function createRun(
   const { prompt, existingPrompt, ...rest } = a;
   const runId = await ctx.db.insert("agentRuns", {
     ...rest,
+    sources,
     accountConnectionSequence,
     policyVersion: p.version,
     policyFingerprint: await policyFingerprint(p),
@@ -307,13 +305,33 @@ export async function createRun(
     generation: 1,
     state: "ready",
     executionKey: null,
-    deadline: Date.now() + p.maxDurationMs,
+    deadline: Math.min(Date.now() + p.maxDurationMs, ...deadlines),
     attempts: 0,
     toolSteps: 0,
     budgetIds,
     createdAt: Date.now(),
     errorCode: null,
   });
+  if (a.sources.some((s) => "kind" in s)) {
+    await registerResearchCopies(
+      ctx,
+      { kind: "context-set", sources: a.sources },
+      { runId },
+    );
+    const r = (await ctx.db.get(runId))!;
+    await ctx.scheduler.runAt(
+      Math.min(
+        ...(await currentRunSources(
+          ctx,
+          r.workspaceId,
+          r.accountId,
+          r.sources,
+        )),
+      ),
+      internal.ai.runs.purgeSource,
+      { runId },
+    );
+  }
   if (!a.conversationId && !a.research) await active(ctx, runId);
   return runId;
 }
@@ -808,6 +826,51 @@ export const rejectUnclaimed = internalMutation({
         errorCode: "MODEL_RUN_UNAVAILABLE",
         executionFinishedAt: Date.now(),
       });
+    return null;
+  },
+});
+
+export const purgeSource = internalMutation({
+  args: { runId: v.id("agentRuns") },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const r = await ctx.db.get(a.runId);
+    if (!r || r.sourceCleanupState === "complete") return null;
+    if (!r.sourceCleanupState) {
+      try {
+        await currentRunSources(ctx, r.workspaceId, r.accountId, r.sources);
+        return null;
+      } catch {
+        /* current source fence precedes actual bounded native cleanup */
+      }
+    }
+    await ctx.db.patch(r._id, {
+      sourceCleanupState: "pending",
+      ...(["ready", "running"].includes(r.state)
+        ? { state: "stopped" as const, generation: r.generation + 1 }
+        : {}),
+    });
+    if (r.conversationId) {
+      await ctx.runMutation(internal.ai.conversations.expireSource, {
+        conversationId: r.conversationId,
+      });
+      const c = await ctx.db.get(r.conversationId);
+      if (c?.state === "deleted")
+        await ctx.db.patch(r._id, { sourceCleanupState: "complete" });
+      else await ctx.scheduler.runAfter(10000, internal.ai.runs.purgeSource, a);
+      return null;
+    }
+    if (r.executionKey && !r.executionFinishedAt) {
+      await ctx.scheduler.runAfter(10000, internal.ai.runs.purgeSource, a);
+      return null;
+    }
+    const result = await ctx.runMutation(
+      components.agent.threads.deleteAllForThreadIdAsync,
+      { threadId: r.threadId, limit: 100 },
+    );
+    if (result.isDone)
+      await ctx.db.patch(r._id, { sourceCleanupState: "complete" });
+    else await ctx.scheduler.runAfter(1000, internal.ai.runs.purgeSource, a);
     return null;
   },
 });
