@@ -4,7 +4,7 @@ title: 'Empfehlungen, Vergleich und Übernahme gestalten (P08.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 05:29'
+updated_date: '2026-10-06 05:41'
 labels:
   - p08
   - jev
@@ -80,4 +80,6 @@ ROOT preparation only, implementation waits accepted28.3 actual API. Read-only r
 Released after reviewed28.3 SOURCE93270d5 exact18 normalizedassessment/currenteligibility APIs, fresh SPEC09987505/QUALITY08729df0 PASS/full647/38. Consume actualanalyze/get/history and sharededitorialsave transaction. Brief f3d1dbd7/designb236f964; currentpinned twitter-text UTF16/fulltoken API source +slice control docs d30a3a9b. Existing normalmedia saves alreadyrequire nonblankalt; do not weaken validation to manufacture missingalt recommendations, onlyconditionallegacy recovery. Atmost3 genuine safe edits/zero allowed; source/current exactbinding/idempotent explicitnewversion/fullorderedfrozendiff, no oldapproval/schedule replacement/semanticreach promises. Freshsolewriter then frozenindependentSPEC/QUALITY; ROOTownsmetadata/manualDoneopen.
 
 Actualprefeature behaviorRED07:24:22 /tmp/task29-red.log: recommendations absent,647PASS1FAIL/648total38files (commandlabel lookedscoped butranfull). Minimalshare save/actualcurrentproposal derivation WIP, notaccepted. ROOTactualtrace foundno mintextinoldcurrent/UI; routineprocessinglimit20 nonwhitespaceUnicodecodepoints fullsavedthread withtinysharedguard beforefunding/cache andUIhint, noempiricalquality/normalization/publishingrestriction. Quoted/code ambiguous tokencontexts conservativelyskip; multiplemissinglegacyalts cannot individuallypasssharedsave, keepvalidationandmanualrepair/conditionalonefix. Originalwriter ownsrefinements, no inventedsecurityRED, sourcewindowCLOSED.
+
+ROOT verified frozen13 source bytes/SHA/Git+BASE blobs and all46 artifacts, inventory1e091c6b. Full672/39PASS07:34:51; final focused23PASS07:37:31; final affected types/format/build/bundle/diff exit0, full lintPASS, officialcodegen upload/evaluate and actualEUDev07:35:52/posttypesPASS. Read final production UI/full browser fixture and viewed named-media/nonmodal diff+incomplete/provider-error screenshots; mockedtransport only. All failures retained/honestly categorized incl minimum-fixture overlength and purgeVersion source-free permanentACK expectation correction; explicit sourceUnavailable fixture is not nativewithdrawal. FreshSPEC→QUALITY pending, source scoped13 commit authorized after frozen verification; no AC/manualDone acceptance yet.
 <!-- SECTION:NOTES:END -->
