@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-06 03:21'
+updated_date: '2026-10-06 03:25'
 labels:
   - p08
   - jev
@@ -74,4 +74,6 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence, /operations. Supporting disabled/provider-failure/low-confidence and local cost/bounded-attempt states. Grenze: No TypeSafe SDK integration, EU-only data-path approval, circuit breaker or provider accounting. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 ROOT readonly preparation: current official SDK0.6.0/current primary source and Context7 docs mapped, no install or runtime acceptance yet. Release waits final27 review loop. Missing EU-processing evidence keeps real calls disabled; user preference visible configuration guidance. New concrete analyzer-purpose owner must reuse sole aiAttempts ledger/shared counters, not generation/native-search grants. No AC/Done/live processing claimed.
+
+Implementation released after final27 independent SPEC/QUALITY and corrected label review PASS. Fresh sole source writer uses current SDK0.6.0 primary/Context7 map, strict runtime normalization/bounds/default-off flags/circuit and existing single ledger counters with concrete analyzer ownership. No live paid calls/processing or policy/grant activation; future actual questions28.2/assessments28.3, no arbitrary public classification API. Full checks and independent reviews required before AC; manual Done open.
 <!-- SECTION:NOTES:END -->
