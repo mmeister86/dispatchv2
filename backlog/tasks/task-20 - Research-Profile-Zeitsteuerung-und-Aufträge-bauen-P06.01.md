@@ -4,7 +4,7 @@ title: 'Research-Profile, Zeitsteuerung und Aufträge bauen (P06.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 19:16'
+updated_date: '2026-10-06 00:07'
 labels:
   - p06
   - r2
@@ -39,7 +39,7 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Recherche läuft ohne GitHub-Ereignis.
+- [x] #1 Recherche läuft ohne GitHub-Ereignis.
 - [x] #2 Pause verhindert neue Läufe.
 - [x] #3 doppelte Scheduler-Aufrufe erzeugen keinen doppelten Auftrag.
 - [ ] #4 ein Profilwechsel verändert laufende Jobs nicht rückwirkend.
@@ -82,4 +82,6 @@ Root D02 clarification formalized in domain-contracts: prepared native schedule 
 Fresh SPEC at frozen 6f1d062 reproduced a P2 lost-ACK UI defect in actual React: failed pause/activation/delete closures can become unreachable after reactive profile state changes; a later same-kind toggle replays an obsolete successful receipt without applying current intent. Registered 19 and own 9 native cases pass, but independent browser counterexample is red. Root verified shared command callers; minimal explicit retry/new-command correction assigned to original implementer before re-SPEC. No acceptance criterion checked or Done transition from initial implementation.
 
 Final code source c300fa4 (backend32ed459 / initial6f1d062); independent re-SPEC and fresh QUALITY PASS. Review .docs/reviews/task-20-research-profile-validation.md preserves original P2 lost-ACK browser RED and corrected visible exact-retry/fresh-intent path. Initial implementer387/26 and full checks/codegen/EU Dev20:52:14 remain separate; UI-only correction actual browser/type/lint/build/bundle/diff passed, no backend/Dev rerun. Initial SPEC19+9own backend/browser RED; delta six own actual UI groups+registered browser PASS. QUALITY23 registered+7own native+3own actual UI+registered browser PASS, harness role-render correction explicit. AC2 pause and AC3 exact native occurrence checked as code criteria. AC1 real independent research and full AC4 running downstream research remain unchecked for21/22; immutable queued snapshot proof is not paid running execution. Actual search funding/rights/processing/pricing/invoice/Content-Agent caller/lifecycle/manual gates remain open. No provider/grant activation or Done; In Progress pending explicit manual user confirmation.
+
+AC1 nowSOFTWAREverified byreviewedactual22.2/22.3registered fundednative+model Workflow fixtures withoutGitHub; profiles/schedules/providers/pipeline actualhelpers useaccountwithnoGitHub. No paid/provideractivation/manualclaim. AC4 exactordinarysaveWHILEnative/modelIOunresolved+oldprompt/evidenceprofileVersion notyettested: currentqueued/finishedcasesinsufficient. Read-onlysupplement /tmp/dispatch-research-content-provenance-map.md; keepAC4open pendingmeaningfulactualIOregression inupcomingsourcehandoffintegration. Pause/deletewithdrawal cancels bydesign, ordinarysave retainsimmutableorder. TaskInProgress, noDone.
 <!-- SECTION:NOTES:END -->
