@@ -4,7 +4,7 @@ title: Messgrundlage bereits in der Beta schaffen (P08.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 06:02'
+updated_date: '2026-10-06 06:08'
 labels:
   - p08
   - r3
@@ -77,4 +77,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 Read-only current metrics receipt prepared at /tmp/dispatch-x-metrics-current-docs.md: exactly three Context7 commands (library first, official X API v2 /websites/x_x-api) plus primary official page verification, no live provider or activation. Current metrics guide documents own user-context private metrics within30days and distinct repeated impressions/video aggregation, but current lookup reference differs in post.fields/repost_count versus guide tweet.fields/retweet_count. Future collector must version and explicitly verify the configured dialect, field eligibility and missing/partial states; this discrepancy is not silently normalized into measured zeros. No TASK30 code or acceptance is claimed; D12 collection-purpose/window/budget decision remains before activation.
 
 ROOTpreparation only until TASK29 finalQUALITY softwareacceptance. Current brief c4bc7ecc readfull, map bb994855/currentofficialXdocs48dce459 reused. ActualbeforeSend→onePOST→immediatereceipt boundary traced, capturethen-known exactversion assessment or NULL, no laterbackfill or publishblock. D12 purpose own-post descriptive/editorialfeedback, no training/embed/causal/autonomy; operatorapproval notactivated. Separate approvedownnumericcounts authority from upstreamshortResearchtext horizons; protectedassessment/context joins stillfullsource/horizon cleanup. Explicitdialect/missingfield states, sameledger/purpose/currentOAuth, bounded24/48windows. Newrows/jobs futureinventory/export/delete/recovery needsdocumenting notpremature33/36certification. No sourcewriter/code/AC/live/manualDone yet.
+
+Released after reviewed TASK29 correctedSOURCE43647691, SPEC7/freshQUALITY3 own PASS/full674/39/EUDev07:52:14, metadata a707dd4. Fresh sole writer owns actual metrics/publicationbinding/Analytics/editorialfeedback and affected tests; ROOT metadata only. Current brief c4bc7ecc authoritative, especially separate independent own-count authority and protected-derived source cleanup. Default OFF/visible missing configuration; no approvals/policy seeds/activation. Exact freeze before scoped commit then SPEC and QUALITY; AC1 real permitted data and all manual Done gates remain open.
 <!-- SECTION:NOTES:END -->
