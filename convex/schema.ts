@@ -1,3 +1,10 @@
+import {
+  historyPolicyFields,
+  historyControlFields,
+  historyJobFields,
+  historyPostFields,
+  historyAttemptFields,
+} from "./performance/historyFields";
 import { feedbackFields as contentFeedbackFields } from "./content/feedbackFields";
 import {
   policyFields as performancePolicyFields,
@@ -101,6 +108,28 @@ export default defineSchema({
       "versionId",
       "sourceUnavailable",
     ])
+    .index("by_sourceUntil", ["sourceUntil"]),
+  historyPolicies: defineTable(historyPolicyFields)
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
+    .index("by_workspaceId_and_accountId_and_version", [
+      "workspaceId",
+      "accountId",
+      "version",
+    ]),
+  historyControls: defineTable(historyControlFields).index(
+    "by_workspaceId_and_accountId",
+    ["workspaceId", "accountId"],
+  ),
+  historyJobs: defineTable(historyJobFields)
+    .index("by_checkpointUntil", ["checkpointUntil"])
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"]),
+  historyPosts: defineTable(historyPostFields)
+    .index("by_workspaceId_and_accountId_and_externalId", [
+      "workspaceId",
+      "accountId",
+      "externalId",
+    ])
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
     .index("by_sourceUntil", ["sourceUntil"]),
   performancePolicies: defineTable(performancePolicyFields)
     .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
@@ -384,6 +413,7 @@ export default defineSchema({
       v.object(nativeAttemptFields),
       v.object(jevAttemptFields),
       v.object(metricsAttemptFields),
+      v.object(historyAttemptFields),
     ),
   )
     .index("by_jev_operation", [
@@ -474,6 +504,11 @@ export default defineSchema({
     .index("by_installationId_and_selected", ["installationId", "selected"])
     .index("by_workspaceId_and_selected", ["workspaceId", "selected"]),
   xPostAttempts: defineTable(attemptFields)
+    .index("by_workspaceId_and_accountId_and_externalId", [
+      "workspaceId",
+      "accountId",
+      "externalId",
+    ])
     .index("by_scheduleId_and_generation_and_position", [
       "scheduleId",
       "generation",

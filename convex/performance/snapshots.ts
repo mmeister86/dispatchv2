@@ -9,7 +9,7 @@ import { internal } from "../_generated/api";
 import { workspaceQuery, requireReference } from "../lib/authorization";
 import type { Doc } from "../_generated/dataModel";
 import { authority, policy, fingerprint } from "./capabilities";
-import { scope, snapshotDoc, field, dialect } from "./fields";
+import { scope, snapshotDoc, field, dialect, windows } from "./fields";
 import { changeLiability } from "../ai/accounting";
 import { draftResearchProof } from "../research/contentProof";
 import { assessmentDoc } from "../intelligence/assessmentFields";
@@ -31,7 +31,7 @@ export async function enqueue(ctx: MutationCtx, c: Doc<"xPostAttempts">) {
   } catch {
     return;
   }
-  for (const windowHours of [24, 48] as const) {
+  for (const windowHours of p.windows ?? ([24, 48] as const)) {
     const old = await ctx.db
       .query("performanceSnapshots")
       .withIndex("by_postAttemptId_and_windowHours", (q) =>
@@ -319,6 +319,8 @@ export const finish = internalMutation({
         state: a.knownCharge ? "observed" : "blocked",
         fields: a.fields,
         observedAt: Date.now(),
+        observedAgeMs: Date.now() - row.confirmedAt,
+        late: Date.now() > row.dueAt + 60000,
         providerCreatedAt: a.providerCreatedAt,
         reason: a.reason,
       });
@@ -429,8 +431,27 @@ export const overview = workspaceQuery({
   returns: v.object({
     enabled: v.boolean(),
     reason: v.union(v.string(), v.null()),
+    configuration: v.union(
+      v.object({
+        id: v.id("performancePolicies"),
+        fingerprint: v.string(),
+        windows: v.array(v.number()),
+        unitMicros: v.number(),
+        currency: v.string(),
+      }),
+      v.null(),
+    ),
     posts: v.array(
       v.object({
+        network: v.literal("x"),
+        accountSize: v.null(),
+        contentType: v.union(
+          v.literal("post"),
+          v.literal("thread-member"),
+          v.literal("unknown"),
+        ),
+        mediaType: v.union(v.literal("none"), v.literal("unknown")),
+        scheduleId: v.id("schedules"),
         postAttemptId: v.id("xPostAttempts"),
         externalId: v.string(),
         position: v.number(),
@@ -454,9 +475,10 @@ export const overview = workspaceQuery({
         q.eq("workspaceId", args.workspaceId).eq("accountId", args.accountId),
       )
       .unique();
-    let reason: string | null = null;
+    let reason: string | null = null,
+      configured: Doc<"performancePolicies"> | null = null;
     try {
-      await policy(ctx, args);
+      configured = await policy(ctx, args);
       if (control?.enabled) await authority(ctx, args);
     } catch (e) {
       reason =
@@ -513,7 +535,7 @@ export const overview = workspaceQuery({
         }
       }
       const snapshots = [];
-      for (const windowHours of [24, 48] as const) {
+      for (const windowHours of windows) {
         const r = await ctx.db
           .query("performanceSnapshots")
           .withIndex("by_postAttemptId_and_windowHours", (q) =>
@@ -528,7 +550,15 @@ export const overview = workspaceQuery({
         )
           snapshots.push(
             r.expiresAt > Date.now()
-              ? r
+              ? {
+                  ...r,
+                  late:
+                    r.late ??
+                    (r.observedAt !== null && r.observedAt > r.dueAt + 60000),
+                  ...(r.observedAt !== null
+                    ? { observedAgeMs: r.observedAt - r.confirmedAt }
+                    : {}),
+                }
               : {
                   ...r,
                   fields: [],
@@ -537,7 +567,20 @@ export const overview = workspaceQuery({
                 },
           );
       }
+      const publishedVersion = await ctx.db.get(c.versionId);
       posts.push({
+        network: "x" as const,
+        accountSize: null,
+        contentType: publishedVersion
+          ? publishedVersion.content.text.length > 1
+            ? ("thread-member" as const)
+            : ("post" as const)
+          : ("unknown" as const),
+        mediaType:
+          publishedVersion?.content.media.length === 0
+            ? ("none" as const)
+            : ("unknown" as const),
+        scheduleId: c.scheduleId,
         postAttemptId: c._id,
         externalId: c.externalId,
         position: c.position,
@@ -565,6 +608,15 @@ export const overview = workspaceQuery({
     return {
       enabled: control?.enabled ?? false,
       reason: reason ?? (control?.enabled ? null : "OWN_METRICS_PAUSED"),
+      configuration: configured
+        ? {
+            id: configured._id,
+            fingerprint: await fingerprint(configured),
+            windows: configured.windows ?? [24, 48],
+            unitMicros: configured.unitMicros,
+            currency: configured.currency,
+          }
+        : null,
       posts,
     };
   },

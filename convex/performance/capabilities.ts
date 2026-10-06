@@ -64,6 +64,11 @@ export async function policy(
       p.protocolEvidence,
       p.allocationEvidence,
     ].some((x) => !x.trim() || x.length > 2000) ||
+    (p.windows !== undefined &&
+      (!p.windows.length ||
+        new Set(p.windows).size !== p.windows.length ||
+        !p.windowsEvidence?.trim() ||
+        p.windowsEvidence.length > 2000)) ||
     !p.fields.length ||
     p.fields.length > 8 ||
     new Set(p.fields).size !== p.fields.length ||
@@ -133,7 +138,7 @@ export async function grants(
 export async function credential(
   ctx: Ctx,
   a: { workspaceId: Id<"workspaces">; accountId: Id<"socialAccounts"> },
-  p: Doc<"performancePolicies">,
+  p: Pick<Doc<"performancePolicies">, "providerIdentity">,
 ) {
   const c = await ctx.db
     .query("xCredentials")
@@ -237,7 +242,12 @@ export const configure = internalMutation({
   },
 });
 export const consent = workspaceMutation({
-  args: { accountId: scope.accountId, enabled: v.boolean() },
+  args: {
+    accountId: scope.accountId,
+    enabled: v.boolean(),
+    policyId: v.optional(v.id("performancePolicies")),
+    policyFingerprint: v.optional(v.string()),
+  },
   returns: v.null(),
   handler: async (ctx, a) => {
     requireRole(ctx.membership, ["Owner", "Admin"]);
@@ -245,6 +255,13 @@ export const consent = workspaceMutation({
     requireReference(args.workspaceId, await ctx.db.get(a.accountId));
     if (a.enabled) {
       const p = await policy(ctx, args);
+      if (
+        (p.windows !== undefined ||
+          a.policyId !== undefined ||
+          a.policyFingerprint !== undefined) &&
+        (a.policyId !== p._id || a.policyFingerprint !== (await fingerprint(p)))
+      )
+        throw new ConvexError("OWN_METRICS_WINDOW_CONSENT_POLICY_CHANGED");
       await grants(ctx, p);
       await credential(ctx, args, p);
     }

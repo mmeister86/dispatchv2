@@ -49,4 +49,10 @@ crons.interval(
   internal.content.feedback.sweep,
   { cursor: null },
 );
+crons.interval(
+  "Own history text cleanup",
+  { minutes: 15 },
+  internal.performance.history.expire,
+  {},
+);
 export default crons;

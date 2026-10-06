@@ -7,7 +7,11 @@ export const dialect = v.union(
   v.literal("tweet-fields-retweet-v2"),
   v.literal("post-fields-repost-v2"),
 );
+export const windows = [0.25, 1, 6, 24, 48] as const;
+export const windowHours = v.union(...windows.map(v.literal));
 export const policyFields = {
+  windows: v.optional(v.array(windowHours)),
+  windowsEvidence: v.optional(v.string()),
   ...scope,
   version: v.string(),
   approvedBy: v.id("users"),
@@ -77,7 +81,9 @@ export const snapshotFields = {
   externalId: v.string(),
   position: v.number(),
   confirmedAt: v.number(),
-  windowHours: v.union(v.literal(24), v.literal(48)),
+  windowHours,
+  observedAgeMs: v.optional(v.number()),
+  late: v.optional(v.boolean()),
   dueAt: v.number(),
   generation: v.number(),
   state: v.union(
