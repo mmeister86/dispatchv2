@@ -4,7 +4,7 @@ title: 'Modellaktivierung und Rückfall auf die Baseline absichern (P11.03, Teil
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 13:28'
+updated_date: '2026-10-06 14:01'
 labels:
   - p11
   - r5
@@ -35,10 +35,10 @@ Scoregewichte und Routing-/Verifier-Policies getrennt versionieren und nur für 
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Nur dokumentiert verbesserte und freigegebene Modellversionen werden für ihren belegten Geltungsbereich aktiviert.
-- [ ] #2 Rollback und Fallback auf statische Baseline funktionieren bei Fehlern oder Drift.
-- [ ] #3 Historische Predictions behalten ihre Profil-/Modellreferenzen; Aktivierungs- und Rücknahmetests bestehen.
-- [ ] #4 Rollback von Gewichtung und Entscheidungsschwellen ist geprüft, ohne historische Assessments umzuberechnen oder ihren ursprünglichen Versionsstand zu verlieren.
+- [x] #1 Nur dokumentiert verbesserte und freigegebene Modellversionen werden für ihren belegten Geltungsbereich aktiviert.
+- [x] #2 Rollback und Fallback auf statische Baseline funktionieren bei Fehlern oder Drift.
+- [x] #3 Historische Predictions behalten ihre Profil-/Modellreferenzen; Aktivierungs- und Rücknahmetests bestehen.
+- [x] #4 Rollback von Gewichtung und Entscheidungsschwellen ist geprüft, ohne historische Assessments umzuberechnen oder ihren ursprünglichen Versionsstand zu verlieren.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -67,4 +67,6 @@ ROOT releases scoped engineering after independently accepted43.2 source21ccb0e.
 2026-10-06 timing refinement: actual snapshots.begin forbids collection beforeconfirmedAt+24h. Negative24h-minus-tolerance fixtures would be unreachable. Original28-day publication span/24h maturity and30-day numeric retention normally leave <2d; <=60s positive confirmation delay can give incidental slack, so universal impossibility was not claimed. ROOT chooses ONE mature block1 checkpoint with D<F<=unusedblock2Start and original horizons; no phase/second-continuity branch/initialpermission. Existing native secondblock vocabulary grants no authority. This fully scoped finite drift/expiry/rollback contract is simpler and reachable without altering original retention; writer informed before verifying two-checkpoint branches.
 
 Root-Fortsetzungsprüfung vor Freeze: native positive Kandidatenbindung/beforeSend und echter160-Query-Child-Fallback bestehen laut Writer. Optionaler assessments.get-Child erhält ebenfalls aktuelle transactionLimits. Operations erhält direkte Owner-Deklaration mit leeren Pflichtfeldern statt bloßer Konfigurationsanweisung. Bestätigter Lifecycle-Fehler: Sweep durfte deklarierte/finale Einmal-Sperren nicht durch Löschen freigeben, solange passiver Originalkandidat gültig bleibt; sonst Rollenentzug/Wiederherstellung ermöglicht Ersatzversuch. Writer ersetzt geschützte Deklarations-/Check-Daten durch minimale scoped spent-ID-Marker in vorhandener Tabelle bis Originalkandidatenfrist und ergänzt native Gegenproben. Vertrag .docs/calibration-activation-contract.md präzisiert. Noch kein Freeze, keine frischen SPEC/QUALITY, keine AC-/Done-Abnahme.
+
+Softwarefortsetzung akzeptiert bei582ecf0 nach frischem SPEC42nativen+3eigenen und separatem QUALITY42+2eigenen Kontrollen. Full846/46, Typen, scopedFormat, finales konfiguriertesLint, Build/Bundle und frische reale styled Operations/SavedAssessment Browser bestehen. Exakter Source npx convex dev --once auf vorhandener accurate-lion-749.eu-west-1.convex.cloud am2026-10-06T14:00:20Z erfolgreich;18Source/Config-Hashes nach Codegen unverändert. Dauerbericht .docs/reviews/task-43.3-calibration-activation-validation.md. Ein endlicher nativer Monitoring-Check, Owner/CAS/Replay/Rollback und Frist-/Rechte-/Kapazitätsfallback; irreversible scoped spent-Marker verhindern Wiederholung nach Rechtewiederherstellung. Tatsächlicher beforeSend-Pin und historische Nichtnachfüllung nach ungültigem Beleg, geschützter Cleanup bei Erhalt ursprünglicher Assessments/Publishing/Finanzen geprüft. AC1–4 nur implementierte Softwaremechanik: echte Rechte/Policy, empirische Eignung/Driftgrenzen, Livebetrieb und manuelle Abnahme offen. In Progress bleibt erhalten; keine Done-Freigabe unterstellt.
 <!-- SECTION:NOTES:END -->
