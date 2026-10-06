@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 15:21'
-updated_date: '2026-10-06 15:23'
+updated_date: '2026-10-06 21:31'
 labels: []
 dependencies:
   - TASK-46.1
@@ -36,3 +36,19 @@ Nach separat akzeptiertem46.1 und finalem45: native konkrete Serienversion/CAS/R
 - [ ] #1 Automatisierte Prüfungen und noch offene manuelle Abnahme sind konkret dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Nach technisch geprüfter46.1 den bestehenden Planner, Style-Pin und nativen Semantik-Frame als konkrete Server-Transaktionen wiederverwenden.
+2. Endliche unveränderliche Serienversion, CAS-Belege und genau einen nächsten Callback implementieren; Dependency-Cleanup vor dem neuen Consumer hinzufügen.
+3. Vorbereitete Vektoren, explizite Themenzuordnung und Wiederholungsgrenze prüfen; fehlende Semantik als Shortage ausweisen.
+4. Bestehende selektive Annahme und unveränderliche Termine/Approval-/Publishing-Belege erhalten; echte Plans-Oberfläche anschließen.
+5. Native Scope/Replay/4-Occurrences/DST/Slot/Cleanup/0-Provider-Checks und styled Browser prüfen, Quelle einfrieren, fresh SPEC/distinct QUALITY und exaktes bestehendes EUDev dokumentieren.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Read-only Vorarbeit /tmp/dispatch-46.2-preflight.md vorhanden. Kein46.2Source-Writer freigegeben, Status bleibtToDo bis46.1 technisch geprüft ist. Minimal drei Serienfamilien plus normalisierte Vektor→Plan-Abhängigkeiten; vorhandene contentPlans dienen als Proposal-/Occurrence-Beleg. Kein zweiter Planner, Occurrence-/Frame-Ledger, Provider im Callback, automatische Annahme oder Terminänderung. Disable zieht unangenommene Serienvorschläge fail-closed zurück, bereits angenommene native Termine bleiben erhalten. Tatsächliche Style/Pillars, Themenzuordnung, gewünschtesFormat, Frequenz/IANA/Zeiten/Zeitraum/Threshold sind explizite Produktangaben und werden nicht erfunden.
+<!-- SECTION:NOTES:END -->

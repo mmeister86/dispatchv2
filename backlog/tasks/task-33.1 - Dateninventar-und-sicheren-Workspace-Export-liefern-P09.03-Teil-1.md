@@ -4,7 +4,7 @@ title: 'Dateninventar und sicheren Workspace-Export liefern (P09.03, Teil 1)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 21:03'
 labels:
   - p09
   - r3
@@ -53,4 +53,6 @@ Jev-Assessments/Caches, Usage, Frage-/Modell-/Formelreferenzen, kontrollierte Ev
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/data. Export includes local workspace, accounts/content/plans/media/preferences and scoped local feature settings; progress/download UI. Grenze: No backend/component export or provider secrets exist in this app. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Read-only Preflight auf master 5b76d52 mit 85/85 tatsächlich committed Domain-Tabellen, installierten Agent/Workflow/Workpool/BetterAuth-Daten, direkten R2-Objektpfaden, exakten Index-/Ownership-/Secret-/Cleanup-Lücken dokumentiert: .docs/reviews/task-33-data-inventory-preflight.md. Drei laufende TASK-46.1 Tabellen gesondert pending. Vollständiger Export/Löschkoordinator/gesetzliche Retention/Restore weiterhin unimplementiert bzw. unbelegt; kein AC- oder Done-Abschluss durch Quellinventar. Finalen46/47/49/50/67/68-Graph bei Einführung fortschreiben.
 <!-- SECTION:NOTES:END -->
