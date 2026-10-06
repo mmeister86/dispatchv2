@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-06 03:25'
+updated_date: '2026-10-06 03:31'
 labels:
   - p08
   - jev
@@ -76,4 +76,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 ROOT readonly preparation: current official SDK0.6.0/current primary source and Context7 docs mapped, no install or runtime acceptance yet. Release waits final27 review loop. Missing EU-processing evidence keeps real calls disabled; user preference visible configuration guidance. New concrete analyzer-purpose owner must reuse sole aiAttempts ledger/shared counters, not generation/native-search grants. No AC/Done/live processing claimed.
 
 Implementation released after final27 independent SPEC/QUALITY and corrected label review PASS. Fresh sole source writer uses current SDK0.6.0 primary/Context7 map, strict runtime normalization/bounds/default-off flags/circuit and existing single ledger counters with concrete analyzer ownership. No live paid calls/processing or policy/grant activation; future actual questions28.2/assessments28.3, no arbitrary public classification API. Full checks and independent reviews required before AC; manual Done open.
+
+ROOT read genuine normalization RED05:28:24 two executed failures (fractional valid score success and lowconfidence) before implementation, distinct GREEN05:29:10 two PASS. Actual SDK0.6.0 narrow package/lock pin underway; production resolver explicitly denies old27 unavailable refs. Internal SDK/runtime/admission/ledger/circuit/full checks pending. Minimal existing cache/eval-test receipt-owner discrimination authorized, no22.3 oracle/report retuning. No AC/Done/EU-processing/provider activation.
 <!-- SECTION:NOTES:END -->
