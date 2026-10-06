@@ -4,7 +4,7 @@ title: Mehrere Accounts sicher im redaktionellen Alltag unterstützen (P12.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 14:22'
+updated_date: '2026-10-06 15:24'
 labels:
   - p12
   - r5
@@ -67,4 +67,6 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: Global account selector, /settings/integrations, /agent, /research, /drafts/:id. Multiple mock accounts, visible context, explicit composer reassignment and renewed review; account-scoped research/chat and independent disconnect. Grenze: No real multi-account OAuth or provider quota isolation. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Read-only48Explorer /tmp/dispatch-continuation-48-seams.md vonRoot gelesen. Tatsächliche Gap: RealAgentChat hält nochglobalgültigesA trotz HeaderwechselB; andere Konfiguration zeigtB. OAuthdisconnectA löscht alle pendingStates desselben Initiators, kann bekanntenReconnectB zerstören. ManualA→B erstellt korrekt neuesVersionB; alter freigegebener geplanter A-Snapshot bleibt ausdrücklich ausführbar, nicht nurHistorie—Warnung muss echteZiele nennen, kein implizitesCancel. SharedFeedback record/list zählt MixedA→B editExtent alsA (keineBTextOffenlegung), minimalWriterSkip ohneThrow und LegacyReaderProof erforderlich, damit45/47 nichts falschableiten. Diese vorhandenenSeamKorrekturen werden nach44 vor45 gezogen; keinneuerAccountapparat/EntitlementPermission.100rowcap istkeinP10Tarif; vollekommerzielleZulässigkeit bleibt37-abhängig.
+
+SoleSourceWriter TASK48 nach vollständig akzeptiertem44 inklusive exaktemEUDev freigegeben. Tatsächliche ersteRED→GREEN-Regressionsfälle mixedAccountEdit und DisconnectA-erhält-knownBPendingReconnect; vorläufig37Affected/Typecheck lautWriter, nochkeinFreeze/Review/Abnahme. RootnurMetadaten; tatsächliche styledChat/globalAccount/FrozenScheduleTargets und vollständigeNativeBPreservation weiter inArbeit. Unrelated .zcodeignore wird nicht verändert.
 <!-- SECTION:NOTES:END -->

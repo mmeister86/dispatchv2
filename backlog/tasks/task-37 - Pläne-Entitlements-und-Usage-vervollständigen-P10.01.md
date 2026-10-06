@@ -4,7 +4,7 @@ title: 'Pläne, Entitlements und Usage vervollständigen (P10.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 15:27'
 labels:
   - p10
   - r4
@@ -57,4 +57,6 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/billing. Mock plan and quota usage, trial/active/limit/payment/grace/expired status previews; preserved contents on local downgrade. Grenze: No server-side entitlement enforcement, actual usage ledger or real billing grace policy. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Root hat /tmp/dispatch-continuation-37-38-seams.md vollständig gelesen. Aktuell keine nativeBilling/Trial/Subscription-Domain; SettingsCloudzeigt nochDemoDefaults mit rejectedLocalWrites. Tatsächliche fünf paidOwner-Familien teilen changeLiability(admission=true): dort künftig trustedCapability/ScopeResolver vorCounterAdmission; Reconcile/lateUnknownHold bleibt unabhängig von aktuellerTrial/Payment/Role. OAuthFinalize/NewAccount, repoIncrementalSelect, MediaReserve, nativeResearchAdmit/ProfileFire, sharedScheduleTransaction/FirstWrite/Restart/SendPreflight sind echteCommercialAdmissionSeams. 100Account undandereEngineeringCaps keineEntitlements. Später final46EmbeddingOwner/final49SeatAccept ergänzen, nichtfivefamiliesalsvollständigspäterausgeben. D10Catalog/Units/Trial/Grace/MigrationGrant nichtausDemoübernehmen; currentbeta migration muss ausdrücklichdefiniertbleiben. Read-only/no freshTests/source/config/provider; final48ffbeforesourceimplementationreconcile.
 <!-- SECTION:NOTES:END -->

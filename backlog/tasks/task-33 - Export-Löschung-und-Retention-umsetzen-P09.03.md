@@ -4,7 +4,7 @@ title: 'Export, Löschung und Retention umsetzen (P09.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 15:16'
+updated_date: '2026-10-06 15:25'
 labels:
   - p09
   - r3
@@ -77,4 +77,6 @@ Incrementelles reales Intelligence/Kalibrierungsinventar ergänzt: .docs/decisio
 TASK44 Inventar-Erweiterung vorbereitet: Root hat actual intelligenceSourceUpdates union/check/proposal/evaluation, optionale algorithmProfiles.update-Verweise und aktuelle Eval-Actor-Proofs vollständig gelesen. .docs/decisions/data-inventory.md dokumentiert actor/key/intent, base/check/proposal/eval/profile graph, public HTTPS forwarding, bounded attempts versus separate lawful retention. Noch pending fresh SPEC/QUALITY/exaktesEUDev; kein vollständiger Export/Löschlauf oder TASK33-Abnahme.
 
 TASK-44-Graph jetzt softwareakzeptiert an7427f01 und exaktesEUDev UTC15:15:11 verifiziert; .docs/decisions/data-inventory.md und .docs/reviews/task-44-source-updates-validation.md reconciled. Vollständige OriginalCheck→Proposal→Evaluation→DerivedProfile/ActorEdges und unknownCounterUnbestätigtheit erhalten; weder Lifecycleinventar noch Export/ErasurePolicy vollständig abgenommen. Keine Done-Änderung.
+
+Root hat read-only /tmp/dispatch-continuation-33-36-seams.md vollständig gelesen: nochkeinOperationsExport/Delete/RetentionBackend, UserLifecycle/Bootstrap kannfehlendenUser reprovisionieren, Actor/freeText und before/resultEdges brauchen eigeneErasureProofs. PrivateNativeChatOwnership, parent-onlyResearchCopyBindings, actualAgent/WorkflowArtefakte, R2readyFinal/latePUT und unknownPublishing/FinanceEltern dürfen nicht pauschal gelöschtwerden. InheritedGithubcontext maskiertCurrentProof, privateExcerpt/SummaryPhysischeGraphCleanup bislang explizitdeferred; 45+ neueDerivatives dürfen dieseDeferral nicht übernehmen. Bericht baseline7a1494c, laufender48 wedergeprüftnochgeändert; keinefrischenTests/LifecycleAbnahme.
 <!-- SECTION:NOTES:END -->

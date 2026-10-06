@@ -4,7 +4,7 @@ title: 'Deployment, Migrationen und Recovery abnehmen (P09.06)'
 status: To Do
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 15:16'
+updated_date: '2026-10-06 15:26'
 labels:
   - p09
   - r3
@@ -74,4 +74,6 @@ Restore-Referenzgraph Intelligence/Kalibrierung bei Source43.3 582ecf0 dokumenti
 TASK44 Restore-Graph im inkrementellen Inventar ergänzt: ursprünglicher public Check → immutable Proposal → human Evaluation → optional derived AlgorithmProfile, mit originalen Fristen/Scope/current Evaluator. Restore darf keinen beendeten HTTP-Versuch wiederholen, Quelle erneuern oder Profil aktivieren. Root hat actual Schema/Proof gelesen, unabhängige TASK44 Softwareabnahme noch ausstehend; keine whole-system Restore-Zertifizierung.
 
 TASK-44 an7427f01 frischesSPEC/QUALITY PASS, nativesEUDev UTC15:15:11 exit0 und35FrozenSource/ContextHashes auchnachCodegen exakt. Restore muss OriginalCheck/Proposal/Evaluation/DerivedProfile+CurrentActors reproofen, nieSourceDeadline/Replay/Authorityerneuern. Diese exakteDevPrüfung ersetzt keinen vollständigenRecovery/Restore/ProviderExercise; keinDone.
+
+Root hat /tmp/dispatch-continuation-33-36-seams.md gelesen: realeEnv/CI/ReleaseSmoke/Recovery nochoffen. NativeAgentMessages/StreamsDelete bedeutet nicht automatisch jedeMemory/File/VectorOwnership erfasst; Workflow>256Continuations/events/completionFailures/workpool konkretinventarisieren. IsolatedRestore muss neueErasure/WithdrawalEvidence ausserhalb älterenSnapshots reapplyen odertenantlocked bleiben; OriginalSource/Consent/Trial/SpentIDs/AbsentPins/Holds nieerneuern. Provider/R2Backup/EU/Retention/RPO/RTO realeFakten, keineMockcertificate. Baseline7a1494c/7427f01, final48/45-50Graphs späterreconciliieren.
 <!-- SECTION:NOTES:END -->

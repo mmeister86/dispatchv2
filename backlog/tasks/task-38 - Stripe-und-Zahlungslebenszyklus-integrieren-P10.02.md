@@ -4,7 +4,7 @@ title: Stripe und Zahlungslebenszyklus integrieren (P10.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 15:27'
 labels:
   - p10
   - r4
@@ -54,4 +54,6 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/billing. Review local plan changes, cancellation/reactivation, failure/trial/grace scenarios and illustrative invoice download. Grenze: No Stripe checkout, payments, contract, tax receipt, refunds or webhooks. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Root hat vollständigen /tmp/dispatch-continuation-37-38-seams.md gelesen: keineStripeDependency/Config/Webhook/Checkout/ReconcileCron vorhanden. KleinsterPfad concreteNativeBinding/OutboundCommand/InboundID+DigestReceipt+sameEntitlementApply mit unavailableUI, konkrete offering/SDK/signature erstoffiziellecurrentDocs+nächsteActualConfig. RawSignature/Environment/StoredCustomerScope→durableReceipt→ack; ArrivalTime/EventID keineProviderRevision, staleCanonicalResponse/CASallein reichtnicht—ingressgeneration/restrictiveCancelDeleteFence+actualCanonicalProof. Renewal setztOriginalProviderHolds nichtzurück; externCancel/Refund/Delete undlateFinance bleibenreconcilefähigohneProduktReaktivierung. D11ManagedPayments nurcandidate, nooffer/defaultprice/secrets/providerActivation/mail; manual/Done offen.
 <!-- SECTION:NOTES:END -->
