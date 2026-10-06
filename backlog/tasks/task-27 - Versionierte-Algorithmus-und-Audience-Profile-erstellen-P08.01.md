@@ -4,7 +4,7 @@ title: Versionierte Algorithmus- und Audience-Profile erstellen (P08.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 03:13'
+updated_date: '2026-10-06 03:20'
 labels:
   - p08
   - jev
@@ -92,4 +92,6 @@ ROOT read actual lifecycle browserPASS /tmp/dispatch-task27-browser-lifecycle.lo
 ROOT read pre-index readiness inventory13ownedpaths RAW7e2205a0aeb3e61f7e44e249f070c6828e01fffccafe6e7541fc2566febb33d8, retainedseparately /tmp/dispatch-task27-pre-index-source-inventory.json. Implementerreports602/31final/static/build/bundle/browser/codegen/posttype/existingEUDev05:04:56/posttypePASS; notSOURCEcommitted. ROOT actualcommoncode review foundrollback exacthistoricalpair by_scope+filter hasunboundedreceipt scan (unlike50versionlist/pagedhistory), noactualruntimefailureclaimed. Originalwriterconfirmsrootcallers andfixessameownedprofiles.ts/schema.ts withoneexactscope/pair/actionindex andmax1select+max1rollbacklookup aftercurrentproof; oldpairafter>50unrelatedcommandscontrol validation-only, noengine/newtable/helper. Sourcewindowclosed, freshfull/static/codegen/Dev/inventory requiredaftercorrection; original602receipts preserved. NoAC/Done.
 
 ROOT independentlyverified SOURCE4f7578353fb0ce0dd79ef833bcd99890b5b3bb76 exact13scopedcommit/current+gitshowhashes boundedinventory RAWc33e692b38599280c1a8f91d45a32bb519ad212b3a18bb1ccee51d244a0769a3, sourceSet79a81bcd9b40a600e0e9754b7a620deea472a9fcd8b7356d3259157aa9759af8. Final9profile05:08:05/603full31files05:08:21/static/build/bundle/codegen/posttype/existingEUDev05:09:38/posttypesPASS logsreadandhashed. ROOTreadactualprofilecurrentauthority/CAS/receipt/contextprojection source, correctedrollbackexactby_selection scope/pair/action2boundedfirstlookup; noactor/grant/bootstrap/modelsideeffects. Olderselectedrowappendedpast50versionlist, historypaged25. Backend-onlyindex/test/docdelta usesunchangedactualbrowserlifecycle receipt/UI+APIsourcebyteshonestly. Current13SOURCEfrozen, index/treecleanverified; freshBackendArchitect SPEC intelligence_profiles_spec dispatched fullunit BASE9ab3418, QUALITYonlyafterPASS. Actualanalysis/predictionAC1/2 and executablequestion/normalization/lowconfidencepartAC5 await28, nosoftwareAC/Done beforefreshreviews.
+
+Fresh independent SPEC PASS (9 registered +4 adversarial) and QUALITY PASS (9 registered +2 independent controls +603/31 full) read by ROOT; frozen13 hashes verified. Minor Operations global Demo label correction released to original writer, exact Operations/browser-only delta; same SPEC then same QUALITY pending. No AC checked yet; AC1/2/executable AC5 await genuine28 consumers, no fake predictions, manual Done open.
 <!-- SECTION:NOTES:END -->
