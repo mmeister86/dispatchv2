@@ -5,12 +5,26 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { nativeAttempt } from "./providerAccess";
 import { generationAttempt } from "../ai/accounting";
 import { sha256 } from "../lib/crypto";
-import { deliveredSource, materialHash } from "./evidence";
+import { draftResearchProof } from "./contentProof";
+import { deliveredSource, materialHash, currentEvidence } from "./evidence";
 type Ctx = QueryCtx | MutationCtx;
+export type MaterialWalk = {
+  remaining: number;
+  active: Set<string>;
+  resolved: Map<
+    string,
+    {
+      materials: Awaited<ReturnType<typeof deliveredSource>>[];
+      proofUntil: number;
+    }
+  >;
+};
+
 export async function historyMaterial(
   ctx: Ctx,
   o: Doc<"researchOrders">,
   pin: NonNullable<Doc<"researchOrders">["pipeline"]>["history"][number],
+  walk?: MaterialWalk,
 ) {
   const s = await ctx.db.get(pin.scheduleId),
     t = await ctx.db.get(pin.attemptId),
@@ -39,6 +53,7 @@ export async function historyMaterial(
     !ver.content.text[pin.position]
   )
     throw new ConvexError("RESEARCH_HISTORY_CHANGED");
+  await draftResearchProof(ctx, ver, walk);
   const text = ver.content.text[pin.position],
     title = ver.content.title;
   if (
@@ -54,10 +69,15 @@ export async function historyMaterial(
     confirmedAt: pin.confirmedAt,
   };
 }
-async function materialAuthority(ctx: Ctx, o: Doc<"researchOrders">) {
+async function materialAuthority(
+  ctx: Ctx,
+  o: Doc<"researchOrders">,
+  walk?: MaterialWalk,
+) {
   if (!o.pipeline || o.pipeline.cleanupState !== "retained")
     throw new ConvexError("RESEARCH_MATERIAL_REMOVED");
-  for (const pin of o.pipeline.history) await historyMaterial(ctx, o, pin);
+  for (const pin of o.pipeline.history)
+    await historyMaterial(ctx, o, pin, walk);
   const profile = await ctx.db.get(o.profileId);
   if (
     !profile ||
@@ -94,55 +114,87 @@ async function materialAuthority(ctx: Ctx, o: Doc<"researchOrders">) {
   }
   return until;
 }
-export async function currentMaterialProof(ctx: Ctx, o: Doc<"researchOrders">) {
-  let proofUntil = await materialAuthority(ctx, o);
-  for (const pin of o.pipeline!.contextPins ?? []) {
-    const original = await ctx.db.get(pin.orderId);
-    if (
-      !original ||
-      original.workspaceId !== o.workspaceId ||
-      original.accountId !== o.accountId
-    )
-      throw new ConvexError("RESEARCH_CONTEXT_OWNER_INVALID");
-    proofUntil = Math.min(proofUntil, await materialAuthority(ctx, original));
-    const d = await deliveredSource(ctx, original._id, pin.sourceId);
-    proofUntil = Math.min(proofUntil, pin.until, d.until);
-    if (
-      pin.until <= Date.now() ||
-      (await materialHash(d.s)) !== pin.materialHash
-    )
-      throw new ConvexError("RESEARCH_MATERIAL_CHANGED");
+export async function currentMaterialProof(
+  ctx: Ctx,
+  o: Doc<"researchOrders">,
+  walk: MaterialWalk = {
+    remaining: 32,
+    active: new Set(),
+    resolved: new Map(),
+  },
+) {
+  const prior = walk.resolved.get(o._id);
+  if (prior) return prior;
+  // ponytail: at most 32 distinct retained orders per proof; flatten older context before increasing this ceiling.
+  if (walk.active.has(o._id) || walk.remaining-- <= 0)
+    throw new ConvexError("RESEARCH_PROOF_ANCESTRY_LIMIT");
+  walk.active.add(o._id);
+  try {
+    let proofUntil = await materialAuthority(ctx, o, walk);
+    for (const pin of o.pipeline!.contextPins ?? []) {
+      const original = await ctx.db.get(pin.orderId);
+      if (
+        !original ||
+        original.workspaceId !== o.workspaceId ||
+        original.accountId !== o.accountId
+      )
+        throw new ConvexError("RESEARCH_CONTEXT_OWNER_INVALID");
+      proofUntil = Math.min(
+        proofUntil,
+        (await currentMaterialProof(ctx, original, walk)).proofUntil,
+      );
+      const d = await deliveredSource(ctx, original._id, pin.sourceId);
+      proofUntil = Math.min(proofUntil, pin.until, d.until);
+      if (
+        pin.until <= Date.now() ||
+        (await materialHash(d.s)) !== pin.materialHash
+      )
+        throw new ConvexError("RESEARCH_MATERIAL_CHANGED");
+    }
+    for (const pin of o.pipeline!.contextEvidence ?? []) {
+      const e = await ctx.db.get(pin.evidenceId),
+        original = await ctx.db.get(pin.orderId);
+      if (
+        !e?.payload?.model ||
+        e.state !== "review" ||
+        e.orderId !== pin.orderId ||
+        e.retentionUntil <= Date.now() ||
+        e.modelOrigin?.outputHash !== pin.outputHash ||
+        !original?.pipeline?.evidenceIds.includes(e._id)
+      )
+        throw new ConvexError("RESEARCH_CONTEXT_REMOVED");
+      if (original._id === o._id)
+        throw new ConvexError("RESEARCH_CONTEXT_OWNER_INVALID");
+      const evidenceProof = await currentEvidence(
+        ctx,
+        o.workspaceId,
+        e._id,
+        o.accountId,
+        walk,
+      );
+      proofUntil = Math.min(
+        proofUntil,
+        evidenceProof.proofUntil,
+        e.retentionUntil,
+      );
+    }
+    const result = [];
+    for (const pin of o.pipeline!.sourcePins) {
+      const d = await deliveredSource(ctx, o._id, pin.sourceId);
+      if (
+        pin.until <= Date.now() ||
+        (await materialHash(d.s)) !== pin.materialHash
+      )
+        throw new ConvexError("RESEARCH_MATERIAL_CHANGED");
+      proofUntil = Math.min(proofUntil, pin.until, d.until);
+      result.push(d);
+    }
+    const proof = { materials: result, proofUntil };
+    walk.resolved.set(o._id, proof);
+    return proof;
+  } finally {
+    walk.active.delete(o._id);
   }
-  for (const pin of o.pipeline!.contextEvidence ?? []) {
-    const e = await ctx.db.get(pin.evidenceId),
-      original = await ctx.db.get(pin.orderId);
-    if (
-      !e?.payload?.model ||
-      e.state !== "review" ||
-      e.orderId !== pin.orderId ||
-      e.retentionUntil <= Date.now() ||
-      e.modelOrigin?.outputHash !== pin.outputHash ||
-      !original?.pipeline?.evidenceIds.includes(e._id)
-    )
-      throw new ConvexError("RESEARCH_CONTEXT_REMOVED");
-    proofUntil = Math.min(
-      proofUntil,
-      e.retentionUntil,
-      await materialAuthority(ctx, original),
-    );
-  }
-  const result = [];
-  for (const pin of o.pipeline!.sourcePins) {
-    const d = await deliveredSource(ctx, o._id, pin.sourceId);
-    if (
-      pin.until <= Date.now() ||
-      (await materialHash(d.s)) !== pin.materialHash
-    )
-      throw new ConvexError("RESEARCH_MATERIAL_CHANGED");
-    proofUntil = Math.min(proofUntil, pin.until, d.until);
-    result.push(d);
-  }
-  return { materials: result, proofUntil };
 }
 export async function currentMaterials(ctx: Ctx, o: Doc<"researchOrders">) {
   return (await currentMaterialProof(ctx, o)).materials;

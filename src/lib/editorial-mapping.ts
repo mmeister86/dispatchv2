@@ -1,6 +1,9 @@
 import type { Id, Doc } from "../../convex/_generated/dataModel";
 import type { AppState, Draft, Schedule, Version, Approval } from "./model";
 export const versionView = (v: Doc<"draftVersions">): Version => ({
+  researchProofUntil: v.researchProofUntil,
+  sourceProofUntil: v.sourceProofUntil,
+  sourceUnavailable: v.sourceUnavailable,
   id: v._id,
   number: v.number,
   text: v.content.text,
@@ -78,23 +81,30 @@ export function scheduleView(
   s: Doc<"schedules">,
   v: Doc<"draftVersions">,
 ): Schedule {
+  const unavailable =
+    v.sourceUnavailable ||
+    (v.sourceProofUntil !== undefined && v.sourceProofUntil <= Date.now());
   return {
+    sourceProofUntil: v.sourceProofUntil,
+    sourceUnavailable: unavailable,
     id: s._id,
     purpose: s.purpose,
     externalPosts: s.externalPosts,
-    media: v.content.media,
+    media: unavailable
+      ? v.content.media.map((m) => ({ ...m, alt: "" }))
+      : v.content.media,
     draftId: s.draftId,
     workspaceId: s.workspaceId,
     accountId: s.accountId,
     version: s.versionNumber ?? v.number,
     versionId: s.versionId,
-    text: v.content.text,
+    text: unavailable ? v.content.text.map(() => "") : v.content.text,
     mediaIds: v.content.media.map((m) => m.assetId),
     at: new Date(s.at).toISOString(),
     timezone: s.timezone,
     localTime: s.localTime,
     generation: s.generation,
-    draftTitle: v.content.title,
+    draftTitle: unavailable ? "" : v.content.title,
     durableState: s.state,
     status:
       s.state === "partially_published"

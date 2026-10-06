@@ -27,6 +27,7 @@ import { sha256 } from "../lib/crypto";
 import { checkSource } from "../integrations/github/repositories";
 import { createDraftTransaction } from "../editorial";
 import { active, createRun } from "../ai/runs";
+import { researchSourceProof, projectIdea } from "../research/contentProof";
 const editable = ["Owner", "Admin", "Editor"] as const;
 const versionDoc = v.object({
   _id: v.id("ideaVersions"),
@@ -81,6 +82,10 @@ export async function currentIdeaSource(
   source: Doc<"ideaVersions">["source"],
 ) {
   if (source.kind === "note") return [];
+  if (source.kind === "research") {
+    await researchSourceProof(ctx, ws, source);
+    return [];
+  }
   if (source.kind === "context") {
     const { c } = await currentContext(ctx, source.contextId, true);
     if (c.workspaceId !== ws) throw new ConvexError("IDEA_SOURCE_CHANGED");
@@ -223,7 +228,18 @@ export const get = workspaceQuery({
     if (!id) return null;
     const idea = await ctx.db.get(id);
     if (!idea || idea.workspaceId !== ctx.workspace._id) return null;
-    return current(ctx, ctx.workspace._id, id);
+    const row = await current(ctx, ctx.workspace._id, id);
+    const version = await projectIdea(ctx, row.version);
+    return {
+      idea:
+        version.sourceUnavailable && row.idea.handoff
+          ? {
+              ...row.idea,
+              handoff: { ...row.idea.handoff, text: "", intent: "" },
+            }
+          : row.idea,
+      version,
+    };
   },
 });
 export const list = workspaceQuery({
@@ -246,7 +262,20 @@ export const list = workspaceQuery({
       isDone: p.isDone,
       continueCursor: p.continueCursor,
       page: await Promise.all(
-        p.page.map((i) => current(ctx, ctx.workspace._id, i._id)),
+        p.page.map(async (i) => {
+          const row = await current(ctx, ctx.workspace._id, i._id);
+          const version = await projectIdea(ctx, row.version);
+          return {
+            idea:
+              version.sourceUnavailable && row.idea.handoff
+                ? {
+                    ...row.idea,
+                    handoff: { ...row.idea.handoff, text: "", intent: "" },
+                  }
+                : row.idea,
+            version,
+          };
+        }),
       ),
     };
   },
@@ -287,6 +316,12 @@ export const edit = workspaceMutation({
       ideaId: idea._id,
       versionId: version._id,
       resultingVersionId,
+      ...(version.researchProofUntil
+        ? {
+            researchProofUntil: version.researchProofUntil,
+            researchCleanupPending: true,
+          }
+        : {}),
       actorId: ctx.user._id,
       kind: "edit",
       text: a.feedback.trim(),
@@ -308,6 +343,7 @@ export const archive = workspaceMutation({
     text(a.feedback, 1000, true);
     const { idea, version } = await current(ctx, ctx.workspace._id, a.ideaId);
     cas(idea, a.expectedRevision);
+    await currentIdeaSource(ctx, ctx.workspace._id, version.source);
     await ctx.db.patch(idea._id, {
       revision: idea.revision + 1,
       status: a.archived ? "archived" : idea.handoff ? "accepted" : "new",
@@ -318,6 +354,12 @@ export const archive = workspaceMutation({
       ideaId: idea._id,
       versionId: version._id,
       actorId: ctx.user._id,
+      ...(version.researchProofUntil
+        ? {
+            researchProofUntil: version.researchProofUntil,
+            researchCleanupPending: true,
+          }
+        : {}),
       kind: a.archived ? "reject" : "restore",
       text: a.feedback.trim(),
       createdAt: Date.now(),
@@ -340,7 +382,11 @@ export const history = workspaceQuery({
       .withIndex("by_ideaId_and_number", (q) => q.eq("ideaId", a.ideaId))
       .order("desc")
       .paginate(a.paginationOpts);
-    return { page: p.page, isDone: p.isDone, continueCursor: p.continueCursor };
+    return {
+      page: await Promise.all(p.page.map((v) => projectIdea(ctx, v))),
+      isDone: p.isDone,
+      continueCursor: p.continueCursor,
+    };
   },
 });
 export const feedback = workspaceQuery({
@@ -364,7 +410,18 @@ export const feedback = workspaceQuery({
       .withIndex("by_ideaId", (q) => q.eq("ideaId", a.ideaId))
       .order("desc")
       .paginate(a.paginationOpts);
-    return { page: p.page, isDone: p.isDone, continueCursor: p.continueCursor };
+    return {
+      page: await Promise.all(
+        p.page.map(async (row) => {
+          const ver = await ctx.db.get(row.versionId);
+          return !ver || (await projectIdea(ctx, ver)).sourceUnavailable
+            ? { ...row, text: "", sourceUnavailable: true }
+            : row;
+        }),
+      ),
+      isDone: p.isDone,
+      continueCursor: p.continueCursor,
+    };
   },
 });
 export const handoff = workspaceMutation({
@@ -390,6 +447,12 @@ export const handoff = workspaceMutation({
       throw new ConvexError("IDEA_CLARIFICATION_REQUIRED");
     if (a.accountId)
       requireReference(ctx.workspace._id, await ctx.db.get(a.accountId));
+    await currentIdeaSource(ctx, ctx.workspace._id, version.source);
+    if (
+      version.source.kind === "research" &&
+      a.accountId !== version.source.accountId
+    )
+      throw new ConvexError("RESEARCH_CONTENT_ACCOUNT_CHANGED");
     if (idea.handoff) {
       const h = idea.handoff;
       if (
@@ -417,6 +480,7 @@ export const handoff = workspaceMutation({
       ctx.user._id,
       {
         source: `Idee ${idea._id} · Version ${version.number}`,
+        ideaVersionId: version._id,
         content: {
           title: version.title,
           text: [a.draftText],
@@ -481,11 +545,15 @@ export const generate = workspaceMutation({
         prior.intent !== a.intent
       )
         throw new ConvexError("IDEA_OPERATION_CONFLICT");
+      const input = await ctx.db.get(prior.inputVersionId);
+      if (input) await currentIdeaSource(ctx, ctx.workspace._id, input.source);
       return prior.runId;
     }
     const { idea, version } = await current(ctx, ctx.workspace._id, a.ideaId);
     cas(idea, a.expectedRevision);
     if (idea.status === "archived") throw new ConvexError("IDEA_ARCHIVED");
+    if (version.source.kind === "research")
+      throw new ConvexError("RESEARCH_CONTENT_GENERATION_NOT_CONFIGURED");
     const sources = await currentIdeaSource(
       ctx,
       ctx.workspace._id,

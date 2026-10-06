@@ -16,8 +16,11 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { useGithubSourceProofClock } from "@/lib/github-source-proof";
 export function ideaError(e: unknown) {
   const s = e instanceof Error ? e.message : String(e);
+  if (s.includes("RESEARCH_CONTENT_GENERATION_NOT_CONFIGURED"))
+    return "Quellengebundene Research-Generation ist noch nicht freigegeben. Übergib die geprüften Angaben manuell als ungeprüften Entwurf; eine Publishing-Freigabe bleibt separat erforderlich.";
   if (s.includes("CLARIFICATION_REQUIRED"))
     return "Modellinterpretationen und unbelegte Angaben müssen vor der Entwurfsübergabe ausdrücklich geklärt werden.";
   if (s.includes("REVISION_CONFLICT"))
@@ -124,6 +127,45 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
         }
       : "skip",
   );
+  const protectedVersions = [
+    ...(list?.page.map((r) => r.version) ?? []),
+    ...(linked ? [linked.version] : []),
+    ...(history?.page ?? []),
+    ...(selected ? [selected.version] : []),
+  ];
+  const proofClock = useGithubSourceProofClock(
+    protectedVersions
+      .filter((v) => v.sourceProofUntil !== undefined)
+      .map((v) => ({
+        authorized: !v.sourceUnavailable,
+        proofExpiresAt: v.sourceProofUntil!,
+      })),
+  );
+  const unavailable = (v: Doc<"ideaVersions">) =>
+    v.sourceUnavailable ||
+    (v.sourceProofUntil !== undefined && v.sourceProofUntil <= proofClock);
+  const selectedLive = selected
+    ? [linked, ...(list?.page ?? [])].find(
+        (r) => r?.idea._id === selected.idea._id,
+      )
+    : null;
+  useEffect(() => {
+    if (
+      selected &&
+      (unavailable(selected.version) || selectedLive?.version.sourceUnavailable)
+    ) {
+      setSelected(null);
+      setTitle("");
+      setNote("");
+      setPerspective("");
+      setDraftText("");
+      setIntent("");
+      setOpen(false);
+      setMessage(
+        "Die Quellenfreigabe ist abgelaufen oder geändert. Geschützte Inhalte wurden ausgeblendet.",
+      );
+    }
+  }, [selected, selectedLive?.version.sourceUnavailable, proofClock]);
   const write = state.role !== "Viewer";
   async function command(fn: () => Promise<unknown>, success: () => void) {
     if (pending.current) return;
@@ -162,17 +204,19 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     setError("");
     operation.current = crypto.randomUUID();
   }
-  const rows = linkedId
-    ? linked
-      ? [linked]
-      : []
-    : (list?.page.filter(
-        (r) =>
-          (filter === "all" || r.idea.status === filter) &&
-          `${r.version.title} ${r.version.perspective} ${r.version.note}`
-            .toLowerCase()
-            .includes(query.toLowerCase()),
-      ) ?? []);
+  const rows = (
+    linkedId
+      ? linked
+        ? [linked]
+        : []
+      : (list?.page.filter(
+          (r) =>
+            (filter === "all" || r.idea.status === filter) &&
+            `${r.version.title} ${r.version.perspective} ${r.version.note}`
+              .toLowerCase()
+              .includes(query.toLowerCase()),
+        ) ?? [])
+  ).filter((r) => !unavailable(r.version));
   return (
     <div className="fade-in stack">
       <PageHeader
@@ -535,31 +579,33 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
           {selected && mode === "edit" && history && (
             <details>
               <summary>Unveränderliche Ideenversionen</summary>
-              {history.page.map((v) => (
-                <div className="border-t py-2" key={v._id}>
-                  <p className="text-xs">
-                    Version {v.number}: {v.title}
-                  </p>
-                  <p className="text-xs muted">
-                    {v.source.kind === "signal"
-                      ? "Signiertes Ereignis"
-                      : v.source.kind === "context"
-                        ? "Freigegebene Patch-Auszüge"
-                        : "Manuelle Notiz"}{" "}
-                    ·{" "}
-                    {v.runId
-                      ? "Modellinterpretation, Klärung erforderlich"
-                      : "Eigene Perspektive"}
-                  </p>
-                  {v.originals.map((o, i) => (
-                    <p className="text-xs" key={i}>
-                      Originalfakt: {o}
+              {history.page
+                .filter((v) => !unavailable(v))
+                .map((v) => (
+                  <div className="border-t py-2" key={v._id}>
+                    <p className="text-xs">
+                      Version {v.number}: {v.title}
                     </p>
-                  ))}
-                  <p className="text-xs">Nutzerangabe: {v.note}</p>
-                  <p className="text-xs">Perspektive: {v.perspective}</p>
-                </div>
-              ))}
+                    <p className="text-xs muted">
+                      {v.source.kind === "signal"
+                        ? "Signiertes Ereignis"
+                        : v.source.kind === "context"
+                          ? "Freigegebene Patch-Auszüge"
+                          : "Manuelle Notiz"}{" "}
+                      ·{" "}
+                      {v.runId
+                        ? "Modellinterpretation, Klärung erforderlich"
+                        : "Eigene Perspektive"}
+                    </p>
+                    {v.originals.map((o, i) => (
+                      <p className="text-xs" key={i}>
+                        Originalfakt: {o}
+                      </p>
+                    ))}
+                    <p className="text-xs">Nutzerangabe: {v.note}</p>
+                    <p className="text-xs">Perspektive: {v.perspective}</p>
+                  </div>
+                ))}
               <Button
                 variant="outline"
                 size="sm"

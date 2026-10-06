@@ -37,6 +37,9 @@ export interface Account {
   };
 }
 export interface Version {
+  researchProofUntil?: number;
+  sourceProofUntil?: number;
+  sourceUnavailable?: boolean;
   id?: string;
   media?: { assetId: string; alt: string }[];
   number: number;
@@ -91,6 +94,8 @@ export interface Draft {
   }[];
 }
 export interface Schedule {
+  sourceProofUntil?: number;
+  sourceUnavailable?: boolean;
   media?: { assetId: string; alt: string }[];
   purpose?: "publishing" | "first_write_verification";
   externalPosts?: {

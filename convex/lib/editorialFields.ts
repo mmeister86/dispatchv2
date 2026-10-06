@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { researchCopyFields } from "../research/contentFields";
 import { xEvidence } from "../integrations/x/fields";
 export const capability = v.object({
   maxText: v.number(),
@@ -91,6 +92,8 @@ export const draftFields = {
   updatedAt: v.number(),
 };
 export const versionFields = {
+  ...researchCopyFields,
+  ideaVersionId: v.optional(v.id("ideaVersions")),
   workspaceId: v.id("workspaces"),
   draftId: v.id("drafts"),
   number: v.number(),
@@ -179,6 +182,7 @@ export const notificationFields = {
 };
 
 export const commentFields = {
+  ...researchCopyFields,
   workspaceId: v.id("workspaces"),
   draftId: v.id("drafts"),
   versionId: v.id("draftVersions"),

@@ -36,6 +36,11 @@ export const assessment = v.object({
   eventQuote: v.union(v.string(), v.null()),
 });
 export const evidenceFields = {
+  inboxRevision: v.optional(v.number()),
+  inboxDisposition: v.optional(
+    v.union(v.literal("active"), v.literal("ignored"), v.literal("archived")),
+  ),
+  inboxActorId: v.optional(v.id("users")),
   modelOrigin: v.optional(
     v.object({
       runId: v.id("agentRuns"),

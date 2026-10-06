@@ -355,7 +355,12 @@ export const purge = internalMutation({
           )
           .take(20)
       : [];
-    for (const e of copies)
+    for (const e of copies) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.evidence,
+        { evidenceId: e._id },
+      );
       await ctx.db.patch(e._id, {
         payload: null,
         state: "removed",
@@ -371,6 +376,7 @@ export const purge = internalMutation({
             }
           : {}),
       });
+    }
     const copiesRemain = p.runId
       ? !!(await ctx.db
           .query("researchEvidence")

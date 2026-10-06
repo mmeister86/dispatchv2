@@ -1,5 +1,10 @@
 import { v } from "convex/values";
+import {
+  researchContentSource,
+  researchCopyFields,
+} from "../research/contentFields";
 export const ideaSource = v.union(
+  researchContentSource,
   v.object({ kind: v.literal("context"), contextId: v.id("githubContexts") }),
   v.object({ kind: v.literal("note") }),
   v.object({
@@ -48,6 +53,7 @@ export const ideaFields = {
   ),
 };
 export const ideaVersionFields = {
+  ...researchCopyFields,
   workspaceId: v.id("workspaces"),
   ideaId: v.id("ideas"),
   number: v.number(),
@@ -62,6 +68,7 @@ export const ideaVersionFields = {
   inputVersionId: v.optional(v.id("ideaVersions")),
 };
 export const feedbackFields = {
+  ...researchCopyFields,
   workspaceId: v.id("workspaces"),
   ideaId: v.id("ideas"),
   versionId: v.id("ideaVersions"),

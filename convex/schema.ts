@@ -70,6 +70,35 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  researchContentHandoffs: defineTable({
+    workspaceId: v.id("workspaces"),
+    actorId: v.id("users"),
+    accountId: v.id("socialAccounts"),
+    requestHash: v.string(),
+    commandKey: v.string(),
+    createdAt: v.number(),
+    selection: v.array(v.id("researchEvidence")),
+    count: v.number(),
+    target: v.union(v.literal("idea"), v.literal("draft")),
+    results: v.array(
+      v.object({
+        ideaId: v.id("ideas"),
+        ideaVersionId: v.id("ideaVersions"),
+        draftId: v.union(v.id("drafts"), v.null()),
+        draftVersionId: v.union(v.id("draftVersions"), v.null()),
+      }),
+    ),
+  })
+    .index("by_workspaceId_and_actorId_and_requestHash", [
+      "workspaceId",
+      "actorId",
+      "requestHash",
+    ])
+    .index("by_workspaceId_and_actorId_and_commandKey", [
+      "workspaceId",
+      "actorId",
+      "commandKey",
+    ]),
   researchClusters: defineTable(clusterFields).index(
     "by_workspaceId_and_accountId_and_key",
     ["workspaceId", "accountId", "key"],
@@ -184,17 +213,30 @@ export default defineSchema({
     ])
     .index("by_conversationId_and_createdAt", ["conversationId", "createdAt"]),
   ideas: defineTable(ideaFields)
+    .index("by_handoff_draftId", ["handoff.draftId"])
     .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"])
     .index("by_workspaceId_and_actorId_and_operationKey", [
       "workspaceId",
       "actorId",
       "operationKey",
     ]),
-  ideaVersions: defineTable(ideaVersionFields).index("by_ideaId_and_number", [
-    "ideaId",
-    "number",
-  ]),
-  ideaFeedback: defineTable(feedbackFields).index("by_ideaId", ["ideaId"]),
+  ideaVersions: defineTable(ideaVersionFields)
+    .index("by_source_evidenceId_and_researchCleanupPending", [
+      "source.evidenceId",
+      "researchCleanupPending",
+    ])
+    .index("by_researchCleanupPending_and_researchProofUntil", [
+      "researchCleanupPending",
+      "researchProofUntil",
+    ])
+    .index("by_ideaId_and_number", ["ideaId", "number"]),
+  ideaFeedback: defineTable(feedbackFields)
+    .index("by_versionId_and_researchCleanupPending", [
+      "versionId",
+      "researchCleanupPending",
+    ])
+
+    .index("by_ideaId", ["ideaId"]),
   contentRequests: defineTable(requestFields)
     .index("by_runId", ["runId"])
     .index("by_workspaceId_and_actorId_and_operationKey", [
@@ -363,9 +405,13 @@ export default defineSchema({
   })
     .index("by_assetId", ["assetId"])
     .index("by_versionId", ["versionId"]),
-  editorialComments: defineTable(commentFields).index("by_draftId", [
-    "draftId",
-  ]),
+  editorialComments: defineTable(commentFields)
+    .index("by_versionId_and_researchCleanupPending", [
+      "versionId",
+      "researchCleanupPending",
+    ])
+
+    .index("by_draftId", ["draftId"]),
   socialAccounts: defineTable(accountFields)
     .index("by_workspaceId", ["workspaceId"])
     .index("by_provider_and_providerIdentity", [
@@ -379,10 +425,13 @@ export default defineSchema({
     "workspaceId",
     "updatedAt",
   ]),
-  draftVersions: defineTable(versionFields).index("by_draftId_and_number", [
-    "draftId",
-    "number",
-  ]),
+  draftVersions: defineTable(versionFields)
+    .index("by_ideaVersionId_and_researchCleanupPending", [
+      "ideaVersionId",
+      "researchCleanupPending",
+    ])
+
+    .index("by_draftId_and_number", ["draftId", "number"]),
   approvals: defineTable(approvalFields)
     .index("by_versionId_and_accountId", ["versionId", "accountId"])
     .index("by_draftId", ["draftId"]),

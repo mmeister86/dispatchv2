@@ -24,6 +24,7 @@ import {
   scheduleDraft,
 } from "./model";
 import { api } from "../../convex/_generated/api";
+import { useGithubSourceProofClock } from "./github-source-proof";
 import type { Id } from "../../convex/_generated/dataModel";
 import { demoMode } from "./auth-client";
 import { toast } from "sonner";
@@ -508,6 +509,53 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
     workspaceId && routeId ? { workspaceId } : "skip",
     { initialNumItems: 50 },
   );
+  const proofVersions = [
+    ...list.results.flatMap((b) => b.versions),
+    ...(detail?.versions ?? []),
+    ...history.results,
+    ...list.results.flatMap((b) => b.comments),
+    ...(detail?.comments ?? []),
+  ];
+  const contentClock = useGithubSourceProofClock(
+    proofVersions
+      .filter((v) => v.sourceProofUntil !== undefined)
+      .map((v) => ({
+        authorized: !v.sourceUnavailable,
+        proofExpiresAt: v.sourceProofUntil!,
+      })),
+  );
+  const projectBundle = <T extends NonNullable<typeof detail>>(b: T): T => ({
+    ...b,
+    versions: b.versions.map((v) =>
+      v.sourceUnavailable ||
+      (v.sourceProofUntil !== undefined && v.sourceProofUntil <= contentClock)
+        ? {
+            ...v,
+            sourceUnavailable: true,
+            content: {
+              ...v.content,
+              title: "",
+              text: v.content.text.map(() => ""),
+              media: v.content.media.map((ref) => ({ ...ref, alt: "" })),
+              pillar: "",
+              strategy: "",
+            },
+            reason: "",
+          }
+        : v,
+    ),
+    comments: b.comments.map((c) => {
+      const v = b.versions.find((v) => v._id === c.versionId);
+      return c.sourceUnavailable ||
+        (c.sourceProofUntil !== undefined &&
+          c.sourceProofUntil <= contentClock) ||
+        (v?.sourceProofUntil !== undefined &&
+          v.sourceProofUntil <= contentClock)
+        ? { ...c, text: "" }
+        : c;
+    }),
+  });
+  const safeList = list.results.map(projectBundle);
   const fullDetail = detail
     ? {
         ...detail,
@@ -583,12 +631,12 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
       origin: "R2",
     })),
     drafts: [
-      ...list.results.filter((b) => b.draft._id !== detail?.draft._id),
-      ...(fullDetail ? [fullDetail] : []),
+      ...safeList.filter((b) => b.draft._id !== detail?.draft._id),
+      ...(fullDetail ? [projectBundle(fullDetail)] : []),
     ].map(draftView),
     schedules: [
-      ...list.results.filter((b) => b.draft._id !== detail?.draft._id),
-      ...(fullDetail ? [fullDetail] : []),
+      ...safeList.filter((b) => b.draft._id !== detail?.draft._id),
+      ...(fullDetail ? [projectBundle(fullDetail)] : []),
     ].flatMap((b) =>
       b.schedules.map((x) =>
         scheduleView(

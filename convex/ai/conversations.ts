@@ -349,6 +349,8 @@ export const send = mutation({
       inputVersionId = idea!.currentVersionId;
       const version = await ctx.db.get(inputVersionId);
       requireReference(c.workspaceId, version);
+      if (version!.source.kind === "research")
+        throw new ConvexError("RESEARCH_CHAT_NOT_CONFIGURED");
       await currentIdeaSource(ctx, c.workspaceId, version!.source);
       if (!versions.includes(inputVersionId)) versions.push(inputVersionId);
       context = {

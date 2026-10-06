@@ -118,6 +118,9 @@ test("concurrent handoff returns one actual immutable editorial draft/version an
     draftId: a.draftId,
   });
   expect(bundle!.versions[0]._id).toBe(a.versionId);
+  expect(
+    (bundle!.versions[0] as unknown as { ideaVersionId: string }).ideaVersionId,
+  ).toBe(a.ideaVersionId);
   expect(bundle!.versions[0].content.text).toEqual([handoffArgs(f).draftText]);
   expect(bundle!.approvals).toEqual([]);
   expect(bundle!.schedules).toEqual([]);
@@ -300,15 +303,54 @@ test("actual signed signal gets factual IDs and immutable metadata, content with
       operationKey: "foreign-signal",
     }),
   ).rejects.toThrow("REFERENCE_ACCESS");
+  const copied = await f.signed.mutation(
+    api.content.ideas.handoff,
+    handoffArgs({ ...f, ideaId }),
+  );
+  // Existing exact legacy relation remains usable even before optional source-field migration.
+  await f.t.run((ctx) =>
+    ctx.db.patch(copied.versionId, { ideaVersionId: undefined }),
+  );
+  expect(
+    (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: copied.draftId,
+    }))!.versions[0].content.title,
+  ).toBe(input.title);
   await f.t.run((ctx) =>
     ctx.db.patch(f.repositories[0], { content: false, generation: 2 }),
   );
+  expect(
+    (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: copied.draftId,
+    }))!.versions[0].content.title,
+  ).toBe("");
   await expect(
     f.signed.mutation(api.content.ideas.handoff, {
       ...handoffArgs({ ...f, ideaId }),
       accountId: null,
     }),
   ).rejects.toThrow("SOURCE_DISABLED");
+  const protectedReads = [
+    await f.signed.query(api.content.ideas.get, {
+      workspaceId: f.workspaceId,
+      ideaId,
+    }),
+    await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: copied.draftId,
+    }),
+    await f.signed.query(api.editorial.history, {
+      workspaceId: f.workspaceId,
+      draftId: copied.draftId,
+      paginationOpts: { cursor: null, numItems: 20 },
+    }),
+  ];
+  expect(JSON.stringify(protectedReads)).not.toContain(input.title);
+  expect(JSON.stringify(protectedReads)).not.toContain(
+    handoffArgs({ ...f, ideaId }).draftText,
+  );
 });
 test("configuration failure preserves original manual idea with no attempts/new results", async () => {
   const f = await manual();

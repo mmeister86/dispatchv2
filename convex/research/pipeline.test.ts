@@ -320,6 +320,115 @@ test("actual registered Workflow and funded Agent use only two physical calls, s
     ),
   ).toBe(true);
 });
+test("ordinary profile save during unresolved registered native transport preserves the active immutable query/model/evidence snapshot", async () => {
+  const f = await pipelineFixture();
+  let orderId: Id<"researchOrders">;
+  let calls = 0;
+  let capturedVersion: Id<"researchProfileVersions">;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+    calls++;
+    const body = JSON.parse(String(init?.body));
+    if (body.tools?.[0]?.type === "web_search") {
+      const active = (await f.t.run((ctx) => ctx.db.get(orderId)))!;
+      capturedVersion = active.profileVersionId;
+      expect(active.config).toMatchObject({
+        topics: "Product",
+        freshnessDays: 30,
+        topicCount: 5,
+      });
+      expect(JSON.stringify(body)).toContain("Product");
+      expect(JSON.stringify(body)).not.toContain("Future distinctive topics");
+      let release!: (response: Response) => void;
+      const unresolved = new Promise<Response>((resolve) => {
+        release = resolve;
+      });
+      await f.signed.mutation(api.research.profiles.change, {
+        workspaceId: f.workspaceId,
+        profileId: f.profileId,
+        expectedRevision: 2,
+        commandKey: "ordinary-active-edit",
+        action: {
+          kind: "save",
+          config: {
+            ...active.config,
+            topics: "Future distinctive topics",
+            freshnessDays: 7,
+            topicCount: 2,
+          },
+        },
+      });
+      const stillActive = (await f.t.run((ctx) => ctx.db.get(orderId)))!;
+      expect(stillActive.profileVersionId).toBe(capturedVersion);
+      expect(stillActive.config).toEqual(active.config);
+      release(streamResponse());
+      return unresolved;
+    }
+    expect(JSON.stringify(body.messages)).toContain("Product");
+    expect(JSON.stringify(body.messages)).not.toContain(
+      "Future distinctive topics",
+    );
+    return Response.json({
+      id: "active-profile-result",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({ text: await modelOutput(f, orderId) }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    });
+  });
+  orderId = await f.start();
+  await driveUntil(f, orderId, (o) => o.state === "completed");
+  const order = (await f.t.run((ctx) => ctx.db.get(orderId)))!;
+  expect(calls).toBe(2);
+  expect(order.profileVersionId).toBe(capturedVersion!);
+  expect(order.pipeline).toMatchObject({ step: 10, outcome: "completed" });
+  const evidence = (await f.t.run((ctx) =>
+    ctx.db.get(order.pipeline!.evidenceIds[0]),
+  ))!;
+  expect(evidence.payload!.perspective).toMatchObject({
+    profileVersionId: capturedVersion!,
+    topics: "Product",
+  });
+  const attempts = await f.t.run((ctx) => ctx.db.query("aiAttempts").collect());
+  expect(attempts).toHaveLength(2);
+  expect(
+    attempts.every((a) => a.state === "settled" && a.heldMicros === 0),
+  ).toBe(true);
+  expect(
+    attempts
+      .filter((a) => a.runId === order.pipeline!.runId)
+      .map((a) => a.estimatedMicros),
+  ).toEqual([30]);
+  const future = await f.signed.mutation(api.research.pipeline.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 3,
+    operationKey: "future-profile-order",
+    language: "de",
+    operations: ["web-search"],
+  });
+  const next = (await f.t.run((ctx) => ctx.db.get(future)))!;
+  expect(next.profileVersionId).not.toBe(capturedVersion!);
+  expect(next.config).toMatchObject({
+    topics: "Future distinctive topics",
+    freshnessDays: 7,
+    topicCount: 2,
+  });
+  await f.signed.mutation(api.research.runs.stop, {
+    workspaceId: f.workspaceId,
+    orderId: future,
+  });
+  expect(calls).toBe(2);
+});
 test("new workflow schedule alone reaches the pipeline and old saved callbacks cannot spend", async () => {
   const f = await pipelineFixture();
   await f.signed.mutation(api.research.profiles.change, {
@@ -1095,6 +1204,47 @@ async function seedCluster(f: Awaited<ReturnType<typeof pipelineFixture>>) {
   });
   return { first, old };
 }
+test("registered research handoff fails closed for a two-order retained-context cycle", async () => {
+  const f = await pipelineFixture();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());
+  const { first, old } = await seedCluster(f);
+  vi.mocked(globalThis.fetch).mockResolvedValue(
+    streamResponse([
+      { url: "https://cycle.test/new", title: "Distinct second topic" },
+    ]),
+  );
+  const second = await f.signed.mutation(api.research.pipeline.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 3,
+    operationKey: "cycle-second",
+    language: "de",
+    operations: ["web-search"],
+  });
+  const secondArgs = await prepared(f, second);
+  await f.t.mutation(internal.ai.researchTools.bindModel, secondArgs);
+  const next = (await f.t.run((ctx) => ctx.db.get(second)))!;
+  expect(next.pipeline!.contextEvidence).toHaveLength(1);
+  await f.t.run((ctx) =>
+    ctx.db.patch(first, {
+      pipeline: {
+        ...old.pipeline!,
+        contextPins: [{ ...next.pipeline!.sourcePins[0], orderId: second }],
+      },
+    }),
+  );
+  await expect(
+    f.signed.mutation(api.research.handoff.consume, {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      evidenceIds: [old.pipeline!.evidenceIds[0]],
+      target: "idea",
+      intent: "Prepare one proposal",
+      commandKey: "cycle-consume",
+    }),
+  ).rejects.toThrow("ANCESTRY_LIMIT");
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toEqual([]);
+});
 test("two semantic results update one existing cluster once and concurrent stage replay does not duplicate CAS", async () => {
   const f = await pipelineFixture();
   vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse());

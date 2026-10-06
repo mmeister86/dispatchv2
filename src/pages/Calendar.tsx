@@ -42,6 +42,7 @@ import {
   formatCivilDate,
   calendarWindow,
 } from "@/lib/time";
+import { useGithubSourceProofClock } from "@/lib/github-source-proof";
 import { useStore } from "@/lib/store";
 import {
   canApprove,
@@ -109,6 +110,30 @@ function CalendarContent({
     : (remote?.rows ?? []).map((row) =>
         scheduleView(row.schedule, row.version),
       );
+  const protectedSchedules = [
+    ...calendarSchedules,
+    ...(detail ? [detail] : []),
+    ...(moving ? [moving] : []),
+  ];
+  const proofClock = useGithubSourceProofClock(
+    protectedSchedules
+      .filter((s) => s.sourceProofUntil !== undefined)
+      .map((s) => ({
+        authorized: !s.sourceUnavailable,
+        proofExpiresAt: s.sourceProofUntil!,
+      })),
+  );
+  useEffect(() => {
+    const blocked = (s: Schedule | null) =>
+      s &&
+      (s.sourceUnavailable ||
+        (s.sourceProofUntil !== undefined &&
+          s.sourceProofUntil <= proofClock) ||
+        calendarSchedules.find((current) => current.id === s.id)
+          ?.sourceUnavailable);
+    if (blocked(detail)) setDetail(null);
+    if (blocked(moving)) setMoving(null);
+  }, [proofClock, remote, detail, moving]);
   const schedules = calendarSchedules.filter(
     (s) =>
       s.workspaceId === state.activeWorkspaceId &&

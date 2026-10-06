@@ -430,6 +430,21 @@ export function ComposerPage() {
   const [saving, setSaving] = useState(false);
   const identity = `${draft?.id}:${draft?.accountId}:${v?.number}`;
   useEffect(() => {
+    if (!v?.sourceUnavailable) return;
+    setText([""]);
+    setTitle("");
+    setPillar("");
+    setStrategy("generic");
+    setMediaAlts({});
+    setAnalysisText([]);
+    setAnalysis("idle");
+    setScheduleOpen(false);
+    setVariantOpen(false);
+    dirtyRef.current = false;
+    base.current = null;
+  }, [v?.sourceUnavailable, draft?.id]);
+
+  useEffect(() => {
     setAnalysis("idle");
     setAnalysisVersion(0);
     setAnalysisIdentity("");
@@ -623,7 +638,7 @@ export function ComposerPage() {
       />
     );
   const account = state.accounts.find((a) => a.id === accountId);
-  const canWrite = canEdit(state.role);
+  const canWrite = canEdit(state.role) && !v?.sourceUnavailable;
   const review = canApprove(state.role);
   const scheduled = state.schedules.filter(
     (s) => s.draftId === draft.id && s.status === "scheduled",
@@ -729,10 +744,16 @@ export function ComposerPage() {
           </>
         }
       />
+      {v.sourceUnavailable && (
+        <p role="alert">
+          Die Quellenfreigabe ist abgelaufen oder geändert. Geschützte Inhalte
+          wurden ausgeblendet; vorhandene technische Belege bleiben erhalten.
+        </p>
+      )}
       <FirstWriteConfirmation
-        key={`${draft.id}:${v.id}:${draft.accountId}`}
+        key={`${draft.id}:${v.id}:${draft.accountId}:${v.sourceUnavailable ?? false}`}
         draft={draft}
-        disabled={dirty || conflict || saving}
+        disabled={dirty || conflict || saving || !!v.sourceUnavailable}
       />
       {!demoMode && (
         <PublishingResults
@@ -1289,9 +1310,9 @@ export function ComposerPage() {
               </div>
             ))}
             <VersionCommentInput
-              key={draft.id}
+              key={`${draft.id}:${v.sourceUnavailable ?? false}`}
               version={v.number}
-              canWrite={canWrite}
+              canWrite={canWrite && !v?.sourceUnavailable}
               onSubmit={(text) => addComment(draft, text)}
             />
           </Section>

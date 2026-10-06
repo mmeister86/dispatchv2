@@ -1,4 +1,8 @@
-import { currentMaterials, currentMaterialProof } from "./pipelineAccess";
+import {
+  currentMaterials,
+  currentMaterialProof,
+  type MaterialWalk,
+} from "./pipelineAccess";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -205,11 +209,86 @@ export const create = workspaceMutation({
     return id;
   },
 });
+// Displayable Review is separate from freshness/support eligibility and publishing approval.
+export async function currentEvidence(
+  ctx: Ctx,
+  ws: Id<"workspaces">,
+  id: Id<"researchEvidence">,
+  accountId?: Id<"socialAccounts">,
+  walk?: MaterialWalk,
+) {
+  const e = await ctx.db.get(id);
+  requireReference(ws, e);
+  if (
+    !e ||
+    (accountId && e.accountId !== accountId) ||
+    e.state !== "review" ||
+    !e.payload ||
+    e.retentionUntil <= Date.now()
+  )
+    throw new ConvexError("RESEARCH_EVIDENCE_SOURCE_UNUSABLE");
+  const author = await ctx.db.get(e.annotationActorId);
+  if (!author) throw new ConvexError("RESEARCH_ACTOR_UNAVAILABLE");
+  requireRole((await requireWorkspace(ctx, ws, author)).membership, [
+    "Owner",
+    "Admin",
+    "Editor",
+  ]);
+  if (e.assessment) {
+    try {
+      const reviewer = await ctx.db.get(e.assessment.reviewerId);
+      if (!reviewer) throw new Error();
+      requireRole((await requireWorkspace(ctx, ws, reviewer)).membership, [
+        "Owner",
+        "Admin",
+      ]);
+    } catch {
+      throw new ConvexError("RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE");
+    }
+  }
+  const { o, s, until } = await deliveredSource(ctx, e.orderId, e.sourceId);
+  if (
+    o.accountId !== e.accountId ||
+    s.generation !== e.sourceGeneration ||
+    (await materialHash(s)) !== e.materialHash ||
+    e.payload.perspective.profileVersionId !== o.profileVersionId
+  )
+    throw new ConvexError("RESEARCH_EVIDENCE_MATERIAL_CHANGED");
+  let proofUntil = Math.min(until, e.retentionUntil);
+  if (e.modelOrigin) {
+    const run = await ctx.db.get(e.modelOrigin.runId);
+    if (
+      !o.pipeline ||
+      o.pipeline.runId !== e.modelOrigin.runId ||
+      o.pipeline.proposalHash !== e.modelOrigin.outputHash ||
+      !run ||
+      run.promptMessageId !== e.modelOrigin.promptMessageId ||
+      run.promptVersion !== e.modelOrigin.promptVersion ||
+      run.policyVersion !== e.modelOrigin.policyVersion
+    )
+      throw new ConvexError("RESEARCH_EVIDENCE_MODEL_CHANGED");
+    const proof = await currentMaterialProof(ctx, o, walk);
+    proofUntil = Math.min(proofUntil, proof.proofUntil);
+    for (const id of e.payload.model?.copySourceIds ?? [])
+      if (!proof.materials.some((d) => d.s._id === id))
+        throw new ConvexError("RESEARCH_EVIDENCE_MATERIAL_CHANGED");
+  }
+  if (proofUntil <= Date.now())
+    throw new ConvexError("RESEARCH_EVIDENCE_SOURCE_UNUSABLE");
+  return { e, o, s, proofUntil };
+}
+
 export const list = workspaceQuery({
   args: { orderId: v.id("researchOrders") },
   returns: v.array(
     v.object({
       evidenceId: v.id("researchEvidence"),
+      inboxRevision: v.number(),
+      inboxDisposition: v.union(
+        v.literal("active"),
+        v.literal("ignored"),
+        v.literal("archived"),
+      ),
       createdAt: v.number(),
       state: v.union(v.literal("review"), v.literal("removed")),
       reason: v.union(v.string(), v.null()),
@@ -235,47 +314,9 @@ export const list = workspaceQuery({
           proofUntil = 0,
           reason = e.reason;
         try {
-          if (e.workspaceId !== ctx.workspace._id) throw new Error();
-          let modelProofUntil = Number.MAX_SAFE_INTEGER;
-          if (e.modelOrigin) {
-            const order = await ctx.db.get(e.orderId);
-            if (!order?.pipeline) throw new Error();
-            modelProofUntil = (await currentMaterialProof(ctx, order))
-              .proofUntil;
-          }
-          const author = await ctx.db.get(e.annotationActorId);
-          if (!author) throw new Error();
-          requireRole(
-            (await requireWorkspace(ctx, e.workspaceId, author)).membership,
-            ["Owner", "Admin", "Editor"],
-          );
-          if (
-            e.state !== "review" ||
-            !e.payload ||
-            e.retentionUntil <= Date.now()
-          )
-            throw new Error();
-          const { s, until } = await deliveredSource(
-            ctx,
-            e.orderId,
-            e.sourceId,
-          );
-          if ((await materialHash(s)) !== e.materialHash) throw new Error();
-          if (e.assessment) {
-            try {
-              const reviewer = await ctx.db.get(e.assessment.reviewerId);
-              if (!reviewer) throw new Error();
-              requireRole(
-                (await requireWorkspace(ctx, e.workspaceId, reviewer))
-                  .membership,
-                ["Owner", "Admin"],
-              );
-            } catch (error) {
-              reason = "RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE";
-              throw error;
-            }
-          }
-          proofUntil = Math.min(until, e.retentionUntil, modelProofUntil);
+          const proof = await currentEvidence(ctx, ctx.workspace._id, e._id);
+          const s = proof.s;
+          proofUntil = proof.proofUntil;
           payload = e.payload;
           source = {
             materialHash: e.materialHash,
@@ -289,8 +330,12 @@ export const list = workspaceQuery({
             observedAt: s.observedAt,
             usableUntil: proofUntil,
           };
-        } catch {
-          reason = reason ?? "RESEARCH_EVIDENCE_NO_CURRENT_PROOF";
+        } catch (error) {
+          reason =
+            error instanceof ConvexError &&
+            error.data === "RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE"
+              ? String(error.data)
+              : (reason ?? "RESEARCH_EVIDENCE_NO_CURRENT_PROOF");
         }
         let validityUntil: number | null = null;
         if (
@@ -302,6 +347,8 @@ export const list = workspaceQuery({
         }
         return {
           evidenceId: e._id,
+          inboxRevision: e.inboxRevision ?? 0,
+          inboxDisposition: e.inboxDisposition ?? "active",
           createdAt: e.createdAt,
           state: payload ? ("review" as const) : ("removed" as const),
           reason,
@@ -363,19 +410,10 @@ export const review = workspaceMutation({
       throw new ConvexError("RESEARCH_EVIDENCE_VALIDITY_INVALID");
     if (!e!.payload || e!.state !== "review" || e!.retentionUntil <= Date.now())
       throw new ConvexError("RESEARCH_EVIDENCE_SOURCE_UNUSABLE");
-    if (e!.modelOrigin) {
-      const order = await ctx.db.get(e!.orderId);
-      if (!order?.pipeline) throw new ConvexError("RESEARCH_WORKFLOW_REQUIRED");
-      await currentMaterials(ctx, order);
-    }
-    const { s, until } = await deliveredSource(ctx, e!.orderId, e!.sourceId);
-    if ((await materialHash(s)) !== e!.materialHash)
-      throw new ConvexError("RESEARCH_EVIDENCE_MATERIAL_CHANGED");
-    const author = await ctx.db.get(e!.annotationActorId);
-    if (!author) throw new ConvexError("RESEARCH_ACTOR_UNAVAILABLE");
-    requireRole(
-      (await requireWorkspace(ctx, e!.workspaceId, author)).membership,
-      ["Owner", "Admin", "Editor"],
+    const { s, proofUntil: until } = await currentEvidence(
+      ctx,
+      ctx.workspace._id,
+      e!._id,
     );
     const note = e!.payload.annotation;
     if (
@@ -430,6 +468,9 @@ export const review = workspaceMutation({
       _id: _id,
       _creationTime: _time,
       assessment: _assessment,
+      inboxRevision: _inboxRevision,
+      inboxDisposition: _inboxDisposition,
+      inboxActorId: _inboxActor,
       parentEvidenceId: _parent,
       commandKey: _key,
       fingerprint: _hash,
@@ -474,7 +515,12 @@ export const expire = internalMutation({
   returns: v.null(),
   handler: async (ctx, a) => {
     const e = await ctx.db.get(a.evidenceId);
-    if (e?.state === "review" && e.retentionUntil <= Date.now())
+    if (e?.state === "review" && e.retentionUntil <= Date.now()) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.evidence,
+        { evidenceId: e._id },
+      );
       await ctx.db.patch(e._id, {
         payload: null,
         state: "removed",
@@ -490,6 +536,7 @@ export const expire = internalMutation({
             }
           : {}),
       });
+    }
     return null;
   },
 });
@@ -512,7 +559,10 @@ export async function clearSourceCopies(
         : indexed;
     })
     .take(batchSize);
-  for (const e of rows)
+  for (const e of rows) {
+    await ctx.scheduler.runAfter(0, internal.research.contentCleanup.evidence, {
+      evidenceId: e._id,
+    });
     await ctx.db.patch(e._id, {
       payload: null,
       state: "removed",
@@ -528,6 +578,7 @@ export async function clearSourceCopies(
           }
         : {}),
     });
+  }
   if (rows.length === batchSize)
     await ctx.scheduler.runAfter(0, internal.research.evidence.clearSource, {
       sourceId,
@@ -543,5 +594,34 @@ export const clearSource = internalMutation({
   handler: async (ctx, a) => {
     await clearSourceCopies(ctx, a.sourceId, a.oldMaterialHash);
     return null;
+  },
+});
+
+export const disposition = workspaceMutation({
+  args: {
+    evidenceId: v.id("researchEvidence"),
+    expectedRevision: v.number(),
+    disposition: v.union(
+      v.literal("active"),
+      v.literal("ignored"),
+      v.literal("archived"),
+    ),
+  },
+  returns: v.number(),
+  handler: async (ctx, a) => {
+    requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
+    const e = requireReference(
+      ctx.workspace._id,
+      await ctx.db.get(a.evidenceId),
+    ) as Doc<"researchEvidence">;
+    const revision = e.inboxRevision ?? 0;
+    if (revision !== a.expectedRevision)
+      throw new ConvexError("RESEARCH_INBOX_REVISION_CONFLICT");
+    await ctx.db.patch(e._id, {
+      inboxRevision: revision + 1,
+      inboxDisposition: a.disposition,
+      inboxActorId: ctx.user._id,
+    });
+    return revision + 1;
   },
 });

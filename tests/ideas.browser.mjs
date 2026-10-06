@@ -384,6 +384,31 @@ try {
   await expect(
     page.getByText("Linked older actual idea", { exact: true }),
   ).toBeVisible();
+  await page.evaluate(() => {
+    window.role = "Owner";
+    window.linked = {
+      ...window.linked,
+      version: {
+        ...window.linked.version,
+        title: "Protected cached idea",
+        note: "Protected copied note",
+        source: { kind: "research", evidenceId: "evidence" },
+        sourceProofUntil: Date.now() + 2000,
+      },
+    };
+    window.render();
+  });
+  await page.getByRole("button", { name: "Bearbeiten", exact: true }).click();
+  await dialog
+    .getByLabel("Eigene Angaben (ungeprüft)")
+    .fill("Protected edited buffer");
+  await expect(dialog).toHaveCount(0, { timeout: 5000 });
+  await expect(
+    page.getByText("Protected cached idea", { exact: true }),
+  ).toHaveCount(0);
+  expect(await page.locator("body").innerText()).not.toContain(
+    "Protected edited buffer",
+  );
   expect(errors).toEqual([]);
   console.log(
     "Actual real Ideas + signal handoff: loading/manual ack/idempotent key/pending/CAS buffer/draft-ID navigation/config failure/model clarification/account/stop/workspace/Viewer/withdrawal PASS; no provider call.",

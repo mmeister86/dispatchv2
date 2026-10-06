@@ -2039,7 +2039,7 @@ test("explicit human ISO event attribution uses the earliest relevant day withou
     annotation: { ...f.args.annotation, eventBased: true },
   });
   await f.review(id, {
-    eventAt: Date.parse(date) + 3600000,
+    eventAt: Math.min(Date.now(), Date.parse(date) + 3600000),
     eventQuote: `about ${date}`,
   });
   const result = (await f.list()).find((r) => r.assessment)!;

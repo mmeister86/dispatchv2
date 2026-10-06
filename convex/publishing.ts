@@ -5,7 +5,12 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { internal, components } from "./_generated/api";
-import { checkApproval, checkAccountConnection, event } from "./editorial";
+import {
+  checkApproval,
+  checkAccountConnection,
+  checkContentSource,
+  event,
+} from "./editorial";
 import { content } from "./lib/editorialFields";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
@@ -234,5 +239,10 @@ export const notify = internalAction({
 export const version = internalQuery({
   args: { versionId: v.id("draftVersions") },
   returns: v.union(content, v.null()),
-  handler: async (ctx, a) => (await ctx.db.get(a.versionId))?.content ?? null,
+  handler: async (ctx, a) => {
+    const ver = await ctx.db.get(a.versionId);
+    if (!ver) return null;
+    await checkContentSource(ctx, ver);
+    return ver.content;
+  },
 });

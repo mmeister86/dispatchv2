@@ -31,6 +31,12 @@ import { requireR2Binding } from "./media/binding";
 import { mimeLimit } from "./media/limits";
 import { FIRST_WRITE_MS } from "./publishing/postFields";
 import { resolveLocalTime } from "../src/lib/time";
+import {
+  draftResearchProof,
+  projectDraft,
+  draftIdeaVersion,
+} from "./research/contentProof";
+import { currentIdeaSource } from "./content/ideas";
 const draftDoc = v.object({
   _id: v.id("drafts"),
   _creationTime: v.number(),
@@ -68,6 +74,12 @@ const bundle = v.object({
     }),
   ),
 });
+export async function checkContentSource(
+  ctx: QueryCtx,
+  ver: Doc<"draftVersions">,
+) {
+  return draftResearchProof(ctx, ver);
+}
 const ACTIVE_SCHEDULE_LIMIT = 100;
 async function activeDraftSchedules(ctx: QueryCtx, draftId: Id<"drafts">) {
   return (
@@ -165,6 +177,19 @@ export async function draftBundle(
         .take(101);
   const commentsLimited = comments.length > 100;
   if (commentsLimited) comments.pop();
+  for (const [i, version] of versions.entries())
+    versions[i] = await projectDraft(ctx, version);
+  for (const [i, comment] of comments.entries()) {
+    const ver = await ctx.db.get(comment.versionId);
+    const projection = ver ? await projectDraft(ctx, ver) : null;
+    if (!projection || projection.sourceUnavailable)
+      comments[i] = { ...comment, text: "", sourceUnavailable: true };
+    else if (projection.sourceProofUntil !== undefined)
+      comments[i] = {
+        ...comment,
+        sourceProofUntil: projection.sourceProofUntil,
+      };
+  }
   const assets = await versionAssets(ctx, draft.workspaceId, versions);
   return {
     assets,
@@ -357,7 +382,10 @@ export const calendar = workspaceQuery({
       rows: await Promise.all(
         rows.map(async (schedule) => ({
           schedule,
-          version: (await ctx.db.get(schedule.versionId))!,
+          version: await projectDraft(
+            ctx,
+            (await ctx.db.get(schedule.versionId))!,
+          ),
         })),
       ),
       tooDense: false,
@@ -450,10 +478,28 @@ export async function createDraftTransaction(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
   actorId: Id<"users">,
-  a: { content: Doc<"draftVersions">["content"]; source: string },
+  a: {
+    content: Doc<"draftVersions">["content"];
+    source: string;
+    ideaVersionId?: Id<"ideaVersions">;
+  },
 ) {
   await validateContent(ctx, workspaceId, a.content);
   if (a.source.length > 500) throw new ConvexError("INVALID_SOURCE");
+  const sourceVersion = a.ideaVersionId
+    ? (requireReference(
+        workspaceId,
+        await ctx.db.get(a.ideaVersionId),
+      ) as Doc<"ideaVersions">)
+    : null;
+  if (sourceVersion) {
+    await currentIdeaSource(ctx, workspaceId, sourceVersion.source);
+    if (
+      sourceVersion.source.kind === "research" &&
+      a.content.accountId !== sourceVersion.source.accountId
+    )
+      throw new ConvexError("RESEARCH_CONTENT_ACCOUNT_CHANGED");
+  }
   const draftId = await ctx.db.insert("drafts", {
     workspaceId: workspaceId,
     revision: 1,
@@ -466,6 +512,13 @@ export async function createDraftTransaction(
     workspaceId: workspaceId,
     draftId,
     number: 1,
+    ...(a.ideaVersionId ? { ideaVersionId: a.ideaVersionId } : {}),
+    ...(sourceVersion?.researchProofUntil
+      ? {
+          researchProofUntil: sourceVersion.researchProofUntil,
+          researchCleanupPending: true,
+        }
+      : {}),
     content: a.content,
     mediaChecksums: await mediaSnapshot(ctx, a.content),
     authorId: actorId,
@@ -501,12 +554,35 @@ export const save = workspaceMutation({
     ) as Doc<"drafts">;
     if (d.revision !== a.expectedRevision)
       throw new ConvexError("SAVE_CONFLICT");
+    const currentVersion = d.currentVersionId
+      ? await ctx.db.get(d.currentVersionId)
+      : null;
+    if (
+      !currentVersion ||
+      currentVersion.workspaceId !== ctx.workspace._id ||
+      currentVersion.draftId !== d._id
+    )
+      throw new ConvexError("DRAFT_VERSION_CHANGED");
+    await checkContentSource(ctx, currentVersion);
+    if (
+      currentVersion?.researchProofUntil &&
+      a.content.accountId !== currentVersion.content.accountId
+    )
+      throw new ConvexError("RESEARCH_CONTENT_ACCOUNT_CHANGED");
     await validateContent(ctx, ctx.workspace._id, a.content);
     if (a.reason.length > 500) throw new ConvexError("INVALID_REASON");
+    const sourceIdeaVersion = await draftIdeaVersion(ctx, currentVersion);
     const versionId = await ctx.db.insert("draftVersions", {
       workspaceId: ctx.workspace._id,
       draftId: d._id,
       number: d.revision + 1,
+      ...(sourceIdeaVersion ? { ideaVersionId: sourceIdeaVersion._id } : {}),
+      ...(currentVersion?.researchProofUntil
+        ? {
+            researchProofUntil: currentVersion.researchProofUntil,
+            researchCleanupPending: true,
+          }
+        : {}),
       content: a.content,
       mediaChecksums: await mediaSnapshot(ctx, a.content),
       authorId: ctx.user._id,
@@ -534,6 +610,7 @@ export const approve = workspaceMutation({
     ) as Doc<"draftVersions">;
     if (ver.content.accountId !== a.accountId)
       throw new ConvexError("APPROVAL_ACCOUNT_MISMATCH");
+    await checkContentSource(ctx, ver);
     await validateContent(ctx, ctx.workspace._id, ver.content, true);
     await immutableMedia(ctx, ver);
     const existing = (
@@ -574,6 +651,7 @@ export async function firstWriteContent(
   workspaceId: Id<"workspaces">,
   ver: Doc<"draftVersions">,
 ) {
+  await checkContentSource(ctx, ver);
   const account = await validateContent(ctx, workspaceId, ver.content);
   if (
     !account ||
@@ -619,6 +697,7 @@ export async function checkImmutableMediaSource(
   ver: Doc<"draftVersions">,
 ) {
   const workspaceId = ver.workspaceId;
+  await checkContentSource(ctx, ver);
   await immutableMedia(ctx, ver);
   for (const [position, ref] of ver.content.media.entries()) {
     if (ver.mediaChecksums?.[position]?.assetId !== ref.assetId)
@@ -883,6 +962,7 @@ export async function checkApproval(
     workspaceId,
     await ctx.db.get(versionId),
   ) as Doc<"draftVersions">;
+  await checkContentSource(ctx, ver);
   const approval = requireReference(
     workspaceId,
     await ctx.db.get(approvalId),
@@ -1160,6 +1240,7 @@ export const addComment = workspaceMutation({
       ctx.workspace._id,
       await ctx.db.get(a.versionId),
     ) as Doc<"draftVersions">;
+    await checkContentSource(ctx, ver);
     if (!a.text.trim() || a.text.length > 5000)
       throw new ConvexError("INVALID_COMMENT");
     return ctx.db.insert("editorialComments", {
@@ -1167,6 +1248,12 @@ export const addComment = workspaceMutation({
       draftId: ver.draftId,
       versionId: ver._id,
       versionNumber: ver.number,
+      ...(ver.researchProofUntil
+        ? {
+            researchProofUntil: ver.researchProofUntil,
+            researchCleanupPending: true,
+          }
+        : {}),
       text: a.text.trim(),
       authorId: ctx.user._id,
       resolved: false,
@@ -1266,6 +1353,9 @@ export const history = workspaceQuery({
         ...a.paginationOpts,
         numItems: Math.min(20, Math.max(1, a.paginationOpts.numItems)),
       });
+    result.page = await Promise.all(
+      result.page.map((ver) => projectDraft(ctx, ver)),
+    );
     const assets = await versionAssets(ctx, ctx.workspace._id, result.page);
     return {
       ...result,
