@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 15:23'
-updated_date: '2026-10-06 23:51'
+updated_date: '2026-10-06 23:52'
 labels: []
 dependencies: []
 references:
@@ -27,12 +27,12 @@ Nach akzeptiertem48/45/46 konkrete native Hypothese/eine Hook-Format-TimingDimen
 - [x] #1 Spec und genaue prospective A/B-Zuordnung sind vor Beobachtung unveränderlich; Scope/Role/CAS/Replay/Cap/End/Stop verhindern rückwirkende oder doppelte Proben.
 - [x] #2 Exakte native Feedback-/Edit-Ereignisse liefern transparente Nenner/Konflikte/Fehlwerte ohne Wiederholungsinflation, Effort-/Kausalitäts- oder Generatorratebehauptung.
 - [x] #3 CurrentSource/Actor/BeforeResultHorizon masks und indexed physischeDerivativeCleanup erhalten bestätigtePublishing/Finanz-Eltern und erneuern keine Originalrechte.
-- [ ] #4 Native und tatsächliche styledExperimentsRoute sowie separate frische SPEC/QUALITY und exaktes bestehendes EUDev sind dokumentiert; empirical/manualDone bleiben offen.
+- [x] #4 Native und tatsächliche styledExperimentsRoute sowie separate frische SPEC/QUALITY und exaktes bestehendes EUDev sind dokumentiert; empirical/manualDone bleiben offen.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Automatisierte Prüfungen und noch offene manuelle Abnahme sind konkret dokumentiert.
+- [x] #1 Automatisierte Prüfungen und noch offene manuelle Abnahme sind konkret dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
@@ -78,4 +78,6 @@ Distinct fresh independent QUALITY PASS fully read/archived .docs/reviews/task-4
 Technische AC1-3 anhand correctedSPEC/distinctQUALITY und tatsächlichen focused native Lifecycle/Sequenz/Replay/Source/Budget-Regressionsnachweisen geprüft. AC4 (inklusive exaktemEUDev) und beide DoD bleiben offen bis vollständiger Gate-/Release-Dokumentation beziehungsweise ausdrücklicher manueller Nutzerbestätigung. Status unverändert In Progress; offizieller ganzer Runner weiter aktiv.
 
 Offizieller Root-Gesamtlauf abgeschlossen:1026Tests/51Dateien PASS, tatsächlicher Exit0/708.287Sekunden; /tmp/dispatch-continuation-47.1-all-final-receipt.json bestätigt319 unveränderteHashes SHA73e04873. Corrected freshSPEC/distinctQUALITY und sämtliche finalen Static/Codegen/Build/Bundle-Gates bestanden. Sourcecommit/exakte bestehendeEUDev-Synchronisierung und manuelleDoD bleiben ausstehend.
+
+Software technisch akzeptiert: Source08094a856a3db0d96fb7dccd0566f411111fc91e; corrected freshSPEC/distinctQUALITY/1026Tests51Files708.287s/static/codegen/build/bundlePASS. Exaktes bestehendesEUDev23:51:58.047263UTC Exit0; actual381Entries/exakt11neueInterfaces/fünfHTTPunchanged/319HashesSHA73e04873 verifiziert. AC4/DoD1 geprüft, InProgress/DoD2 ausdrücklich offen bis manueller Nutzerbestätigung. GanzeBackendFortsetzung geht separat mit47.2 weiter.
 <!-- SECTION:NOTES:END -->

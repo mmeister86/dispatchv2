@@ -3,10 +3,10 @@ id: TASK-47.2
 title: >-
   Prospektive Experimente mit bestehenden Publikationsmessungen verbinden
   (P12.03, Teil 2)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-06 15:23'
-updated_date: '2026-10-06 23:02'
+updated_date: '2026-10-06 23:52'
 labels: []
 dependencies:
   - TASK-47.1
@@ -53,4 +53,6 @@ Nach separat akzeptiertem47.1 exakte vorhandene freigegebeneSchedule/Version/Acc
 Vorarbeit /tmp/dispatch-47-preflight.md nach final47.1 erneutabgleichen. firstSend bedeutet nicht nur textrequestStartedAt: actualmedia beforeRequest/providerMediaRequests/preparingCheckpoint können vorher eineWirkung haben, daheralleGenerationen bounded prüfen. Native3PositionThread bleibt1PublicationUnit; echte0≠missing/partial/unknown; matchingRawDefinition/Window/ProviderAge/ownedSettledReceipt und independentretainedRights. KeinMetricsCall/Funding/AutoWinner/Schedule/Publishfrequenz ausExperiment; keineSource-/Review-Abnahme durchPlan.
 
 Konkreter zukünftiger Brief /tmp/dispatch-47.2-writer-brief.md vorbereitet nach autoritativem Vertrag/readonlyPreflight; keine SourceFreigabe vor separater technischer47.1-Abnahme. Konservative actual scheduled/zero ALL-generation text+media possible-effects Admission, echter beforeSend/eachmedia.beforeRequest NativeRace, wholeThread n1, exact retained metric/ownedReceipt/provider-age/rawDefinition/localUsePurpose/current+originalHorizon; keine neuen Collect/Fund/Provider/Schedule-Aktionen. Finale47.1-Datenfamilien/SourceBindings/Cleanup vor Umsetzung erneut abgleichen.
+
+SoftwareVoraussetzung47.1 akzeptiert: Source08094a8,1026/51vollständigeTests/freshSPEC/distinctQUALITY/static/codegen/build/bundle/exaktesEUDev23:51:58UTC/381Entries/exakt11neueInterfaces/319unveränderteHashes. Root finaleFreigabe des vorhandenen /tmp/dispatch-47.2-writer-brief.md an genau einenSourceWriter folgt nach Verifikationsdocscommit; keineProvider/Collect/Fund/Posting-Aktivierung. Aktuelle vierExperimentfamilien/sharedSourceProofs und tatsächliche spät eintreffendeSnapshot-Bindings vor Umsetzung abgleichen; manualDone offen.
 <!-- SECTION:NOTES:END -->
