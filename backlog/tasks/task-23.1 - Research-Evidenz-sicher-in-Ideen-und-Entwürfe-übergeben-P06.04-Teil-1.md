@@ -4,7 +4,7 @@ title: 'Research-Evidenz sicher in Ideen und Entwürfe übergeben (P06.04, Teil 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:37'
-updated_date: '2026-10-06 00:25'
+updated_date: '2026-10-06 00:37'
 labels: []
 dependencies:
   - TASK-22.3
@@ -55,4 +55,6 @@ ROOT db59b947 releases sole implementer research_content_handoff (Backend Archit
 WIP registered research cases reported green by implementer: concurrent semantic replay returns original unapproved IDs; duplicate review-family selection rejected; current source/role/expiry guards cover idea and draft reads/history/feedback; bounded cleanup removes copied text while retaining technical and financial receipts. Source pins retain hashes rather than assessment quotes; known legacy GitHub handoff reverse relation and shared cached-proof clock included. Exact active-I/O profile snapshot/browser/full checks and fresh independent reviews still pending; no AC or Done claim.
 
 Implementer reports genuine baseline disclosure RED from isolated db59b94 /tmp snapshot: GitHub handoff→revoke→editorial.get exposes copied title; current legacy relation case passes. Initial snapshot optional-field mismatch was harness-only, no live rollback. Actual held-native-I/O ordinary profile-save check now reported green (old query/model/evidence-version snapshot, two settled attempts); TASK20AC4 still awaits fresh independent reviews. Concrete recursive source proof capped32 retained orders with shared active/resolved tracking; browser/full/frozen-source reviews pending.
+
+Local WIP verification: full552/30PASS /tmp/task231-full-test.log; public hooks+late receipt8PASS /tmp/task231-public-cleanup-latefacts.log; actual WorkspaceStoreProvider/Composer two-deadline/manual-buffer fixturePASS /tmp/task231-content-browser.log, Ideas browserPASS /tmp/task231-ideas-browser.log. Count is immutable maximum with honest underfill; alias retry keys remain bound. Calendar own query/dialog guards included; technical thread positions preserved on privacy erasure. Static/Dev/freeze and fresh independent SPEC→QUALITY still pending; no AC/Done.
 <!-- SECTION:NOTES:END -->
