@@ -4,7 +4,7 @@ title: 'Research-Evidenz sicher in Ideen und Entwürfe übergeben (P06.04, Teil 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:37'
-updated_date: '2026-10-06 00:07'
+updated_date: '2026-10-06 00:12'
 labels: []
 dependencies:
   - TASK-22.3
@@ -49,4 +49,6 @@ Teilpaket zu TASK23: aktuelle Research-Evidenz, Inbox-Reviewzustände und wieder
 
 <!-- SECTION:NOTES:BEGIN -->
 ROOTrelease after22.3freshSPEC+QUALITYPASS source6c38de90. Actualmaps /tmp/dispatch-research-inbox-current-code-map.md and /tmp/dispatch-research-content-provenance-map.md: typedsource currentlyendsatimmutableIdeaVersion/ideas.handoff, draft/version/query/history/calendar/approve/checkApproval sourceguard missing, source-awareIdea reads incomplete. Do notcopyresearch intoNote orparsesourcestrings asauthority; useexacttypedrefs/replays/count/currentprimary-secondaryrights/expiry/modelhash/reviewer guards andboundedindexedcleanup. MinimalrelatedexistingGitHub-derivedsource guard shouldfollowsharedrealrootcallers, notunrelatedproviderrefactor. Ordinarysave-duringnative/modelIOtestmissingfor20AC4, addactualproof withoutchanging20productionsemantics. No newInboxstore/genericcommandbus/purposeengine/ledger/factory/paidgeneration/autoapproval/schedule/publish. Automaticoption/chatproductUI remain23.2/23.3. Allsourcechangesexactownership/ROOTwindow; sourceprivacy UI expiry/reset ifrequiredcannotbedelayed.
+
+ROOT db59b947 releases sole implementer research_content_handoff (Backend Architect, sol/medium). Concrete replay policy: same immutable evidence/material/model/assessment pins, account/target, explicit normalized intent, ordered unique selection/count reuses original IDs even with another retry key; changed explicit intent is distinct. At most five selections/results, default one, no padding/new paid generation. Read-only targeted-chat mapping proceeds separately for dependent23.2; no chat implementation released.
 <!-- SECTION:NOTES:END -->
