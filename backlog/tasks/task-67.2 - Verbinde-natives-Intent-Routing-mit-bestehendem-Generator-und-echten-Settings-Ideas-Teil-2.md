@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 22:34'
-updated_date: '2026-10-06 22:34'
+updated_date: '2026-10-06 23:57'
 labels: []
 dependencies:
   - TASK-67.1
@@ -51,4 +51,6 @@ Nach separat technisch akzeptierter67.1 den bestehenden gefundeten Perspective-I
 
 <!-- SECTION:NOTES:BEGIN -->
 Nur konkrete CLI-Vorbereitung; To Do. Noch kein67-SourceWriter und keine neue Provider-/Purpose-Konfiguration. Genau ein Writer pro technischer Einheit nach finaler45-50-Reconciliation.
+
+ReadonlyNativeCallerPreflight .docs/reviews/task-67-routing-generator-preflight.md korrigiert alteVorannahmen: nativeSettingsmountetbereitsContentStrategy; tatsächlicherComposer pages/Drafts.tsx; noteRetainedProof folgt echtenCopyEdges. ExistingIdeasRetrykey baut derzeitliveargs; neueConsumer benötigen immutablecapture key+args. Alle9Strategies ehrlicheactualGeneric Zuordnung, explicitgeneric≠legacyDefault. BestehendeIdeas/ModelConfiguration Browserohneindex.csskeineStyledEvidenz; futureConsumer tatsächlicheproductionCSSprüfen. Vorherfinal47/49/50/67.1SourceReconciliation, keineFreigabe/Testclaim.
 <!-- SECTION:NOTES:END -->

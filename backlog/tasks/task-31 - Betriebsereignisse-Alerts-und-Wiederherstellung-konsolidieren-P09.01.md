@@ -4,7 +4,7 @@ title: 'Betriebsereignisse, Alerts und Wiederherstellung konsolidieren (P09.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 21:36'
+updated_date: '2026-10-06 23:54'
 labels:
   - p09
   - r3
@@ -55,6 +55,16 @@ Jev-Operationen und Fehlerklassen in Betriebsereignisse/Runbooks aufnehmen: Late
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Nach final akzeptiertem47/49/50/67/68 actual Owner-/Scope-/Source-/Private-Actor-/Receipt-/Recovery-Caller abgleichen.
+2. Begrenzte native Operations-Projektion bestehender Belege/Deadlines mit ehrlicher Coverage und echten aktuellen Recovery-Links liefern.
+3. Nur tatsächlich benötigte finite Notification-Episode im owningTransaction deduplizieren; kein zweiter Publisher/Watchdog/Eventbus/Ledger.
+4. Native Scope/Private-Counts/Cap+1/ZeroIO/Deadline/Unknown-Hold/Jev-Outage-Manueller-Publishing-Checks und actualstyled Operations390/Demo sowie konkrete Recovery-Runbooks prüfen.
+5. SourceFreeze/freshSPEC/distinctQUALITY/volleNativeStaticBuildBundle und RootCommit/exaktesEUDev; live/SLO/Restore/manualDoD offen.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
@@ -65,4 +75,6 @@ Root hat /tmp/dispatch-continuation-31-32-seams.md vollständig gelesen. Vorhand
 Root adotiert read-only31/32Seams und .docs/operations-notifications-contract.md: zuerst bounded native Overview aus tatsächlichen vorhandenen Domainreceipts/leases/currentprivateScope, kein renderProviderCall/emptyAllHealthy/genericUnknownResend/neuerLedger. CrossDomainEvent nur bei tatsächlich fehlendem verbrauchtemReceipt; finiteOriginalOccurrence/Dedupe imOwnertransaction, keine gefälschtenEditorialDraftIDs/Pollzählung. Nach final45-50/67-68ProofGraph konkreteSourceUnits; Recovery bleibt bestehende autorisierteCommands. Keine31Source/Test/ProviderAbnahme dieserVorbereitung.
 
 Read-only konkrete Vorarbeit /tmp/dispatch-31-preflight.md (SHA44a65617073b56d39a75ac361aa27a1867e4117353a874dc617c739d139b3a27) identifiziert vorhandene native Belege/Index-/Recovery-/UI-Seams. Kein31Source/Tests/Provider/Dev-Nachweis. Erste Umsetzung soll begrenzte Owner/Admin-Projektion mit echten Domain-Links verwenden, ohne weiteren Publisher/Ledger/Watchdog/Registry/Eventbus. Bestehendes ai.runs.recent hat keinen private-Actor-Filter und ist nicht unverändert als Operations-Quelle geeignet; globale GitHubscanStatus-Abdeckung ist keine Tenant-Vollständigkeit. Leere/partielle Ausschnitte sind nicht gesund, unbekannte Kosten/Publishing-Effekte bleiben erhalten. Konkrete Query-Grenzen und private hasMore-/Count-Leaks vor Implementierung am tatsächlichen Quellstand prüfen. Reconcile nach46–50/67–68; keine AcceptanceCriteria geschlossen.
+
+Weitere konkrete reineVorbereitung: /tmp/dispatch-31-writer-brief.md hält native bounded receipt projection, privateActor+Count guard, genuine current actions, honestempty/unknown/coverage und minimalconsumed episode fest. Nochkeine31SourceFreigabe oderTest/Review/Dev-Abnahme; finale47/49/50/67/68 SourceReconciliation bleibt Pflicht. GanzeBackendFortsetzung läuft47.2, genau einSourceWriter.
 <!-- SECTION:NOTES:END -->

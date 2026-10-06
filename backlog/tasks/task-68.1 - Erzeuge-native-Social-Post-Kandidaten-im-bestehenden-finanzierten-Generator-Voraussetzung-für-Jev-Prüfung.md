@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 23:11'
-updated_date: '2026-10-06 23:12'
+updated_date: '2026-10-06 23:57'
 labels: []
 dependencies:
   - TASK-67.2
@@ -51,4 +51,6 @@ Nach technisch akzeptiertem 67.2 den tatsächlich vorhandenen purpose=draft Pers
 
 <!-- SECTION:NOTES:BEGIN -->
 Konkrete CLI-Vorbereitung unter fortlaufend freigegebenem Backend-Ausbau, noch kein SourceWriter/Implementierungs-/Test-/Review-/Dev-Nachweis. Finale vorherige Source-Einheiten zuerst technisch akzeptieren; Root hält genau einen Writer und unabhängige frische SPEC/QUALITY. Status To Do, AC/DoD ungeprüft, keine Provideraktivierung oder manuelle Abnahme.
+
+KonkreterReadonlyCallerPreflight .docs/reviews/task-67-routing-generator-preflight.md: purpose=draft tatsächlicherperspectiveJSON erzeugtIdea, keinSocialPostPipeline. Expliziteroutputmode+wholeNativeCandidateID/hash/run/intent muss vorVerifier existieren; currentprovider.execute/common5createRunCallers, mediaSnapshot/recordMediaReferences/CAS/humanunapprovednewversion undindexedrun/source/style/AgentexecutionFinishedCleanup beachten. Agent0.6.4text-onlyInvariant nutzen; komponentenfilesDeleteMetadata≠storagebytesdelete undmemories/orphanVectorsnichtthreaddelete. NurVorbereitung, ToDo/unreleased/unverified.
 <!-- SECTION:NOTES:END -->
