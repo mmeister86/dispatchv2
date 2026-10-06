@@ -167,6 +167,8 @@ describe("funded model runs through official Agent", () => {
     await Promise.all([settle(0.12), settle(0.12)]);
     const receipt = (await f.t.run((ctx) => ctx.db.get(attemptId)))!;
     expect(receipt.state).toBe("unknown");
+    if (receipt.owner === "jev-analyzer")
+      throw new Error("Unexpected Jev receipt");
     expect(receipt.reportedCost).toBe(0.12);
     for (const id of receipt.budgetIds)
       expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({

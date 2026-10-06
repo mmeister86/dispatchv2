@@ -4,12 +4,12 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{window.queries.push(args);return getFunctionName(ref).endsWith(':recent')?window.runs:window.availability;};export const useMutation=()=>args=>new Promise((resolve,reject)=>window.commands.push({args,resolve,reject}));`,
+  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{window.queries.push(args);if(args==='skip')return undefined;if(getFunctionName(ref)==='ai/jev/access:availability')return window.jevAvailability;return getFunctionName(ref).endsWith(':recent')?window.runs:window.availability;};export const useMutation=()=>args=>new Promise((resolve,reject)=>window.commands.push({args,resolve,reject}));`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';`,
   "@/lib/store": `import {useState} from 'react'; export const useStore=()=>({state:{activeWorkspaceId:window.workspace,activeAccountId:'account-one',role:'Owner',accounts:[{id:'account-one',workspaceId:window.workspace,name:'Synthetic',channel:'X'}],drafts:[]}});export const useWorkspaceLocalState=(key,initial)=>useState(initial);`,
 };
-const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {AgentPage} from '/src/pages/Agent.tsx';
-window.workspace='workspace-one';window.queries=[];window.runs=[];window.commands=[];window.availability=undefined;const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(AgentPage,{key:window.workspace}))));window.render();`;
+const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {ModelConfiguration} from '/src/features/settings/models.tsx';
+window.workspace='workspace-one';window.queries=[];window.runs=[];window.commands=[];window.availability=undefined;window.jevAvailability=undefined;const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(ModelConfiguration,{key:window.workspace}))));window.render();`;
 const server = await createServer({
   root,
   configFile: `${root}/vite.config.ts`,
@@ -63,6 +63,11 @@ try {
     page.getByText("Modellkonfiguration wird geladen …"),
   ).toBeVisible();
   await page.evaluate(() => {
+    window.jevAvailability = {
+      status: "disabled",
+      guidance:
+        "Jev-Bewertung benötigt eine vollständige EU-Verarbeitungsfreigabe. Manuelles Veröffentlichen bleibt unabhängig möglich.",
+    };
     window.availability = {
       providerConfigured: true,
       processingApproved: false,
@@ -140,9 +145,41 @@ try {
   expect(await page.evaluate(() => window.queries.at(-1).workspaceId)).toBe(
     "workspace-two",
   );
+  await expect(page.getByText("Jev-Bewertung ist deaktiviert.")).toBeVisible();
+  await page.evaluate(() => {
+    window.jevAvailability = {
+      status: "configuration_required",
+      guidance:
+        "Jev-Bewertung benötigt freigegebene Analysefragen und aktuelle geprüfte Profile.",
+    };
+    window.render();
+  });
+  await expect(
+    page.getByText("Jev-Bewertung benötigt Konfiguration."),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Jev-Bewertung deaktivieren" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Wird deaktiviert …" }),
+  ).toBeDisabled();
+  expect(await page.evaluate(() => window.commands[2].args)).toEqual({
+    workspaceId: "workspace-two",
+    accountId: "account-one",
+  });
+  await page.evaluate(() =>
+    window.commands[2].reject(new Error("synthetic disabled access")),
+  );
+  await expect(page.getByRole("alert")).toHaveText(
+    "Analysezugang konnte nicht deaktiviert werden. Erneut versuchen.",
+  );
+  await page.screenshot({
+    path: "/tmp/task28-jev-model-settings.png",
+    fullPage: true,
+  });
   expect(errors).toEqual([]);
   console.log(
-    "Actual real Agent UI shows scoped loading/configuration, no local fake chat or paid effects; StrictMode/workspace switch PASS.",
+    "Actual React model settings show generation/Jev loading/configuration and scoped disable/error controls; StrictMode/workspace switch PASS.",
   );
 } finally {
   await browser?.close();

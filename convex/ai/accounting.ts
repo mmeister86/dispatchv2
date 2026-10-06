@@ -1,7 +1,7 @@
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
-// These counters remain the sole financial authority for generation and native search.
+// These counters remain the sole financial authority for generation, native search and Jev.
 export async function changeLiability(
   ctx: MutationCtx,
   ids: Id<"aiBudgets">[],
@@ -42,7 +42,7 @@ export async function generationAttempt(
   run: Doc<"agentRuns"> | null,
 ) {
   if (
-    attempt.owner === "native-search" ||
+    (attempt.owner !== undefined && attempt.owner !== "generation") ||
     attempt.researchOrderId !== undefined ||
     attempt.logicalIntent !== undefined ||
     !run ||

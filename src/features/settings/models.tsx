@@ -54,8 +54,81 @@ export function ModelConfiguration() {
           </div>
         )}
       </Section>
+      <JevConfiguration
+        key={`${state.activeWorkspaceId}:${state.activeAccountId}`}
+      />
       <ModelRuns key={state.activeWorkspaceId} />
     </>
+  );
+}
+
+function JevConfiguration() {
+  const { state } = useStore();
+  const account = state.accounts.find(
+    (a) =>
+      a.id === state.activeAccountId &&
+      a.workspaceId === state.activeWorkspaceId,
+  );
+  const availability = useQuery(
+    api.ai.jev.access.availability,
+    account
+      ? {
+          workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+          accountId: account.id as Id<"socialAccounts">,
+        }
+      : "skip",
+  );
+  const disable = useMutation(api.ai.jev.access.disable);
+  const [pending, setPending] = useState(false),
+    [error, setError] = useState("");
+  return (
+    <Section
+      title="Jev-Bewertung"
+      description="Analyse wird für jeden Account separat freigegeben."
+    >
+      {!account ? (
+        <p>Account auswählen, um den Analysezugang zu prüfen.</p>
+      ) : !availability ? (
+        <p role="status">Analysekonfiguration wird geladen …</p>
+      ) : (
+        <div className="stack text-sm" role="status">
+          <p>
+            {availability.status === "disabled"
+              ? "Jev-Bewertung ist deaktiviert."
+              : availability.status === "unavailable"
+                ? "Jev-Bewertung ist vorübergehend nicht verfügbar."
+                : "Jev-Bewertung benötigt Konfiguration."}
+          </p>
+          <p>{availability.guidance}</p>
+          {availability.status !== "disabled" &&
+            ["Owner", "Admin"].includes(state.role) && (
+              <Button
+                variant="outline"
+                disabled={pending}
+                onClick={async () => {
+                  setPending(true);
+                  setError("");
+                  try {
+                    await disable({
+                      workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+                      accountId: account.id as Id<"socialAccounts">,
+                    });
+                  } catch {
+                    setError(
+                      "Analysezugang konnte nicht deaktiviert werden. Erneut versuchen.",
+                    );
+                  } finally {
+                    setPending(false);
+                  }
+                }}
+              >
+                {pending ? "Wird deaktiviert …" : "Jev-Bewertung deaktivieren"}
+              </Button>
+            )}
+        </div>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </Section>
   );
 }
 

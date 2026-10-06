@@ -356,9 +356,10 @@ async function execute(
       units: a.owner === "native-search" ? a.units : null,
       inputTokens: a.owner === "native-search" ? null : a.inputTokens,
       outputTokens: a.owner === "native-search" ? null : a.outputTokens,
-      reportedCost: a.reportedCost,
-      reportedCurrency: a.reportedCurrency,
-      reportedCostInvalid: a.reportedCostInvalid,
+      reportedCost: a.owner === "jev-analyzer" ? null : a.reportedCost,
+      reportedCurrency: a.owner === "jev-analyzer" ? null : a.reportedCurrency,
+      reportedCostInvalid:
+        a.owner === "jev-analyzer" ? false : a.reportedCostInvalid,
     })),
   });
   const check = (measure: string, passed: boolean, detail: string) =>

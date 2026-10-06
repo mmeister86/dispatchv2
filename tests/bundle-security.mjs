@@ -47,7 +47,7 @@ for (const name of assets) {
   const source = readFileSync(`dist/assets/${name}`, "utf8");
   assert(!source.includes(marker), `${name} leaks a server secret value`);
   assert(
-    !/S3Client|SignatureV4|cloudflarestorage\.com|jpeg-js|mp4box|AES-GCM|api\.x\.com\/2\/oauth2\/token|createPrivateKey|RSA-SHA256|github\.com\/login\/oauth\/access_token|router\.eu\.requesty\.ai|wrapLanguageModel|rawRequestResponseHandler/.test(
+    !/S3Client|SignatureV4|cloudflarestorage\.com|jpeg-js|mp4box|AES-GCM|api\.x\.com\/2\/oauth2\/token|createPrivateKey|RSA-SHA256|github\.com\/login\/oauth\/access_token|router\.eu\.requesty\.ai|wrapLanguageModel|rawRequestResponseHandler|api\.typesafe\.ai|TypeSafeClient|typesafe-sdk/.test(
       source,
     ),
     `${name} imports server media SDK/validation`,

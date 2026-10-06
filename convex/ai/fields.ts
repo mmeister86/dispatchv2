@@ -43,7 +43,13 @@ export const budgetFields = {
   ),
   workspaceId: v.optional(v.id("workspaces")),
   accountId: v.optional(v.id("socialAccounts")),
-  purposes: v.array(v.union(generationPurpose, v.literal("native-search"))),
+  purposes: v.array(
+    v.union(
+      generationPurpose,
+      v.literal("native-search"),
+      v.literal("analyzer"),
+    ),
+  ),
   approvedBy: v.optional(v.id("users")),
   expiresAt: v.number(),
   limitMicros: v.number(),

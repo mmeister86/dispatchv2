@@ -188,7 +188,9 @@ export const begin = internalMutation({
       attempts.some((x) => x.owner !== "native-search")
     )
       throw new ConvexError("RESEARCH_ORDER_RECEIPT_INVALID");
-    if (attempts.some((x) => x.key === a.operation))
+    if (
+      attempts.some((x) => x.owner === "native-search" && x.key === a.operation)
+    )
       throw new ConvexError("RESEARCH_ATTEMPT_ALREADY_ADMITTED");
     const reservedMicros = p.unitMicros * (a.operation === "x-recent" ? 10 : 1),
       total = o.pipeline

@@ -1,4 +1,9 @@
 import {
+  policyFields as jevPolicyFields,
+  controlFields as jevControlFields,
+  attemptFields as jevAttemptFields,
+} from "./ai/jev/types";
+import {
   algorithmFields as intelligenceAlgorithmFields,
   audienceFields as intelligenceAudienceFields,
   selectionFields as intelligenceSelectionFields,
@@ -298,6 +303,11 @@ export default defineSchema({
       "operationKey",
     ])
     .index("by_ideaId_and_createdAt", ["ideaId", "createdAt"]),
+  jevPolicies: defineTable(jevPolicyFields).index("by_scope", [
+    "workspaceId",
+    "accountId",
+  ]),
+  jevControls: defineTable(jevControlFields).index("by_key", ["key"]),
   aiPolicies: defineTable(policyFields).index("by_key", ["key"]),
   aiBudgets: defineTable(budgetFields).index("by_key", ["key"]),
   agentRuns: defineTable(runFields).index("by_workspaceId_and_createdAt", [
@@ -305,8 +315,26 @@ export default defineSchema({
     "createdAt",
   ]),
   aiAttempts: defineTable(
-    v.union(v.object(aiAttemptFields), v.object(nativeAttemptFields)),
+    v.union(
+      v.object(aiAttemptFields),
+      v.object(nativeAttemptFields),
+      v.object(jevAttemptFields),
+    ),
   )
+    .index("by_jev_operation", [
+      "owner",
+      "workspaceId",
+      "accountId",
+      "actorId",
+      "operationKey",
+    ])
+    .index("by_jev_pending", [
+      "owner",
+      "workspaceId",
+      "accountId",
+      "draftVersionId",
+      "state",
+    ])
     .index("by_runId_and_key", ["runId", "key"])
     .index("by_runId_and_state", ["runId", "state"])
     .index("by_researchOrderId_and_key", ["researchOrderId", "key"])
