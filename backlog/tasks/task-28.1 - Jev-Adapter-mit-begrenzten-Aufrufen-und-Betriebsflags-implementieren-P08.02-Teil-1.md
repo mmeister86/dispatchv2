@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-06 03:54'
+updated_date: '2026-10-06 03:58'
 labels:
   - p08
   - jev
@@ -84,4 +84,6 @@ ROOT read registered runtime feature RED05:31:27 (intentionally missingexecute b
 SOURCE8f3de12 frozen exact23 paths/current+committed hashes independentlyverified ROOT. Final15 focused/postconstants15 and exactfrozen618/34 PASS05:42:37, static/build/bundle/finalcodegen/existingEUDevready05:41:19/posttypesPASS. Actualsettings browser correctedPASS; originalEPERM/staleAgentChatSessionmock failures areenvironment/fixture, notproductRED. Lowconfidence partialanswers preserved/currentproof; timeoutno detachedwrites andunknownholds/lateauthoritative once. FreshSPEC jev_adapter_spec dispatched; freshQUALITY afterPASS. AllAC/manualDone remainopen; no actualcloudSDKHTTP/customer/EUapproval/humaneval activation claimed.
 
 Fresh independent SPEC FAIL: actual registered SDK HTTP200 JSONnull becomes provider_error via unguarded value.model; context internalQuery omits existing contextResult return validator. Original sole writer correction released; permanent regression RED then bounded fix/GREEN/full/static/fresh codegen/EU Dev required. Same SPEC must PASS before fresh QUALITY. Independent focused15/3 PASS and seven controls fivePASS/twoFAIL. No answer leak or usage forgiveness demonstrated. All AC/manual Done remain open.
+
+Original writer correction SOURCE72a412c exact3paths frozen and ROOT verified23current/committed SHA/20unchanged. Genuine permanentnull+validator REDtwofail05:54:27 thenGREENtwopass05:54:35; focused17/3/full620/34/static/build/bundle/newofficialcodegen/existingEUDevready05:56:23/posttypesPASS. InitialTS issuetest-only reflective method fixed no productioncast. SAME SPEC recheck released; freshQUALITY waitsPASS. No newfrontend/browser/liveprovider/EUapproval claimed. AllAC/manualDone open.
 <!-- SECTION:NOTES:END -->
