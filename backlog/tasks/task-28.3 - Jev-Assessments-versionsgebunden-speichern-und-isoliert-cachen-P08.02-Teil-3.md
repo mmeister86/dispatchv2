@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 04:05'
 labels:
   - p08
   - jev
@@ -53,10 +53,22 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Consume the reviewed28.2 actual analyzer and exact saved-version/profile/source contracts.
+2. Persist only normalized results and immutable reproducibility metadata with stable semantic identity distinct from physical requests.
+3. Authorize before hits and atomically fence latest current writes; extend actual protected read/physical withdrawal cleanup without changing financial receipts.
+4. Wire current/history analysis while manual publishing stays independent; prove tenant/cache/out-of-order/deletion boundaries.
+5. Run full checks/existing EU Dev, freeze exact source and fresh SPEC then QUALITY; retain manual Done.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 2026-09-19 D04: Nutzer verlangt Intelligence bereits im Dispatch-MVP/R2. Release-Zuordnung aktualisiert; keine Umsetzung oder Provideraktivierung. Maßgeblich: .docs/decisions/release-scope.md.
 
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence. Mock analysis identity binds draft/account/version; edited content marks result stale; obsolete local timers are cancelled. Grenze: No backend assessment schema, tenant-isolated cache, production retention or historical reproduction. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+ROOT preparation only, implementation waits accepted28.2 actualresult/inputtypes. Readonly persistence map7655c2a9 reviewedfull; no currentassessment/cache/history backend. Stable semanticidentity excludes transientphysicalactor/opkey/deadline; exactsavedversion/tenant binding retained. Currentproof BEFORE hit andatomiclatewrite fence/derivedwithdrawalcleanup required; no2financialledger/rawpromptcopy. No manualDone/liveprovider/EU/humaneval acceptance.
 <!-- SECTION:NOTES:END -->
