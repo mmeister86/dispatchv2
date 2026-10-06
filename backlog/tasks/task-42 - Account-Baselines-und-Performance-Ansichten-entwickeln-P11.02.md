@@ -4,7 +4,7 @@ title: Account-Baselines und Performance-Ansichten entwickeln (P11.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 08:37'
 labels:
   - p11
   - r5
@@ -55,8 +55,20 @@ Vergleichbare Impression-/Engagement-/Reply-/Repost-/Click-/Follower-Conversion-
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Read accepted41 SOURCE9d2d0cf and actual native observations/publishing/Analytics/Content source authority; reuse existing collectors, ledger, proof and UI split.
+2. Define bounded distinct own-publication units and exact account/network/format/definition/window/provider-age cohorts; arithmetic mean with peer exclusion and explicit unvalidated startup rules.
+3. Implement protected descriptive queries, matched numerator/denominator rates, missing/zero/partial/sparse buckets and exact then-assessment provenance.
+4. Wire actual Analytics filters/coverage/charts and mounted compact performance_signal Content context with separate purpose/current original deadlines; no automatic paid/model admission or untracked derived note.
+5. Run meaningful native registered/currentUI/full/static/build/bundle/existingEUDev checks; freeze/scoped SOURCE commit,freshSPEC thenQUALITY; document33/36 seams and leave realdata/live/manual/Done open.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /analytics. Account/channel/period filters, post data and topic/format/time groups; separate account baselines, n/missing data and noncausal caveats. Grenze: Synthetic metrics only; no validated account effectiveness or measured score/outcome relationship. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Released after reviewed TASK-41 source 9d2d0cf under the standing software and routine-decision authorization. A fresh sole writer owns bounded descriptive baselines, actual Analytics and a protected Content consumer, including necessary proof/cleanup callers. ROOT owns metadata; source commit requires an exact verified freeze. Brief: /tmp/dispatch-task42-implementation-brief.md, 11,298 bytes, SHA256 c67a12028caf6c2da26c4757e52f021708f7f16eaec3932e7dbe8a81ad92adb4. Cohorts separate account, network, format, unit, definitions and provider age. The ±60-second tolerance and n<10 warning are unvalidated startup rules. Complete threads count once; target units and duplicate IDs are excluded. Rates use matched measured components and denominators; missing or zero denominators stay unavailable. No follower attribution, causal, reach or calibrated-effectiveness claim. Content context requires a separate purpose and original deadlines; no untracked note or unused helper. Reuse accepted collectors and ledger, with no new dependencies or statistics engine. Real data, empirical effectiveness, processing rights, model activation, manual acceptance and Done remain open; old score history0.5 is unchanged.
 <!-- SECTION:NOTES:END -->
