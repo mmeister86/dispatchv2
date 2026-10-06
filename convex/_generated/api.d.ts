@@ -87,6 +87,8 @@ import type * as performance_historyFields from "../performance/historyFields.js
 import type * as performance_historyNormalize from "../performance/historyNormalize.js";
 import type * as performance_knowledge from "../performance/knowledge.js";
 import type * as performance_metricDefinitions from "../performance/metricDefinitions.js";
+import type * as performance_modelFields from "../performance/modelFields.js";
+import type * as performance_models from "../performance/models.js";
 import type * as performance_normalize from "../performance/normalize.js";
 import type * as performance_snapshots from "../performance/snapshots.js";
 import type * as planning_accept from "../planning/accept.js";
@@ -213,6 +215,8 @@ declare const fullApi: ApiFromModules<{
   "performance/historyNormalize": typeof performance_historyNormalize;
   "performance/knowledge": typeof performance_knowledge;
   "performance/metricDefinitions": typeof performance_metricDefinitions;
+  "performance/modelFields": typeof performance_modelFields;
+  "performance/models": typeof performance_models;
   "performance/normalize": typeof performance_normalize;
   "performance/snapshots": typeof performance_snapshots;
   "planning/accept": typeof planning_accept;

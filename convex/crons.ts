@@ -61,4 +61,10 @@ crons.interval(
   internal.performance.calibration.sweep,
   { cursor: null },
 );
+crons.interval(
+  "Local calibration model cleanup",
+  { minutes: 15 },
+  internal.performance.models.sweep,
+  { cursor: null },
+);
 export default crons;

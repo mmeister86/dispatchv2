@@ -1,3 +1,4 @@
+import { modelFields as calibrationModelFields } from "./performance/modelFields";
 import {
   purposeFields as calibrationPurposeFields,
   referenceFields as calibrationReferenceFields,
@@ -108,6 +109,22 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  calibrationModels: defineTable(calibrationModelFields)
+    .index("by_workspaceId_and_accountId_and_kind_and_createdAt", [
+      "workspaceId",
+      "accountId",
+      "kind",
+      "createdAt",
+    ])
+    .index("by_workspaceId_and_actorId_and_commandKey", [
+      "workspaceId",
+      "actorId",
+      "commandKey",
+    ])
+    .index("by_specId_and_kind", ["specId", "kind"])
+    .index("by_experimentId_and_kind", ["experimentId", "kind"])
+    .index("by_purposeId", ["purposeId"])
+    .index("by_expiresAt", ["expiresAt"]),
   calibrationPurposes: defineTable(calibrationPurposeFields)
     .index("by_workspaceId_and_accountId_and_version", [
       "workspaceId",

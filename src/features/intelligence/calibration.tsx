@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import type { Id } from "../../../convex/_generated/dataModel";
+import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -190,8 +190,8 @@ function AccountReferences({
         <p>
           Vorgeschlagene lokale Klarheit/Diskussion-Gewichtsverschiebungen: −0,1
           bis +0,1 in neun Stufen. Andere Gewichte und Historie 0,5 bleiben
-          unverändert. Kein Kandidat angepasst oder eingefroren; keine
-          Aktivierung.
+          unverändert. Referenzpläne bleiben unverändert; Kandidaten entstehen
+          nur im getrennten Schattenvergleich. Keine Aktivierung.
         </p>
         <p role="status">
           {enabled
@@ -421,6 +421,17 @@ function AccountReferences({
               onChange={(e) => setAsOf(e.target.value)}
             />
           </label>
+          <p>
+            Der Wissensstand muss nach Plan, Zweck und bestätigter Zustimmung
+            liegen. Nach einem neuen Plan ausdrücklich aktualisieren.
+          </p>
+          <Button
+            variant="outline"
+            className="h-auto whitespace-normal"
+            onClick={() => setAsOf(utcInput(Date.now()))}
+          >
+            Wissensstand auf aktuelle UTC setzen
+          </Button>
           <Button
             className="h-auto max-w-full whitespace-normal text-left"
             disabled={
@@ -536,6 +547,330 @@ function AccountReferences({
           <p key={x.id}>Geschützter Nachweis nicht mehr lesbar: {x.reason}.</p>
         ))}
       </Section>
+      <ShadowModels
+        workspaceId={workspaceId}
+        accountId={accountId}
+        admin={admin}
+        enabled={enabled}
+        writable={writable}
+        busy={busy}
+        specs={specs}
+        snapshots={snapshots.map((x) => x.row)}
+        run={run}
+      />
     </div>
+  );
+}
+
+function ShadowModels({
+  workspaceId,
+  accountId,
+  admin,
+  enabled,
+  writable,
+  busy,
+  specs,
+  snapshots,
+  run,
+}: {
+  workspaceId: Id<"workspaces">;
+  accountId: Id<"socialAccounts">;
+  admin: boolean;
+  enabled: boolean;
+  writable: boolean;
+  busy: boolean;
+  specs: Extract<Doc<"calibrationReferences">, { kind: "spec" }>[];
+  snapshots: Extract<Doc<"calibrationReferences">, { kind: "snapshot" }>[];
+  run: (action: () => Promise<unknown>) => Promise<void>;
+}) {
+  const scope = { workspaceId, accountId },
+    [selected, setSelected] = useState(""),
+    [plan, setPlan] = useState(""),
+    [snapshot, setSnapshot] = useState(""),
+    [now, setNow] = useState(Date.now());
+  const data = useQuery(
+    api.performance.models.get,
+    admin
+      ? {
+          ...scope,
+          ...(selected
+            ? { selectedExperimentId: selected as Id<"calibrationModels"> }
+            : {}),
+        }
+      : "skip",
+  );
+  const predeclare = useMutation(api.performance.models.predeclare),
+    fit = useMutation(api.performance.models.fit),
+    compare = useMutation(api.performance.models.compare);
+  useEffect(() => {
+    if (!data?.proofUntil || data.proofUntil <= now) return;
+    const timer = setTimeout(
+      () => setNow(Date.now()),
+      Math.min(2147483647, Math.max(0, data.proofUntil - Date.now() + 1)),
+    );
+    return () => clearTimeout(timer);
+  }, [data?.proofUntil, now]);
+  const visible = enabled && !!data?.proofUntil && data.proofUntil > now,
+    e = visible ? data?.experiment : null,
+    c = visible ? data?.candidate : null,
+    evaluation = visible ? data?.evaluation : null;
+  const current = specs.find((s) => s._id === plan),
+    chosen = snapshots.find(
+      (s) => s._id === snapshot && s.specId === e?.specId,
+    );
+  return (
+    <Section
+      title="Kalibrierung im Schattenbetrieb"
+      description="Statische Baseline gegen genau einen eingefrorenen lokalen Kandidaten. Produktionsaktivierung bleibt AUS."
+    >
+      <div className="stack break-words">
+        <p>
+          Empirische Politik standardmäßig NULL: dauerhaft keine
+          Evidenzqualifikation. Eine verantwortliche Owner/Admin-Person muss vor
+          zukünftiger Kontrollsammlung eine vollständige Politik mit Beleg,
+          Begründung, unabhängigen Mindestfällen, Nutzen-, Stabilitäts- und
+          Driftgrenzen sowie Prüffrist ausdrücklich über die Modellkonfiguration
+          vorerklären. Keine Schwellen werden übernommen. Ein bestehender
+          NULL-Versuch kann nicht nachträglich aufgewertet werden.
+        </p>
+        <p>
+          Trainingsauswahl: neun feste Klarheit/Diskussion-Verschiebungen;
+          kleinster Paarordnungsfehler, bei Gleichstand statische Baseline.
+          Antwortrate = Antwort-Ereignisse / Impressionen, keine
+          Wahrscheinlichkeit. Paarvergleiche sind keine unabhängigen Fälle.
+        </p>
+        {!admin ? (
+          <p>Owner/Admin-Rechte für Modellnachweise erforderlich.</p>
+        ) : !data ? (
+          <p role="status">Schattenversuche werden geladen …</p>
+        ) : (
+          <>
+            <fieldset disabled={!writable} className="stack">
+              <label>
+                Plan für neuen Schattenversuch
+                <select
+                  className="w-full rounded border p-2"
+                  value={plan}
+                  onChange={(ev) => setPlan(ev.target.value)}
+                >
+                  <option value="">Plan auswählen</option>
+                  {specs.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {new Date(s.createdAt).toISOString()} · {s.payload.mode} ·{" "}
+                      {s.payload.compatibility.formulaVersion}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <Button
+                className="h-auto whitespace-normal"
+                disabled={!current}
+                onClick={() => {
+                  if (!current) return;
+                  const input = {
+                    ...scope,
+                    specId: current._id,
+                    policy: null,
+                    commandKey: crypto.randomUUID(),
+                  };
+                  void run(() => predeclare(input));
+                }}
+              >
+                Diagnostischen Schattenversuch mit NULL-Politik vorerklären
+              </Button>
+            </fieldset>
+            <label>
+              Gespeicherter Schattenversuch
+              <select
+                className="w-full rounded border p-2"
+                disabled={busy}
+                value={data.selectedId ?? ""}
+                onChange={(ev) => {
+                  setSelected(ev.target.value);
+                  setSnapshot("");
+                }}
+              >
+                <option value="">Kein Versuch</option>
+                {data.experiments.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {new Date(x.createdAt).toISOString()} · {x.mode}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {(data.reason || (!visible && data.selectedId)) && (
+              <p role="status">
+                Schattennachweis nicht verfügbar:{" "}
+                {data.reason ?? "ursprüngliche Nachweisfrist abgelaufen"}.
+              </p>
+            )}
+            {e && (
+              <>
+                <p>
+                  {e.payload.mode === "prospective"
+                    ? "Prospektiver Schattenversuch"
+                    : "Retrospektiv · dauerhaft nur Diagnose"}{" "}
+                  · Politik{" "}
+                  {e.payload.policy
+                    ? "explizit vorerklärt; keine empirische Zertifizierung"
+                    : "NULL / unkonfiguriert"}{" "}
+                  · {e.payload.lossVersion} · vorerklärt{" "}
+                  {new Date(e.payload.predeclaredAt).toISOString()}.
+                </p>
+                <p>
+                  Exakte Gruppe: eigener X-Account · einzelner Text · 24h ± 60s
+                  · {e.payload.compatibility.questionVersion} ·{" "}
+                  {e.payload.compatibility.resolvedModel} ·{" "}
+                  {e.payload.compatibility.formulaVersion} ·{" "}
+                  {e.payload.compatibility.metricVersion} ·{" "}
+                  {e.payload.compatibility.dialect}.
+                </p>
+                <fieldset disabled={!writable} className="stack">
+                  <label>
+                    Native Materialisierung für diesen Versuch
+                    <select
+                      className="w-full rounded border p-2"
+                      value={snapshot}
+                      onChange={(ev) => setSnapshot(ev.target.value)}
+                    >
+                      <option value="">Materialisierung auswählen</option>
+                      {snapshots
+                        .filter((s) => s.specId === e.specId)
+                        .map((s) => (
+                          <option key={s._id} value={s._id}>
+                            {new Date(s.payload.asOf).toISOString()} · Training{" "}
+                            {s.payload.counts.train} / Block 1{" "}
+                            {s.payload.counts.block1} / Block 2{" "}
+                            {s.payload.counts.block2}
+                            {s.payload.frameComplete ? "" : " · unvollständig"}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                  <Button
+                    className="h-auto whitespace-normal"
+                    disabled={!!c || !chosen || !chosen.payload.frameComplete}
+                    onClick={() => {
+                      if (!chosen) return;
+                      const input = {
+                        ...scope,
+                        experimentId: e._id,
+                        snapshotId: chosen._id,
+                        commandKey: crypto.randomUUID(),
+                      };
+                      void run(() => fit(input));
+                    }}
+                  >
+                    Nur Training anpassen und Kandidat unveränderlich einfrieren
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-auto whitespace-normal"
+                    disabled={!c || !chosen || !chosen.payload.frameComplete}
+                    onClick={() => {
+                      if (!chosen) return;
+                      const input = {
+                        ...scope,
+                        experimentId: e._id,
+                        snapshotId: chosen._id,
+                        commandKey: crypto.randomUUID(),
+                      };
+                      void run(() => compare(input));
+                    }}
+                  >
+                    Eingefrorenen Kandidaten mit Baseline vergleichen
+                  </Button>
+                </fieldset>
+                {c && (
+                  <p>
+                    Unabhängige Trainingsfälle n={c.payload.n} · Zeitspanne{" "}
+                    {(c.payload.spanMs / 86400000).toFixed(2)} Tage ·{" "}
+                    {c.payload.baseline.pairs} vergleichbare Paare /{" "}
+                    {c.payload.baseline.targetTies} Zielgleichstände ·
+                    statischer Fehler{" "}
+                    {c.payload.baseline.loss ?? "nicht verfügbar"} · Gewinner t=
+                    {c.payload.transfer ??
+                      "nicht verfügbar: keine vergleichbaren Paare"}{" "}
+                    · eingefroren {new Date(c.payload.frozenAt).toISOString()}.
+                    Keine personalisierten Gewichte aktiv.
+                  </p>
+                )}
+                {evaluation && (
+                  <>
+                    <p>
+                      Evidenzqualifikation{" "}
+                      {evaluation.payload.evidenceQualified
+                        ? "vorbereitende gruppenspezifische Voraussetzungen erfüllt"
+                        : "nicht erfüllt"}
+                      . Aktivierung AUS. Wissensstand{" "}
+                      {new Date(evaluation.payload.asOf).toISOString()} ·
+                      Training n={evaluation.payload.trainN}.
+                    </p>
+                    {[evaluation.payload.block1, evaluation.payload.block2].map(
+                      (b, i) => (
+                        <div key={i} className="space-y-1">
+                          <p>
+                            Block {i + 1}: unabhängiges n={b.n} ·{" "}
+                            {b.baseline.pairs} vergleichbare Paare /{" "}
+                            {b.baseline.targetTies} Zielgleichstände ·
+                            statischer Fehler{" "}
+                            {b.baseline.loss ?? "nicht verfügbar"} ·
+                            Kandidatenfehler{" "}
+                            {b.candidate.loss ?? "nicht verfügbar"} ·
+                            Verbesserung {b.improvement ?? "nicht verfügbar"}.
+                          </p>
+                          <p>
+                            Drift zu Training: Klarheitsmittel{" "}
+                            {b.drift.clarity ?? "nicht verfügbar"},
+                            Diskussionsmittel{" "}
+                            {b.drift.discussion ?? "nicht verfügbar"},
+                            Antwort-Ereignisse/Impressionen-Mittel{" "}
+                            {b.drift.replyRate ?? "nicht verfügbar"}. Keine
+                            Signifikanzbehauptung.
+                          </p>
+                        </div>
+                      ),
+                    )}
+                    <p>
+                      Notwendige technische Vorprüfung 30 Posts / 28 Tage:{" "}
+                      {evaluation.payload.engineeringScreen
+                        ? "erfüllt (unvalidiert)"
+                        : "nicht erfüllt"}
+                      . Kein empirischer Angemessenheitsbeleg.
+                    </p>
+                    <p>
+                      Stabilität: absolute Variation der beiden Verbesserungen{" "}
+                      {evaluation.payload.stability ?? "nicht verfügbar"} ·
+                      ausgeschlossen{" "}
+                      {(100 * evaluation.payload.excludedFraction).toFixed(1)}%
+                      · Population{" "}
+                      {evaluation.payload.populationTotal ??
+                        `unbekannt; mindestens ${evaluation.payload.populationLowerBound}`}{" "}
+                      · gescannt {evaluation.payload.scanned}.
+                    </p>
+                    <p>
+                      Inaktivitätsgründe:{" "}
+                      {evaluation.payload.reasons.join(", ") ||
+                        "keine technischen Gründe; Produktionsfreigabe bleibt separat"}
+                      .
+                    </p>
+                    <p>
+                      Unbekannte Segmente:{" "}
+                      {evaluation.payload.unknownSegments.join(", ")}.
+                    </p>
+                  </>
+                )}
+                <p>
+                  Ursprüngliche Nachweisgrenze{" "}
+                  {new Date(data.proofUntil!).toISOString()}. Neue Belege
+                  verlängern alte Trainingsquellen nicht; 30-Tage-Aufbewahrung
+                  kann den Versuch unmöglich machen.
+                </p>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    </Section>
   );
 }

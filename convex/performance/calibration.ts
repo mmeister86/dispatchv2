@@ -200,6 +200,9 @@ export const consent = workspaceMutation({
         },
         generation: p.generation + 1,
       });
+      await ctx.scheduler.runAfter(0, internal.performance.models.clear, {
+        purposeId: p._id,
+      });
       await ctx.scheduler.runAfter(0, internal.performance.calibration.clear, {
         purposeId: p._id,
         generation: p.generation + 1,
@@ -222,6 +225,8 @@ type Pair = {
   replies: number;
   impressions: number;
   score: number;
+  clarity: number;
+  discussion: number;
   horizon: number;
 };
 // Each pair rejoins native publication and receipts; no scores or labels are stored here.
@@ -376,6 +381,19 @@ async function pair(
     a.result.deterministic.media.count !== 0
   )
     fail("assessment-features-missing");
+  const clarity = a.result.answers?.clarity,
+    discussion = a.result.answers?.discussionPotential;
+  if (
+    !clarity ||
+    clarity.type !== "score" ||
+    !discussion ||
+    discussion.type !== "score" ||
+    [clarity.value, discussion.value, score.aggregate].some(
+      (n) => !Number.isFinite(n),
+    ) ||
+    [clarity.value, discussion.value].some((n) => n < 0 || n > 1)
+  )
+    fail("assessment-features-invalid");
   const snap = await ctx.db
     .query("performanceSnapshots")
     .withIndex("by_postAttemptId_and_windowHours", (q) =>
@@ -533,6 +551,8 @@ async function pair(
     replies: replies[0].value!,
     impressions: impressions[0].value!,
     score: score.aggregate,
+    clarity: clarity.value,
+    discussion: discussion.value,
     horizon: until,
     reference: {
       postAttemptId: c._id,
@@ -762,6 +782,134 @@ async function readableSnapshot(ctx: Ctx, s: Scope, row: Snapshot) {
   }
   if (until <= Date.now()) fail("CALIBRATION_REFERENCE_EXPIRED");
   return { row: { ...row, expiresAt: until }, measurements };
+}
+// Server-only adapter: select training membership before any native label join.
+export async function modelProof(
+  ctx: Ctx,
+  s: Scope,
+  specId: Id<"calibrationReferences">,
+  snapshotId: Id<"calibrationReferences"> | null,
+  phase: "train" | "comparison",
+) {
+  const spec = await ctx.db.get(specId);
+  if (
+    !spec ||
+    spec.kind !== "spec" ||
+    spec.workspaceId !== s.workspaceId ||
+    spec.accountId !== s.accountId
+  )
+    fail("CALIBRATION_SPEC_CHANGED");
+  const p = await allowed(ctx, spec.purposeId, s, spec.generation),
+    b = spec.payload;
+  if (spec.expiresAt <= Date.now()) fail("CALIBRATION_REFERENCE_EXPIRED");
+  const anchor = b.anchor;
+  if (
+    anchor.publishedAt < b.from ||
+    anchor.publishedAt >= b.fitCutoff ||
+    anchor.observedAt > b.fitCutoff
+  )
+    fail("CALIBRATION_TRAIN_ANCHOR_REQUIRED");
+  const row = snapshotId ? await ctx.db.get(snapshotId) : null;
+  if (
+    snapshotId &&
+    (!row ||
+      row.kind !== "snapshot" ||
+      row.specId !== specId ||
+      row.workspaceId !== s.workspaceId ||
+      row.accountId !== s.accountId ||
+      row.purposeId !== p._id ||
+      row.generation !== p.generation ||
+      row.payload.asOf > Date.now())
+  )
+    fail("CALIBRATION_SNAPSHOT_CHANGED");
+  const snapshot = row as Snapshot | null;
+  if (
+    snapshot &&
+    (!snapshot.payload.frameComplete || snapshot.payload.refs.length > 200)
+  )
+    fail("CALIBRATION_FRAME_INCOMPLETE");
+  let horizon = Math.min(
+    spec.expiresAt,
+    p.expiresAt,
+    snapshot?.expiresAt ?? Infinity,
+  );
+  if (horizon <= Date.now()) fail("CALIBRATION_REFERENCE_EXPIRED");
+  const selected =
+    snapshot?.payload.refs.filter(
+      (r) => phase === "comparison" || r.membership === "train",
+    ) ?? [];
+  const cache = new Map<string, Pair>();
+  async function prove(r: Infer<typeof ref> | typeof anchor) {
+    const train =
+      r.membership === "train" || r.membership === "compatibility-anchor";
+    const valid = train
+      ? r.publishedAt >= b.from &&
+        r.publishedAt < b.fitCutoff &&
+        r.observedAt <= b.fitCutoff
+      : r.membership === "block1"
+        ? r.publishedAt >= b.holdout1Start &&
+          r.publishedAt < b.holdout1End &&
+          r.observedAt < b.holdout1End
+        : r.publishedAt >= b.holdout2Start &&
+          r.publishedAt < b.holdout2End &&
+          r.observedAt < b.holdout2End;
+    if (!valid) fail("CALIBRATION_MEMBERSHIP_CHANGED");
+    let x = cache.get(String(r.postAttemptId));
+    if (!x) {
+      const c = await ctx.db.get(r.postAttemptId);
+      if (!c || c.workspaceId !== s.workspaceId || c.accountId !== s.accountId)
+        fail("CALIBRATION_SOURCE_REMOVED");
+      try {
+        x = await pair(
+          ctx,
+          c,
+          train
+            ? Math.min(snapshot?.payload.asOf ?? b.fitCutoff, b.fitCutoff)
+            : snapshot!.payload.asOf,
+        );
+      } catch (e) {
+        if (
+          e instanceof Error &&
+          e.message === "OWN_METRICS_SOURCE_UNAVAILABLE"
+        )
+          fail("CALIBRATION_SOURCE_UNAVAILABLE");
+        throw e;
+      }
+      cache.set(String(r.postAttemptId), x);
+    }
+    if (
+      !sameIdentity(x.identity, b.compatibility) ||
+      x.reference.fingerprint !== r.fingerprint ||
+      Object.entries(r).some(
+        ([k, val]) =>
+          k !== "membership" &&
+          k !== "originalUntil" &&
+          val !== x!.reference[k as keyof Pair["reference"]],
+      )
+    )
+      fail("CALIBRATION_SOURCE_CHANGED");
+    horizon = Math.min(horizon, r.originalUntil, x.horizon);
+    return {
+      ...x,
+      reference: {
+        ...r,
+        membership: r.membership as Infer<typeof ref>["membership"],
+      },
+    };
+  }
+  await prove(anchor);
+  const pairs = [];
+  const units = new Set<string>(),
+    externals = new Set<string>();
+  for (const r of selected) {
+    if (units.has(String(r.scheduleId)) || externals.has(r.externalId))
+      fail("CALIBRATION_DUPLICATE_UNIT");
+    units.add(String(r.scheduleId));
+    externals.add(r.externalId);
+    pairs.push(await prove(r));
+  }
+  if (horizon <= Date.now()) fail("CALIBRATION_REFERENCE_EXPIRED");
+  return { spec, purpose: p, snapshot, pairs, horizon };
 }
 export const build = workspaceMutation({
   args: {
@@ -1081,6 +1229,9 @@ export const remove = workspaceMutation({
         },
         generation: p.generation + 1,
       });
+    await ctx.scheduler.runAfter(0, internal.performance.models.clear, {
+      purposeId: p._id,
+    });
     await ctx.scheduler.runAfter(0, internal.performance.calibration.clear, {
       purposeId: p._id,
       generation: p.withdrawal ? p.generation : p.generation + 1,

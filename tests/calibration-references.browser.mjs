@@ -3,10 +3,10 @@ import { chromium, expect } from "@playwright/test";
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
-const evidence = "/tmp/dispatch-task43.1-evidence/browser";
+const evidence = "/tmp/dispatch-task43.2-evidence/browser";
 mkdirSync(evidence, { recursive: true });
 const mocks = {
-  "convex/react": `import {useSyncExternalStore} from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});return useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>args==='skip'?undefined:window.results[name]);};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});`,
+  "convex/react": `import {useSyncExternalStore} from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});return useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>args==='skip'?undefined:(name==='performance/models:get'&&args.accountId==='account2'?window.modelEmpty:window.results[name]));};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';export const backendConfigured=true;export const AuthBoundary=({children})=>children;export const authClient={signOut:async()=>({})};export {authPath,returnPath} from '/src/lib/navigation.ts';`,
   "@/lib/store": `import {useState,useSyncExternalStore} from 'react';import {demoMode} from '@/lib/auth-client';export const WorkspaceStoreProvider=({children})=>children;export const useLocalState=(k,i)=>useState(i);export const useWorkspaceLocalState=(k,i)=>{if(!demoMode&&k!=='notification-read')throw Error('Demo hook reached real Operations: '+k);return useState(i);};export const useStore=()=>({state:useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>window.store),setState:()=>{},selectWorkspace:async()=>true,selectAccount:()=>{},createDraft:()=>{throw Error('Demo draft');},mutate:()=>{throw Error('Demo mutation');}});`,
 };
@@ -16,8 +16,15 @@ const now=Date.now(),expiresAt=now+120000,proofUntil=now+20000;
 window.empty={enabled:false,reason:'CALIBRATION_CONFIGURATION_REQUIRED',configuration:null,choices:[],choicesPartial:false,specs:[],snapshots:[],unavailable:[]};
 window.configuration={id:'purpose-one',fingerprint:'exact-local-evidence-proof',version:'isolated-local-v1',rightsEvidence:'Synthetic separate local analysis and measured-outcome permission',explanation:'Local reply ordering only',expiresAt,retentionMs:86400000,withdrawn:false};
 window.spec={_id:'spec-one',createdAt:now-120000,expiresAt:proofUntil,payload:{mode:'prospective',prospectiveStatus:'candidate-not-frozen',holdout2End:now+15*86400000,compatibility:{resolvedModel:'jev-1.13.0',questionVersion:'jev-post-analysis-v1',normalizationVersion:'jev-normalization-v1',formulaVersion:'dispatch-score-v1',metricVersion:'exact-metric-v1',dialect:'post-fields-repost-v2',algorithmId:'algorithm-one',audienceId:'audience-one'}}};
-window.complete={enabled:true,reason:null,configuration:window.configuration,choices:[{postAttemptId:'attempt-one',assessmentId:'assessment-one',publishedAt:now-2*86400000,versionNumber:1,requestedModel:'jev-1.13.0',resolvedModel:'jev-1.13.0',expiresAt:proofUntil}],choicesPartial:false,specs:[window.spec],snapshots:[{row:{_id:'snapshot-one',expiresAt:proofUntil,payload:{asOf:now,counts:{n:1,train:1,block1:0,block2:0},frameComplete:true,scanned:2,populationTotal:2,populationLowerBound:2,timeSpanMs:0,engineeringScreen:false,unknownSegments:['account-size','topic'],refs:[{postAttemptId:'attempt-one',membership:'train',publishedAt:now-2*86400000,observedAt:now-86400000,assessmentId:'assessment-one',originalUntil:proofUntil}],exclusions:[{postAttemptId:'attempt-two',reason:'no-applicable-publication-assessment'}]}},measurements:[{postAttemptId:'attempt-one',replies:2,impressions:100,rate:0.02,staticScore:60}]}],unavailable:[]};
-window.results={'performance/calibration:get':window.empty};window.update=value=>{window.results['performance/calibration:get']=value;window.listeners.forEach(cb=>cb());};window.changeRole=role=>{window.store={...window.store,role};window.listeners.forEach(cb=>cb());};
+window.complete={enabled:true,reason:null,configuration:window.configuration,choices:[{postAttemptId:'attempt-one',assessmentId:'assessment-one',publishedAt:now-2*86400000,versionNumber:1,requestedModel:'jev-1.13.0',resolvedModel:'jev-1.13.0',expiresAt:proofUntil}],choicesPartial:false,specs:[window.spec],snapshots:[{row:{_id:'snapshot-one',specId:'spec-one',expiresAt:proofUntil,payload:{asOf:now,counts:{n:1,train:1,block1:0,block2:0},frameComplete:true,scanned:2,populationTotal:2,populationLowerBound:2,timeSpanMs:0,engineeringScreen:false,unknownSegments:['account-size','topic'],refs:[{postAttemptId:'attempt-one',membership:'train',publishedAt:now-2*86400000,observedAt:now-86400000,assessmentId:'assessment-one',originalUntil:proofUntil}],exclusions:[{postAttemptId:'attempt-two',reason:'no-applicable-publication-assessment'}]}},measurements:[{postAttemptId:'attempt-one',replies:2,impressions:100,rate:0.02,staticScore:60}]}],unavailable:[]};
+window.modelEmpty={experiments:[],selectedId:null,experiment:null,candidate:null,evaluation:null,reason:null,proofUntil:null,activationEligible:false};
+window.modelExperiment={_id:'experiment-one',specId:'spec-one',payload:{mode:'prospective',policy:null,predeclaredAt:now-10000,lossVersion:'twice-discordance-v1',compatibility:window.spec.payload.compatibility}};
+window.modelCandidate={_id:'candidate-one',payload:{n:1,spanMs:0,baseline:{pairs:0,targetTies:0,loss:null},transfer:null,frozenAt:now-5000}};
+const block={n:0,baseline:{pairs:0,targetTies:0,loss:null},candidate:{loss:null},improvement:null,drift:{clarity:null,discussion:null,replyRate:null}};
+window.modelEvaluation={payload:{asOf:now,trainN:1,engineeringScreen:false,engineeringScreenBasis:"unvalidated-30-posts-28-days",evidenceQualified:false,activationEligible:false,block1:block,block2:block,stability:null,excludedFraction:.5,populationTotal:2,populationLowerBound:2,scanned:2,reasons:['empirical-policy-unset','immature-or-incomplete-frame'],unknownSegments:['account-size','topic','timezone','unseen-version-strata']}};
+window.modelComplete={...window.modelEmpty,experiments:[{id:'experiment-one',createdAt:now-10000,mode:'prospective'}],selectedId:'experiment-one',experiment:window.modelExperiment,proofUntil};
+window.updateModel=value=>{window.results['performance/models:get']=value;window.listeners.forEach(cb=>cb());};
+window.results={'performance/calibration:get':window.empty,'performance/models:get':window.modelEmpty};window.update=value=>{window.results['performance/calibration:get']=value;window.listeners.forEach(cb=>cb());};window.changeRole=role=>{window.store={...window.store,role};window.listeners.forEach(cb=>cb());};
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(MemoryRouter,{initialEntries:['/operations']},React.createElement(TooltipProvider,null,React.createElement(Routes,null,React.createElement(Route,{element:React.createElement(AppShell)},React.createElement(Route,{path:'operations',element:React.createElement(OperationsPage)}))))));`;
 const server = await createServer({
   root,
@@ -210,6 +217,128 @@ try {
     args: { accountId: "account", specId: "spec-one" },
   });
   await page.evaluate(() => window.commands.at(-1).resolve("new-snapshot"));
+  await expect(
+    page.getByRole("heading", {
+      name: "Kalibrierung im Schattenbetrieb",
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Empirische Politik standardmäßig NULL:", { exact: false }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Plan für neuen Schattenversuch")
+    .selectOption("spec-one");
+  const declareButton = page.getByRole("button", {
+    name: "Diagnostischen Schattenversuch mit NULL-Politik vorerklären",
+  });
+  await declareButton.click();
+  expect(await page.evaluate(() => window.commands.at(-1))).toMatchObject({
+    name: "performance/models:predeclare",
+    args: { accountId: "account", specId: "spec-one", policy: null },
+  });
+  await expect(declareButton).toBeDisabled();
+  await page.evaluate(() => {
+    window.commands.at(-1).resolve("experiment-one");
+    window.updateModel(window.modelComplete);
+  });
+  await expect(page.getByLabel("Gespeicherter Schattenversuch")).toHaveValue(
+    "experiment-one",
+  );
+  await page
+    .getByLabel("Native Materialisierung für diesen Versuch")
+    .selectOption("snapshot-one");
+  const freezeButton = page.getByRole("button", {
+    name: "Nur Training anpassen und Kandidat unveränderlich einfrieren",
+  });
+  await freezeButton.click();
+  await expect(freezeButton).toBeDisabled();
+  expect(await page.evaluate(() => window.commands.at(-1))).toMatchObject({
+    name: "performance/models:fit",
+    args: { experimentId: "experiment-one", snapshotId: "snapshot-one" },
+  });
+  await page.evaluate(() => {
+    window.commands.at(-1).resolve("candidate-one");
+    window.updateModel({
+      ...window.modelComplete,
+      candidate: window.modelCandidate,
+    });
+  });
+  await expect(
+    page.getByText("Unabhängige Trainingsfälle n=1", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("nicht verfügbar: keine vergleichbaren Paare", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Eingefrorenen Kandidaten mit Baseline vergleichen",
+    })
+    .click();
+  expect(await page.evaluate(() => window.commands.at(-1))).toMatchObject({
+    name: "performance/models:compare",
+  });
+  await page.evaluate(() => {
+    window.commands.at(-1).reject(new Error("unconfirmed-network"));
+  });
+  await expect(page.getByRole("alert")).toContainText(
+    "Anfrage nicht bestätigt",
+  );
+  const replayName = await page.evaluate(
+    () => window.commands.at(-1).args.commandKey,
+  );
+  await page
+    .getByRole("button", { name: "Ursprüngliche Anfrage wiederholen" })
+    .click();
+  expect(
+    await page.evaluate(() => window.commands.at(-1).args.commandKey),
+  ).toBe(replayName);
+  await page.evaluate(() => {
+    window.commands.at(-1).resolve("evaluation-one");
+    window.updateModel({
+      ...window.modelComplete,
+      candidate: window.modelCandidate,
+      evaluation: window.modelEvaluation,
+    });
+  });
+  await expect(
+    page.getByText("Evidenzqualifikation nicht erfüllt", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Block 1: unabhängiges n=0", { exact: false }),
+  ).toBeVisible();
+  await page.evaluate(() =>
+    window.updateModel({
+      ...window.modelComplete,
+      candidate: window.modelCandidate,
+      experiment: {
+        ...window.modelExperiment,
+        payload: { ...window.modelExperiment.payload, mode: "retrospective" },
+      },
+    }),
+  );
+  await expect(
+    page.getByText("Retrospektiv · dauerhaft nur Diagnose · Politik", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page.getByLabel("Referenz-Account").selectOption("account2");
+  await expect(
+    page.getByText("Unabhängige Trainingsfälle n=1", { exact: false }),
+  ).toHaveCount(0);
+  await page.getByLabel("Referenz-Account").selectOption("account");
+  await expect(
+    page.getByText("Unabhängige Trainingsfälle n=1", { exact: false }),
+  ).toBeVisible();
+  await page.evaluate(() =>
+    window.updateModel({
+      ...window.modelComplete,
+      candidate: window.modelCandidate,
+      evaluation: window.modelEvaluation,
+    }),
+  );
   await page.screenshot({
     path: `${evidence}/operations-desktop.png`,
     fullPage: true,
@@ -238,6 +367,12 @@ try {
     fullPage: true,
   });
   await page.clock.runFor(20001);
+  await expect(
+    page.getByText("Unabhängige Trainingsfälle n=1", { exact: false }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Schattennachweis nicht verfügbar:", { exact: false }),
+  ).toBeVisible();
   await expect(
     page.getByText("n=1 · Training 1 · Block 1 0 · Block 2 0"),
   ).toHaveCount(0);
