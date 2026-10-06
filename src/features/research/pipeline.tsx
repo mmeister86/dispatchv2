@@ -8,6 +8,7 @@ import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/shared";
 import { useGithubSourceProofClock } from "@/lib/github-source-proof";
+import { useStore } from "@/lib/store";
 type Operation = Doc<"researchSourcePolicies">["operation"];
 type Command = (
   fn: (key: string) => Promise<unknown>,
@@ -133,6 +134,7 @@ export function ResearchInbox({
   disabled: boolean;
   command: Command;
 }) {
+  const { state } = useStore();
   const [resumeMessage, setResumeMessage] = useState("");
   const row = useQuery(
       api.research.pipeline.results,
@@ -147,6 +149,11 @@ export function ResearchInbox({
   );
   return (
     <Section title="Research-Inbox">
+      <p className="muted text-xs">
+        Inbox für{" "}
+        {state.accounts.find((a) => a.id === accountId)?.handle ??
+          "Account nicht verfügbar"}
+      </p>
       <AccountInbox
         workspaceId={workspaceId}
         accountId={accountId}

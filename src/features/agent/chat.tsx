@@ -17,23 +17,34 @@ import { Textarea } from "@/components/ui/textarea";
 import { PageHeader, AccountSelect, Status } from "@/components/shared";
 import { ModelConfiguration } from "@/features/settings/models";
 export function RealAgentChat() {
-  const { state } = useStore();
-  const [account, setAccount] = useState(state.activeAccountId);
-  const [, setParams] = useSearchParams();
-  const actualAccount = state.accounts.some((a) => a.id === account)
-    ? account
-    : state.activeAccountId;
+  const { state, selectAccount } = useStore();
+  const [params, setParams] = useSearchParams();
+  const actualAccount = state.activeAccountId;
+  const scope = `${state.activeWorkspaceId}:${actualAccount}`;
+  const previousScope = useRef(scope);
+  const scopeChanged = previousScope.current !== scope;
+  useEffect(() => {
+    if (!scopeChanged) return;
+    previousScope.current = scope;
+    setParams(
+      (p) => {
+        p.delete("conversation");
+        return p;
+      },
+      { replace: true },
+    );
+  }, [scope, scopeChanged, setParams]);
   return (
     <div className="fade-in">
       <PageHeader
         eyebrow="Dein kreativer Sparringspartner"
         title="Agent"
-        description="Gedanken sortieren und Vorschläge prüfen."
+        description={`Gedanken sortieren und Vorschläge prüfen${actualAccount ? ` · ${state.accounts.find((a) => a.id === actualAccount)?.handle ?? "Account nicht verfügbar"}` : ""}.`}
       />
       <AccountSelect
         value={actualAccount}
         onChange={(value) => {
-          setAccount(value);
+          selectAccount(value);
           setParams(
             (p) => {
               p.delete("conversation");
@@ -48,6 +59,11 @@ export function RealAgentChat() {
           key={`${state.activeWorkspaceId}:${actualAccount}`}
           workspaceId={state.activeWorkspaceId as Id<"workspaces">}
           accountId={actualAccount as Id<"socialAccounts">}
+          initialConversationId={
+            scopeChanged
+              ? null
+              : (params.get("conversation") as Id<"conversations"> | null)
+          }
           editable={canEdit(state.role)}
         />
       ) : (
@@ -77,10 +93,12 @@ function ChatSession({
   workspaceId,
   accountId,
   editable,
+  initialConversationId,
 }: {
   workspaceId: Id<"workspaces">;
   accountId: Id<"socialAccounts">;
   editable: boolean;
+  initialConversationId: Id<"conversations"> | null;
 }) {
   const scope = { workspaceId, accountId };
   const [params] = useSearchParams();
@@ -88,8 +106,9 @@ function ChatSession({
     ...scope,
     paginationOpts: { numItems: 25, cursor: null },
   });
+  const [requested] = useState(initialConversationId);
   const [selected, setSelected] = useState<Id<"conversations"> | null>(
-    params.get("conversation") as Id<"conversations"> | null,
+    requested,
   );
   const [prompt, setPrompt] = useState(params.get("question") ?? "");
   const [title, setTitle] = useState("");
@@ -120,11 +139,8 @@ function ChatSession({
     cleanupUnavailable = useMutation(api.ai.conversations.cleanupUnavailable);
   const current =
     list?.page.find((c) => c.conversationId === selected) ??
-    (params.get("conversation")
-      ? undefined
-      : list?.page.find((c) => c.state === "active"));
-  const selection =
-    current?.conversationId ?? (params.get("conversation") ? selected : null);
+    (requested ? undefined : list?.page.find((c) => c.state === "active"));
+  const selection = current?.conversationId ?? (requested ? selected : null);
   const latest = useRef({ selection, editable, epoch: 0 });
   latest.current = {
     selection,

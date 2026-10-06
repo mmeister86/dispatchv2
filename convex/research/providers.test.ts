@@ -28,6 +28,109 @@ async function execute(
     orderId: id,
   });
 }
+test("same query in two accounts has independent cache and account grants with shared workspace limit", async () => {
+  const f = await fixture(["web-search"]);
+  const accountId = await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...account } = (await ctx.db.get(f.accountId))!;
+    const id = await ctx.db.insert("socialAccounts", {
+      ...account,
+      providerIdentity: "second",
+    });
+    const policy = (await ctx.db.get(f.policies[0]))!;
+    const { _id: pid, _creationTime: ptime, ...policyFields } = policy;
+    await ctx.db.insert("researchSourcePolicies", {
+      ...policyFields,
+      accountId: id,
+    });
+    const budget = (await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", `native:account:${f.accountId}`))
+      .unique())!;
+    const { _id: bid, _creationTime: btime, ...budgetFields } = budget;
+    await ctx.db.insert("aiBudgets", {
+      ...budgetFields,
+      key: `native:account:${id}`,
+      accountId: id,
+    });
+    return id;
+  });
+  const profileId = await f.signed.mutation(api.research.profiles.create, {
+    workspaceId: f.workspaceId,
+    accountId,
+    config,
+    commandKey: "b-profile",
+  });
+  await f.signed.mutation(api.research.profiles.change, {
+    workspaceId: f.workspaceId,
+    profileId,
+    expectedRevision: 1,
+    commandKey: "account-b-cap",
+    action: {
+      kind: "save",
+      config: { ...config, cap: { currency: "USD", limitMicros: 300 } },
+    },
+  });
+  const startB = (operationKey: string, query = "Product news") =>
+    f.signed.mutation(api.research.native.start, {
+      workspaceId: f.workspaceId,
+      profileId,
+      expectedRevision: 2,
+      operationKey,
+      query,
+      language: "de",
+      operations: ["web-search"],
+    });
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async () => streamResponse());
+  const a = await execute(f, await f.start("account-a-cache"));
+  const b = await execute(f, await startB("account-b-cache"));
+  expect(a[0].cacheHit).toBe(false);
+  expect(b[0].cacheHit).toBe(false);
+  expect(b[0].sources[0].sourceId).not.toBe(a[0].sources[0].sourceId);
+  expect((await execute(f, await startB("b-cache-hit")))[0].cacheHit).toBe(
+    true,
+  );
+  expect(fetch).toHaveBeenCalledTimes(2);
+  await f.t.run(async (ctx) => {
+    const budget = (await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", `native:account:${f.accountId}`))
+      .unique())!;
+    await ctx.db.patch(budget._id, { spentMicros: budget.limitMicros });
+  });
+  const nextA = await f.signed.mutation(api.research.native.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    operationKey: "exhausted-a",
+    query: "Uncached topic",
+    language: "de",
+    operations: ["web-search"],
+  });
+  expect((await execute(f, nextA))[0].state).toBe("budget_exhausted");
+  expect(
+    (await execute(f, await startB("funded-b", "Uncached topic")))[0].state,
+  ).toBe("completed");
+  await f.t.run(async (ctx) => {
+    const budget = (await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) =>
+        q.eq("key", `native:workspace:${f.workspaceId}`),
+      )
+      .unique())!;
+    await ctx.db.patch(budget._id, { spentMicros: budget.limitMicros });
+  });
+  expect(
+    (
+      await execute(
+        f,
+        await startB("shared-exhausted-b", "Another uncached topic"),
+      )
+    )[0].state,
+  ).toBe("budget_exhausted");
+  expect(fetch).toHaveBeenCalledTimes(3);
+});
 test("physical independent X failure/Web success has actual three-scope reservations and leaves publishing unchanged", async () => {
   const f = await fixture(),
     id = await f.start();

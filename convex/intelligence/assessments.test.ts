@@ -6,6 +6,7 @@ import { makeFunctionReference } from "convex/server";
 import { jevFixture } from "../../tests/jev-fixture";
 import { POST_ANALYSIS } from "../ai/jev/questions/postAnalysis";
 import { dispatchScore } from "../ai/scoring/dispatchScore";
+import { preflight } from "../publishing";
 const analyze = makeFunctionReference<"action">(
   "intelligence/assessments:analyze",
 );
@@ -65,6 +66,91 @@ function target(f: Awaited<ReturnType<typeof jevFixture>>) {
   const { workspaceId, accountId, draftId, draftVersionId } = f.request;
   return { workspaceId, accountId, draftId, draftVersionId };
 }
+test("analyzed scheduled A remains historical A after manual B save; B inherits no approval or assessment", async () => {
+  const f = await jevFixture(true);
+  await f.t.run(async (ctx) => {
+    const account = (await ctx.db.get(f.request.accountId))!;
+    await ctx.db.patch(account._id, {
+      capability: { ...account.capability, publish: true },
+    });
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => response()),
+  );
+  await f.signed.action(analyze, {
+    ...target(f),
+    operationKey: "analysis-before-move",
+  });
+  const old = (await f.signed.query(get, target(f))).assessment;
+  const approvalId = await f.signed.mutation(api.editorial.approve, {
+    workspaceId: f.workspaceId,
+    versionId: f.request.draftVersionId,
+    accountId: f.request.accountId,
+  });
+  const at = Math.ceil((Date.now() + 3600000) / 60000) * 60000;
+  const scheduleId = await f.signed.mutation(api.editorial.schedule, {
+    workspaceId: f.workspaceId,
+    versionId: f.request.draftVersionId,
+    accountId: f.request.accountId,
+    approvalId,
+    at,
+    timezone: "UTC",
+    localTime: new Date(at).toISOString().slice(0, 16),
+  });
+  const accountId = await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...account } = (await ctx.db.get(
+      f.request.accountId,
+    ))!;
+    return ctx.db.insert("socialAccounts", {
+      ...account,
+      providerIdentity: "second",
+      handle: "@second",
+    });
+  });
+  const before = (await f.t.run((ctx) =>
+    ctx.db.get(f.request.draftVersionId),
+  ))!;
+  const draftVersionId = await f.signed.mutation(api.editorial.save, {
+    workspaceId: f.workspaceId,
+    draftId: f.request.draftId,
+    expectedRevision: 1,
+    content: { ...before.content, accountId, text: ["New B text"] },
+    reason: "Move",
+  });
+  const current = await f.signed.query(get, {
+    ...target(f),
+    accountId,
+    draftVersionId,
+  });
+  expect(current.assessment).toBeNull();
+  expect(current.applicable).toBe(false);
+  expect(await f.t.run((ctx) => ctx.db.get(old._id))).toEqual(old);
+  expect(
+    await f.t.run(
+      async (ctx) =>
+        (await preflight(ctx, (await ctx.db.get(scheduleId))!))._id,
+    ),
+  ).toBe(before._id);
+  await expect(
+    f.signed.mutation(api.editorial.approve, {
+      workspaceId: f.workspaceId,
+      versionId: draftVersionId,
+      accountId: f.request.accountId,
+    }),
+  ).rejects.toThrow("APPROVAL_ACCOUNT_MISMATCH");
+  expect(
+    await f.t.run((ctx) =>
+      ctx.db
+        .query("approvals")
+        .withIndex("by_versionId_and_accountId", (q) =>
+          q.eq("versionId", draftVersionId).eq("accountId", accountId),
+        )
+        .take(1),
+    ),
+  ).toEqual([]);
+  expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+});
 test("TASK29 current assessment exposes genuine bounded recommendations without changing saved text", async () => {
   const f = await jevFixture(true);
   const original = [

@@ -108,6 +108,40 @@ test("explicit bounded replay creates genuine unapproved content once across con
   });
   expect(changed[0].ideaId).not.toBe(a[0].ideaId);
 });
+
+test("research-derived draft cannot move to another account or drop its original proof", async () => {
+  const f = await setup();
+  const [result] = await f.signed.mutation(
+    api.research.handoff.consume,
+    f.args,
+  );
+  const original = (await f.t.run((ctx) =>
+    ctx.db.get(result.draftVersionId!),
+  ))!;
+  const accountId = await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...account } = (await ctx.db.get(f.accountId))!;
+    return ctx.db.insert("socialAccounts", {
+      ...account,
+      providerIdentity: "other",
+      handle: "@other",
+    });
+  });
+  await expect(
+    f.signed.mutation(api.editorial.save, {
+      workspaceId: f.workspaceId,
+      draftId: result.draftId!,
+      expectedRevision: 1,
+      content: { ...original.content, accountId },
+      reason: "Move",
+    }),
+  ).rejects.toThrow("RESEARCH_CONTENT_ACCOUNT_CHANGED");
+  expect(await f.t.run((ctx) => ctx.db.get(result.draftVersionId!))).toEqual(
+    original,
+  );
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(result.draftId!)))!.currentVersionId,
+  ).toBe(original._id);
+});
 test.each(["withdraw", "expire", "reviewer", "author"])(
   "%s hides all concrete copied reads and blocks replay/writes; physical erasure keeps technical receipts",
   async (kind) => {

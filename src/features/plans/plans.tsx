@@ -290,7 +290,7 @@ function PlanForm({
       <PageHeader
         eyebrow="Planvorschläge"
         title="Aus deinen geprüften Entwürfen"
-        description="Wähle konkrete vorhandene Versionen für freie Tagesfenster. Fehlendes Material bleibt sichtbar."
+        description={`Planung für ${state.accounts.find((a) => a.id === accountId)?.handle ?? "Account nicht verfügbar"} · Wähle konkrete vorhandene Versionen für freie Tagesfenster. Fehlendes Material bleibt sichtbar.`}
         actions={
           <Button variant="outline" asChild>
             <Link to="/calendar">Kalender öffnen</Link>

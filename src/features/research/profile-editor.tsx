@@ -218,7 +218,7 @@ function ResearchAccount({
     <div className="space-y-6">
       <PageHeader
         title="Research"
-        description="Ein gespeichertes Profil je Account; Profiländerungen gelten nur für neue Aufträge."
+        description={`Research für ${state.accounts.find((a) => a.id === accountId)?.handle ?? "Account nicht verfügbar"} · Ein gespeichertes Profil je Account; Profiländerungen gelten nur für neue Aufträge.`}
       />
       <Section title="Verfügbarkeit">
         <p>

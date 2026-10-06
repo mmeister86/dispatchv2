@@ -4,7 +4,108 @@ import { expect, test, vi, afterEach } from "vitest";
 import schema from "../convex/schema";
 import { api, internal, components } from "../convex/_generated/api";
 import { resolveLocalTime, localInput } from "../src/lib/time";
+import { preflight } from "../convex/publishing";
 const modules = import.meta.glob("../convex/**/*.ts");
+test("manual account move preserves old scheduled snapshot and excludes mixed edit feedback", async () => {
+  const f = await setup();
+  const scheduleId = await f.plan();
+  const accountId = await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...a } = (await ctx.db.get(f.accountId))!;
+    return ctx.db.insert("socialAccounts", {
+      ...a,
+      providerIdentity: "second",
+      handle: "@second",
+    });
+  });
+  const versionId = await f.signed.mutation(api.editorial.save, {
+    workspaceId: f.workspaceId,
+    draftId: f.draftId,
+    expectedRevision: 1,
+    content: { ...f.content, accountId, text: ["Changed B text"] },
+    reason: "Move",
+  });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.draftId)))!.currentVersionId,
+  ).toBe(versionId);
+  expect(
+    (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: f.draftId,
+    }))!.approvals.some((a) => a.versionId === versionId),
+  ).toBe(false);
+  await expect(
+    f.signed.mutation(api.editorial.approve, {
+      workspaceId: f.workspaceId,
+      versionId,
+      accountId: f.accountId,
+    }),
+  ).rejects.toThrow("APPROVAL_ACCOUNT_MISMATCH");
+  expect(
+    await f.t.run(
+      async (ctx) =>
+        (await preflight(ctx, (await ctx.db.get(scheduleId))!))._id,
+    ),
+  ).toBe(f.versionId);
+  let rows = await f.signed.query(api.content.feedback.list, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+  });
+  expect(rows.map((r) => r.kind)).toEqual(["accept"]);
+  const legacyId = await f.t.run((ctx) =>
+    ctx.db.insert("contentFeedback", {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      versionId: f.versionId,
+      resultingVersionId: versionId,
+      actorId: f.userId,
+      kind: "edit",
+      createdAt: Date.now(),
+      editExtent: 99,
+      definition: "changed-middle-codepoints-v1",
+      sourceUntil: null,
+      sourceUnavailable: false,
+    }),
+  );
+  rows = await f.signed.query(api.content.feedback.list, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+  });
+  expect(rows.find((r) => r._id === legacyId)).toMatchObject({
+    sourceUnavailable: true,
+    editExtent: null,
+  });
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId,
+    expectedGeneration: 1,
+  });
+  expect(
+    await f.t.mutation(internal.publishing.claim, {
+      scheduleId,
+      generation: 1,
+    }),
+  ).toBeNull();
+  const same = await setup();
+  await same.signed.mutation(api.editorial.save, {
+    workspaceId: same.workspaceId,
+    draftId: same.draftId,
+    expectedRevision: 1,
+    content: { ...same.content, text: ["Changed A text"] },
+    reason: "Edit",
+  });
+  for (const kind of ["accept", "reject"] as const)
+    await same.signed.mutation(api.content.feedback.decide, {
+      workspaceId: same.workspaceId,
+      versionId: same.versionId,
+      kind,
+    });
+  const kept = await same.signed.query(api.content.feedback.list, {
+    workspaceId: same.workspaceId,
+    accountId: same.accountId,
+  });
+  expect(kept.map((r) => r.kind).sort()).toEqual(["accept", "edit", "reject"]);
+  expect(kept.find((r) => r.kind === "edit")!.editExtent).toBeGreaterThan(0);
+});
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllEnvs();

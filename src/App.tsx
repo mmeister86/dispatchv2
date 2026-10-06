@@ -448,9 +448,11 @@ export function AppShell() {
                 if (checkNavigate()) selectAccount(e.target.value);
               }}
             >
-              {!accounts.length && (
-                <option value="">Kein Account verbunden</option>
-              )}
+              <option value="">
+                {accounts.length
+                  ? "Account auswählen"
+                  : "Kein Account verbunden"}
+              </option>
               {accounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.channel} · {a.handle}

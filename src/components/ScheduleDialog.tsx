@@ -64,7 +64,10 @@ export function ScheduleDialog({
             {schedule ? "Termin verschieben" : "Freigegebene Version planen"}
           </DialogTitle>
           <DialogDescription>
-            {draft.title} · Version{" "}
+            {state.accounts.find(
+              (a) => a.id === (schedule?.accountId ?? draft.accountId),
+            )?.handle ?? "Account nicht verfügbar"}{" "}
+            · {draft.title} · Version{" "}
             {schedule?.version ?? draft.versions.at(-1)?.number}. Die
             Terminierung ist eine separate Aktion nach der Inhaltsfreigabe.
           </DialogDescription>

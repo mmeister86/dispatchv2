@@ -1,15 +1,15 @@
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='ai/conversations:list')return window.list;if(name==='ai/conversations:status')return window.runs;if(name==='ai/conversations:researchStatus')return window.researchOrders;if(name==='research/profiles:get')return window.researchProfile;if(name==='ai/conversations:projection')return window.projection;if(name==='content/ideas:list')return {page:[],isDone:true,continueCursor:''};if(name==='ai/runs:recent')return [];if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};};const mutations=new Map();export const useMutation=ref=>{const name=getFunctionName(ref);if(!mutations.has(name))mutations.set(name,args=>name==='ai/conversations:cleanupUnavailable'?(window.cleanupRequests.push(args),Promise.resolve(null)):new Promise((resolve,reject)=>window.commands.push({name,args,resolve,reject})));return mutations.get(name);};`,
+  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});export const useAction=()=>()=>Promise.reject(new Error("No provider"));export const usePaginatedQuery=()=>({results:[],status:"Exhausted",loadMore:()=>{}});export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='ai/conversations:list')return window.list;if(name==='ai/conversations:status')return window.runs;if(name==='ai/conversations:researchStatus')return window.researchOrders;if(name==='research/profiles:get')return window.researchProfile;if(name==='research/profiles:configuration')return {currency:null,downstreamAvailable:false};if(name==='research/runs:history')return {page:[],isDone:true,continueCursor:''};if(name==='research/evidence:inbox')return {page:[],isDone:true,continueCursor:''};if(name==='planning/plans:context')return {preferenceId:'preference-one',timezone:'UTC'};if(name==='planning/plans:list')return [];if(name==='ai/jev/access:availability')return {status:'disabled',guidance:'No live model'};if(name==='ai/conversations:projection')return window.projection;if(name==='content/ideas:list')return {page:[],isDone:true,continueCursor:''};if(name==='ai/runs:recent')return [];if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};};const mutations=new Map();export const useMutation=ref=>{const name=getFunctionName(ref);if(!mutations.has(name))mutations.set(name,args=>name==='ai/conversations:cleanupUnavailable'?(window.cleanupRequests.push(args),Promise.resolve(null)):new Promise((resolve,reject)=>window.commands.push({name,args,resolve,reject})));return mutations.get(name);};`,
   "@convex-dev/agent/react": `export const useUIMessages=(ref,args)=>({results:args==='skip'?[]:window.messages,status:'Exhausted',loadMore:()=>{}});`,
-  "@/lib/auth-client": `export const demoMode=false;`,
-  "@/lib/store": `import {useState} from 'react';export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:'account-one',workspaceId:window.workspace,name:'Synthetic',channel:'X'},{id:'account-two',workspaceId:window.workspace,name:'Second',channel:'X'}]}});`,
+  "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get("demo")==="1";export const backendConfigured=true;export const authClient={signOut:async()=>{}};export const AuthBoundary=({children})=>children;`,
+  "@/lib/store": `import {useState,useEffect} from 'react';export const WorkspaceStoreProvider=({children})=>children;export const useLocalState=(key,initial)=>useState(initial);export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>{const [,tick]=useState(0);useEffect(()=>{const update=()=>tick(v=>v+1);window.listeners.add(update);return()=>window.listeners.delete(update);},[]);return({state:{...window.state,activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role},selectAccount:value=>{window.account=value;window.render();},selectWorkspace:async()=>true,setState:()=>{},createDraft:()=>{},members:[],hasMoreVersions:false,hasMoreMedia:false,mutate:()=>{},saveDraft:async args=>{window.actionTargets.push({name:'save',args});return false;},approveVersion:async draft=>{window.actionTargets.push({name:'approve',accountId:draft.accountId});return false;},planVersion:async(draft,at,timezone,localTime,schedule)=>{window.actionTargets.push({name:'schedule',accountId:schedule?.accountId??draft.accountId});return false;},cancelSchedule:async()=>false});};`,
 };
-const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {AgentPage} from '/src/pages/Agent.tsx';window.workspace='workspace-one';window.account='account-one';window.role='Owner';window.queries=[];window.commands=[];window.list={page:[],isDone:true,continueCursor:''};window.runs=[];window.researchOrders=[];window.researchProfile=null;window.cleanupRequests=[];window.messages=[];window.projection={authorized:true,proofExpiresAt:Number.MAX_SAFE_INTEGER};const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,{initialEntries:['/agent'+location.search]},React.createElement(AgentPage))));window.render();`;
+const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {createMemoryRouter,RouterProvider} from 'react-router-dom';import {TooltipProvider} from '/src/components/ui/tooltip.tsx';import {AppShell} from '/src/App.tsx';import {AgentPage} from '/src/pages/Agent.tsx';import {ComposerPage} from '/src/pages/Drafts.tsx';import {RealResearch} from '/src/features/research/profile-editor.tsx';import {RealPlans} from '/src/features/plans/plans.tsx';import {ScheduleDialog} from '/src/components/ScheduleDialog.tsx';import {createSeed} from '/src/lib/model.ts';import '/src/index.css';window.listeners=new Set();window.workspace='workspace-one';window.account='account-one';window.role='Owner';window.state=createSeed();window.state.workspaces=[{id:window.workspace,name:'Synthetic workspace'}];window.state.accounts=[{...window.state.accounts[0],id:'account-one',workspaceId:window.workspace,handle:'@one',capability:{publish:true,maxText:280,maxThread:10,maxMedia:4,mediaTypes:[]}},{...window.state.accounts[0],id:'account-two',workspaceId:window.workspace,handle:'@two',capability:{publish:true,maxText:280,maxThread:10,maxMedia:4,mediaTypes:[]}}];window.state.drafts=[];window.state.schedules=[];window.state.media=[];window.actionTargets=[];window.queries=[];window.commands=[];window.list={page:[],isDone:true,continueCursor:''};window.runs=[];window.researchOrders=[];window.researchProfile=null;window.cleanupRequests=[];window.messages=[];window.projection={authorized:true,proofExpiresAt:Number.MAX_SAFE_INTEGER};function ScheduleFixture(){return React.createElement(ScheduleDialog,{draft:window.state.drafts[0],schedule:window.state.schedules[0],open:true,onOpenChange:()=>{}})}window.router=createMemoryRouter([{element:React.createElement(AppShell),children:[{path:'/agent',element:React.createElement(AgentPage)},{path:'/drafts/:id',element:React.createElement(ComposerPage)},{path:'/research',element:React.createElement(RealResearch)},{path:'/plans',element:React.createElement(RealPlans)},{path:'/calendar',element:React.createElement(ScheduleFixture)}]}],{initialEntries:['/agent'+location.search]});const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>{window.listeners.forEach(update=>update());root.render(React.createElement(React.StrictMode,null,React.createElement(TooltipProvider,null,React.createElement(RouterProvider,{router:window.router}))));};window.render();`;
 const server = await createServer({
   root,
   configFile: `${root}/vite.config.ts`,
@@ -448,9 +448,210 @@ try {
           .at(-1).args.conversationId,
     ),
   ).toBe("inbox-selected-thread");
+  await page.getByLabel("Nachricht an Agent").fill("Pending A prompt");
+  await page.getByRole("button", { name: "Senden", exact: true }).click();
+  const late = await page.evaluate(() => window.commands.length - 1);
+  await page.evaluate(() => {
+    window.list = { page: [], isDone: true, continueCursor: "" };
+    window.messages = [];
+  });
+  const queryStart = await page.evaluate(() => window.queries.length);
+  await page.getByLabel("Aktiver Account").selectOption("account-two");
+  await expect(page.getByLabel("Account", { exact: true })).toHaveValue(
+    "account-two",
+  );
+  await expect(page.getByText(/Gedanken sortieren.*@two/)).toBeVisible();
+  expect(
+    await page.evaluate(() => window.router.state.location.search),
+  ).not.toContain("conversation");
+  const scopedQueries = await page.evaluate(
+    (start) => window.queries.slice(start),
+    queryStart,
+  );
+  expect(
+    scopedQueries
+      .filter((q) => q.name === "ai/conversations:list")
+      .every((q) => q.args.accountId === "account-two"),
+  ).toBe(true);
+  expect(
+    scopedQueries
+      .filter((q) => q.name === "ai/conversations:projection")
+      .some((q) => q.args.conversationId === "inbox-selected-thread"),
+  ).toBe(false);
+  expect(
+    scopedQueries.filter((q) => q.name === "ai/jev/access:availability").at(-1)
+      .args.accountId,
+  ).toBe("account-two");
+  await page.evaluate(
+    (i) => window.commands[i].reject(new Error("Late A response")),
+    late,
+  );
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.getByRole("button", { name: "Neue Unterhaltung" }).click();
+  expect(await page.evaluate(() => window.commands.at(-1).args.accountId)).toBe(
+    "account-two",
+  );
+  await page.getByLabel("Aktiver Account").selectOption("");
+  await expect(page.getByLabel("Aktiver Account")).toHaveValue("");
+  await expect(
+    page.getByText("Wähle einen Account für die Unterhaltung."),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Neue Unterhaltung" }),
+  ).toHaveCount(0);
+  await page.evaluate(() => {
+    window.state.accounts = [];
+    window.render();
+  });
+  await expect(page.getByLabel("Aktiver Account")).toHaveValue("");
+  await expect(page.getByLabel("Aktiver Account").locator("option")).toHaveText(
+    "Kein Account verbunden",
+  );
+  await page.goto("http://127.0.0.1:5174/chat-fixture");
+  await page.getByLabel("Aktiver Account").selectOption("account-two");
+  await page.evaluate(() => window.router.navigate("/research"));
+  await expect(page.getByText(/Research für @two/)).toBeVisible();
+  await expect(page.getByText("Inbox für @two")).toBeVisible();
+  await page.evaluate(() => window.router.navigate("/plans"));
+  await expect(page.getByText(/Planung für @two/)).toBeVisible();
+  await page.evaluate(() => {
+    window.state.drafts = [
+      {
+        id: "draft-one",
+        workspaceId: window.workspace,
+        accountId: "account-one",
+        title: "A saved draft",
+        pillar: "Product",
+        strategy: "generic",
+        source: "Manual",
+        comments: [],
+        status: "draft",
+        versions: [
+          {
+            id: "version-one",
+            number: 1,
+            text: ["A saved text"],
+            mediaIds: [],
+            createdAt: new Date().toISOString(),
+            reason: "Manual",
+          },
+        ],
+      },
+    ];
+    window.state.schedules = [
+      {
+        id: "schedule-one",
+        workspaceId: window.workspace,
+        draftId: "draft-one",
+        accountId: "account-one",
+        version: 1,
+        text: ["A saved text"],
+        mediaIds: [],
+        at: new Date(Date.now() + 3600000).toISOString(),
+        status: "scheduled",
+        generation: 1,
+      },
+    ];
+    window.render();
+    window.router.navigate("/drafts/draft-one");
+  });
+  await expect(page.getByText(/Manueller|Manual.*@one/).first()).toBeVisible();
+  await expect(page.getByLabel("Account", { exact: true })).toHaveValue(
+    "account-one",
+  );
+  await page
+    .getByRole("button", { name: "Version freigeben", exact: true })
+    .first()
+    .click();
+  expect(await page.evaluate(() => window.actionTargets.at(-1))).toMatchObject({
+    name: "approve",
+    accountId: "account-one",
+  });
+  await page.evaluate(() => {
+    window.state.drafts[0].approval = {
+      version: 1,
+      accountId: "account-one",
+      at: new Date().toISOString(),
+      by: "Owner",
+    };
+    window.render();
+  });
+  await page.getByLabel("Account", { exact: true }).selectOption("account-two");
+  await expect(
+    page.getByText("Diese Arbeitsversion für @two ist noch nicht freigegeben"),
+  ).toBeVisible();
+  await expect(page.getByText("Version 1 für @two freigegeben")).toHaveCount(0);
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Wechsel von @one zu @two" }),
+  ).toContainText("Snapshot kann weiterhin für @one veröffentlicht werden");
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  expect(await page.evaluate(() => window.actionTargets.at(-1))).toMatchObject({
+    name: "save",
+    args: { accountId: "account-two" },
+  });
+  mkdirSync("/tmp/dispatch-task48-evidence/browser", { recursive: true });
+  await page.screenshot({
+    path: "/tmp/dispatch-task48-evidence/browser/composer-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: "/tmp/dispatch-task48-evidence/browser/composer-390.png",
+    fullPage: true,
+  });
+  // Use a fresh route mount so the unsaved composer navigation blocker remains effective.
+  await page.goto("http://127.0.0.1:5174/chat-fixture");
+  await page.evaluate(() => {
+    window.account = "account-two";
+    window.state.drafts = [
+      {
+        id: "draft-one",
+        workspaceId: window.workspace,
+        accountId: "account-two",
+        title: "B current draft",
+        versions: [{ number: 2, text: ["B new version"], mediaIds: [] }],
+        comments: [],
+      },
+    ];
+    window.state.schedules = [
+      {
+        id: "schedule-one",
+        workspaceId: window.workspace,
+        draftId: "draft-one",
+        accountId: "account-one",
+        version: 1,
+        text: ["A frozen text"],
+        mediaIds: [],
+        at: new Date(Date.now() + 3600000).toISOString(),
+        status: "scheduled",
+      },
+    ];
+    window.render();
+    window.router.navigate("/calendar");
+  });
+  await expect(page.getByRole("dialog")).toContainText("@one");
+  await expect(page.getByRole("dialog")).not.toContainText("@two");
+  await page
+    .getByRole("button", { name: "Termin verschieben", exact: true })
+    .click();
+  expect(await page.evaluate(() => window.actionTargets.at(-1))).toMatchObject({
+    name: "schedule",
+    accountId: "account-one",
+  });
+  await page.screenshot({
+    path: "/tmp/dispatch-task48-evidence/browser/schedule-390.png",
+    fullPage: true,
+  });
+  await page.goto("http://127.0.0.1:5174/chat-fixture?demo=1");
+  await expect(page.getByText("Mock-Modus", { exact: true })).toHaveCount(1);
+  await expect(page.getByText(/Lokal gespeicherte Demo/)).toBeVisible();
+  await page.screenshot({
+    path: "/tmp/dispatch-task48-evidence/browser/demo-390.png",
+    fullPage: true,
+  });
   expect(errors).toEqual([]);
   console.log(
-    "Actual real Agent chat: existing chat regressions plus targeted personal request/profile guidance/captured revision and stable retry/actual order receipt/stop/unknown resume/role epoch/idle source expiry and buffer cleanup PASS; mocked Convex transport, no provider call.",
+    "Actual styled AppShell/Agent/Research/Inbox/Plans/Composer/Schedule desktop390/Demo: global account switch, initial deep-link, stale URL, late reply, empty selection, actual action/frozen schedule targets, pre-save move warning PASS; existing chat regressions plus targeted personal request/profile guidance/captured revision and stable retry/actual order receipt/stop/unknown resume/role epoch/idle source expiry and buffer cleanup PASS; mocked Convex transport, no provider call.",
   );
 } finally {
   await browser?.close();

@@ -31,7 +31,11 @@ export async function record(
   kind: "accept" | "reject" | "edit",
   resulting: Doc<"draftVersions"> | null = null,
 ) {
-  if (!ver.content.accountId) return;
+  if (
+    !ver.content.accountId ||
+    (kind === "edit" && ver.content.accountId !== resulting?.content.accountId)
+  )
+    return;
   const sourceUntil = await draftResearchProof(ctx, ver);
   await ctx.db.insert("contentFeedback", {
     workspaceId: ver.workspaceId,
@@ -92,10 +96,32 @@ export const list = workspaceQuery({
         sourceUntil = r.sourceUntil;
       try {
         const ver = await ctx.db.get(r.versionId);
-        if (!ver || ver.sourceUnavailable) throw new Error();
+        if (
+          !ver ||
+          ver.sourceUnavailable ||
+          ver.workspaceId !== r.workspaceId ||
+          ver.content.accountId !== r.accountId
+        )
+          throw new Error();
+        const result =
+          r.kind === "edit" && r.resultingVersionId
+            ? await ctx.db.get(r.resultingVersionId)
+            : null;
+        if (
+          r.kind === "edit" &&
+          (!result ||
+            result.sourceUnavailable ||
+            result.workspaceId !== r.workspaceId ||
+            result.draftId !== ver.draftId ||
+            result.content.accountId !== r.accountId)
+        )
+          throw new Error();
         const horizon = Math.min(
           r.sourceUntil ?? Infinity,
           (await draftResearchProof(ctx, ver)) ?? Infinity,
+          result
+            ? ((await draftResearchProof(ctx, result)) ?? Infinity)
+            : Infinity,
         );
         if (horizon <= Date.now()) throw new Error();
         sourceUntil = Number.isFinite(horizon) ? horizon : null;

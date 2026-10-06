@@ -397,7 +397,9 @@ export const disconnect = workspaceMutation({
         q.eq("workspaceId", ctx.workspace._id).eq("userId", ctx.user._id),
       )
       .take(10);
-    for (const s of states) await ctx.db.delete(s._id);
+    for (const s of states)
+      if (!s.accountId || s.accountId === target._id)
+        await ctx.db.delete(s._id);
     return null;
   },
 });

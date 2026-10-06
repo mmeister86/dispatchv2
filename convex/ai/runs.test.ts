@@ -3,6 +3,84 @@ import { modelFixture } from "../../tests/model-fixture";
 import { internal, components, api } from "../_generated/api";
 afterEach(() => vi.unstubAllEnvs());
 describe("funded model runs through official Agent", () => {
+  test("exhausted A account budget cannot consume B; shared workspace budget still governs both", async () => {
+    const f = await modelFixture();
+    const b = await f.t.run(async (ctx) => {
+      const { _id, _creationTime, ...account } = (await ctx.db.get(
+        f.accountId,
+      ))!;
+      const id = await ctx.db.insert("socialAccounts", {
+        ...account,
+        providerIdentity: "second",
+      });
+      const budget = (await ctx.db
+        .query("aiBudgets")
+        .withIndex("by_key", (q) => q.eq("key", `account:${f.accountId}`))
+        .unique())!;
+      const { _id: bid, _creationTime: created, ...fields } = budget;
+      await ctx.db.insert("aiBudgets", {
+        ...fields,
+        key: `account:${id}`,
+        accountId: id,
+      });
+      await ctx.db.patch(bid, { spentMicros: budget.limitMicros });
+      return id;
+    });
+    const aRun = await f.create();
+    await f.t.mutation(internal.ai.runs.claim, {
+      runId: aRun,
+      executionKey: "a-budget",
+    });
+    await expect(
+      f.t.mutation(internal.ai.runs.fund, {
+        runId: aRun,
+        generation: 1,
+        executionKey: "a-budget",
+        key: "a-attempt",
+      }),
+    ).rejects.toThrow("MODEL_BUDGET_EXHAUSTED");
+    const createB = () =>
+      f.t.mutation(internal.ai.runs.create, {
+        workspaceId: f.workspaceId,
+        accountId: b,
+        actorId: f.userId,
+        purpose: "draft",
+        prompt: "B prompt",
+        promptVersion: "fixture-v1",
+        sources: [],
+      });
+    const runId = await createB();
+    expect((await f.t.run((ctx) => ctx.db.get(runId)))!.accountId).toBe(b);
+    const executionKey = "b-budget";
+    await f.t.mutation(internal.ai.runs.claim, { runId, executionKey });
+    const attemptId = await f.t.mutation(internal.ai.runs.fund, {
+      runId,
+      generation: 1,
+      executionKey,
+      key: "b-attempt",
+    });
+    const attempt = (await f.t.run((ctx) => ctx.db.get(attemptId)))!;
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(attempt.budgetIds[2])))!.accountId,
+    ).toBe(b);
+    await f.t.run(async (ctx) => {
+      const budget = (await ctx.db
+        .query("aiBudgets")
+        .withIndex("by_key", (q) => q.eq("key", `workspace:${f.workspaceId}`))
+        .unique())!;
+      await ctx.db.patch(budget._id, { spentMicros: budget.limitMicros });
+    });
+    const shared = await createB();
+    await f.t.mutation(internal.ai.runs.claim, { runId: shared, executionKey });
+    await expect(
+      f.t.mutation(internal.ai.runs.fund, {
+        runId: shared,
+        generation: 1,
+        executionKey,
+        key: "shared-attempt",
+      }),
+    ).rejects.toThrow("MODEL_BUDGET_EXHAUSTED");
+  });
   test("large valid token receipts preserve the exact rounded micro-unit estimate", async () => {
     const f = await modelFixture();
     await f.t.run(async (ctx) => {

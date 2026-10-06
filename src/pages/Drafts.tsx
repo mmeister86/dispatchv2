@@ -714,7 +714,7 @@ export function ComposerPage() {
       <PageHeader
         eyebrow="Composer"
         title={draft.title}
-        description={`${draft.source ?? "Manueller Entwurf"} · ${draft.versions.length} Version${draft.versions.length === 1 ? "" : "en"}`}
+        description={`${draft.source ?? "Manueller Entwurf"} · ${account?.handle ?? "Account auswählen"} · ${draft.versions.length} Version${draft.versions.length === 1 ? "" : "en"}`}
         actions={
           <>
             <Button
@@ -841,10 +841,18 @@ export function ComposerPage() {
             {formatDate(scheduled[0].at, state.preferences.timezone)}. Deine
             Arbeitsversion ersetzt diesen Snapshot nicht.
           </span>
-          {scheduled[0].accountId !== draft.accountId && (
+          {scheduled[0].accountId !== accountId && (
             <span role="alert">
-              Account geändert: Den bisherigen Slot im Kalender stornieren und
-              diese Kanalvariante separat planen.
+              Wechsel von{" "}
+              {state.accounts.find((a) => a.id === scheduled[0].accountId)
+                ?.handle ?? "bisherigem Account"}{" "}
+              zu {account?.handle ?? "keinem Account"}: Der alte Snapshot kann
+              weiterhin für{" "}
+              {state.accounts.find((a) => a.id === scheduled[0].accountId)
+                ?.handle ?? "den bisherigen Account"}{" "}
+              veröffentlicht werden. Bei Bedarf den bisherigen Slot ausdrücklich
+              stornieren oder die Freigabe widerrufen; die neue Version separat
+              freigeben und planen.
             </span>
           )}
           {!demoMode &&
@@ -1202,9 +1210,9 @@ export function ComposerPage() {
               />
               <div>
                 <strong className="text-sm">
-                  {approved(draft)
+                  {approved(draft) && !dirty
                     ? `Version ${v.number} für ${account?.handle} freigegeben`
-                    : "Diese Arbeitsversion ist noch nicht freigegeben"}
+                    : `Diese Arbeitsversion für ${account?.handle ?? "keinen Account"} ist noch nicht freigegeben`}
                 </strong>
                 <p className="mt-2 mb-0 text-xs leading-relaxed muted">
                   {draft.approval

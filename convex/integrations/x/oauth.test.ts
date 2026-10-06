@@ -4,6 +4,7 @@ import { mediaFixture } from "../../../tests/media-fixture";
 import { base64, keyring, open, seal, sha256 } from "../../lib/crypto";
 import { identity, tokens, request, configuration } from "./client";
 import { association } from "./fields";
+import { config as researchConfig } from "../../../tests/research-fixture";
 
 const scopes = "tweet.read users.read tweet.write offline.access media.write";
 function config() {
@@ -64,6 +65,169 @@ async function connect(f: Awaited<ReturnType<typeof mediaFixture>>) {
 afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
+});
+
+test("disconnect A preserves explicit pending B reconnect and B credentials; invalidates A and generic attempts", async () => {
+  config();
+  const f = await mediaFixture(),
+    a = await connect(f);
+  vi.restoreAllMocks();
+  provider("200", "b-access", "b-refresh");
+  const b = await f.signed.action(
+    api.integrations.x.client.callback,
+    await start(f),
+  );
+  const schedules: import("../../_generated/dataModel").Id<"schedules">[] = [];
+  for (const accountId of [a, b]) {
+    await f.t.run(async (ctx) => {
+      const account = (await ctx.db.get(accountId))!;
+      await ctx.db.patch(accountId, {
+        capability: { ...account.capability, publish: true },
+        xEvidence: { ...account.xEvidence!, liveWrite: "verified" },
+      });
+    });
+    const draftId = await f.signed.mutation(api.editorial.create, {
+      workspaceId: f.workspaceId,
+      source: "Manual",
+      content: {
+        title: "Snapshot",
+        text: ["Frozen account text"],
+        accountId,
+        media: [],
+        pillar: "",
+        strategy: "generic",
+      },
+    });
+    const versionId = (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId,
+    }))!.versions[0]._id;
+    const approvalId = await f.signed.mutation(api.editorial.approve, {
+      workspaceId: f.workspaceId,
+      versionId,
+      accountId,
+    });
+    const at = Math.ceil((Date.now() + 3600000) / 60000) * 60000;
+    const scheduleId = await f.signed.mutation(api.editorial.schedule, {
+      workspaceId: f.workspaceId,
+      versionId,
+      accountId,
+      approvalId,
+      at,
+      timezone: "UTC",
+      localTime: new Date(at).toISOString().slice(0, 16),
+    });
+    await f.t.run((ctx) => ctx.db.patch(scheduleId, { state: "publishing" }));
+    schedules.push(scheduleId);
+  }
+  const profileId = await f.signed.mutation(api.research.profiles.create, {
+    workspaceId: f.workspaceId,
+    accountId: b,
+    config: researchConfig,
+    commandKey: "b-profile",
+  });
+  const preferenceId = await f.t.run(
+    async (ctx) =>
+      (await ctx.db
+        .query("preferences")
+        .withIndex("by_userId_and_workspaceId", (q) =>
+          q.eq("userId", f.userId).eq("workspaceId", f.workspaceId),
+        )
+        .unique())!._id,
+  );
+  const startDate = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const planId = await f.signed.mutation(api.planning.plans.propose, {
+    workspaceId: f.workspaceId,
+    accountId: b,
+    preferenceId,
+    start: startDate,
+    end: startDate,
+    timezone: "UTC",
+    clock: "10:00",
+    desiredCount: 1,
+    mode: "mixed",
+    topics: "",
+    commandKey: "b-plan",
+  });
+  const retained = await f.t.run(async (ctx) => ({
+    profile: await ctx.db.get(profileId),
+    plan: await ctx.db.get(planId),
+    schedule: await ctx.db.get(schedules[1]),
+  }));
+  const before = await f.t.run(async (ctx) => ({
+    account: await ctx.db.get(b),
+    credential: await ctx.db
+      .query("xCredentials")
+      .withIndex("by_accountId", (q) => q.eq("accountId", b))
+      .unique(),
+  }));
+  const reconnect = await start(f, b);
+  await f.signed.mutation(api.integrations.x.oauth.disconnect, {
+    workspaceId: f.workspaceId,
+    accountId: a,
+  });
+  expect(
+    await f.t.run(async (ctx) => ({
+      account: await ctx.db.get(b),
+      credential: await ctx.db
+        .query("xCredentials")
+        .withIndex("by_accountId", (q) => q.eq("accountId", b))
+        .unique(),
+    })),
+  ).toEqual(before);
+  expect(
+    await f.t.run(async (ctx) => ({
+      profile: await ctx.db.get(profileId),
+      plan: await ctx.db.get(planId),
+      schedule: await ctx.db.get(schedules[1]),
+    })),
+  ).toEqual(retained);
+  expect(
+    await f.t.mutation(internal.publishing.checkSend, {
+      scheduleId: schedules[1],
+      generation: 1,
+    }),
+  ).toBe(true);
+  expect(
+    await f.t.mutation(internal.publishing.checkSend, {
+      scheduleId: schedules[0],
+      generation: 1,
+    }),
+  ).toBe(false);
+  expect(
+    (
+      await f.t.action(internal.integrations.x.client.credentialForSchedule, {
+        scheduleId: schedules[1],
+        generation: 1,
+        operation: "text",
+      })
+    ).accessToken,
+  ).toBe("b-access");
+  expect(
+    await f.signed.action(api.integrations.x.client.callback, reconnect),
+  ).toBe(b);
+  await expect(
+    f.signed.action(api.integrations.x.client.refresh, {
+      workspaceId: f.workspaceId,
+      accountId: a,
+    }),
+  ).rejects.toThrow("X_REAUTH_REQUIRED");
+  const pendingA = await start(f, a);
+  await f.signed.mutation(api.integrations.x.oauth.disconnect, {
+    workspaceId: f.workspaceId,
+    accountId: a,
+  });
+  await expect(
+    f.signed.action(api.integrations.x.client.callback, pendingA),
+  ).rejects.toThrow("X_OAUTH_STATE_INVALID");
+  const generic = await start(f);
+  await f.signed.mutation(api.integrations.x.oauth.disconnect, {
+    workspaceId: f.workspaceId,
+    accountId: a,
+  });
+  await expect(
+    f.signed.action(api.integrations.x.client.callback, generic),
+  ).rejects.toThrow("X_OAUTH_STATE_INVALID");
 });
 
 test("S256 PKCE, encrypted storage, public evidence, one-use state and immediate disconnect", async () => {
