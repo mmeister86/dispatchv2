@@ -283,7 +283,11 @@ export async function current(ctx: Ctx, a: Request) {
     requestFingerprint,
   };
 }
-export const context = internalQuery({ args: requestFields, handler: current });
+export const context = internalQuery({
+  args: requestFields,
+  returns: contextResult,
+  handler: current,
+});
 export const fund = internalMutation({
   args: { ...requestFields, expectedFingerprint: v.string() },
   returns: v.id("aiAttempts"),

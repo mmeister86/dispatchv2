@@ -158,7 +158,7 @@ export const execute = internalAction({
             result = { outcome: "invalid_response" };
           return {
             ...result,
-            receipt: { ...usage(value), model: value.model },
+            receipt: { ...usage(value), model: value?.model ?? null },
           };
         },
         async (error) => {

@@ -674,3 +674,47 @@ test("valid low-confidence component values remain available after the same curr
   });
   expect(result).not.toHaveProperty("aggregate");
 });
+
+test("registered SDK HTTP 200 JSON null remains invalid_response with one unresolved funded receipt", async () => {
+  const f = await fixture();
+  const transport = vi.fn(
+    async () =>
+      new Response("null", {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+  );
+  vi.stubGlobal("fetch", transport);
+  expect(await f.t.action(internal.ai.jev.client.execute, f.request)).toEqual({
+    outcome: "invalid_response",
+    answers: null,
+  });
+  expect(transport).toHaveBeenCalledTimes(1);
+  const attempts = await f.t.run((ctx) => ctx.db.query("aiAttempts").collect());
+  expect(attempts).toHaveLength(1);
+  expect(attempts[0]).toMatchObject({
+    outcome: "invalid_response",
+    state: "unknown",
+    heldMicros: 8000,
+    estimatedMicros: null,
+    inputTokens: null,
+    outputTokens: null,
+    resolvedModel: null,
+  });
+});
+
+test("registered admission context exports the existing explicit runtime return contract", async () => {
+  const { context } = await import("./access");
+  const returns = JSON.parse(
+    (context as unknown as { exportReturns(): string }).exportReturns(),
+  );
+  expect(returns).toMatchObject({
+    type: "object",
+    value: {
+      state: { fieldType: { type: "object" } },
+      questions: { fieldType: { type: "record" } },
+      p: { fieldType: { type: "object" } },
+      c: { fieldType: { type: "object" } },
+    },
+  });
+});
