@@ -4,7 +4,7 @@ title: 'Empfehlungen, Vergleich und Übernahme gestalten (P08.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 05:44'
+updated_date: '2026-10-06 05:49'
 labels:
   - p08
   - jev
@@ -84,4 +84,6 @@ Actualprefeature behaviorRED07:24:22 /tmp/task29-red.log: recommendations absent
 ROOT verified frozen13 source bytes/SHA/Git+BASE blobs and all46 artifacts, inventory1e091c6b. Full672/39PASS07:34:51; final focused23PASS07:37:31; final affected types/format/build/bundle/diff exit0, full lintPASS, officialcodegen upload/evaluate and actualEUDev07:35:52/posttypesPASS. Read final production UI/full browser fixture and viewed named-media/nonmodal diff+incomplete/provider-error screenshots; mockedtransport only. All failures retained/honestly categorized incl minimum-fixture overlength and purgeVersion source-free permanentACK expectation correction; explicit sourceUnavailable fixture is not nativewithdrawal. FreshSPEC→QUALITY pending, source scoped13 commit authorized after frozen verification; no AC/manualDone acceptance yet.
 
 SOURCE9799eebc9e5e88d08ab03e903973311748ebc403 treecf5edcf44d68fc9af8100cd500e497fd67945dcb exact13 committedsourcepaths, ROOTverifiedcurrent/committedSHA/pathset/clean; commitreceipt9ec6b602. SourcewindowCLOSED. Two freshSPECspawns refused agent-thread-limit; independent existing research_content_handoff (not TASK29writer) assigned completecuratedreview and own/tmp-onlycontrols. Sessionfreshness exception explicit, not fabricatedfreshreview. DistinctQUALITY onlyafterSPECPASS; originalwriteronlysourcecorrection.
+
+IndependentSPEC07:48:47 actual5controls4PASS1genuineRED. Actualsecondpubliccaller/workspace and reorderedACK pass; genuine native→human evidence→handoff withdrawal+expiry block newadoption/acceptedACK, drainphysicalprotectedcopycleanup, moneyunchanged. Tilde~~~codefence accepted unsafe tokencandidate/publiccompare removal/publicadopt; sharedbacktick-onlyguard gap. ROOTreadfullcontrol/log/config, originalwriteronlynarrowfix+properpermanentRED→GREEN. Originalexploit intentionallyassertsbugsuccess beforefinalsafetyassertion; preserveimmutableoriginalRED, re-SPEC other4unchanged plus separatefixedinvariant, not fabricatedunchangedGREEN. SourcewindowCLOSED/noAC/manualacceptance.
 <!-- SECTION:NOTES:END -->
