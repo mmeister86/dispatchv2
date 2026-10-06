@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 14:00'
-updated_date: '2026-10-06 14:22'
+updated_date: '2026-10-06 14:34'
 labels: []
 dependencies: []
 references:
@@ -34,4 +34,6 @@ Erstes natives Teilpaket gemäß .docs/style-profile-contract.md: accountweite a
 
 <!-- SECTION:NOTES:BEGIN -->
 Vor Writerstart vorhandene TASK48-Account-/Feedback-Korrekturen abwarten: .docs/multi-account-continuation-contract.md. Bestehende A→B-Reassignment-Feedbackzeilen müssen als Mischereignisse ausgeschieden werden; echte Editor-/Approval-/Publishing-Linie bleibt erhalten. Zusätzlich im Style-Proposal weiter exact before/result gleicheAccount/Draft/Workspace prüfen; kein falsches unabhängiges Lernsignal aus Accountwechsel.
+
+Read-only47-Folgeaudit vonRoot vollständig gelesen: contentFeedback record/list/sweep/purge beweist bislang nur before-Version.45.1s Feedback-Korrekturvorschläge müssen beide exakten before/resultVersion-Quellen samt workspace/draft/account und Minimum original/current horizons beweisen;48-Attributionsfix allein reicht nicht für resulting-source withdrawal. Ergebnisabhängige physical cleanup/index ist vor einem neuen Feedbackconsumer nötig, nicht erst bei47. Keine kopierten Texte oder Identitätsbehauptungen aus editExtent.
 <!-- SECTION:NOTES:END -->

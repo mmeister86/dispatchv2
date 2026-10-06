@@ -4,7 +4,7 @@ title: Begrenzte Experimente und Lernkontrolle bauen (P12.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 14:34'
 labels:
   - p12
   - r5
@@ -52,4 +52,6 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /experiments. Create/edit hypothesis, target metric, A/B descriptions, observation window and stop rule; start/stop/resume/complete and small-sample synthetic results. Grenze: No experiment assignment, platform posting, causal inference or actual learning. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Read-only Fortsetzung /tmp/dispatch-continuation-47-contract-proposal.md vollständig durch Root gelesen. Vorläufige Sequenz nach48/45/46: 47.1 explizite finite native A/B-Deklaration/exakte manuelle Versionzuordnung/deskriptive Editorial-Outcomes, dann47.2 separat erlaubte ursprüngliche Publishing-Zuordnung/passende retained Metrics. Keine Content-/Schedule-/Provider-Erzeugung oder automatische Gewinneraktivierung. Zusätzliche SharedFeedback-Seam: record/list/sweep/purge prüfen aktuell nur before-Version;45/47 benötigen exact resultingVersion scope/draft/account, Minimum beider original/current Quellenhorizonte und indexed result-cleanup. Aktuelle accept-Rows unterscheiden decide versus approval nicht; Wiederholungen sind keine unabhängigen Samples. Kein empirischer Aufwand-/Frequenz-/Metrikdefault, keine Permission oder Implementierungsfreigabe aus diesem Design; endgültige source ownership erst nach akzeptiertem45/46.
 <!-- SECTION:NOTES:END -->
