@@ -4,7 +4,7 @@ title: 'Gezielte Recherche mit persönlichen Agent-Chats verbinden (P06.04, Teil
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 01:43'
+updated_date: '2026-10-06 01:49'
 labels: []
 dependencies:
   - TASK-23.1
@@ -68,4 +68,6 @@ ROOT read genuine product RED /tmp/task232-correction-red.log03:35:17: upstream 
 Corrected final readiness:577/577 tests30 files PASS03:38:20; full static/build/bundle/codegen/posttypes reported PASS; ROOT read EUDev ready03:39:01. New29-path inventory digest60be0dddd3526c21e42d1761971c9c3529c19379cdee1a40bf2af14f1e007698 matches bytes. Prior576 logs kept as pre-correction, genuine archive RED retained; unchanged UI browser receipts explicitly reused. Exact source freeze then fresh SPEC and QUALITY required; no AC/Done.
 
 SOURCE caec14dd9c80ff65a53efe26da8f2327019b175b exactly29 approved paths on master; ROOT independently read scoped commit/clean tree/index. Fresh Backend Architect SPEC targeted_chat_spec dispatched from BASE977bb28 with complete AC/current contract/inventory/checks/real correctionRED. QUALITY onlyafterSPEC PASS. No AC/Done.
+
+Fresh SPEC PASS receipt /tmp/dispatch-targeted-chat-spec-receipt.md SHA4bf4e2b0d52b3cfa36a2cac56be5530d619ceda067745e9b83c30a660ed9dde3 ROOTreadfull: all29SOURCE bytes,104 registered checks+4 independent probesPASS. Edited/restored compound/secondary withdrawal/comment cleanup/beforefunding/topic bodies/context10 tested;11-order probe original5s harness timeout retained, unchanged30sPASS. Raw JSONinventorySHA04cb433 distinct canonical60be0d. Fresh AppSec QUALITY started exactSOURCEcaec14d, no AC/Done untilPASS.
 <!-- SECTION:NOTES:END -->

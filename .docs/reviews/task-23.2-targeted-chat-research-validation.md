@@ -70,3 +70,8 @@ ROOT read final full log: **577/577 tests in30 files PASS03:38:20**, and existin
 ## Corrected SOURCE freeze and fresh SPEC dispatch
 
 SOURCE **caec14dd9c80ff65a53efe26da8f2327019b175b** on master contains exactly29 approved paths; inventory digest60be0dddd3526c21e42d1761971c9c3529c19379cdee1a40bf2af14f1e007698 verified before staging. ROOT independently read scoped commit and clean tree/index. Fresh Backend Architect SPEC reviewer targeted_chat_spec starts from functional BASE977bb28fc27bd4a8f9f5292db9be5fb960022daa and accepted23.1 prerequisite6fde7a93, with full AC/release/current contract, exact inventory, genuine correction RED and retained final checks. QUALITY follows only after SPEC PASS. Source freeze remains, no AC/Done.
+
+
+## Fresh SPEC PASS, QUALITY started
+
+ROOT read full fresh SPEC receipt `/tmp/dispatch-targeted-chat-spec-receipt.md` SHA4bf4e2b0d52b3cfa36a2cac56be5530d619ceda067745e9b83c30a660ed9dde3: all29 SOURCE bytes match, no confirmed specification defect. Raw inventory JSON hash04cb43372636cc255bc6127d596d3d42f02806e35ff5e72c9b60693487230145 is distinct from the supplied canonical representation digest. Independent reviewer reran104 registered checks and4 authored probes, including edited/restored compound versions and secondary withdrawal through history/feedback/Draft/comments, denial before new funding, actual native and semantic topic bodies and11 registered orders yielding ten retained sources with honest context-limit. The11-order probe exceeded default5s without an assertion failure; unchanged assertions passed with30s budget, original timeout log retained. Intercepted HTTP only. Fresh AppSec QUALITY targeted_chat_quality now reviews exact SOURCE caec14dd; no software AC/Done until PASS.
