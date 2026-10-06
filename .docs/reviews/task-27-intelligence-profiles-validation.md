@@ -20,3 +20,13 @@ ROOT read interimGREEN /tmp/dispatch-task27-green-initial.log1/1registered04:53:
 ## Expanded registered implementation-first validation
 
 ROOT read expanded registeredGREEN6/1 at04:58:03 /tmp/dispatch-task27-green-expanded-fixed.log: actualimmutablecapture/missingstates/stablereplay/reorderedprops/CASrace/rollback-retire/history/currentcreator-reviewer-activationrights/sourceexpiry/foreign-unauth-invalid-inactive controls. Earlier expanded5PASS1Unauthenticated04:57:48 wasexpiredfixtureauthsession underadvancedclock, correctedclockbeforeauthsignup (preservedoriginal), notproductRED. Misnamed /tmp/dispatch-task27-replay-red.log actually2PASS04:57:02, immediateGREEN control nothistoricalRED. UIreportedawaitedcommand/stableretry/accountkey/roleepoch and30s informationalsource-status refresh; backendalwayscurrenttime. NoSDK/analyzer/realpredictions; full/browser/static/Dev/freeze/reviews pending.
+
+
+## Actual React profile browser validation
+
+ROOT independently read actualReactbrowser /tmp/dispatch-task27-browser-fixed.log PASSOperations/profile/Audience/read-only/retry/account-and-rolewithdrawrestoreACKcontrols. Earlier initialEPERM127.0.0.1:5174 isenvironmentonly; escalated missingmockuseAction moduleexport causedtabtimeout, fixtureimportfailure notproductRED. Separateoriginals preserved. ActualmockedConvextransport noauthenticated/live/analyzer acceptance; own5174reportedfinallyclosed/user5173preserved. Distinctimmutableformula/question/normalization/routing/verification projection refs SDK-unavailable/nullaggregate/declaredOnly fit implemented. Full/static/finalcodegen/Dev/freeze/reviews pending, noAC/Done.
+
+
+## Pre-final full checks and genuine multiline validation correction
+
+ROOT read actual lifecycle browserPASS /tmp/dispatch-task27-browser-lifecycle.log (registeredmocktransport). IndependentAdmin reviewer/activationactor currentrevocation/removal checkaddedimplementation-first, reported7/1GREEN. Readpre-finalfull601/31PASS05:02:29. GenuineinputRED /tmp/dispatch-task27-multiline-red.log05:03:11: sharedtextvalidator rejectedTextarea newline context; minimalvalidator permits textual newline/tab while rejectingnontextcontrols, separate8/1GREEN05:03:18. Newbackendtrustboundarybytes require freshfinalfull/static/codegen/posttype/Dev/posttypes; priorreceipts retained asintermediate. NoAC/Done/sourcewindowstillclosed.
