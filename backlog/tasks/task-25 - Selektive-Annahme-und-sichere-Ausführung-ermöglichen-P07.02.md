@@ -4,7 +4,7 @@ title: Selektive Annahme und sichere Ausführung ermöglichen (P07.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 10:39'
+updated_date: '2026-10-06 11:33'
 labels:
   - p07
   - r2
@@ -40,8 +40,8 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 J06 funktioniert.
-- [ ] #2 zwei angenommene von drei Vorschlägen ergeben genau zwei Termine.
-- [ ] #3 Parallel geänderte Kalenderdaten werden erkannt und bestehende Einträge bleiben erhalten.
+- [x] #2 zwei angenommene von drei Vorschlägen ergeben genau zwei Termine.
+- [x] #3 Parallel geänderte Kalenderdaten werden erkannt und bestehende Einträge bleiben erhalten.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -67,4 +67,6 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /plans, /drafts/:id, /calendar. Review/edit proposals, independently approve concrete versions, select a subset and accept only selected slots; existing slots protected by local conflict checks. Grenze: No backend acceptance mutation, live source-freshness check or collaborative concurrency. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 ROOT releases TASK25 after fresh SPEC/QUALITY acceptance of TASK24 source25d439d under standing user authorization. Exact release /tmp/dispatch-task25-release-contract.md10007B SHA900dee218142e7fc711767bbd06409cca766bd4f4c2630706e39d0060fb1b80d; ROOT approval reuse clarifications /tmp/dispatch-task25-root-approval-clarifications.md3646B SHAa8819dd78080bf6e07e0e14d0dd9c429cfa26e60b799c931bb72ddaaaa500a75. Old actor reuse gap is source inference until writer native RED. Required combined action is not optional. Reuse actual /plans and native editorial scheduler, no parallel content/approval/calendar/effect ledger. ROOT owns Backlog/docs metadata, writer exact SOURCE scope separately assigned. In Progress/manual DoD unchecked.
+
+ROOT software acceptance: source c2bfc4a611a851f6d8673fa460d4aa138bd2c654; fresh SPEC 3 original registered cases and fresh QUALITY 2 original cases PASS, both explicitly reuse writer fixture helpers. Final full suite 804 tests / 44 files PASS; exact source and preexecution receipts independently verified. Controlled persisted three-item fixture proves AC2 transaction semantics; genuine registered propose-to-accept also passes. AC1 real next-week J06 and manual DoD remain OPEN. Atomic rejection preserves existing entries/jobs; unknown network response is explicitly unconfirmed, not claimed rollback. Detailed qualifications and preserved failures: .docs/reviews/task-25-planning-acceptance-validation.md. Status remains In Progress pending explicit human manual confirmation.
 <!-- SECTION:NOTES:END -->

@@ -4,7 +4,7 @@ title: Kalibrierung mit Kontrollgruppe und Rollback einführen (P11.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 11:33'
 labels:
   - p11
   - r5
@@ -68,4 +68,6 @@ Kalibriert werden Dispatch-eigene Scoregewichte und gegebenenfalls Routing-/Veri
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Shadow-Kalibrierung. Candidate/baseline form, synthetic sample/drift/error scenarios, blocked/allowed activation, version log and rollback. Grenze: No real learning, calibration, holdout data, measured improvement or Jev training. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+ROOT releases software subtask43.1 after accepted25/42: .docs/calibration-reference-contract.md. Separate default-OFF local-learning purpose, bounded lawful temporal reference snapshots and real Operations reference UI only. Actual use rights/adequate empirical data remain unresolved; no fitted candidate, paid provider reads, model activation or efficacy claim. 43.2/43.3 follow reviewed43.1; parent/manual DoD remain In Progress.
 <!-- SECTION:NOTES:END -->
