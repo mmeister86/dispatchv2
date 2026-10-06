@@ -4,7 +4,7 @@ title: Pläne und Vorschlagslogik erstellen (P07.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 09:27'
+updated_date: '2026-10-06 10:39'
 labels:
   - p07
   - r2
@@ -37,8 +37,8 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Ein Plan kann ausschließlich aus Recherche, ausschließlich aus Arbeit oder gemischt entstehen.
-- [ ] #2 Zu wenig geeignetes Material führt zu einem ehrlichen kleineren Plan und keiner beliebigen Auffüllung.
+- [x] #1 Ein Plan kann ausschließlich aus Recherche, ausschließlich aus Arbeit oder gemischt entstehen.
+- [x] #2 Zu wenig geeignetes Material führt zu einem ehrlichen kleineren Plan und keiner beliebigen Auffüllung.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -66,4 +66,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 Read-only future brief /tmp/dispatch-planning-implementation-brief.md covers separate24 and25 units after reviewed12/18/19/23. Reuse actual immutable editorial versions/approvals/schedules, source-bound proposals, chat and Research; no second calendar/content store. Require a concrete ROOT conflict/freshness policy before implementation, preserve established UTC/IANA/DST rules and existing entries, use honest smaller plans and actual source permissions, then selective idempotent acceptance with explicit version/account human approval. No24/25 code, pricing activation, provider call or acceptance in this preparation.
 
 ROOT releases TASK-24 software implementation after reviewed TASK-42 at db58b6e; standing user authorization covers routine choices/direct master. Concrete authority: /tmp/dispatch-task24-release-contract.md8217B SHA f95811d1cae87b05b2c4fc951f5942ad778f0e0f0266170c33e93660625f3fdf and current-flow map19860B SHA7d7aca3e2b198e011172b1f7c03ad738f27acf14f7c0ba0415abf0d1b152da66. Fixed first release selects real current unplanned immutable drafts; no model generation or scheduling. Source-only modes/unknown proof/shortage explicit, latest25 ceiling/93days/count7/dailytime disclosed. Exact conflicts and all-or-none selected-set acceptance for separate25 are ROOT decisions. Existing preference has no immutable version; freeze actual record/values. Fresh sole writer/SPEC/QUALITY; actual external rights/customer/manual confirmation stay open.
+
+ROOT accepts bounded TASK24 software at corrected25d439d (original4169b5f), exact11 source/686 writer artifacts verified; full793/43/static/build/bundle/configured EU Dev12:21:40/mock styled actual AppShell+RealPlans mobile pass. Fresh SPEC3 unchanged controls and fresh QUALITY3 original native controls PASS; ROOT read actual bodies/receipts/logs and verified preexecution/current committed hashes. SPEC rejection-affordance and immutable assessment horizon findings fixed by SAME writer and SAME SPEC retested. QUALITY receipt /tmp/dispatch-task24-quality-receipt.md SHA fec042823ef67485968d931e9053097036889ec33020719abb6074281cc3cc4c; manifestSHAeb507fc6e9d5f23e2a20b58728968c1d1a2512ce62c6894229a0ef640da2dfa9. Full software validation .docs/reviews/task-24-planning-validation.md preserves failure/harness/fixture qualifications. AC1–2 checked only as bounded software; authenticated next-week J06/live providers/rights/customer/empirical and TASK33/36 inventory remain open. No manual Done confirmation; In Progress/manual DoD unchecked. TASK25 separate atomic selected acceptance/required combined human action released next.
 <!-- SECTION:NOTES:END -->
