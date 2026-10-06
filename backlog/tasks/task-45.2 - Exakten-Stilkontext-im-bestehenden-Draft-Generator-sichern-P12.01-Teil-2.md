@@ -4,6 +4,7 @@ title: 'Exakten Stilkontext im bestehenden Draft-Generator sichern (P12.01, Teil
 status: To Do
 assignee: []
 created_date: '2026-10-06 14:00'
+updated_date: '2026-10-06 14:41'
 labels: []
 dependencies:
   - TASK-45.1
@@ -27,3 +28,9 @@ Folgepaket gemäß .docs/style-profile-contract.md nach Teil1: serverseitiger im
 - [ ] #3 Historische Ergebnisse behalten ursprüngliche Stilreferenzen; Quellenverlust maskiert und entfernt tatsächliche Agent-/Idea-/Draft-Ableitungen einschließlich editierter/veröffentlichter Linien und bewahrt bestätigte Publishing-/Finanzbelege.
 - [ ] #4 Native Provider-Interception, betroffene reale Browser, Source-Freeze und separate frische SPEC/QUALITY sind dokumentiert; natürliche Modellfaktizität und manuelle Abnahme bleiben offen.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Root hat tatsächliche ai/fields.policyFields und runs.validPolicy gelesen: aiPolicies kennt purpose/processingEvidence/pricingEvidence/EU-model/three-budget scopes, keine dataCategories-Liste. Stilvertrag korrigiert diese ehemalige Kurzbezeichnung. Auswahl ist keine ProcessingPermission; echte ProcessingEvidence muss weitergegebenen deklarierten Autor/Stil-Kontext abdecken, bevor tatsächliche Providerverwendung. Kein erfundenes vorhandenes CategoryGate und keine tatsächliche Freigabe durch Implementierung.
+<!-- SECTION:NOTES:END -->

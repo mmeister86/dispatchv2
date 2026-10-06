@@ -4,7 +4,7 @@ title: Algorithmuswissen kontrolliert aktualisieren (P11.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 14:05'
+updated_date: '2026-10-06 15:16'
 labels:
   - p11
   - r5
@@ -40,8 +40,8 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Ein fremder Repository-Commit verändert keine produktive Bewertung ohne interne Prüfung.
-- [ ] #2 Eine fehlerhafte Aktivierung kann rückgängig gemacht werden.
+- [x] #1 Ein fremder Repository-Commit verändert keine produktive Bewertung ohne interne Prüfung.
+- [x] #2 Eine fehlerhafte Aktivierung kann rückgängig gemacht werden.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -78,4 +78,10 @@ Neue reale read-only Beobachtung: öffentlicher HEAD e62790c99484b51424c2eccc488
 Root präzisiert aktuellen Evaluation-Nachweis: unabhängige Evaluator-/Review-Akteure bleiben möglich. Ein enger direkter Proof im bestehenden profiles.ts prüft exakte neue Profil-/Proposal-/Eval-/Variant-/Quellbindung und aktuelle Evaluator-Owner/Admin-Rechte; Legacy-Pin sofort unverändert. Wiederverwendung bei review, usable/get/select/rollback sowie bestehenden Jev current/availability-Pfaden verhindert spätere Rechteentzugs-Umgehung ohne neuen Modulzyklus oder registrierten Action-Aufruf. Historische Ergebnisse bleiben unverändert.
 
 Implementierung nach akzeptiertem43.3 und exaktem EUDev freigegeben: soleSourceWriter source_updates_implementer; Root besitzt Verträge/Backlog/Runbook/Inventar/Commits/Dev. Scope .docs/algorithm-source-update-contract.md inklusive engem aktuellen Eval-Proof in profiles/Jev. Bestehende Ausgangsquellen HEAD8a8ac46 sauber. Kein43-Modell-/Assessment-/Publishing-/Finance-Source-Umbau benötigt; vorhandene Modelle bleiben immutable und neue Profilidentität muss statischen Fallback beweisen. Frisches SPEC dann separate QUALITY erst nach Source-Freeze; noch keine AC-/Done-Abnahme.
+
+Frisches SPEC PASS:50 registered+4 own native adversaries/actual styledDesktop390/Demo;35 freeze/context hashes exakt. Separate QUALITY läuft. Root+QUALITY identifizieren factual UI-Seam: inspected unknown terminal receipt gewinnt korrekt gegen delayed completion, aber reservierte requests0/bytes0 sind dann keine bestätigt-null Trafficzahlen. Vertrag präzisiert pending/unknown counts als unquittiert/unknown; terminal outcome/replay bleibtimmutable, normale acknowledged failed responses zählen echteBytes. Source-Fix erst durch soleWriter nach originaler QUALITY-Reproduktion, keine AC-/Done-Abnahme.
+
+Separate QUALITY original native prospective race bestätigt: paused new-head check→pending exactreplay exposes checkId→sameActor eval existing valid proposal under proposal-checkId→finish erzeugt evaluation/proposal mit gleichem by_command actor/key; evalReplay wirft unique-more-than-one. Zweiter echter Fix: shared public key() reserviert server-owned proposal- prefix vor write/I/O, interne generatedProposalkeys bleiben. Kein tatsächlich deployter TASK44-Datenstand, daher kein Backfill/Migration erfunden. Initial QUALITY FAIL bleibt erhalten; nach initialFinal nur derselbe soleWriter, dann SPEC-/distinctQUALITY-Recheck vor SourceCommit/EUDev.
+
+Software-Nachweis TASK-44 an 7427f01: korrigierter Freeze11Source/24Context, Full869/47 plus statische/build/bundle/drei styledBrowserChecks. InitialQUALITYFAIL mit zwei P2 bleibt erhalten: prospectiveFutureProposalKey und unbekannteTransportzahlen. SharedKeyGuard reserviert proposal- vorI/O/Write; pending/unknown zeigt ungeklärteZahlen statt falschem0/0. Frisches correctedSPEC22/5Original und correctedQUALITY68/4Original+actualStyledBrowser PASS; Root kompletteReports und35Live/CopyHashes,13RawWriterLogs,20Final/19InitialQualityArtifacts geprüft. Natives exaktesbestehendesEUDev an accurate-lion-749.eu-west-1.convex.cloud UTC2026-10-06T15:15:11 exit0,35Hashes unverändertnachCodegen. AC1/2 ausschließlich softwarequalifiziert inklusive tatsächlichgültigerhistorischerPairRollback/SourceCheckSelectionInvarianz. Keine echtenAppCheck/Profilwahl/Grant/Policy/Modell/ProviderAktivierung; manual/live/Done/full33/36 bleiben offen. Dauerhaft .docs/reviews/task-44-source-updates-validation.md; nächster schmaler48Seam vor45.
 <!-- SECTION:NOTES:END -->

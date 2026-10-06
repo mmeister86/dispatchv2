@@ -22,7 +22,7 @@ Mount a real keyed workspace/account `features/settings/content-strategy.tsx` in
 
 ## Existing draft generator — 45.2
 
-Finalize exact source ownership after accepted45.1. First consumer is existing `content/ideas.generate`, purpose=draft; reuse funded Agent/provider/tool paths. No new generator, model, embeddings, Research/Jev/chat consumer, scoring change or style-learning grant. Existing current draft policy/data categories, EU/model/pricing and budgets still apply. No actual policy/grant/provider call is made to implement the consumer.
+Finalize exact source ownership after accepted45.1. First consumer is existing `content/ideas.generate`, purpose=draft; reuse funded Agent/provider/tool paths. No new generator, model, embeddings, Research/Jev/chat consumer, scoring change or style-learning grant. Existing current draft-purpose policy, processing/pricing evidence, EU/model and three budget scopes still apply. Native `aiPolicies` has no data-category allowlist; do not invent an existing category gate or treat a selected style as processing permission. Actual processing evidence must cover the forwarded declared author/style context before any live use. No actual policy/grant/provider call is made to implement the consumer.
 
 At trusted `runs.createRun`, derive the exact selected version/payload fingerprint/selector and original source horizon for the real account. Add narrow optional `agentRuns.styleContext`, separate from the existing Research/GitHub source union. Caller supplies neither raw provider style nor arbitrary style ID. Legacy/unselected runs keep style unavailable and cannot later recapture today's selection. A selected unusable profile fails visibly before styled admission; its pin stays immutable across retries.
 

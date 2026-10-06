@@ -4,7 +4,7 @@ title: Einladungen und belastbare Rollenmatrix umsetzen (P13.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 08:44'
+updated_date: '2026-10-06 14:43'
 labels:
   - p13
   - r6
@@ -60,4 +60,6 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /team. Invite/accept/revoke/expire, member roles, permissions preview, owner transfer/last-owner protection and selectable demo role. Grenze: No invitation email, authenticated memberships or server-side permission enforcement. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Root hat /tmp/dispatch-continuation-49-50-seams.md vollständig gelesen (read-only, keine Tests/Implementierung). Actual membership writers bislang nur users.provisionUser/workspaces.create selfOwner; keine Produktionseinladung oder zweiter Reviewer-Onboarding-Pfad. TeamPage Cloud verwendet noch lokale Demoidentitäten.49 soll vorhandene verified auth identity/current memberships reuse, gezielte expiring acceptance mit current inviter/Owner-grant proof, atomare lastOwner/transfer/duplicate guards und recovery bei entferntem activeWorkspace liefern; kein roleRegistry/SeatEntitlement.44 native getrennte Evaluator/Reviewer-Tests sind keine tatsächlich vorhandenen zweiten menschlichen Accounts. Neue Invite-Personendaten/Lifetime/Restore in33/36, echte Mail optionalbestehenderTransport mit ehrlichemDeliverystatus, bei Prüfung nur intercepted und keine tatsächlichen Mails. Endgültiger Vertrag/SourceOwnership nach aktuellen48/45/46/47-Slices.
 <!-- SECTION:NOTES:END -->
