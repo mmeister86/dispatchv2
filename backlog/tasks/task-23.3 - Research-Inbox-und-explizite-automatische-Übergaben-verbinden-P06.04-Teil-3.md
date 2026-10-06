@@ -4,7 +4,7 @@ title: 'Research-Inbox und explizite automatische Übergaben verbinden (P06.04, 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 02:20'
+updated_date: '2026-10-06 02:24'
 labels: []
 dependencies:
   - TASK-23.2
@@ -58,4 +58,6 @@ ROOT read attachGREEN /tmp/task23-3-attach-green.log04:00:34 actual10/10 tests1f
 ROOT read markedautoJ04 firstGREEN04:03:33 oneactual test: waits humanReview,1 unapprovedDraft undermax3, secondreview nofill/dup. Intermediate229/5PASS04:03:43/types. Actual React InboxGREEN mockedtransport stablehandoff/attach/lostack/currentexpiry. EPERM log environment only; actualmissingUI RED separate actual-original-red. New6/1 authority+lineage controlsPASS04:08:09; targetedFixture undefined earlierlog fixture error, notproductRED. Genuine noGH parent2-source native+semantic→newtopic native+semantic→Draft finitehorizon/secondarywithdrawal/actualSDKcleanup4settledreceipts PASS04:10:08. Lineage validation implementation-first honestly. Auto insertion catch boundary corrected for atomicity; full/static pending. No AC/Done.
 
 Selfreview sibling selected-order author/reviewer proof/manual inherited horizon/attach canonical intent fixed; findings not invented historicalREDs. ROOT read first589full04:10:54 and590full04:14:05. Existingprofile browser fixture waited committedRole after chronologyfailure; newInbox explicitrevoke→restore epoch tested,5 affectedbrowserPASS reported. ROOT read genuineauto moneyRED04:17:38 unresolvednativeusage createdproposal before guard; separateGREEN04:17:57,591/30 full04:17:59/staticGREEN. Existing actualorderLiability unknown/overcap guard, distinctreasons/singleledger. Newlateunder-cap recovery/overcap controls validation-only pending; freshcodegen/posttype/EUDev required after backendchange. Sourcewindowclosed, no AC/Done.
+
+Final readiness ROOTread593/30 PASS04:22:47, static/type/lint/format/build/bundle/codegen/posttypes+5actualReactbrowserPASS; existingEUDev04:23:46/posttypesPASS. Genuine laststatusRED04:22:24 staleusage reason afteractualsettlement, separateGREEN04:22:45 awaitsHumanReview. Knownlate undercap recovery/overcap selection absent validated, no newqueue. Content wrongfilename MODULE_NOT_FOUND commanderror retained separately, correct actualfixturePASS. Exact24sourcehashes independentlymatch rawinventorySHA934dfff62f931c2f943f61ced1b96c9f28be6c56575ef76a617893942bcddd0b. Emptyindex/diffcheckPASS; sourcewindow/freshSPEC→QUALITY pending. No AC/Done.
 <!-- SECTION:NOTES:END -->
