@@ -3762,147 +3762,227 @@ test("new Inbox child counts itself toward shared32 before native or model fundi
   ).toBeNull();
 });
 
-test("no-GitHub Inbox parent→new native Workflow/Agent→descendant Draft retains original finite secondary lineage and actual erasure", async () => {
-  const f = await pipelineFixture(20000, ["x-recent"]);
-  let id: Id<"researchOrders">,
-    nativeCalls = 0,
-    semanticCalls = 0;
-  const physical = vi
-    .spyOn(globalThis, "fetch")
-    .mockImplementation(async (_input, init) => {
-      if (!init?.body) {
-        nativeCalls++;
+test.each([false, true])(
+  "no-GitHub Inbox parent→new native Workflow/Agent→manual/model descendant Drafts retain original finite secondary lineage and actual erasure (historical completion marker=%s)",
+  async (historicalComplete) => {
+    const f = await pipelineFixture(20000, ["x-recent"]);
+    let id: Id<"researchOrders">,
+      nativeCalls = 0,
+      semanticCalls = 0;
+    const physical = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (_input, init) => {
+        if (!init?.body) {
+          nativeCalls++;
+          return Response.json({
+            data: [0, 1].map((n) => ({
+              id: String(123456780 + nativeCalls * 10 + n),
+              text: `Public current source ${nativeCalls}`,
+              created_at: new Date(Date.now() - 60000).toISOString(),
+            })),
+          });
+        }
+        semanticCalls++;
+        const body = JSON.parse(String(init.body)),
+          o = (await f.t.run((ctx) => ctx.db.get(id)))!,
+          output = JSON.parse(await modelOutput(f, id));
+        output.items[0].copySourceIds = [o.pipeline!.sourcePins[1].sourceId];
+        if (o.reResearch) {
+          expect(JSON.stringify(body.messages)).toContain(
+            "Follow the inherited explicit topic",
+          );
+          expect(JSON.stringify(body.messages)).toContain(
+            o.reResearch.parent.evidenceId,
+          );
+          expect(JSON.stringify(body.messages)).toContain("unverified claim");
+        }
         return Response.json({
-          data: [0, 1].map((n) => ({
-            id: String(123456780 + nativeCalls * 10 + n),
-            text: `Public current source ${nativeCalls}`,
-            created_at: new Date(Date.now() - 60000).toISOString(),
-          })),
-        });
-      }
-      semanticCalls++;
-      const body = JSON.parse(String(init.body)),
-        o = (await f.t.run((ctx) => ctx.db.get(id)))!,
-        output = JSON.parse(await modelOutput(f, id));
-      output.items[0].copySourceIds = [o.pipeline!.sourcePins[1].sourceId];
-      if (o.reResearch) {
-        expect(JSON.stringify(body.messages)).toContain(
-          "Follow the inherited explicit topic",
-        );
-        expect(JSON.stringify(body.messages)).toContain(
-          o.reResearch.parent.evidenceId,
-        );
-        expect(JSON.stringify(body.messages)).toContain("unverified claim");
-      }
-      return Response.json({
-        id: "lineage-semantic",
-        object: "chat.completion",
-        created: 1791210000,
-        model: "synthetic/model",
-        choices: [
-          {
-            index: 0,
-            message: {
-              role: "assistant",
-              content: JSON.stringify({ text: JSON.stringify(output) }),
+          id: "lineage-semantic",
+          object: "chat.completion",
+          created: 1791210000,
+          model: "synthetic/model",
+          choices: [
+            {
+              index: 0,
+              message: {
+                role: "assistant",
+                content: JSON.stringify({ text: JSON.stringify(output) }),
+              },
+              finish_reason: "stop",
             },
-            finish_reason: "stop",
-          },
-        ],
-        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+          ],
+          usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+        });
       });
+    id = await f.start("lineage-parent-current");
+    await driveUntil(f, id, (o) => o.state === "completed");
+    const parent = (await f.t.run((ctx) => ctx.db.get(id)))!,
+      parentId = parent.pipeline!.evidenceIds[0];
+    const parentView = (
+      await f.signed.query(api.research.evidence.list, {
+        workspaceId: f.workspaceId,
+        orderId: id,
+      })
+    )[0];
+    expect(parentView.payload!.model!.copySourceIds).toEqual([
+      parent.pipeline!.sourcePins[1].sourceId,
+    ]);
+    const args = {
+      workspaceId: f.workspaceId,
+      profileId: f.profileId,
+      expectedRevision: 2,
+      evidenceId: parentId,
+      topic: "Follow the inherited explicit topic",
+      operationKey: "lineage-child-current",
+      language: "de",
+      operations: ["x-recent" as const],
+    };
+    id = await f.signed.mutation(api.research.pipeline.reResearch, args);
+    await driveUntil(f, id, (o) => o.state === "completed");
+    const child = (await f.t.run((ctx) => ctx.db.get(id)))!,
+      childEvidence = child.pipeline!.evidenceIds[0];
+    expect(child.pipeline!.retentionUntil).toBeLessThanOrEqual(
+      parentView.proofUntil,
+    );
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(childEvidence)))!.retentionUntil,
+    ).toBeLessThanOrEqual(parentView.proofUntil);
+    const [copy] = await f.signed.mutation(api.research.handoff.consume, {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      evidenceIds: [childEvidence],
+      target: "draft",
+      intent: "Human explicit descendant draft",
+      commandKey: "lineage-child-copy",
     });
-  id = await f.start("lineage-parent-current");
-  await driveUntil(f, id, (o) => o.state === "completed");
-  const parent = (await f.t.run((ctx) => ctx.db.get(id)))!,
-    parentId = parent.pipeline!.evidenceIds[0];
-  const parentView = (
-    await f.signed.query(api.research.evidence.list, {
+    const original = (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: copy.draftId!,
+    }))!;
+    expect(original.versions[0].sourceProofUntil).toBeLessThanOrEqual(
+      parentView.proofUntil,
+    );
+    const childManual = await f.signed.mutation(api.research.evidence.create, {
       workspaceId: f.workspaceId,
       orderId: id,
-    })
-  )[0];
-  expect(parentView.payload!.model!.copySourceIds).toEqual([
-    parent.pipeline!.sourcePins[1].sourceId,
-  ]);
-  const args = {
-    workspaceId: f.workspaceId,
-    profileId: f.profileId,
-    expectedRevision: 2,
-    evidenceId: parentId,
-    topic: "Follow the inherited explicit topic",
-    operationKey: "lineage-child-current",
-    language: "de",
-    operations: ["x-recent" as const],
-  };
-  id = await f.signed.mutation(api.research.pipeline.reResearch, args);
-  await driveUntil(f, id, (o) => o.state === "completed");
-  const child = (await f.t.run((ctx) => ctx.db.get(id)))!,
-    childEvidence = child.pipeline!.evidenceIds[0];
-  expect(child.pipeline!.retentionUntil).toBeLessThanOrEqual(
-    parentView.proofUntil,
-  );
-  expect(
-    (await f.t.run((ctx) => ctx.db.get(childEvidence)))!.retentionUntil,
-  ).toBeLessThanOrEqual(parentView.proofUntil);
-  const [copy] = await f.signed.mutation(api.research.handoff.consume, {
-    workspaceId: f.workspaceId,
-    accountId: f.accountId,
-    evidenceIds: [childEvidence],
-    target: "draft",
-    intent: "Human explicit descendant draft",
-    commandKey: "lineage-child-copy",
-  });
-  const original = (await f.signed.query(api.editorial.get, {
-    workspaceId: f.workspaceId,
-    draftId: copy.draftId!,
-  }))!;
-  expect(original.versions[0].sourceProofUntil).toBeLessThanOrEqual(
-    parentView.proofUntil,
-  );
-  expect(child.automaticHandoff).toBeUndefined();
-  expect(nativeCalls).toBe(2);
-  expect(semanticCalls).toBe(2);
-  expect(physical).toHaveBeenCalledTimes(4);
-  expect(
-    await f.t.run((ctx) => ctx.db.query("githubRepositories").collect()),
-  ).toEqual([]);
-  await f.signed.mutation(api.research.cache.invalidate, {
-    workspaceId: f.workspaceId,
-    sourceId: parent.pipeline!.sourcePins[1].sourceId,
-    reason: "blocked",
-  });
-  const hidden = (await f.signed.query(api.editorial.get, {
-    workspaceId: f.workspaceId,
-    draftId: copy.draftId!,
-  }))!;
-  expect(hidden.versions[0].sourceUnavailable).toBe(true);
-  expect(hidden.versions[0].content.text.every((t) => t === "")).toBe(true);
-  await f.t.finishAllScheduledFunctions(
-    () => vi.advanceTimersByTime(1000),
-    500,
-  );
-  expect((await f.t.run((ctx) => ctx.db.get(childEvidence)))!.state).toBe(
-    "removed",
-  );
-  expect(
-    (await f.t.run((ctx) => ctx.db.get(copy.draftVersionId!)))!
-      .researchCleanupPending,
-  ).toBe(false);
-  const run = (await f.t.run((ctx) => ctx.db.get(child.pipeline!.runId!)))!;
-  expect(
-    (
-      await f.t.query(components.agent.messages.listMessagesByThreadId, {
-        threadId: run.threadId,
-        order: "asc",
-        paginationOpts: { cursor: null, numItems: 20 },
-      })
-    ).page,
-  ).toEqual([]);
-  const receipts = await f.t.run((ctx) => ctx.db.query("aiAttempts").collect());
-  expect(receipts).toHaveLength(4);
-  expect(receipts.every((t) => t.state === "settled")).toBe(true);
-});
+      sourceId: child.pipeline!.sourcePins[0].sourceId,
+      expectedMaterialHash: child.pipeline!.sourcePins[0].materialHash,
+      commandKey: "lineage-manual-child",
+      annotation: { ...note, claim: "Inherited manual child protected claim" },
+    });
+    // More than the retirement batch exercises the same order-index continuation.
+    const additionalManual: Id<"researchEvidence">[] = [];
+    for (let n = 0; n < 20; n++)
+      additionalManual.push(
+        await f.signed.mutation(api.research.evidence.create, {
+          workspaceId: f.workspaceId,
+          orderId: id,
+          sourceId: child.pipeline!.sourcePins[0].sourceId,
+          expectedMaterialHash: child.pipeline!.sourcePins[0].materialHash,
+          commandKey: `lineage-manual-child-${n}`,
+          annotation: { ...note, claim: `Inherited manual continuation ${n}` },
+        }),
+      );
+    const [manualCopy] = await f.signed.mutation(api.research.handoff.consume, {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      evidenceIds: [childManual],
+      target: "draft",
+      intent: "Explicit manual descendant draft",
+      commandKey: "lineage-manual-copy",
+    });
+    const receiptsBefore = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(child.automaticHandoff).toBeUndefined();
+    expect(nativeCalls).toBe(2);
+    expect(semanticCalls).toBe(2);
+    expect(physical).toHaveBeenCalledTimes(4);
+    expect(
+      await f.t.run((ctx) => ctx.db.query("githubRepositories").collect()),
+    ).toEqual([]);
+    await f.signed.mutation(api.research.cache.invalidate, {
+      workspaceId: f.workspaceId,
+      sourceId: parent.pipeline!.sourcePins[1].sourceId,
+      reason: "blocked",
+    });
+    const hidden = (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: copy.draftId!,
+    }))!;
+    expect(hidden.versions[0].sourceUnavailable).toBe(true);
+    expect(hidden.versions[0].content.text.every((t) => t === "")).toBe(true);
+    const manualHidden = (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: manualCopy.draftId!,
+    }))!;
+    expect(manualHidden.versions[0].sourceUnavailable).toBe(true);
+    expect(manualHidden.versions[0].content.text.every((t) => t === "")).toBe(
+      true,
+    );
+    if (historicalComplete) {
+      // Controlled historical marker input only: all actual native completion flags,
+      // messages, evidence, copies and financial receipts remain untouched.
+      await f.t.run(async (ctx) => {
+        const current = (await ctx.db.get(id))!;
+        await ctx.db.patch(id, {
+          pipeline: { ...current.pipeline!, cleanupState: "complete" },
+        });
+      });
+    }
+    await f.t.mutation(internal.research.pipeline.purge, { orderId: id });
+    // Drain due cleanup only, before original finite retention expiry.
+    for (let n = 0; n < 120; n++) {
+      await vi.advanceTimersByTimeAsync(100);
+      await f.t.finishInProgressScheduledFunctions();
+    }
+    const manual = (await f.t.run((ctx) => ctx.db.get(childManual)))!;
+    expect(manual.retentionUntil - Date.now()).toBeGreaterThan(280000);
+    expect(manual.state).toBe("removed");
+    expect(manual.payload).toBeNull();
+    for (const evidenceId of additionalManual) {
+      const e = (await f.t.run((ctx) => ctx.db.get(evidenceId)))!;
+      expect(e.state).toBe("removed");
+      expect(e.payload).toBeNull();
+    }
+    const manualIdea = (await f.t.run((ctx) =>
+      ctx.db.get(manualCopy.ideaVersionId),
+    ))!;
+    const manualDraft = (await f.t.run((ctx) =>
+      ctx.db.get(manualCopy.draftVersionId!),
+    ))!;
+    expect(manualIdea.note).toBe("");
+    expect(manualIdea.researchCleanupPending).toBe(false);
+    expect(manualDraft.content.text.every((t) => t === "")).toBe(true);
+    expect(manualDraft.researchCleanupPending).toBe(false);
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(id)))!.pipeline!.cleanupState,
+    ).toBe("complete");
+    expect((await f.t.run((ctx) => ctx.db.get(childEvidence)))!.state).toBe(
+      "removed",
+    );
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(copy.draftVersionId!)))!
+        .researchCleanupPending,
+    ).toBe(false);
+    const run = (await f.t.run((ctx) => ctx.db.get(child.pipeline!.runId!)))!;
+    expect(
+      (
+        await f.t.query(components.agent.messages.listMessagesByThreadId, {
+          threadId: run.threadId,
+          order: "asc",
+          paginationOpts: { cursor: null, numItems: 20 },
+        })
+      ).page,
+    ).toEqual([]);
+    const receipts = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(receipts).toEqual(receiptsBefore);
+    expect(receipts).toHaveLength(4);
+    expect(receipts.every((t) => t.state === "settled")).toBe(true);
+  },
+);
 
 test("marked automatic Idea target is explicit and manual current-config admissions remain inert", async () => {
   const f = await scheduledAutomatic("idea", 1),

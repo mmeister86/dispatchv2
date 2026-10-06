@@ -389,7 +389,14 @@ export const purge = internalMutation({
   returns: v.null(),
   handler: async (ctx, a) => {
     const o = await ctx.db.get(a.orderId);
-    if (!o?.pipeline || o.pipeline.cleanupState === "complete") return null;
+    if (!o?.pipeline) return null;
+    // A historical completion marker must not hide evidence missed by an older purge.
+    const copies = await ctx.db
+      .query("researchEvidence")
+      .withIndex("by_orderId_and_createdAt", (q) => q.eq("orderId", o._id))
+      .filter((q) => q.eq(q.field("state"), "review"))
+      .take(20);
+    if (o.pipeline.cleanupState === "complete" && !copies.length) return null;
     if (
       o.pipeline.cleanupState === "retained" &&
       o.pipeline.retentionUntil !== null &&
@@ -435,14 +442,6 @@ export const purge = internalMutation({
       if (status.type === "inProgress")
         await workflow.cancel(ctx, p.workflowId as WorkflowId);
     }
-    const copies = p.runId
-      ? await ctx.db
-          .query("researchEvidence")
-          .withIndex("by_modelOrigin_runId_and_state", (q) =>
-            q.eq("modelOrigin.runId", p.runId!).eq("state", "review"),
-          )
-          .take(20)
-      : [];
     for (const e of copies) {
       await ctx.scheduler.runAfter(
         0,
@@ -465,14 +464,11 @@ export const purge = internalMutation({
           : {}),
       });
     }
-    const copiesRemain = p.runId
-      ? !!(await ctx.db
-          .query("researchEvidence")
-          .withIndex("by_modelOrigin_runId_and_state", (q) =>
-            q.eq("modelOrigin.runId", p.runId!).eq("state", "review"),
-          )
-          .first())
-      : false;
+    const copiesRemain = !!(await ctx.db
+      .query("researchEvidence")
+      .withIndex("by_orderId_and_createdAt", (q) => q.eq("orderId", o._id))
+      .filter((q) => q.eq(q.field("state"), "review"))
+      .first());
     for (const id of [...new Set(p.clusterIds)]) {
       const c = await ctx.db.get(id);
       if (c)
