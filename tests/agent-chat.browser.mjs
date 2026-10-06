@@ -316,11 +316,18 @@ try {
   });
   await expect(researchButton).toBeDisabled();
   await page.evaluate(() => {
-    window.commands[0].reject(new Error("RESEARCH_CONFIGURATION_REQUIRED"));
+    window.commands[0].reject(new Error("RESEARCH_REVISION_CONFLICT"));
     window.researchProfile.profile.revision = 3;
     window.render();
   });
   await expect(topic).toHaveValue("Explicit personal topic");
+  await expect(page.getByRole("alert")).toContainText(
+    "Das gespeicherte Rechercheprofil wurde inzwischen geändert",
+  );
+  await expect(page.getByRole("alert")).toContainText(
+    "Dein Recherchethema bleibt erhalten",
+  );
+  await expect(page.getByRole("alert")).not.toContainText("Dein Titel");
   await researchButton.click();
   expect(await page.evaluate(() => window.commands[1].args.operationKey)).toBe(
     initialResearch.operationKey,

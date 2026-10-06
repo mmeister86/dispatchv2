@@ -54,6 +54,8 @@ function failure(e: unknown) {
     return "Die frühere Quelle ist nicht mehr zur Verarbeitung freigegeben. Beginne eine neue Unterhaltung ohne diese Historie.";
   if (s.includes("BUSY"))
     return "In dieser Unterhaltung läuft bereits eine Antwort.";
+  if (s.includes("RESEARCH_REVISION_CONFLICT"))
+    return "Das gespeicherte Rechercheprofil wurde inzwischen geändert. Prüfe das aktuelle Profil auf der Recherche-Seite. Dein Recherchethema bleibt erhalten.";
   if (s.includes("REVISION"))
     return "Die Unterhaltung wurde inzwischen geändert. Dein Titel bleibt erhalten.";
   return "Die Aktion konnte nicht bestätigt werden. Deine Eingabe bleibt erhalten.";
