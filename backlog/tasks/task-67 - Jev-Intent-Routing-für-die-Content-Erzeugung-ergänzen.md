@@ -4,7 +4,7 @@ title: Jev-Intent-Routing für die Content-Erzeugung ergänzen
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 16:08'
 labels:
   - r5
   - jev
@@ -53,4 +53,6 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id. Nine explicit strategy choices with user override and clear illustrative suggestion/fallback text. Grenze: No Jev intent classification, generator routing or confidence evaluation. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Root read/adopted complete read-only /tmp/dispatch-continuation-67-68-contract-proposal.md; .docs/jev-generation-continuation-contract.md governs after final45/46/47/49/50ProofReconciliation. Actualgenerator only perspectiveJSONIdea generic, all9strategy map honestgeneric; explicituserstrategy wins, thought-leadership boundaryalias→thoughtLeadership nohistoryrewrite. Jevaccess/resolver/receipts currentlyanalyzeronly, concrete operationpurpose/control union extension needed separatelydefaultOFF/sharedledger/proof+cleanup; notmere analyzePost relabel.67.1native then67.2consumer suggested beforeconcreteCLIcreation/source. NoSource/Test/Provider/Abnahme diesesReports.
 <!-- SECTION:NOTES:END -->
