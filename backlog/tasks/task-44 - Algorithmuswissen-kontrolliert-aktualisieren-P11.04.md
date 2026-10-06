@@ -4,7 +4,7 @@ title: Algorithmuswissen kontrolliert aktualisieren (P11.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 13:53'
+updated_date: '2026-10-06 14:05'
 labels:
   - p11
   - r5
@@ -76,4 +76,6 @@ Fortsetzungsdesign 2026-10-06: .docs/algorithm-source-update-contract.md. Read-o
 Neue reale read-only Beobachtung: öffentlicher HEAD e62790c99484b51424c2eccc488ed4e7517e8778 (2026-10-06T04:59:30Z),103 changed paths, sieben von13 bestehenden Nachweishashes geändert, alle13 HTTP200. Bericht .docs/reviews/task-44-source-observation-2026-10-06.md. Compare574391 Bytes; Link nur first, kein next; ein echter vollständiger Quellenvergleich passt in Transportlimits, nicht in alle UI-Ausschnitte. Vertrag trennt deshalb strukturelle Vollständigkeit von bewusst begrenzten Ausschnitten und expliziter menschlicher Prüfung vollständiger immutable Links. Strukturelle Lücken bleiben nicht übersteuerbar. Kein tatsächliches Profil/Review/Score/Deadline verändert, keine App-Prüfquittung erfunden.
 
 Root präzisiert aktuellen Evaluation-Nachweis: unabhängige Evaluator-/Review-Akteure bleiben möglich. Ein enger direkter Proof im bestehenden profiles.ts prüft exakte neue Profil-/Proposal-/Eval-/Variant-/Quellbindung und aktuelle Evaluator-Owner/Admin-Rechte; Legacy-Pin sofort unverändert. Wiederverwendung bei review, usable/get/select/rollback sowie bestehenden Jev current/availability-Pfaden verhindert spätere Rechteentzugs-Umgehung ohne neuen Modulzyklus oder registrierten Action-Aufruf. Historische Ergebnisse bleiben unverändert.
+
+Implementierung nach akzeptiertem43.3 und exaktem EUDev freigegeben: soleSourceWriter source_updates_implementer; Root besitzt Verträge/Backlog/Runbook/Inventar/Commits/Dev. Scope .docs/algorithm-source-update-contract.md inklusive engem aktuellen Eval-Proof in profiles/Jev. Bestehende Ausgangsquellen HEAD8a8ac46 sauber. Kein43-Modell-/Assessment-/Publishing-/Finance-Source-Umbau benötigt; vorhandene Modelle bleiben immutable und neue Profilidentität muss statischen Fallback beweisen. Frisches SPEC dann separate QUALITY erst nach Source-Freeze; noch keine AC-/Done-Abnahme.
 <!-- SECTION:NOTES:END -->
