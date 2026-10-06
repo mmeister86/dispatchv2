@@ -4,7 +4,7 @@ title: Algorithmuswissen kontrolliert aktualisieren (P11.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 13:16'
+updated_date: '2026-10-06 13:34'
 labels:
   - p11
   - r5
@@ -72,4 +72,6 @@ Vorbereitung: Öffentliche X-Quellen wurden schreibgeschützt geprüft (2026-10-
 Root hat den öffentlichen Quellenbericht geprüft und unter übertragener Entscheidungsfreiheit den Snapshot x-public-context-v1 als Informationskontext ausgewählt: public_code, productionState unknown, scoringInfluence none. Dauerhafter Bericht .docs/reviews/task-27-44-public-x-source-review.md; Entscheidung .docs/decisions/analysis-contract.md. Keine technische Profilaktivierung, kein Analyzer-/Datenpfad-Tor geöffnet; Source-Update-Implementierung bleibt offen.
 
 Fortsetzungsdesign 2026-10-06: .docs/algorithm-source-update-contract.md. Read-only Explorer-Seammap /tmp/dispatch-continuation-44-design.md durch Root geprüft. Context7 GitHub REST resolve + zwei Docs-Fetches und offizielle fehlende Limitdetails geprüft. 13 öffentliche Dateien am ursprünglichen immutable SHA erneut gelesen: alle HTTP200, SHA256 exakt unverändert, 233297 Bytes insgesamt, Maximum55021. Kein Profil/Deadline/Revision verändert. Quellbeobachtung darf profiles.finish nicht aufrufen; echte Jev-Zulassung prüft die Auswahlrevision. Implementation wartet auf den einzigen TASK43.3-Writer und frische unabhängige Reviews.
+
+Neue reale read-only Beobachtung: öffentlicher HEAD e62790c99484b51424c2eccc488ed4e7517e8778 (2026-10-06T04:59:30Z),103 changed paths, sieben von13 bestehenden Nachweishashes geändert, alle13 HTTP200. Bericht .docs/reviews/task-44-source-observation-2026-10-06.md. Compare574391 Bytes; Link nur first, kein next; ein echter vollständiger Quellenvergleich passt in Transportlimits, nicht in alle UI-Ausschnitte. Vertrag trennt deshalb strukturelle Vollständigkeit von bewusst begrenzten Ausschnitten und expliziter menschlicher Prüfung vollständiger immutable Links. Strukturelle Lücken bleiben nicht übersteuerbar. Kein tatsächliches Profil/Review/Score/Deadline verändert, keine App-Prüfquittung erfunden.
 <!-- SECTION:NOTES:END -->
