@@ -4,7 +4,7 @@ title: 'Modellaktivierung und Rückfall auf die Baseline absichern (P11.03, Teil
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 13:00'
+updated_date: '2026-10-06 13:08'
 labels:
   - p11
   - r5
@@ -50,10 +50,10 @@ Scoregewichte und Routing-/Verifier-Policies getrennt versionieren und nur für 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. After independent43.2 acceptance, implement .docs/calibration-activation-contract.md using existing native models and two fixed monitor blocks; no initial permission or empirical defaults.
+1. After independent43.2 acceptance, implement .docs/calibration-activation-contract.md using existing native models and ONE fixed mature block1 monitoring checkpoint; no initial permission or empirical defaults.
 2. Add exact Owner/CAS/replay activation and rollback, current projection through a capped native internal query, immutable beforeSend pin and bounded protected retention cleanup.
-3. Wire real Operations and separate saved-assessment projection with explicit configuration, expiry, pending and errors.
-4. Verify genuine supported native qualification, monitoring chronology/rights/deadlines, actual beforeSend candidate/static capacity fallback, historical invariance and cleanup; full/type/format/build/bundle/existing Dev.
+3. Wire real Operations and separate saved-assessment projection with explicit configuration, expiry, pending and errors; single measured checkpoint, finite approval, no continuous drift claim.
+4. Verify genuine supported native qualification, monitor chronology/current rights/D-F deadlines/unusedblock2, actual beforeSend candidate/static capacity fallback, historical invariance and cleanup; full/type/format/build/bundle/existing Dev.
 5. Scoped master commits and fresh SPEC then separate QUALITY; actual policies/rights/live/manual/Done remain open.
 <!-- SECTION:PLAN:END -->
 
@@ -63,4 +63,6 @@ Scoregewichte und Routing-/Verifier-Policies getrennt versionieren und nur für 
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Shadow-Kalibrierung. Explicit local candidate activation and rollback with recorded version labels. Grenze: No production model activation, historical assessment migration or actual model fallback. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 ROOT releases scoped engineering after independently accepted43.2 source21ccb0e. .docs/calibration-activation-contract.md is authoritative; /tmp/dispatch-continuation-43.3-design.md provides traced seams and native child-limit mechanism proof. Two fixed monitoring blocks, NO initial-use permission, static before mature first pass; original policy values remain UNSET and old retention cannot extend. Native internal query boundary avoids circular source extraction/cache abstractions. Actual Owner/policy/rights/live/manual/Done remain separate.
+
+2026-10-06 timing refinement: actual snapshots.begin forbids collection beforeconfirmedAt+24h. Negative24h-minus-tolerance fixtures would be unreachable. Original28-day publication span/24h maturity and30-day numeric retention normally leave <2d; <=60s positive confirmation delay can give incidental slack, so universal impossibility was not claimed. ROOT chooses ONE mature block1 checkpoint with D<F<=unusedblock2Start and original horizons; no phase/second-continuity branch/initialpermission. Existing native secondblock vocabulary grants no authority. This fully scoped finite drift/expiry/rollback contract is simpler and reachable without altering original retention; writer informed before verifying two-checkpoint branches.
 <!-- SECTION:NOTES:END -->

@@ -14,4 +14,4 @@ Independent QUALITY: **two original controls**, including a complete native **30
 
 These are synthetic software mechanics. Actual lawful processing, empirical threshold suitability and benefit, EU CPU/load suitability, live use and human/manual Done remain open. The 30-post/28-day screen is a necessary UNVALIDATED check; 200 is a scan ceiling, not a promised readable native corpus. Short original retention can make later monitoring infeasible. TASK-33/36 full export/deletion/recovery inventory remains separate.
 
-TASK-43.3 proceeds under `.docs/calibration-activation-contract.md`: explicit Owner activation after mature monitoring, absolute finite windows, static fallback and separate immutable publication pins. No actual purpose/policy/provider activation was performed.
+TASK-43.3 proceeds under `.docs/calibration-activation-contract.md`: explicit Owner activation after one mature monitoring checkpoint, an absolute finite approval interval, static fallback and separate immutable publication pins. No actual purpose/policy/provider activation was performed.
