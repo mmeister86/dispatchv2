@@ -4,7 +4,7 @@ title: Historische Ähnlichkeit und intelligente Redaktionsplanung ergänzen (P1
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 14:22'
 labels:
   - p12
   - r5
@@ -60,4 +60,6 @@ Spätere Jev-Recycling-Entscheidungen sind ein Ausbau nach dem Analyzer: Aktuali
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /plans, /drafts/:id, /analytics — Muster & Learnings. Recurring-series preferences, related-topic history hints and contextual repetition/timing caveats. Grenze: No semantic similarity or intelligent recurring jobs; series/timing/reuse signals are local illustrative preferences. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Root hat konkreten read-only Semantik/Recurring-Vorschlag /tmp/dispatch-continuation-46-semantic-contract-proposal.md geprüft. Nach akzeptiertem45:46.1 separate explizite funded echte EmbeddingPurpose/Policy/Consent/NativeVector+boundedCosine im bestehendenLedger;46.2 endliche nativeSeries-Proposals mit vorbereiteten kompatiblenVectors/Style, bestehendenSlot/Accept-Gates und ohne bezahlteI/O imCallback. Installierte ai6/openai-compatible unterstützen embeddings, aber vorhandener ChatFetch/AgentusageHandler sind keinfunding-vorIO Embeddingpfad. Erstes konkretes begrenztesVectorFrame vermeidet unbestätigten fixedDimensionIndex/AgentMemory-Aktivierung; Dimension/Model/EUUpstream/Storage/Pricing/Retention/Grants müssen tatsächlich konfiguriert bleiben. ctx7offizielleDokumentation imReport: EURequestyEndpoint allein beweist keinEUUpstream, TokenResponse keineechteBilledCurrency. Keinlexicalalssemantic/History20als30Posts4Wochen/Providerfreigabe/Semantikqualität behauptet. NochkeineImplementierung; exakterVertrag/Unteraufgaben/Ownership nach45Source finalisieren.
 <!-- SECTION:NOTES:END -->

@@ -4,7 +4,7 @@ title: Mehrere Accounts sicher im redaktionellen Alltag unterstützen (P12.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 08:44'
+updated_date: '2026-10-06 14:22'
 labels:
   - p12
   - r5
@@ -53,13 +53,18 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Workspacegebundene Account-Auswahl aus serverseitiger Snapshot-Abfrage nutzen.
-2. Varianten, Freigaben und Termine streng an ihren Zielaccount binden.
-3. Accountwechsel und fremde Account-IDs testen.
+1. Nach frischem44SPEC/QUALITY kleine vorhandene Account-Seams gemäß .docs/multi-account-continuation-contract.md vor45 korrigieren; soleSourceWriter.
+2. Globalen/Chat-Account vereinheitlichen, leere Auswahl und konkrete Aktion-/Frozen-Snapshot-Ziele korrekt anzeigen.
+3. Disconnect-A auf seinen pendingReconnect begrenzen bei Erhalt bekannter B-Reconnects und bestehender genericIdentity-Fences.
+4. SharedFeedback überspringt Cross-Account-Edit bei legitimer A→B-Zuordnung; alte Mischereignisse im Reader maskieren, gleicheAccount/Accept/Reject unverändert.
+5. Zwei-X-native/Auth/Budget/Cache/Approval/FrozenScheduler-Negativtests und echte styledDesktop/390px/Demo-Browser, Full/Typen/Format/Lint/Build/Bundle/Codegen/exaktesEUDev.
+6. Source-Freeze, frisches SPEC dann separate QUALITY, RootCommit. TASK37 kommerzielleEntitlements/actualOAuth/live/manualDone bleiben getrennt offen.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: Global account selector, /settings/integrations, /agent, /research, /drafts/:id. Multiple mock accounts, visible context, explicit composer reassignment and renewed review; account-scoped research/chat and independent disconnect. Grenze: No real multi-account OAuth or provider quota isolation. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Read-only48Explorer /tmp/dispatch-continuation-48-seams.md vonRoot gelesen. Tatsächliche Gap: RealAgentChat hält nochglobalgültigesA trotz HeaderwechselB; andere Konfiguration zeigtB. OAuthdisconnectA löscht alle pendingStates desselben Initiators, kann bekanntenReconnectB zerstören. ManualA→B erstellt korrekt neuesVersionB; alter freigegebener geplanter A-Snapshot bleibt ausdrücklich ausführbar, nicht nurHistorie—Warnung muss echteZiele nennen, kein implizitesCancel. SharedFeedback record/list zählt MixedA→B editExtent alsA (keineBTextOffenlegung), minimalWriterSkip ohneThrow und LegacyReaderProof erforderlich, damit45/47 nichts falschableiten. Diese vorhandenenSeamKorrekturen werden nach44 vor45 gezogen; keinneuerAccountapparat/EntitlementPermission.100rowcap istkeinP10Tarif; vollekommerzielleZulässigkeit bleibt37-abhängig.
 <!-- SECTION:NOTES:END -->

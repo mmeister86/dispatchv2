@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 14:00'
+updated_date: '2026-10-06 14:22'
 labels: []
 dependencies: []
 references:
@@ -28,3 +29,9 @@ Erstes natives Teilpaket gemäß .docs/style-profile-contract.md: accountweite a
 - [ ] #3 Reversible menschliche Vorschläge binden tatsächliche Feedback-/Draft-Versionen, erklären Änderungen und bewahren Quellenfristen; Verlust maskiert und entfernt eingeführte geschützte Kopien ohne Finanz-/Publishing-Verlust.
 - [ ] #4 Reale Settings-Oberfläche, Desktop/390px/Demo und frische SPEC/QUALITY nach Source-Freeze sind dokumentiert; manuelle Abnahme bleibt offen.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Vor Writerstart vorhandene TASK48-Account-/Feedback-Korrekturen abwarten: .docs/multi-account-continuation-contract.md. Bestehende A→B-Reassignment-Feedbackzeilen müssen als Mischereignisse ausgeschieden werden; echte Editor-/Approval-/Publishing-Linie bleibt erhalten. Zusätzlich im Style-Proposal weiter exact before/result gleicheAccount/Draft/Workspace prüfen; kein falsches unabhängiges Lernsignal aus Accountwechsel.
+<!-- SECTION:NOTES:END -->
