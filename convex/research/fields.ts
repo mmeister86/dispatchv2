@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { pipeline } from "./pipelineFields";
+import { researchContentSource } from "./contentFields";
+import { pipeline, automaticOption, automaticHandoff } from "./pipelineFields";
 import { nativeOrder, operation, captured } from "./providerFields";
 export const configFields = {
   topics: v.string(),
@@ -23,7 +24,7 @@ export const configFields = {
     v.object({ limitMicros: v.number(), currency: v.string() }),
     v.null(),
   ),
-  autoHandoff: v.literal(false),
+  autoHandoff: v.union(v.literal(false), automaticOption),
 };
 export const config = v.object(configFields);
 export const approval = v.union(
@@ -44,6 +45,13 @@ export const profileFields = {
         language: v.string(),
         operations: v.array(operation),
         approvals: v.array(captured),
+      }),
+      v.object({
+        kind: v.literal("research-workflow-v2"),
+        language: v.string(),
+        operations: v.array(operation),
+        approvals: v.array(captured),
+        autoHandoff: automaticOption,
       }),
       v.null(),
     ),
@@ -75,6 +83,10 @@ export const versionFields = {
   createdAt: v.number(),
 };
 export const orderFields = {
+  automaticHandoff: v.optional(automaticHandoff),
+  reResearch: v.optional(
+    v.object({ topic: v.string(), parent: researchContentSource }),
+  ),
   targetedChat: v.optional(
     v.object({
       conversationId: v.id("conversations"),
@@ -141,6 +153,8 @@ export const versionDoc = v.object({
   ...versionFields,
 });
 const {
+  automaticHandoff: _automaticHandoff,
+  reResearch: _reResearch,
   targetedChat: _targetedChat,
   native: _native,
   pipeline: _pipeline,

@@ -1,6 +1,34 @@
 import { v } from "convex/values";
 import { operation } from "./providerFields";
 import { annotation } from "./evidenceFields";
+export const automaticOption = v.object({
+  kind: v.literal("bounded-editorial-v1"),
+  count: v.number(),
+  target: v.union(v.literal("idea"), v.literal("draft")),
+  intent: v.string(),
+});
+export const handoffResults = v.array(
+  v.object({
+    ideaId: v.id("ideas"),
+    ideaVersionId: v.id("ideaVersions"),
+    draftId: v.union(v.id("drafts"), v.null()),
+    draftVersionId: v.union(v.id("draftVersions"), v.null()),
+  }),
+);
+export const automaticHandoff = v.object({
+  actorId: v.id("users"),
+  profileVersionId: v.id("researchProfileVersions"),
+  activationGeneration: v.number(),
+  option: automaticOption,
+  state: v.union(
+    v.literal("awaiting-review"),
+    v.literal("completed"),
+    v.literal("withdrawn"),
+  ),
+  reason: v.union(v.string(), v.null()),
+  selection: v.optional(v.array(v.id("researchEvidence"))),
+  results: v.optional(handoffResults),
+});
 export const sourceCoverage = v.object({
   operation,
   delivered: v.number(),

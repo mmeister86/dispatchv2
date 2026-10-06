@@ -856,8 +856,14 @@ try {
   await page.evaluate(() => {
     window.role = "Viewer";
     window.render();
-    window.commands[2].reject(new Error("late native role failure"));
   });
+  // Wait for actual React role commit before injecting the late command failure.
+  await expect
+    .poll(() => page.evaluate(() => window.committedRole))
+    .toBe("Viewer");
+  await page.evaluate(() =>
+    window.commands[2].reject(new Error("late native role failure")),
+  );
   await expect(page.getByRole("alert")).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "Quellensuche ausdrücklich starten" }),

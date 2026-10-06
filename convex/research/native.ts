@@ -42,6 +42,7 @@ export async function admitNative(
     language: string;
     operations: Doc<"researchSourcePolicies">["operation"][];
     targetedChat?: Doc<"researchOrders">["targetedChat"];
+    reResearch?: Doc<"researchOrders">["reResearch"];
   },
   workspaceId: Doc<"workspaces">["_id"],
   actorId: Doc<"users">["_id"],
@@ -109,6 +110,7 @@ export async function admitNative(
   const now = Date.now(),
     acc = await ctx.db.get(p.accountId);
   const id = await ctx.db.insert("researchOrders", {
+    ...(a.reResearch ? { reResearch: a.reResearch } : {}),
     ...(a.targetedChat ? { targetedChat: a.targetedChat } : {}),
     workspaceId: p.workspaceId,
     accountId: p.accountId,

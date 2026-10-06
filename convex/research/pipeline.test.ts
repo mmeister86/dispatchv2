@@ -3456,3 +3456,712 @@ test("compound Draft proof retains upstream Research version ownership and share
     }),
   ).rejects.toThrow("IDEA_SOURCE_CHANGED");
 });
+
+async function scheduledAutomatic(
+  target: "idea" | "draft" = "draft",
+  count = 3,
+  unresolved = false,
+) {
+  const operations: ("x-recent" | "web-search")[] = unresolved
+    ? ["x-recent", "web-search"]
+    : ["x-recent"];
+  const f = await pipelineFixture(20000, operations);
+  const config = (await f.t.run(async (ctx) =>
+    ctx.db.get((await ctx.db.get(f.profileId))!.currentVersionId!),
+  ))!.config;
+  await f.signed.mutation(api.research.profiles.change, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    commandKey: "auto-save-option",
+    action: {
+      kind: "save",
+      config: {
+        ...config,
+        frequency: "daily",
+        autoHandoff: {
+          kind: "bounded-editorial-v1",
+          count,
+          target,
+          intent: "Prepare bounded unapproved drafts",
+        },
+      },
+    },
+  });
+  await f.signed.mutation(api.research.profiles.change, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 3,
+    commandKey: "auto-activate-v2",
+    action: {
+      kind: "activate-workflow",
+      language: "de",
+      operations,
+    },
+  });
+  const p = (await f.t.run((ctx) => ctx.db.get(f.profileId)))!;
+  vi.setSystemTime(p.nextAt!);
+  let orderId: Id<"researchOrders">;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (_input, init) => {
+    if (!init?.body)
+      return Response.json({
+        data: [
+          {
+            id: "123456789",
+            text: "Current public supported source",
+            created_at: new Date(Date.now() - 60000).toISOString(),
+          },
+        ],
+      });
+    if (JSON.parse(String(init.body)).tools?.[0]?.type === "web_search")
+      throw new Error("Synthetic search response lost");
+    const o = (await f.t.run((ctx) => ctx.db.get(orderId)))!;
+    const output = JSON.parse(await modelOutput(f, orderId));
+    output.items[0].annotation = {
+      ...note,
+      claim: "Current public supported source",
+      quote: "Current public supported source",
+      freshness: "context-dependent",
+    };
+    expect(o.automaticHandoff?.state).toBe("awaiting-review");
+    return Response.json({
+      id: "auto-semantic",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({ text: JSON.stringify(output) }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    });
+  });
+  orderId = (await f.t.mutation(internal.research.pipeline.fire, {
+    profileId: p._id,
+    generation: p.scheduleGeneration,
+    at: p.nextAt!,
+  }))!;
+  await driveUntil(f, orderId, (o) => o.state === "completed");
+  await f.t.mutation(internal.research.handoff.automatic, { orderId });
+  return { ...f, orderId, p };
+}
+
+test("J04 marked v2 scheduled Workflow waits for actual human review, then freezes underfilled unapproved Draft receipt once", async () => {
+  const f = await scheduledAutomatic();
+  const o = (await f.t.run((ctx) => ctx.db.get(f.orderId)))!;
+  expect(o.automaticHandoff?.state).toBe("awaiting-review");
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toEqual([]);
+  const review = {
+    workspaceId: f.workspaceId,
+    evidenceId: o.pipeline!.evidenceIds[0],
+    commandKey: "auto-human-review",
+    maxAgeMs: 86400000,
+    validUntil: Date.now() + 300000,
+    reason: "Explicit current support assessment",
+    substantiveSupportAttested: true,
+    eventAt: null,
+    eventQuote: null,
+  };
+  const reviewedId = await f.signed.mutation(
+    api.research.evidence.review,
+    review,
+  );
+  await f.t.mutation(internal.research.handoff.automatic, {
+    orderId: f.orderId,
+  });
+  const final = (await f.t.run((ctx) => ctx.db.get(f.orderId)))!;
+  expect(final.automaticHandoff?.state).toBe("completed");
+  expect(final.automaticHandoff?.selection).toEqual([reviewedId]);
+  expect(final.automaticHandoff?.results).toHaveLength(1);
+  expect(final.automaticHandoff?.option.count).toBe(3);
+  const result = final.automaticHandoff!.results![0];
+  const draft = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: result.draftId!,
+  }))!;
+  expect(draft.approvals).toEqual([]);
+  expect(draft.schedules).toEqual([]);
+  await f.signed.mutation(api.research.evidence.review, {
+    ...review,
+    commandKey: "auto-second-review",
+  });
+  await f.t.mutation(internal.research.handoff.automatic, {
+    orderId: f.orderId,
+  });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.orderId)))!.automaticHandoff,
+  ).toEqual(final.automaticHandoff);
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toHaveLength(
+    1,
+  );
+});
+
+test.each(["actor-editor", "save", "pause", "native-revoke"] as const)(
+  "marked auto reauthorizes %s before insertion without losing settled usage",
+  async (kind) => {
+    const f = await scheduledAutomatic();
+    const o = (await f.t.run((ctx) => ctx.db.get(f.orderId)))!;
+    await f.signed.mutation(api.research.evidence.review, {
+      workspaceId: f.workspaceId,
+      evidenceId: o.pipeline!.evidenceIds[0],
+      commandKey: "auto-negative-review",
+      maxAgeMs: 86400000,
+      validUntil: Date.now() + 300000,
+      reason: "Actual human support assessment",
+      substantiveSupportAttested: true,
+      eventAt: null,
+      eventQuote: null,
+    });
+    if (kind === "actor-editor")
+      await f.t.run(async (ctx) => {
+        const membership = await ctx.db
+          .query("memberships")
+          .withIndex("by_userId_and_workspaceId", (q) =>
+            q.eq("userId", f.userId).eq("workspaceId", f.workspaceId),
+          )
+          .unique();
+        await ctx.db.patch(membership!._id, { role: "Editor" });
+      });
+    if (kind === "save" || kind === "pause")
+      await f.signed.mutation(api.research.profiles.change, {
+        workspaceId: f.workspaceId,
+        profileId: f.profileId,
+        expectedRevision: 4,
+        commandKey: "auto-withdraw-profile",
+        action:
+          kind === "pause"
+            ? { kind: "pause", paused: true }
+            : { kind: "save", config: o.config },
+      });
+    if (kind === "native-revoke")
+      await f.t.run((ctx) => ctx.db.patch(f.policies[0], { enabled: false }));
+    await f.t.mutation(internal.research.handoff.automatic, {
+      orderId: f.orderId,
+    });
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(f.orderId)))!.automaticHandoff?.state,
+    ).toBe("withdrawn");
+    expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toEqual([]);
+    const attempts = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(attempts).toHaveLength(2);
+    expect(
+      attempts.every((t) => t.state === "settled" && t.heldMicros === 0),
+    ).toBe(true);
+  },
+);
+
+test("Inbox re-research is a new current typed parent workflow with exact topic and inherited expiry, never automatic", async () => {
+  const f = await targetedSetup();
+  const first = await f.request(1);
+  const parentId = first.order.pipeline!.evidenceIds[0];
+  const args = {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    evidenceId: parentId,
+    topic: "Explicit new inherited research topic",
+    operationKey: "inbox-new-research",
+    language: "de",
+    operations: ["web-search" as const],
+  };
+  // This lineage check is implementation-first validation, not a retrospective TDD RED.
+  const id = await f.signed.mutation(api.research.pipeline.reResearch, args);
+  expect(id).not.toBe(first.orderId);
+  expect(await f.signed.mutation(api.research.pipeline.reResearch, args)).toBe(
+    id,
+  );
+  const o = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  expect(o.targetedChat).toBeUndefined();
+  expect(o.automaticHandoff).toBeUndefined();
+  expect(o.reResearch?.parent.evidenceId).toBe(parentId);
+  expect(o.native?.query).toBe(args.topic);
+  await f.signed.mutation(api.research.cache.invalidate, {
+    workspaceId: f.workspaceId,
+    sourceId: o.reResearch!.parent.sourceId,
+    reason: "blocked",
+  });
+  await expect(
+    f.signed.mutation(api.research.pipeline.reResearch, args),
+  ).rejects.toThrow();
+  await expect(
+    f.t.query(internal.research.native.context, {
+      orderId: id,
+      generation: 1,
+      operation: "web-search",
+    }),
+  ).rejects.toThrow();
+  expect(f.calls().nativeCalls).toBe(1);
+});
+
+test("new Inbox child counts itself toward shared32 before native or model funding", async () => {
+  const f = await targetedSetup(),
+    r = await f.request(1);
+  // Controlled cache-hit graph inputs only; no invented paid provider executions.
+  await f.t.run(async (ctx) => {
+    const { _id, _creationTime, targetedChat: _chat, ...base } = r.order;
+    let previous: Id<"researchOrders"> | null = null;
+    for (let i = 0; i < 31; i++)
+      previous = await ctx.db.insert("researchOrders", {
+        ...base,
+        operationKey: `inbox-ancestor-${i}`,
+        native: {
+          ...base.native!,
+          outcomes: base.native!.outcomes.map((o) => ({
+            ...o,
+            cacheHit: true,
+          })),
+        },
+        pipeline: {
+          ...base.pipeline!,
+          runId: null,
+          history: [],
+          contextEvidence: [],
+          contextPins: previous
+            ? [{ ...base.pipeline!.sourcePins[0], orderId: previous }]
+            : [],
+        },
+      });
+    await ctx.db.patch(r.orderId, {
+      pipeline: {
+        ...r.order.pipeline!,
+        contextPins: [{ ...base.pipeline!.sourcePins[0], orderId: previous! }],
+      },
+    });
+  });
+  expect(
+    (
+      await f.signed.query(api.research.evidence.list, {
+        workspaceId: f.workspaceId,
+        orderId: r.orderId,
+      })
+    )[0].payload,
+  ).not.toBeNull();
+  await expect(
+    f.signed.mutation(api.research.pipeline.reResearch, {
+      workspaceId: f.workspaceId,
+      profileId: f.profileId,
+      expectedRevision: 2,
+      evidenceId: r.order.pipeline!.evidenceIds[0],
+      topic: "Ancestry bounded child",
+      operationKey: "inbox-ancestry-child",
+      language: "de",
+      operations: ["web-search"],
+    }),
+  ).rejects.toThrow("ANCESTRY_LIMIT");
+  expect(f.calls()).toEqual({ nativeCalls: 1, semanticCalls: 1, chatCalls: 0 });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.profileId)))!.activeOrderId,
+  ).toBeNull();
+});
+
+test("no-GitHub Inbox parent→new native Workflow/Agent→descendant Draft retains original finite secondary lineage and actual erasure", async () => {
+  const f = await pipelineFixture(20000, ["x-recent"]);
+  let id: Id<"researchOrders">,
+    nativeCalls = 0,
+    semanticCalls = 0;
+  const physical = vi
+    .spyOn(globalThis, "fetch")
+    .mockImplementation(async (_input, init) => {
+      if (!init?.body) {
+        nativeCalls++;
+        return Response.json({
+          data: [0, 1].map((n) => ({
+            id: String(123456780 + nativeCalls * 10 + n),
+            text: `Public current source ${nativeCalls}`,
+            created_at: new Date(Date.now() - 60000).toISOString(),
+          })),
+        });
+      }
+      semanticCalls++;
+      const body = JSON.parse(String(init.body)),
+        o = (await f.t.run((ctx) => ctx.db.get(id)))!,
+        output = JSON.parse(await modelOutput(f, id));
+      output.items[0].copySourceIds = [o.pipeline!.sourcePins[1].sourceId];
+      if (o.reResearch) {
+        expect(JSON.stringify(body.messages)).toContain(
+          "Follow the inherited explicit topic",
+        );
+        expect(JSON.stringify(body.messages)).toContain(
+          o.reResearch.parent.evidenceId,
+        );
+        expect(JSON.stringify(body.messages)).toContain("unverified claim");
+      }
+      return Response.json({
+        id: "lineage-semantic",
+        object: "chat.completion",
+        created: 1791210000,
+        model: "synthetic/model",
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: JSON.stringify({ text: JSON.stringify(output) }),
+            },
+            finish_reason: "stop",
+          },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+      });
+    });
+  id = await f.start("lineage-parent-current");
+  await driveUntil(f, id, (o) => o.state === "completed");
+  const parent = (await f.t.run((ctx) => ctx.db.get(id)))!,
+    parentId = parent.pipeline!.evidenceIds[0];
+  const parentView = (
+    await f.signed.query(api.research.evidence.list, {
+      workspaceId: f.workspaceId,
+      orderId: id,
+    })
+  )[0];
+  expect(parentView.payload!.model!.copySourceIds).toEqual([
+    parent.pipeline!.sourcePins[1].sourceId,
+  ]);
+  const args = {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    evidenceId: parentId,
+    topic: "Follow the inherited explicit topic",
+    operationKey: "lineage-child-current",
+    language: "de",
+    operations: ["x-recent" as const],
+  };
+  id = await f.signed.mutation(api.research.pipeline.reResearch, args);
+  await driveUntil(f, id, (o) => o.state === "completed");
+  const child = (await f.t.run((ctx) => ctx.db.get(id)))!,
+    childEvidence = child.pipeline!.evidenceIds[0];
+  expect(child.pipeline!.retentionUntil).toBeLessThanOrEqual(
+    parentView.proofUntil,
+  );
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(childEvidence)))!.retentionUntil,
+  ).toBeLessThanOrEqual(parentView.proofUntil);
+  const [copy] = await f.signed.mutation(api.research.handoff.consume, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    evidenceIds: [childEvidence],
+    target: "draft",
+    intent: "Human explicit descendant draft",
+    commandKey: "lineage-child-copy",
+  });
+  const original = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: copy.draftId!,
+  }))!;
+  expect(original.versions[0].sourceProofUntil).toBeLessThanOrEqual(
+    parentView.proofUntil,
+  );
+  expect(child.automaticHandoff).toBeUndefined();
+  expect(nativeCalls).toBe(2);
+  expect(semanticCalls).toBe(2);
+  expect(physical).toHaveBeenCalledTimes(4);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("githubRepositories").collect()),
+  ).toEqual([]);
+  await f.signed.mutation(api.research.cache.invalidate, {
+    workspaceId: f.workspaceId,
+    sourceId: parent.pipeline!.sourcePins[1].sourceId,
+    reason: "blocked",
+  });
+  const hidden = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: copy.draftId!,
+  }))!;
+  expect(hidden.versions[0].sourceUnavailable).toBe(true);
+  expect(hidden.versions[0].content.text.every((t) => t === "")).toBe(true);
+  await f.t.finishAllScheduledFunctions(
+    () => vi.advanceTimersByTime(1000),
+    500,
+  );
+  expect((await f.t.run((ctx) => ctx.db.get(childEvidence)))!.state).toBe(
+    "removed",
+  );
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(copy.draftVersionId!)))!
+      .researchCleanupPending,
+  ).toBe(false);
+  const run = (await f.t.run((ctx) => ctx.db.get(child.pipeline!.runId!)))!;
+  expect(
+    (
+      await f.t.query(components.agent.messages.listMessagesByThreadId, {
+        threadId: run.threadId,
+        order: "asc",
+        paginationOpts: { cursor: null, numItems: 20 },
+      })
+    ).page,
+  ).toEqual([]);
+  const receipts = await f.t.run((ctx) => ctx.db.query("aiAttempts").collect());
+  expect(receipts).toHaveLength(4);
+  expect(receipts.every((t) => t.state === "settled")).toBe(true);
+});
+
+test("marked automatic Idea target is explicit and manual current-config admissions remain inert", async () => {
+  const f = await scheduledAutomatic("idea", 1),
+    o = (await f.t.run((ctx) => ctx.db.get(f.orderId)))!;
+  await f.signed.mutation(api.research.evidence.review, {
+    workspaceId: f.workspaceId,
+    evidenceId: o.pipeline!.evidenceIds[0],
+    commandKey: "auto-explicit-idea-review",
+    maxAgeMs: 86400000,
+    validUntil: Date.now() + 300000,
+    reason: "Explicit current support assessment",
+    substantiveSupportAttested: true,
+    eventAt: null,
+    eventQuote: null,
+  });
+  await f.t.mutation(internal.research.handoff.automatic, { orderId: o._id });
+  const auto = (await f.t.run((ctx) => ctx.db.get(o._id)))!.automaticHandoff!;
+  expect(auto.option.target).toBe("idea");
+  expect(auto.results).toHaveLength(1);
+  expect(auto.results![0].draftId).toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.query("drafts").collect())).toEqual([]);
+  const manualId = await f.signed.mutation(api.research.pipeline.start, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 4,
+    operationKey: "manual-under-auto-config",
+    language: "de",
+    operations: ["x-recent"],
+  });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(manualId)))!.automaticHandoff,
+  ).toBeUndefined();
+  await f.t.mutation(internal.research.handoff.automatic, {
+    orderId: manualId,
+  });
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toHaveLength(
+    1,
+  );
+});
+
+test("already-finalized false-version Workflow never acquires auto from later saved v2 activation", async () => {
+  const f = await pipelineFixture();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(streamResponse([]));
+  const id = await f.start("old-finalized-workflow");
+  await driveUntil(f, id, (o) => o.state === "completed");
+  const old = (await f.t.run((ctx) => ctx.db.get(id)))!;
+  await f.signed.mutation(api.research.profiles.change, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 2,
+    commandKey: "later-enabled-save",
+    action: {
+      kind: "save",
+      config: {
+        ...old.config,
+        frequency: "daily",
+        autoHandoff: {
+          kind: "bounded-editorial-v1",
+          target: "idea",
+          count: 5,
+          intent: "Only future explicit scheduled workflow",
+        },
+      },
+    },
+  });
+  await f.signed.mutation(api.research.profiles.change, {
+    workspaceId: f.workspaceId,
+    profileId: f.profileId,
+    expectedRevision: 3,
+    commandKey: "later-v2-activation",
+    action: {
+      kind: "activate-workflow",
+      language: "de",
+      operations: ["web-search"],
+    },
+  });
+  await f.t.mutation(internal.research.handoff.automatic, { orderId: id });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(id)))!.automaticHandoff,
+  ).toBeUndefined();
+  expect((await f.t.run((ctx) => ctx.db.get(id)))!.config.autoHandoff).toBe(
+    false,
+  );
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toEqual([]);
+});
+
+test("Inbox attachment checks actual native execution and active owned domain thread before append/replay", async () => {
+  const f = await targetedSetup(),
+    r = await f.request(1),
+    evidenceId = r.order.pipeline!.evidenceIds[0];
+  const args = {
+    ...f.target,
+    evidenceId,
+    operationKey: "inbox-busy-attach",
+    intent: "Discuss exact current evidence",
+  };
+  const runId = await f.signed.mutation(api.ai.conversations.send, {
+    ...f.target,
+    operationKey: "inbox-busy-run",
+    prompt: "Keep native response pending",
+    allowIdeaCreation: false,
+  });
+  await expect(
+    f.signed.mutation(api.ai.conversations.attachEvidence, args),
+  ).rejects.toThrow("NATIVE_EXECUTION_PENDING");
+  await f.signed.mutation(api.ai.conversations.stop, f.target);
+  const receipt = await f.signed.mutation(
+    api.ai.conversations.attachEvidence,
+    args,
+  );
+  expect(receipt.conversationId).toBe(f.conversationId);
+  await expect(
+    (await otherEditor(f)).mutation(api.ai.conversations.attachEvidence, args),
+  ).rejects.toThrow("CHAT_ACCESS_DENIED");
+  const thread = (await f.t.run((ctx) => ctx.db.get(f.conversationId)))!
+    .threadId;
+  await expect(
+    f.signed.mutation(api.ai.conversations.attachEvidence, {
+      ...args,
+      conversationId: thread as Id<"conversations">,
+    }),
+  ).rejects.toThrow();
+  await f.signed.mutation(api.ai.conversations.remove, f.target);
+  expect(
+    await f.signed.mutation(api.ai.conversations.create, {
+      ...f.scope,
+      operationKey: "j05-personal-chat",
+    }),
+  ).toBe(f.conversationId);
+  await expect(
+    f.signed.mutation(api.ai.conversations.attachEvidence, args),
+  ).rejects.toThrow("CHAT_INACTIVE");
+  expect((await f.t.run((ctx) => ctx.db.get(runId)))!.state).toBe("stopped");
+});
+
+test("eligible human Review cannot auto-consume while actual native sent/unknown liability remains unresolved", async () => {
+  const f = await scheduledAutomatic("draft", 3, true),
+    o = (await f.t.run((ctx) => ctx.db.get(f.orderId)))!;
+  const native = (
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())
+  ).find((t) => t.owner === "native-search" && t.operation === "web-search")!;
+  expect(native.state).toBe("unknown");
+  expect(native.heldMicros).toBeGreaterThan(0);
+  const id = await f.signed.mutation(api.research.evidence.review, {
+    workspaceId: f.workspaceId,
+    evidenceId: o.pipeline!.evidenceIds[0],
+    commandKey: "auto-unknown-review",
+    maxAgeMs: 86400000,
+    validUntil: Date.now() + 300000,
+    reason: "Actual current support assessment",
+    substantiveSupportAttested: true,
+    eventAt: null,
+    eventQuote: null,
+  });
+  expect(
+    (
+      await f.signed.query(api.research.evidence.list, {
+        workspaceId: f.workspaceId,
+        orderId: f.orderId,
+      })
+    ).find((e) => e.evidenceId === id)!.automaticEligible,
+  ).toBe(true);
+  await f.t.mutation(internal.research.handoff.automatic, {
+    orderId: f.orderId,
+  });
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toEqual([]);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.orderId)))!.automaticHandoff?.reason,
+  ).toBe("RESEARCH_AUTOMATIC_USAGE_UNRESOLVED");
+  expect(await f.t.run((ctx) => ctx.db.get(native._id))).toEqual(native);
+  // Actual late native receipt settles the existing hold; no new attempt or queue.
+  await f.t.mutation(internal.research.cache.settle, {
+    attemptId: native._id,
+    units: null,
+    reportedCost: 0,
+    costInvalid: false,
+    errorCode: null,
+  });
+  await f.t.mutation(internal.research.handoff.automatic, {
+    orderId: f.orderId,
+  });
+  const receipt = (await f.t.run((ctx) => ctx.db.get(f.orderId)))!
+    .automaticHandoff!;
+  expect(receipt.state).toBe("completed");
+  expect(receipt.results).toHaveLength(1);
+  await f.t.mutation(internal.research.handoff.automatic, {
+    orderId: f.orderId,
+  });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.orderId)))!.automaticHandoff,
+  ).toEqual(receipt);
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toHaveLength(
+    1,
+  );
+});
+
+test("actual late native over-cap receipt keeps the marked automatic selection unfrozen", async () => {
+  const f = await scheduledAutomatic("draft", 3, true),
+    o = (await f.t.run((ctx) => ctx.db.get(f.orderId)))!;
+  const native = (
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())
+  ).find((t) => t.owner === "native-search" && t.operation === "web-search")!;
+  await f.signed.mutation(api.research.evidence.review, {
+    workspaceId: f.workspaceId,
+    evidenceId: o.pipeline!.evidenceIds[0],
+    commandKey: "auto-over-cap-review",
+    maxAgeMs: 86400000,
+    validUntil: Date.now() + 300000,
+    reason: "Actual current support assessment",
+    substantiveSupportAttested: true,
+    eventAt: null,
+    eventQuote: null,
+  });
+  await f.t.mutation(internal.research.cache.settle, {
+    attemptId: native._id,
+    units: null,
+    reportedCost: 1,
+    costInvalid: false,
+    errorCode: null,
+  });
+  await f.t.mutation(internal.research.handoff.automatic, {
+    orderId: f.orderId,
+  });
+  const capture = (await f.t.run((ctx) => ctx.db.get(f.orderId)))!
+    .automaticHandoff!;
+  expect(capture.state).toBe("awaiting-review");
+  expect(capture.reason).toBe("RESEARCH_AUTOMATIC_ORDER_LIMIT_EXCEEDED");
+  expect(capture.results).toBeUndefined();
+  expect(capture.selection).toBeUndefined();
+  expect(await f.t.run((ctx) => ctx.db.query("ideas").collect())).toEqual([]);
+  expect((await f.t.run((ctx) => ctx.db.get(native._id)))!.state).toBe(
+    "settled",
+  );
+});
+
+test("known late native receipt restores awaiting human Review reason when no eligible assessment exists", async () => {
+  const f = await scheduledAutomatic("draft", 3, true);
+  const native = (
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())
+  ).find((t) => t.owner === "native-search" && t.operation === "web-search")!;
+  await f.t.mutation(internal.research.handoff.automatic, {
+    orderId: f.orderId,
+  });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.orderId)))!.automaticHandoff!.reason,
+  ).toBe("RESEARCH_AUTOMATIC_USAGE_UNRESOLVED");
+  await f.t.mutation(internal.research.cache.settle, {
+    attemptId: native._id,
+    units: null,
+    reportedCost: 0,
+    costInvalid: false,
+    errorCode: null,
+  });
+  await f.t.mutation(internal.research.handoff.automatic, {
+    orderId: f.orderId,
+  });
+  const capture = (await f.t.run((ctx) => ctx.db.get(f.orderId)))!
+    .automaticHandoff!;
+  expect(capture.reason).toBe("RESEARCH_AUTOMATIC_AWAITING_HUMAN_REVIEW");
+  expect(capture.state).toBe("awaiting-review");
+  expect(capture.results).toBeUndefined();
+});

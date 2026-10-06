@@ -1,6 +1,6 @@
 import { test, expect, vi, beforeEach, afterEach } from "vitest";
 import { fixture } from "../../tests/research-fixture";
-import { api, internal } from "../_generated/api";
+import { api, internal, components } from "../_generated/api";
 const secret = "Distinctive protected research quote 231";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
@@ -416,4 +416,109 @@ test("withdrawal guards calendar/approval/dispatch content while late registered
     12,
   );
   expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+});
+
+test("account inbox paginates current evidence and dispositions replay without erasing Review", async () => {
+  const f = await setup();
+  const page = await f.signed.query(api.research.evidence.inbox, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    paginationOpts: { cursor: null, numItems: 1 },
+  });
+  expect(page.page).toHaveLength(1);
+  expect(page.page[0].evidenceId).toBe(f.evidenceId);
+  expect(page.page[0].source?.text).toBe(secret);
+  expect(page.page[0].orderId).toBe(f.orderId);
+  const command = {
+    workspaceId: f.workspaceId,
+    evidenceId: f.evidenceId,
+    expectedRevision: 0,
+    disposition: "ignored" as const,
+    commandKey: "ignore-inbox-one",
+  };
+  expect(
+    await f.signed.mutation(api.research.evidence.disposition, command),
+  ).toBe(1);
+  expect(
+    await f.signed.mutation(api.research.evidence.disposition, command),
+  ).toBe(1);
+  const rows = await f.signed.query(api.research.evidence.inbox, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    paginationOpts: { cursor: null, numItems: 5 },
+  });
+  expect(rows.page[0].inboxDisposition).toBe("ignored");
+  expect(rows.page[0].state).toBe("review");
+  await f.signed.mutation(api.research.cache.invalidate, {
+    workspaceId: f.workspaceId,
+    sourceId: f.source.sourceId,
+    reason: "blocked",
+  });
+  await expect(
+    f.signed.mutation(api.research.evidence.disposition, command),
+  ).rejects.toThrow();
+});
+
+test("existing Inbox attaches exact current proof to an actual native owned thread once", async () => {
+  const f = await setup();
+  const agent = await import("@convex-dev/agent/test");
+  agent.default.register(f.t);
+  const conversationId = await f.signed.mutation(api.ai.conversations.create, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    operationKey: "inbox-agent-thread",
+  });
+  const args = {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+    conversationId,
+    evidenceId: f.evidenceId,
+    intent: "Discuss current source uncertainty",
+    operationKey: "inbox-agent-attach",
+  };
+  const receipt = await f.signed.mutation(
+    api.ai.conversations.attachEvidence,
+    args,
+  );
+  expect(receipt.conversationId).toBe(conversationId);
+  expect(receipt.messageId).toBeTruthy();
+  expect(
+    await f.signed.mutation(api.ai.conversations.attachEvidence, args),
+  ).toEqual(receipt);
+  expect(
+    await f.signed.mutation(api.ai.conversations.attachEvidence, {
+      ...args,
+      operationKey: "inbox-rotated-attach",
+    }),
+  ).toEqual(receipt);
+  await expect(
+    f.signed.mutation(api.ai.conversations.attachEvidence, {
+      ...args,
+      intent: "Changed intent",
+    }),
+  ).rejects.toThrow("OPERATION_CONFLICT");
+  const c = (await f.t.run((ctx) => ctx.db.get(conversationId)))!;
+  expect(c.sources[0]).toMatchObject({
+    kind: "research",
+    evidenceId: f.evidenceId,
+  });
+  const messages = await f.t.query(
+    components.agent.messages.listMessagesByThreadId,
+    {
+      threadId: c.threadId,
+      order: "asc",
+      paginationOpts: { cursor: null, numItems: 10 },
+    },
+  );
+  expect(messages.page).toHaveLength(1);
+  expect(JSON.stringify(messages.page[0])).toContain(secret);
+  expect(JSON.stringify(messages.page[0])).toContain("Ungeprüfte Review");
+  await f.signed.mutation(api.research.cache.invalidate, {
+    workspaceId: f.workspaceId,
+    sourceId: f.source.sourceId,
+    reason: "blocked",
+  });
+  await expect(
+    f.signed.mutation(api.ai.conversations.attachEvidence, args),
+  ).rejects.toThrow();
 });

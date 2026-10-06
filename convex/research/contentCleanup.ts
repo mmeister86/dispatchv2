@@ -121,6 +121,10 @@ export const evidence = internalMutation({
           internal.ai.conversations.expireSource,
           { conversationId: b.conversationId },
         );
+      if (b.orderId)
+        await ctx.scheduler.runAfter(0, internal.research.pipeline.purge, {
+          orderId: b.orderId,
+        });
       if (b.runId)
         await ctx.scheduler.runAfter(0, internal.ai.runs.purgeSource, {
           runId: b.runId,
@@ -187,6 +191,7 @@ export async function registerResearchCopies(
   ctx: MutationCtx,
   source: Doc<"ideaVersions">["source"],
   target: {
+    orderId?: Id<"researchOrders">;
     conversationId?: Id<"conversations">;
     ideaVersionId?: Id<"ideaVersions">;
     runId?: Id<"agentRuns">;
@@ -200,7 +205,9 @@ export async function registerResearchCopies(
       ? await ctx.db.get(target.ideaVersionId)
       : target.runId
         ? await ctx.db.get(target.runId)
-        : null;
+        : target.orderId
+          ? await ctx.db.get(target.orderId)
+          : null;
   if (!owner) throw new ConvexError("RESEARCH_COPY_TARGET_INVALID");
   const refs =
     source.kind === "research"

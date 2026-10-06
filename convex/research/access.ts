@@ -66,6 +66,16 @@ export function validateConfig(c: Doc<"researchProfileVersions">["config"]) {
         !/^[A-Z]{3}$/.test(c.cap.currency)))
   )
     throw new ConvexError("RESEARCH_INPUT_INVALID");
+  if (
+    c.autoHandoff &&
+    (!Number.isSafeInteger(c.autoHandoff.count) ||
+      c.autoHandoff.count < 1 ||
+      c.autoHandoff.count > 5 ||
+      !c.autoHandoff.intent.trim() ||
+      c.autoHandoff.intent.length > 1000 ||
+      /[\u0000-\u001f]/.test(c.autoHandoff.intent))
+  )
+    throw new ConvexError("RESEARCH_HANDOFF_INTENT_INVALID");
   validateClock(c);
 }
 export async function currentProfile(

@@ -36,6 +36,16 @@ export const assessment = v.object({
   eventQuote: v.union(v.string(), v.null()),
 });
 export const evidenceFields = {
+  inboxCommands: v.optional(
+    v.array(
+      v.object({
+        actorId: v.id("users"),
+        commandKey: v.string(),
+        fingerprint: v.string(),
+        revision: v.number(),
+      }),
+    ),
+  ),
   inboxRevision: v.optional(v.number()),
   inboxDisposition: v.optional(
     v.union(v.literal("active"), v.literal("ignored"), v.literal("archived")),

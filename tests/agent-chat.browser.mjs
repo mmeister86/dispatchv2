@@ -9,7 +9,7 @@ const mocks = {
   "@/lib/auth-client": `export const demoMode=false;`,
   "@/lib/store": `import {useState} from 'react';export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:'account-one',workspaceId:window.workspace,name:'Synthetic',channel:'X'},{id:'account-two',workspaceId:window.workspace,name:'Second',channel:'X'}]}});`,
 };
-const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {AgentPage} from '/src/pages/Agent.tsx';window.workspace='workspace-one';window.account='account-one';window.role='Owner';window.queries=[];window.commands=[];window.list={page:[],isDone:true,continueCursor:''};window.runs=[];window.researchOrders=[];window.researchProfile=null;window.cleanupRequests=[];window.messages=[];window.projection={authorized:true,proofExpiresAt:Number.MAX_SAFE_INTEGER};const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(AgentPage))));window.render();`;
+const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {AgentPage} from '/src/pages/Agent.tsx';window.workspace='workspace-one';window.account='account-one';window.role='Owner';window.queries=[];window.commands=[];window.list={page:[],isDone:true,continueCursor:''};window.runs=[];window.researchOrders=[];window.researchProfile=null;window.cleanupRequests=[];window.messages=[];window.projection={authorized:true,proofExpiresAt:Number.MAX_SAFE_INTEGER};const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,{initialEntries:['/agent'+location.search]},React.createElement(AgentPage))));window.render();`;
 const server = await createServer({
   root,
   configFile: `${root}/vite.config.ts`,
@@ -404,6 +404,50 @@ try {
     await page.evaluate(() => window.cleanupRequests.length),
   ).toBeGreaterThan(0);
   await expect(researchButton).toBeDisabled();
+  await page.goto(
+    "http://127.0.0.1:5174/chat-fixture?conversation=inbox-selected-thread",
+  );
+  await page.evaluate(() => {
+    window.list = {
+      page: [
+        {
+          conversationId: "another-thread",
+          title: "Another active conversation",
+          revision: 1,
+          state: "active",
+          turns: 0,
+        },
+        {
+          conversationId: "inbox-selected-thread",
+          title: "Actual Inbox conversation",
+          revision: 1,
+          state: "active",
+          turns: 0,
+        },
+      ],
+      isDone: true,
+      continueCursor: "",
+    };
+    window.messages = [
+      {
+        key: "inbox-summary",
+        role: "assistant",
+        text: "Exact attached Inbox summary",
+        status: "success",
+        parts: [],
+      },
+    ];
+    window.render();
+  });
+  await expect(page.getByText("Exact attached Inbox summary")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        window.queries
+          .filter((q) => q.name === "ai/conversations:projection")
+          .at(-1).args.conversationId,
+    ),
+  ).toBe("inbox-selected-thread");
   expect(errors).toEqual([]);
   console.log(
     "Actual real Agent chat: existing chat regressions plus targeted personal request/profile guidance/captured revision and stable retry/actual order receipt/stop/unknown resume/role epoch/idle source expiry and buffer cleanup PASS; mocked Convex transport, no provider call.",

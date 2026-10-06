@@ -1,4 +1,7 @@
-import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import type { FunctionReturnType } from "convex/server";
+import { Input } from "@/components/ui/input";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
@@ -110,12 +113,22 @@ export function ResearchPipeline({
   );
 }
 export function ResearchInbox({
+  accountId,
+  profile,
+  onSelect,
   workspaceId,
   orderId,
   disabled,
   command,
 }: {
   workspaceId: Id<"workspaces">;
+  accountId: Id<"socialAccounts">;
+  profile: {
+    profileId: Id<"researchProfiles">;
+    revision: number;
+    config: Doc<"researchProfileVersions">["config"];
+  } | null;
+  onSelect: (id: Id<"researchOrders">) => void;
   orderId: Id<"researchOrders"> | null;
   disabled: boolean;
   command: Command;
@@ -134,6 +147,13 @@ export function ResearchInbox({
   );
   return (
     <Section title="Research-Inbox">
+      <AccountInbox
+        workspaceId={workspaceId}
+        accountId={accountId}
+        profile={profile}
+        disabled={disabled}
+        onSelect={onSelect}
+      />
       {!orderId ? (
         <p>Wähle einen tatsächlichen Auftrag aus der Historie.</p>
       ) : row === undefined ? (
@@ -143,8 +163,8 @@ export function ResearchInbox({
       ) : (
         <div className="space-y-4">
           <p role="status">
-            Schritt {row.step}/10 · {row.outcome} · automatische Übergabe
-            deaktiviert.
+            Schritt {row.step}/10 · {row.outcome} · automatische Übergabe{" "}
+            {row.automaticHandoff?.state ?? "deaktiviert"}.
           </p>
           <p>
             {row.estimatedMicros === null
@@ -259,5 +279,383 @@ export function ResearchInbox({
         </div>
       )}
     </Section>
+  );
+}
+
+type InboxRow = FunctionReturnType<
+  typeof api.research.evidence.inbox
+>["page"][number];
+type ProfileSelection = {
+  profileId: Id<"researchProfiles">;
+  revision: number;
+  config: Doc<"researchProfileVersions">["config"];
+} | null;
+function AccountInbox({
+  workspaceId,
+  accountId,
+  profile,
+  disabled,
+  onSelect,
+}: {
+  workspaceId: Id<"workspaces">;
+  accountId: Id<"socialAccounts">;
+  profile: ProfileSelection;
+  disabled: boolean;
+  onSelect: (id: Id<"researchOrders">) => void;
+}) {
+  const [cursor, setCursor] = useState<string | null>(null);
+  const rows = useQuery(api.research.evidence.inbox, {
+    workspaceId,
+    accountId,
+    paginationOpts: { cursor, numItems: 10 },
+  });
+  const clock = useGithubSourceProofClock(
+    (rows?.page ?? []).flatMap((e) => [
+      { authorized: !!e.payload, proofExpiresAt: e.proofUntil },
+      {
+        authorized: !!e.payload && e.validityUntil !== null,
+        proofExpiresAt: e.validityUntil ?? 0,
+      },
+    ]),
+  );
+  return (
+    <div className="space-y-4">
+      <p>
+        Account-Inbox · tatsächliche Belege; Review, Auftragsstatus und
+        Ignorieren/Archivieren bleiben getrennt.
+      </p>
+      {rows === undefined ? (
+        <p>Account-Inbox wird geladen …</p>
+      ) : !rows.page.length ? (
+        <p>Noch keine Account-Belege.</p>
+      ) : (
+        rows.page.map((e) =>
+          e.payload && e.source && e.proofUntil > clock ? (
+            <InboxItem
+              key={e.evidenceId}
+              e={e}
+              workspaceId={workspaceId}
+              accountId={accountId}
+              profile={profile}
+              disabled={disabled}
+              onSelect={onSelect}
+            />
+          ) : (
+            <p key={e.evidenceId}>
+              Beleg {e.evidenceId}:{" "}
+              {e.reason ?? "Quellen- oder Berechtigungsnachweis abgelaufen"};
+              Inhalte und Aktionen ausgeblendet.
+            </p>
+          ),
+        )
+      )}
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          disabled={!cursor}
+          onClick={() => setCursor(null)}
+        >
+          Neueste Inbox-Belege
+        </Button>
+        <Button
+          variant="outline"
+          disabled={!rows || rows.isDone}
+          onClick={() => setCursor(rows!.continueCursor)}
+        >
+          Ältere Inbox-Belege
+        </Button>
+      </div>
+    </div>
+  );
+}
+function InboxItem({
+  e,
+  workspaceId,
+  accountId,
+  profile,
+  disabled,
+  onSelect,
+}: {
+  e: InboxRow;
+  workspaceId: Id<"workspaces">;
+  accountId: Id<"socialAccounts">;
+  profile: ProfileSelection;
+  disabled: boolean;
+  onSelect: (id: Id<"researchOrders">) => void;
+}) {
+  const navigate = useNavigate(),
+    consume = useMutation(api.research.handoff.consume),
+    dispose = useMutation(api.research.evidence.disposition),
+    research = useMutation(api.research.pipeline.reResearch),
+    create = useMutation(api.ai.conversations.create),
+    attach = useMutation(api.ai.conversations.attachEvidence);
+  const [intent, setIntent] = useState(""),
+    [topic, setTopic] = useState(""),
+    [target, setTarget] = useState<"idea" | "draft">("idea"),
+    [count, setCount] = useState(1),
+    [busy, setBusy] = useState(false),
+    [error, setError] = useState(""),
+    [results, setResults] = useState<
+      FunctionReturnType<typeof api.research.handoff.consume>
+    >([]),
+    [researchId, setResearchId] = useState<Id<"researchOrders"> | null>(null),
+    [retry, setRetry] = useState(false);
+  const failed = useRef<(() => Promise<void>) | null>(null),
+    alive = useRef(true),
+    pending = useRef(false),
+    writable = useRef(!disabled),
+    permissionEpoch = useRef(0),
+    actionEpoch = useRef(0);
+  if (writable.current !== !disabled) permissionEpoch.current++;
+  writable.current = !disabled;
+  const canAcknowledge = () =>
+    alive.current &&
+    writable.current &&
+    permissionEpoch.current === actionEpoch.current;
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      failed.current = null;
+    };
+  }, []);
+  async function run(fn: () => Promise<void>) {
+    if (pending.current || !writable.current) return;
+    pending.current = true;
+    actionEpoch.current = permissionEpoch.current;
+    setBusy(true);
+    setError("");
+    try {
+      await fn();
+      if (alive.current) {
+        failed.current = null;
+        setRetry(false);
+      }
+    } catch (err) {
+      if (canAcknowledge()) {
+        failed.current = fn;
+        setRetry(true);
+        setError(
+          `Nicht bestätigt: ${err instanceof Error ? err.message : String(err)}. Eingaben bleiben erhalten; aktuelle Quellen-, Modell-, Preis- und Budgetfreigaben erforderlich.`,
+        );
+      }
+    } finally {
+      pending.current = false;
+      if (alive.current) setBusy(false);
+    }
+  }
+  const p = e.payload!,
+    source = e.source!;
+  const date = (n: number | null | undefined) =>
+    n == null ? "unbekannt" : new Date(n).toISOString();
+  return (
+    <article className="border-t pt-3 space-y-2">
+      <h3 className="font-semibold">
+        {p.model?.title ?? p.annotation.claim} · Review
+      </h3>
+      <p>
+        Beleg {e.evidenceId} · Auftrag {e.orderId}: {e.runState}/
+        {e.runOutcome ?? "kein Workflow"} · Inbox {e.inboxDisposition}
+      </p>
+      <a href={source.url ?? undefined} target="_blank" rel="noreferrer">
+        {source.title}
+      </a>
+      <p>Aussage der Quelle / ungeprüft: {p.annotation.claim}</p>
+      <p>
+        Wörtlicher Beleg: {p.annotation.quote ?? "kein wörtlicher Textbeleg"}
+      </p>
+      <p>Interpretation: {p.annotation.interpretation}</p>
+      <p>
+        Account-Perspektive: {p.model?.perspective ?? p.perspective.audience}
+      </p>
+      <p>Unsicherheit: {p.annotation.uncertainty}</p>
+      <p>Lücken: {p.annotation.gaps.join(" · ")}</p>
+      <p>
+        Publiziert: {date(source.publishedAt)} · Ereignis:{" "}
+        {date(e.assessment?.eventAt ?? p.model?.eventAt)} · Beobachtet:{" "}
+        {date(source.observedAt)}
+      </p>
+      <p>
+        {e.automaticEligible &&
+        e.validityUntil !== null &&
+        e.validityUntil > Date.now()
+          ? `Menschlich für Research-Kontext bewertet bis ${date(e.validityUntil)}; keine Veröffentlichungsfreigabe.`
+          : "Aktuelle menschliche Support-/Gültigkeitsbewertung fehlt; nur ungeprüfte Review."}
+      </p>
+      {e.assessment && <p>Bewertung: {e.assessment.reason}</p>}
+      {e.automaticHandoff && (
+        <p>
+          Automatische Übergabe: {e.automaticHandoff.state} ·{" "}
+          {e.automaticHandoff.reason} · maximal{" "}
+          {e.automaticHandoff.option.count} {e.automaticHandoff.option.target};
+          tatsächlich {e.automaticHandoff.results?.length ?? 0}.
+        </p>
+      )}
+      <fieldset disabled={disabled || busy || retry} className="space-y-2">
+        <div className="flex gap-2">
+          {(["ignored", "archived", "active"] as const).map((disposition) => (
+            <Button
+              key={disposition}
+              variant="outline"
+              onClick={() => {
+                const commandKey = crypto.randomUUID(),
+                  expectedRevision = e.inboxRevision;
+                void run(async () => {
+                  await dispose({
+                    workspaceId,
+                    evidenceId: e.evidenceId,
+                    expectedRevision,
+                    disposition,
+                    commandKey,
+                  });
+                });
+              }}
+            >
+              {disposition === "ignored"
+                ? "Ignorieren"
+                : disposition === "archived"
+                  ? "Archivieren"
+                  : "In Inbox zurücknehmen"}
+            </Button>
+          ))}
+        </div>
+        <label>
+          Übergabeabsicht
+          <Input value={intent} onChange={(x) => setIntent(x.target.value)} />
+        </label>
+        <label>
+          Übergabeziel
+          <select
+            value={target}
+            onChange={(x) => setTarget(x.target.value as "idea" | "draft")}
+          >
+            <option value="idea">Idea</option>
+            <option value="draft">Draft</option>
+          </select>
+        </label>
+        <label>
+          Maximale Vorschläge
+          <Input
+            type="number"
+            min={1}
+            max={5}
+            value={count}
+            onChange={(x) => setCount(Number(x.target.value))}
+          />
+        </label>
+        <p>
+          Ein ausgewählter Beleg erzeugt höchstens einen eigenen Vorschlag;
+          keine Auffüllung auf die gewünschte Obergrenze. Keine Freigabe,
+          Planung oder Veröffentlichung.
+        </p>
+        <Button
+          disabled={!intent.trim()}
+          onClick={() => {
+            const args = {
+              workspaceId,
+              accountId,
+              evidenceIds: [e.evidenceId],
+              target,
+              intent,
+              requestedCount: count,
+              commandKey: crypto.randomUUID(),
+            };
+            void run(async () => {
+              const r = await consume(args);
+              if (canAcknowledge()) setResults(r);
+            });
+          }}
+        >
+          Idea/Draft ausdrücklich übergeben
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            const operationKey = crypto.randomUUID(),
+              attachKey = crypto.randomUUID(),
+              capturedIntent =
+                intent.trim() ||
+                "Beleg, Perspektive und Unsicherheit besprechen";
+            let conversationId: Id<"conversations"> | null = null;
+            void run(async () => {
+              if (!conversationId)
+                conversationId = await create({
+                  workspaceId,
+                  accountId,
+                  operationKey,
+                });
+              const receipt = await attach({
+                workspaceId,
+                accountId,
+                conversationId,
+                evidenceId: e.evidenceId,
+                intent: capturedIntent,
+                operationKey: attachKey,
+              });
+              if (canAcknowledge())
+                navigate(`/agent?conversation=${receipt.conversationId}`);
+            });
+          }}
+        >
+          Agent zu diesem Beleg fragen
+        </Button>
+        <label>
+          Neues Recherchethema
+          <Input value={topic} onChange={(x) => setTopic(x.target.value)} />
+        </label>
+        <Button
+          variant="outline"
+          disabled={!profile || !topic.trim()}
+          onClick={() => {
+            if (!profile) return;
+            const args = {
+              workspaceId,
+              profileId: profile.profileId,
+              expectedRevision: profile.revision,
+              evidenceId: e.evidenceId,
+              topic,
+              language: profile.config.languages[0],
+              operations: ["web-search" as const],
+              operationKey: crypto.randomUUID(),
+            };
+            void run(async () => {
+              const id = await research(args);
+              if (canAcknowledge()) {
+                setResearchId(id);
+                onSelect(id);
+              }
+            });
+          }}
+        >
+          Aus diesem Beleg neu recherchieren
+        </Button>
+        {!profile && (
+          <p>
+            Für neue Recherche ein aktuelles aktives Profil mit endlichem Limit
+            auf dieser Seite speichern.
+          </p>
+        )}
+      </fieldset>
+      {error && <p role="alert">{error}</p>}
+      {retry && (
+        <Button
+          disabled={disabled || busy}
+          onClick={() => failed.current && void run(failed.current)}
+        >
+          Inbox-Anfrage erneut bestätigen
+        </Button>
+      )}
+      {researchId && (
+        <p role="status">Neuer tatsächlicher Rechercheauftrag {researchId}</p>
+      )}
+      {[...results, ...(e.automaticHandoff?.results ?? [])].map((r) => (
+        <div key={r.ideaId}>
+          <Link to={`/ideas?idea=${r.ideaId}`}>Idea {r.ideaId}</Link>
+          {r.draftId && (
+            <Link to={`/drafts/${r.draftId}`}> · Draft {r.draftId}</Link>
+          )}
+        </div>
+      ))}
+    </article>
   );
 }

@@ -973,28 +973,7 @@ export const researchResult = internalMutation({
           throw new ConvexError("CHAT_SOURCE_LIMIT");
         content =
           `Rechercheauftrag ${o._id}: ${o.pipeline.outcome}. Ungeprüfte Review; keine Wahrheits- oder Veröffentlichungsfreigabe.\n` +
-          proofs
-            .map(({ e, s }) => {
-              const p = e.payload!;
-              return JSON.stringify({
-                evidenceId: e._id,
-                source: s.url,
-                sourceSupport:
-                  s.text === null
-                    ? "metadata only; cannot support factual claims"
-                    : "unverified source text",
-                sourceAssertion: p.annotation.claim,
-                literalQuote: p.annotation.quote,
-                interpretation: p.annotation.interpretation,
-                perspective: p.model?.perspective ?? null,
-                gaps: p.annotation.gaps,
-                uncertainty: p.annotation.uncertainty,
-                publication: s.publishedAt ?? "unknown",
-                event: p.model?.eventAt ?? "unknown",
-                observedAt: s.observedAt,
-              });
-            })
-            .join("\n");
+          proofs.map(researchSummary).join("\n");
         sources.push(...proofs.map((p) => p.source));
       } catch {
         content = `Rechercheauftrag ${o._id}: Quelle nicht mehr aktuell oder Kontextgrenze erreicht. Keine belegte Zusammenfassung übernommen.`;
@@ -1125,3 +1104,150 @@ export const cleanupUnavailable = mutation({
     return null;
   },
 });
+
+export const attachEvidence = mutation({
+  args: {
+    ...target,
+    evidenceId: v.id("researchEvidence"),
+    intent: v.string(),
+    operationKey: v.string(),
+  },
+  returns: v.object({
+    conversationId: v.id("conversations"),
+    messageId: v.string(),
+  }),
+  handler: async (ctx, a) => {
+    key(a.operationKey);
+    text(a.intent, 1000);
+    const { c } = await conversationAccess(
+      ctx,
+      a.workspaceId,
+      a.accountId,
+      a.conversationId,
+      true,
+    );
+    await historyAuthority(ctx, c);
+    const proof = await evidenceSource(
+      ctx,
+      a.workspaceId,
+      a.evidenceId,
+      a.accountId,
+    );
+    const fingerprint = await sha256(
+      JSON.stringify([
+        a.evidenceId,
+        runSourceKey(proof.source, false),
+        a.intent.trim(),
+      ]),
+    );
+    const keyed = c.evidenceAttachments?.find(
+      (r) => r.operationKey === a.operationKey,
+    );
+    const prior =
+      keyed ??
+      c.evidenceAttachments?.find((r) => r.fingerprint === fingerprint);
+    if (prior) {
+      if (prior.fingerprint !== fingerprint)
+        throw new ConvexError("CHAT_OPERATION_CONFLICT");
+      if (!keyed) {
+        if ((c.evidenceAttachments?.length ?? 0) >= 50)
+          throw new ConvexError("CHAT_TURN_LIMIT");
+        await ctx.db.patch(c._id, {
+          evidenceAttachments: [
+            ...(c.evidenceAttachments ?? []),
+            { ...prior, operationKey: a.operationKey },
+          ],
+        });
+      }
+      return { conversationId: c._id, messageId: prior.messageId };
+    }
+    const ops = await ctx.db
+      .query("chatOperations")
+      .withIndex("by_conversationId_and_createdAt", (q) =>
+        q.eq("conversationId", c._id),
+      )
+      .take(50);
+    for (const op of ops)
+      for (const id of op.runIds) {
+        const run = await ctx.db.get(id);
+        if (
+          run &&
+          (["ready", "running"].includes(run.state) ||
+            (run.executionKey && !run.executionFinishedAt))
+        )
+          throw new ConvexError("CHAT_NATIVE_EXECUTION_PENDING");
+      }
+    if ((c.evidenceAttachments?.length ?? 0) >= 50)
+      throw new ConvexError("CHAT_TURN_LIMIT");
+    const sources = [...c.sources];
+    const existing = sources.findIndex(
+      (s) => runSourceKey(s, false) === runSourceKey(proof.source, false),
+    );
+    if (existing < 0) sources.push(proof.source);
+    else
+      sources[existing] = {
+        ...sources[existing],
+        proofUntil: Math.min(
+          sources[existing].proofUntil ?? proof.proofUntil,
+          proof.proofUntil,
+        ),
+      };
+    if (sources.length > 10) throw new ConvexError("CHAT_SOURCE_LIMIT");
+    const deadlines = await currentRunSources(
+      ctx,
+      c.workspaceId,
+      c.accountId,
+      sources,
+    );
+    for (let i = 0; i < sources.length; i++)
+      sources[i] = { ...sources[i], proofUntil: deadlines[i] };
+    const saved = await saveMessage(ctx, components.agent, {
+      threadId: c.threadId,
+      userId: c.actorId,
+      message: {
+        role: "assistant",
+        content: `Ungeprüfte Review; keine Wahrheits- oder Veröffentlichungsfreigabe. Auftrag: ${a.intent.trim()}\n${researchSummary(proof)}`,
+      },
+    });
+    await registerResearchCopies(ctx, proof.source, { conversationId: c._id });
+    await ctx.db.patch(c._id, {
+      sources,
+      updatedAt: Date.now(),
+      evidenceAttachments: [
+        ...(c.evidenceAttachments ?? []),
+        {
+          operationKey: a.operationKey,
+          fingerprint,
+          messageId: saved.messageId,
+        },
+      ],
+    });
+    await ctx.scheduler.runAt(
+      Math.min(...deadlines),
+      internal.ai.conversations.expireSource,
+      { conversationId: c._id },
+    );
+    return { conversationId: c._id, messageId: saved.messageId };
+  },
+});
+
+function researchSummary({ e, s }: Awaited<ReturnType<typeof evidenceSource>>) {
+  const p = e.payload!;
+  return JSON.stringify({
+    evidenceId: e._id,
+    source: s.url,
+    sourceSupport:
+      s.text === null
+        ? "metadata only; cannot support factual claims"
+        : "unverified source text",
+    sourceAssertion: p.annotation.claim,
+    literalQuote: p.annotation.quote,
+    interpretation: p.annotation.interpretation,
+    perspective: p.model?.perspective ?? null,
+    gaps: p.annotation.gaps,
+    uncertainty: p.annotation.uncertainty,
+    publication: s.publishedAt ?? "unknown",
+    event: p.model?.eventAt ?? "unknown",
+    observedAt: s.observedAt,
+  });
+}

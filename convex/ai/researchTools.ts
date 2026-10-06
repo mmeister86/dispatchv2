@@ -15,7 +15,11 @@ import {
   orderLiability,
   historyMaterial,
 } from "../research/pipelineAccess";
-import { deliveredSource, materialHash } from "../research/evidence";
+import {
+  currentEvidence,
+  deliveredSource,
+  materialHash,
+} from "../research/evidence";
 import {
   assignCluster,
   attachEvidence,
@@ -609,13 +613,28 @@ export const bindModel = internalMutation({
       Math.min(o.config.topicCount, 20) +
       " distinct topics (same existing cluster, local topicKey, or exact declared title); at most one item per primary source; return items:[] if no relevant material.\n" +
       JSON.stringify({
-        task: o.targetedChat
+        inheritedResearch: o.reResearch
           ? {
-              topic: o.targetedChat.topic,
-              requirement:
-                "Analyze relevance to this explicit topic, using the saved profile only for account perspective.",
+              evidenceId: o.reResearch.parent.evidenceId,
+              source: o.reResearch.parent,
+              payload: (
+                await currentEvidence(
+                  ctx,
+                  o.workspaceId,
+                  o.reResearch.parent.evidenceId,
+                  o.accountId,
+                )
+              ).e.payload,
             }
           : null,
+        task:
+          o.targetedChat || o.reResearch
+            ? {
+                topic: o.reResearch?.topic ?? o.targetedChat!.topic,
+                requirement:
+                  "Analyze relevance to this explicit topic, using the saved profile only for account perspective.",
+              }
+            : null,
         profile: o.config,
         query: o.native!.query,
         window: { start: o.windowStart, end: o.windowEnd },
@@ -841,7 +860,8 @@ export const evidence = internalMutation({
           perspective: {
             profileVersionId: o.profileVersionId,
             audience: o.config.audience,
-            topics: o.targetedChat?.topic ?? o.config.topics,
+            topics:
+              o.reResearch?.topic ?? o.targetedChat?.topic ?? o.config.topics,
             project: o.config.project,
           },
           model: {
@@ -924,6 +944,10 @@ export const finish = internalMutation({
     });
     if (p?.activeOrderId === o._id)
       await ctx.db.patch(p._id, { activeOrderId: null });
+    if (o.automaticHandoff)
+      await ctx.scheduler.runAfter(0, internal.research.handoff.automatic, {
+        orderId: o._id,
+      });
     return null;
   },
 });

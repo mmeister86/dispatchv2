@@ -224,7 +224,8 @@ function ResearchAccount({
         <p>
           Quellenadapter benötigen eine aktuelle ausdrückliche Freigabe. Alte
           vorbereitete Zeitpläne bleiben blockiert; Inbox-Ergebnisse bleiben
-          Review; automatische Übergabe ist deaktiviert.
+          Review; eine automatische Übergabe benötigt eine neue gespeicherte
+          Option, neue Workflow-Aktivierung und aktuelle menschliche Bewertung.
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
           Kostenpflichtige Recherche benötigt einen freigegebenen
@@ -449,6 +450,95 @@ function ResearchAccount({
             disabled={busy || !editable}
             className="grid gap-4 sm:grid-cols-2"
           >
+            {row && (
+              <div className="sm:col-span-2 space-y-2">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={!!buffer.autoHandoff}
+                    onChange={(e) =>
+                      setBuffer({
+                        ...buffer,
+                        autoHandoff: e.target.checked
+                          ? {
+                              kind: "bounded-editorial-v1",
+                              count: 1,
+                              target: "idea",
+                              intent: "",
+                            }
+                          : false,
+                      })
+                    }
+                  />{" "}
+                  Automatische Idea/Draft-Übergabe ausdrücklich speichern
+                </label>
+                <p>
+                  Nur neue periodische Workflow-Aufträge nach erneuter
+                  Aktivierung. Aktuelle menschliche Quellenbewertung
+                  erforderlich; Vorschläge bleiben ungeprüft und
+                  unveröffentlicht. Änderungen entziehen alten automatischen
+                  Aufträgen die Übergabeberechtigung.
+                </p>
+                {buffer.autoHandoff && (
+                  <>
+                    <label>
+                      Maximale automatische Vorschläge
+                      <Input
+                        type="number"
+                        min={1}
+                        max={5}
+                        value={buffer.autoHandoff.count}
+                        onChange={(e) =>
+                          buffer.autoHandoff &&
+                          setBuffer({
+                            ...buffer,
+                            autoHandoff: {
+                              ...buffer.autoHandoff,
+                              count: Number(e.target.value),
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                    <label>
+                      Automatisches Ziel
+                      <select
+                        value={buffer.autoHandoff.target}
+                        onChange={(e) =>
+                          buffer.autoHandoff &&
+                          setBuffer({
+                            ...buffer,
+                            autoHandoff: {
+                              ...buffer.autoHandoff,
+                              target: e.target.value as "idea" | "draft",
+                            },
+                          })
+                        }
+                      >
+                        <option value="idea">Idea</option>
+                        <option value="draft">Draft</option>
+                      </select>
+                    </label>
+                    <label>
+                      Automatische redaktionelle Absicht
+                      <Input
+                        value={buffer.autoHandoff.intent}
+                        onChange={(e) =>
+                          buffer.autoHandoff &&
+                          setBuffer({
+                            ...buffer,
+                            autoHandoff: {
+                              ...buffer.autoHandoff,
+                              intent: e.target.value,
+                            },
+                          })
+                        }
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            )}
             {(
               [
                 ["topics", "Themen"],
@@ -778,6 +868,17 @@ function ResearchAccount({
         )}
       </Section>
       <ResearchInbox
+        accountId={accountId}
+        profile={
+          row && !row.profile.deleted && !row.profile.paused
+            ? {
+                profileId: row.profile._id,
+                revision: row.profile.revision,
+                config: row.version.config,
+              }
+            : null
+        }
+        onSelect={setSelectedId}
         workspaceId={workspaceId}
         orderId={selectedId}
         disabled={!writable || busy}

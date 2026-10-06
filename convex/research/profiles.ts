@@ -107,7 +107,11 @@ export const create = workspaceMutation({
     operationKey(a.commandKey);
     validateConfig(a.config);
     await account(ctx, ctx.workspace._id, a.accountId);
-    if (a.config.frequency !== "manual" || a.config.cap !== null)
+    if (
+      a.config.frequency !== "manual" ||
+      a.config.cap !== null ||
+      a.config.autoHandoff
+    )
       throw new ConvexError("RESEARCH_INITIAL_MANUAL_REQUIRED");
     const fingerprint = await sha256(JSON.stringify(a));
     const old = await ctx.db

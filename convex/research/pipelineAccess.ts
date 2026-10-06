@@ -5,7 +5,7 @@ import type { QueryCtx, MutationCtx } from "../_generated/server";
 import { nativeAttempt } from "./providerAccess";
 import { generationAttempt } from "../ai/accounting";
 import { sha256 } from "../lib/crypto";
-import { draftResearchProof } from "./contentProof";
+import { draftResearchProof, researchSourceProof } from "./contentProof";
 import { deliveredSource, materialHash, currentEvidence } from "./evidence";
 type Ctx = QueryCtx | MutationCtx;
 export type MaterialWalk = {
@@ -81,6 +81,11 @@ async function materialAuthority(
   if (!o.pipeline || o.pipeline.cleanupState !== "retained")
     throw new ConvexError("RESEARCH_MATERIAL_REMOVED");
   let until = o.pipeline.retentionUntil ?? Number.MAX_SAFE_INTEGER;
+  if (o.reResearch)
+    until = Math.min(
+      until,
+      await researchSourceProof(ctx, o.workspaceId, o.reResearch.parent, walk),
+    );
   for (const pin of o.pipeline.history)
     until = Math.min(
       until,

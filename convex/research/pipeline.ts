@@ -1,3 +1,5 @@
+import { evidenceSource } from "./contentProof";
+import { registerResearchCopies } from "./contentCleanup";
 import { conversationAccess } from "../ai/conversationAccess";
 import { policy, grants, fingerprint } from "./providerAccess";
 import { planSchedule } from "./schedules";
@@ -19,7 +21,11 @@ import {
   liveAuthority,
 } from "./access";
 import { operation } from "./providerFields";
-import { disposition, sourceCoverage } from "./pipelineFields";
+import {
+  automaticHandoff,
+  disposition,
+  sourceCoverage,
+} from "./pipelineFields";
 import { admitNative } from "./native";
 import { deriveQuestion } from "../ai/researchTools";
 import { workflow } from "../ai/researchAgent";
@@ -28,7 +34,7 @@ import {
   currentMaterialProof,
   orderLiability,
 } from "./pipelineAccess";
-import { deliveredSource, materialHash } from "./evidence";
+import { currentEvidence, deliveredSource, materialHash } from "./evidence";
 import { evidenceFields } from "./evidenceFields";
 import type { WorkflowId } from "@convex-dev/workflow";
 export async function admitPipeline(
@@ -40,6 +46,7 @@ export async function admitPipeline(
     language: string;
     operations: Doc<"researchSourcePolicies">["operation"][];
     targetedChat?: Doc<"researchOrders">["targetedChat"];
+    reResearch?: Doc<"researchOrders">["reResearch"];
   },
   workspaceId: Doc<"workspaces">["_id"],
   actorId: Doc<"users">["_id"],
@@ -53,7 +60,13 @@ export async function admitPipeline(
   );
   const id = await admitNative(
       ctx,
-      { ...a, query: a.targetedChat?.topic ?? deriveQuestion(version.config) },
+      {
+        ...a,
+        query:
+          a.reResearch?.topic ??
+          a.targetedChat?.topic ??
+          deriveQuestion(version.config),
+      },
       workspaceId,
       actorId,
       true,
@@ -101,6 +114,15 @@ export async function admitPipeline(
     /* Source-only partial results do not fabricate model configuration. */
   }
   await ctx.db.patch(id, { pipeline, approval, occasion, occurrence });
+  if (a.reResearch) {
+    await registerResearchCopies(ctx, a.reResearch.parent, { orderId: id });
+    await ctx.scheduler.runAt(
+      a.reResearch.parent.proofUntil,
+      internal.research.pipeline.purge,
+      { orderId: id },
+    );
+  }
+  if (a.reResearch) await currentMaterialProof(ctx, (await ctx.db.get(id))!);
   const workflowId = await workflow.start(
     ctx,
     internal.ai.researchAgent.research,
@@ -126,6 +148,39 @@ export const start = workspaceMutation({
   handler: async (ctx, a) => {
     requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
     return admitPipeline(ctx, a, ctx.workspace._id, ctx.user._id);
+  },
+});
+export const reResearch = workspaceMutation({
+  args: {
+    profileId: v.id("researchProfiles"),
+    expectedRevision: v.number(),
+    evidenceId: v.id("researchEvidence"),
+    topic: v.string(),
+    operationKey: v.string(),
+    language: v.string(),
+    operations: v.array(operation),
+  },
+  returns: v.id("researchOrders"),
+  handler: async (ctx, a) => {
+    requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
+    const { profile } = await currentProfile(
+      ctx,
+      ctx.workspace._id,
+      a.profileId,
+    );
+    const { source } = await evidenceSource(
+      ctx,
+      ctx.workspace._id,
+      a.evidenceId,
+      profile.accountId,
+    );
+    const { evidenceId: _id, topic, ...request } = a;
+    return admitPipeline(
+      ctx,
+      { ...request, reResearch: { topic, parent: source } },
+      ctx.workspace._id,
+      ctx.user._id,
+    );
   },
 });
 export const resume = workspaceMutation({
@@ -190,6 +245,7 @@ export const results = workspaceQuery({
       currency: v.union(v.string(), v.null()),
       nextAt: v.union(v.number(), v.null()),
       handoff: v.literal("disabled"),
+      automaticHandoff: v.union(automaticHandoff, v.null()),
       sourceCoverage: v.union(v.array(sourceCoverage), v.null()),
       historyIncomplete: v.boolean(),
       cleanupState: v.union(
@@ -230,7 +286,13 @@ export const results = workspaceQuery({
         )
           continue;
         try {
-          const d = await deliveredSource(ctx, o!._id, e.sourceId);
+          const current = await currentEvidence(
+            ctx,
+            ctx.workspace._id,
+            e._id,
+            o!.accountId,
+          );
+          const d = { s: current.s, until: current.proofUntil };
           if ((await materialHash(d.s)) !== e.materialHash) continue;
           results.push({
             evidenceId: e._id,
@@ -261,6 +323,7 @@ export const results = workspaceQuery({
       currency: o!.config.cap?.currency ?? null,
       nextAt: o!.pipeline.nextAt,
       handoff: "disabled" as const,
+      automaticHandoff: readable ? (o!.automaticHandoff ?? null) : null,
       sourceCoverage: o!.pipeline.sourceCoverage ?? null,
       historyIncomplete:
         o!.pipeline.historyTruncated ||
@@ -331,8 +394,14 @@ export const purge = internalMutation({
       o.pipeline.cleanupState === "retained" &&
       o.pipeline.retentionUntil !== null &&
       o.pipeline.retentionUntil > Date.now()
-    )
-      return null;
+    ) {
+      try {
+        await currentMaterialProof(ctx, o);
+        return null;
+      } catch {
+        /* inherited proof withdrawal requires the same cleanup */
+      }
+    }
     const cancelling = ["queued", "running"].includes(o.state);
     const p = {
       ...o.pipeline,
@@ -501,12 +570,20 @@ export async function captureWorkflowApproval(
       budgetIds: await grants(ctx, pol),
     });
   }
-  return {
-    kind: "research-workflow-v1" as const,
-    language,
-    operations,
-    approvals,
-  };
+  return config.autoHandoff
+    ? {
+        kind: "research-workflow-v2" as const,
+        language,
+        operations,
+        approvals,
+        autoHandoff: config.autoHandoff,
+      }
+    : {
+        kind: "research-workflow-v1" as const,
+        language,
+        operations,
+        approvals,
+      };
 }
 export const fire = internalMutation({
   args: {
@@ -590,6 +667,17 @@ export const fire = internalMutation({
         "scheduled",
         { generation: a.generation, at: a.at },
       );
+    if (id && p.workflowActivation.kind === "research-workflow-v2")
+      await ctx.db.patch(id, {
+        automaticHandoff: {
+          actorId: p.scheduleActorId,
+          profileVersionId: version._id,
+          activationGeneration: p.scheduleGeneration,
+          option: p.workflowActivation.autoHandoff,
+          state: "awaiting-review",
+          reason: "RESEARCH_AUTOMATIC_AWAITING_HUMAN_REVIEW",
+        },
+      });
     await planSchedule(ctx, p, version.config);
     return id;
   },
@@ -634,12 +722,15 @@ export const purgeProfile = internalMutation({
   },
 });
 
-function sameWorkflowActivation(
+export function sameWorkflowActivation(
   a: NonNullable<Doc<"researchProfiles">["workflowActivation"]>,
   b: NonNullable<Doc<"researchProfiles">["workflowActivation"]>,
 ) {
   return (
     a.kind === b.kind &&
+    (a.kind !== "research-workflow-v2" ||
+      (b.kind === "research-workflow-v2" &&
+        JSON.stringify(a.autoHandoff) === JSON.stringify(b.autoHandoff))) &&
     a.language === b.language &&
     a.operations.length === b.operations.length &&
     a.operations.every((op, i) => op === b.operations[i]) &&

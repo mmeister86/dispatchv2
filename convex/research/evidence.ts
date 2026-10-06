@@ -3,6 +3,8 @@ import {
   currentMaterialProof,
   type MaterialWalk,
 } from "./pipelineAccess";
+import { automaticHandoff } from "./pipelineFields";
+import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -163,7 +165,17 @@ export const create = workspaceMutation({
       // A receipt is historical: returning it never rewrites or renews removed material.
       return prior._id;
     }
-    const { o, s, until } = await deliveredSource(ctx, a.orderId, a.sourceId);
+    const {
+      o,
+      s,
+      until: deliveredUntil,
+    } = await deliveredSource(ctx, a.orderId, a.sourceId);
+    const until = o.reResearch
+      ? Math.min(
+          deliveredUntil,
+          (await currentMaterialProof(ctx, o)).proofUntil,
+        )
+      : deliveredUntil;
     if ((await materialHash(s)) !== a.expectedMaterialHash)
       throw new ConvexError("RESEARCH_EVIDENCE_MATERIAL_CHANGED");
     if (
@@ -273,33 +285,138 @@ export async function currentEvidence(
       if (!proof.materials.some((d) => d.s._id === id))
         throw new ConvexError("RESEARCH_EVIDENCE_MATERIAL_CHANGED");
   }
+  if (o.reResearch && !e.modelOrigin)
+    proofUntil = Math.min(
+      proofUntil,
+      (await currentMaterialProof(ctx, o, walk)).proofUntil,
+    );
   if (proofUntil <= Date.now())
     throw new ConvexError("RESEARCH_EVIDENCE_SOURCE_UNUSABLE");
   return { e, o, s, proofUntil };
 }
 
+export const inboxItem = v.object({
+  evidenceId: v.id("researchEvidence"),
+  orderId: v.id("researchOrders"),
+  runOutcome: v.union(v.string(), v.null()),
+  automaticHandoff: v.union(automaticHandoff, v.null()),
+  runState: v.union(
+    v.literal("queued"),
+    v.literal("running"),
+    v.literal("blocked"),
+    v.literal("cancelled"),
+    v.literal("completed"),
+  ),
+  inboxRevision: v.number(),
+  inboxDisposition: v.union(
+    v.literal("active"),
+    v.literal("ignored"),
+    v.literal("archived"),
+  ),
+  createdAt: v.number(),
+  state: v.union(v.literal("review"), v.literal("removed")),
+  reason: v.union(v.string(), v.null()),
+  payload: evidenceFields.payload,
+  source: v.union(publicSource, v.null()),
+  proofUntil: v.number(),
+  automaticEligible: v.boolean(),
+  validityUntil: v.union(v.number(), v.null()),
+  assessment: v.union(assessment, v.null()),
+});
+
+export async function projectEvidence(
+  ctx: Ctx,
+  ws: Id<"workspaces">,
+  e: Doc<"researchEvidence">,
+) {
+  let source = null,
+    payload = null,
+    proofUntil = 0,
+    reason = e.reason;
+  try {
+    const proof = await currentEvidence(ctx, ws, e._id);
+    const s = proof.s;
+    proofUntil = proof.proofUntil;
+    payload = e.payload;
+    source = {
+      materialHash: e.materialHash,
+      sourceId: s._id,
+      operation: s.operation,
+      url: s.url,
+      title: s.title!,
+      text: s.text,
+      publishedAt: s.publishedAt,
+      count: s.count,
+      observedAt: s.observedAt,
+      usableUntil: proofUntil,
+    };
+  } catch (error) {
+    reason =
+      error instanceof ConvexError &&
+      error.data === "RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE"
+        ? String(error.data)
+        : (reason ?? "RESEARCH_EVIDENCE_NO_CURRENT_PROOF");
+  }
+  let validityUntil: number | null = null;
+  if (
+    payload &&
+    e.assessment?.validUntil &&
+    e.assessment.validUntil > Date.now()
+  ) {
+    validityUntil = Math.min(e.assessment.validUntil, proofUntil);
+  }
+  const order = await ctx.db.get(e.orderId);
+  return {
+    evidenceId: e._id,
+    orderId: e.orderId,
+    runOutcome: order?.pipeline?.outcome ?? null,
+    automaticHandoff: payload ? (order?.automaticHandoff ?? null) : null,
+    runState: order?.state ?? "blocked",
+    inboxRevision: e.inboxRevision ?? 0,
+    inboxDisposition: e.inboxDisposition ?? "active",
+    createdAt: e.createdAt,
+    state: payload ? ("review" as const) : ("removed" as const),
+    reason,
+    payload,
+    source,
+    proofUntil,
+    automaticEligible: validityUntil !== null,
+    validityUntil,
+    assessment: payload ? (e.assessment ?? null) : null,
+  };
+}
+
+export const inbox = workspaceQuery({
+  args: {
+    accountId: v.id("socialAccounts"),
+    paginationOpts: paginationOptsValidator,
+  },
+  returns: v.object({
+    page: v.array(inboxItem),
+    isDone: v.boolean(),
+    continueCursor: v.string(),
+  }),
+  handler: async (ctx, a) => {
+    requireReference(ctx.workspace._id, await ctx.db.get(a.accountId));
+    const rows = await ctx.db
+      .query("researchEvidence")
+      .withIndex("by_workspaceId_and_accountId_and_createdAt", (q) =>
+        q.eq("workspaceId", ctx.workspace._id).eq("accountId", a.accountId),
+      )
+      .order("desc")
+      .paginate({
+        ...a.paginationOpts,
+        numItems: Math.min(20, Math.max(1, a.paginationOpts.numItems)),
+      });
+    const page = [];
+    for (const e of rows.page)
+      page.push(await projectEvidence(ctx, ctx.workspace._id, e));
+    return { page, isDone: rows.isDone, continueCursor: rows.continueCursor };
+  },
+});
 export const list = workspaceQuery({
   args: { orderId: v.id("researchOrders") },
-  returns: v.array(
-    v.object({
-      evidenceId: v.id("researchEvidence"),
-      inboxRevision: v.number(),
-      inboxDisposition: v.union(
-        v.literal("active"),
-        v.literal("ignored"),
-        v.literal("archived"),
-      ),
-      createdAt: v.number(),
-      state: v.union(v.literal("review"), v.literal("removed")),
-      reason: v.union(v.string(), v.null()),
-      payload: evidenceFields.payload,
-      source: v.union(publicSource, v.null()),
-      proofUntil: v.number(),
-      automaticEligible: v.boolean(),
-      validityUntil: v.union(v.number(), v.null()),
-      assessment: v.union(assessment, v.null()),
-    }),
-  ),
+  returns: v.array(inboxItem),
   handler: async (ctx, a) => {
     requireReference(ctx.workspace._id, await ctx.db.get(a.orderId));
     const rows = await ctx.db
@@ -308,58 +425,7 @@ export const list = workspaceQuery({
       .order("desc")
       .take(100);
     return Promise.all(
-      rows.map(async (e) => {
-        let source = null,
-          payload = null,
-          proofUntil = 0,
-          reason = e.reason;
-        try {
-          const proof = await currentEvidence(ctx, ctx.workspace._id, e._id);
-          const s = proof.s;
-          proofUntil = proof.proofUntil;
-          payload = e.payload;
-          source = {
-            materialHash: e.materialHash,
-            sourceId: s._id,
-            operation: s.operation,
-            url: s.url,
-            title: s.title!,
-            text: s.text,
-            publishedAt: s.publishedAt,
-            count: s.count,
-            observedAt: s.observedAt,
-            usableUntil: proofUntil,
-          };
-        } catch (error) {
-          reason =
-            error instanceof ConvexError &&
-            error.data === "RESEARCH_EVIDENCE_REVIEWER_UNAVAILABLE"
-              ? String(error.data)
-              : (reason ?? "RESEARCH_EVIDENCE_NO_CURRENT_PROOF");
-        }
-        let validityUntil: number | null = null;
-        if (
-          payload &&
-          e.assessment?.validUntil &&
-          e.assessment.validUntil > Date.now()
-        ) {
-          validityUntil = Math.min(e.assessment.validUntil, proofUntil);
-        }
-        return {
-          evidenceId: e._id,
-          inboxRevision: e.inboxRevision ?? 0,
-          inboxDisposition: e.inboxDisposition ?? "active",
-          createdAt: e.createdAt,
-          state: payload ? ("review" as const) : ("removed" as const),
-          reason,
-          payload,
-          source,
-          proofUntil,
-          automaticEligible: validityUntil !== null,
-          validityUntil,
-          assessment: payload ? (e.assessment ?? null) : null,
-        };
-      }),
+      rows.map((e) => projectEvidence(ctx, ctx.workspace._id, e)),
     );
   },
 });
@@ -471,6 +537,7 @@ export const review = workspaceMutation({
       inboxRevision: _inboxRevision,
       inboxDisposition: _inboxDisposition,
       inboxActorId: _inboxActor,
+      inboxCommands: _inboxCommands,
       parentEvidenceId: _parent,
       commandKey: _key,
       fingerprint: _hash,
@@ -502,6 +569,10 @@ export const review = workspaceMutation({
         eventQuote: eventSupported ? a.eventQuote : null,
       },
     });
+    if (validUntil !== null)
+      await ctx.scheduler.runAfter(0, internal.research.handoff.automatic, {
+        orderId: e!.orderId,
+      });
     await ctx.scheduler.runAt(
       copy.retentionUntil,
       internal.research.evidence.expire,
@@ -601,6 +672,7 @@ export const disposition = workspaceMutation({
   args: {
     evidenceId: v.id("researchEvidence"),
     expectedRevision: v.number(),
+    commandKey: v.optional(v.string()),
     disposition: v.union(
       v.literal("active"),
       v.literal("ignored"),
@@ -614,13 +686,42 @@ export const disposition = workspaceMutation({
       ctx.workspace._id,
       await ctx.db.get(a.evidenceId),
     ) as Doc<"researchEvidence">;
+    await currentEvidence(ctx, ctx.workspace._id, e._id);
+    if (a.commandKey) operationKey(a.commandKey);
+    const hash = await sha256(
+      JSON.stringify([a.expectedRevision, a.disposition]),
+    );
+    const prior = e.inboxCommands?.find(
+      (c) => c.actorId === ctx.user._id && c.commandKey === a.commandKey,
+    );
+    if (prior) {
+      if (prior.fingerprint !== hash)
+        throw new ConvexError("RESEARCH_OPERATION_CONFLICT");
+      return prior.revision;
+    }
     const revision = e.inboxRevision ?? 0;
     if (revision !== a.expectedRevision)
       throw new ConvexError("RESEARCH_INBOX_REVISION_CONFLICT");
+    // ponytail: 100 exact disposition receipts per immutable evidence; new review IDs provide a fresh bounded command history.
+    if ((e.inboxCommands?.length ?? 0) >= 100)
+      throw new ConvexError("RESEARCH_INBOX_COMMAND_LIMIT");
     await ctx.db.patch(e._id, {
       inboxRevision: revision + 1,
       inboxDisposition: a.disposition,
       inboxActorId: ctx.user._id,
+      ...(a.commandKey
+        ? {
+            inboxCommands: [
+              ...(e.inboxCommands ?? []),
+              {
+                actorId: ctx.user._id,
+                commandKey: a.commandKey,
+                fingerprint: hash,
+                revision: revision + 1,
+              },
+            ],
+          }
+        : {}),
     });
     return revision + 1;
   },

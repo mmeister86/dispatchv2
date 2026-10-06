@@ -1,3 +1,4 @@
+import { currentMaterialProof } from "./pipelineAccess";
 import { historyAuthority } from "../ai/conversationAccess";
 import { ConvexError } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -158,6 +159,7 @@ export async function orderAuthority(
     (generation !== undefined && generation !== o.generation)
   )
     throw new ConvexError("RESEARCH_ORDER_INACTIVE");
+  if (o.reResearch) await currentMaterialProof(ctx, o);
   if (o.targetedChat) {
     const c = await ctx.db.get(o.targetedChat.conversationId);
     if (

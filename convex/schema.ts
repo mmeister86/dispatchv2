@@ -73,6 +73,7 @@ export const profile = v.object(profileFields);
 export default defineSchema({
   researchCopyBindings: defineTable({
     evidenceId: v.id("researchEvidence"),
+    orderId: v.optional(v.id("researchOrders")),
     conversationId: v.optional(v.id("conversations")),
     ideaVersionId: v.optional(v.id("ideaVersions")),
     runId: v.optional(v.id("agentRuns")),
@@ -119,6 +120,11 @@ export default defineSchema({
     ])
     .index("by_orderId", ["orderId"]),
   researchEvidence: defineTable(evidenceFields)
+    .index("by_workspaceId_and_accountId_and_createdAt", [
+      "workspaceId",
+      "accountId",
+      "createdAt",
+    ])
     .index("by_modelOrigin_runId_and_state", ["modelOrigin.runId", "state"])
     .index("by_orderId_and_createdAt", ["orderId", "createdAt"])
     .index("by_orderId_and_actorId_and_commandKey", [
@@ -168,6 +174,15 @@ export default defineSchema({
     ["workspaceId", "accountId", "operation", "providerIdentity"],
   ),
   conversations: defineTable({
+    evidenceAttachments: v.optional(
+      v.array(
+        v.object({
+          operationKey: v.string(),
+          fingerprint: v.string(),
+          messageId: v.string(),
+        }),
+      ),
+    ),
     workspaceId: v.id("workspaces"),
     accountId: v.id("socialAccounts"),
     actorId: v.id("users"),

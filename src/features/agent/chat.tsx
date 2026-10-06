@@ -19,6 +19,7 @@ import { ModelConfiguration } from "@/features/settings/models";
 export function RealAgentChat() {
   const { state } = useStore();
   const [account, setAccount] = useState(state.activeAccountId);
+  const [, setParams] = useSearchParams();
   const actualAccount = state.accounts.some((a) => a.id === account)
     ? account
     : state.activeAccountId;
@@ -29,7 +30,19 @@ export function RealAgentChat() {
         title="Agent"
         description="Gedanken sortieren und Vorschläge prüfen."
       />
-      <AccountSelect value={actualAccount} onChange={setAccount} />
+      <AccountSelect
+        value={actualAccount}
+        onChange={(value) => {
+          setAccount(value);
+          setParams(
+            (p) => {
+              p.delete("conversation");
+              return p;
+            },
+            { replace: true },
+          );
+        }}
+      />
       {state.activeWorkspaceId && actualAccount ? (
         <ChatSession
           key={`${state.activeWorkspaceId}:${actualAccount}`}
@@ -75,7 +88,9 @@ function ChatSession({
     ...scope,
     paginationOpts: { numItems: 25, cursor: null },
   });
-  const [selected, setSelected] = useState<Id<"conversations"> | null>(null);
+  const [selected, setSelected] = useState<Id<"conversations"> | null>(
+    params.get("conversation") as Id<"conversations"> | null,
+  );
   const [prompt, setPrompt] = useState(params.get("question") ?? "");
   const [title, setTitle] = useState("");
   const [renaming, setRenaming] = useState(false);
@@ -105,8 +120,11 @@ function ChatSession({
     cleanupUnavailable = useMutation(api.ai.conversations.cleanupUnavailable);
   const current =
     list?.page.find((c) => c.conversationId === selected) ??
-    list?.page.find((c) => c.state === "active");
-  const selection = current?.conversationId ?? null;
+    (params.get("conversation")
+      ? undefined
+      : list?.page.find((c) => c.state === "active"));
+  const selection =
+    current?.conversationId ?? (params.get("conversation") ? selected : null);
   const latest = useRef({ selection, editable, epoch: 0 });
   latest.current = {
     selection,
