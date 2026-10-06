@@ -1,3 +1,4 @@
+import { projection as projectionValidator } from "../performance/modelFields";
 import { sha256 } from "../lib/crypto";
 import {
   recommendations,
@@ -5,7 +6,7 @@ import {
   recommendationProof,
   RULE_VERSION,
 } from "./recommendationEdits";
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import {
   action,
@@ -319,20 +320,23 @@ export const analyze = action({
     };
   },
 });
+const getResult = v.object({
+  projection: v.union(projectionValidator, v.null()),
+  assessment: v.union(assessmentDoc, v.null()),
+  recommendations: v.union(recommendations, v.null()),
+  applicable: v.boolean(),
+  sourceUntil: v.union(v.number(), v.null()),
+});
 export const get = workspaceQuery({
   args: targetFields,
-  returns: v.object({
-    assessment: v.union(assessmentDoc, v.null()),
-    recommendations: v.union(recommendations, v.null()),
-    applicable: v.boolean(),
-    sourceUntil: v.union(v.number(), v.null()),
-  }),
-  handler: async (ctx, a) => {
+  returns: getResult,
+  handler: async (ctx, a): Promise<Infer<typeof getResult>> => {
     let proof;
     try {
       proof = await source(ctx, ctx.workspace._id, a);
     } catch {
       return {
+        projection: null,
         assessment: null,
         recommendations: null,
         applicable: false,
@@ -385,7 +389,37 @@ export const get = workspaceQuery({
         matched &&
         receipt?.owner === "jev-analyzer" &&
         receipt.policyFingerprint === (await sha256(JSON.stringify(x.p)));
+      let projection = null;
+      if (matched) {
+        const metrics = await ctx.meta.getTransactionMetrics(),
+          transactionLimits = {
+            databaseQueries: metrics.databaseQueries.remaining - 33,
+            documentsRead: metrics.documentsRead.remaining - 65,
+            bytesRead: metrics.bytesRead.remaining - 2 * 1024 * 1024,
+          };
+        if (
+          Object.values(transactionLimits).every(
+            (n) => Number.isSafeInteger(n) && n > 0,
+          )
+        ) {
+          try {
+            projection = await ctx.runQuery(
+              internal.performance.models.projection,
+              {
+                workspaceId: ctx.workspace._id,
+                accountId: a.accountId,
+                actorId: ctx.user._id,
+                assessmentId: matched._id,
+              },
+              { transactionLimits },
+            );
+          } catch {
+            /* Optional proof failure preserves the original assessment and recommendation response. */
+          }
+        }
+      }
       return {
+        projection,
         assessment: matched ?? retained,
         recommendations: usable
           ? {
@@ -416,6 +450,7 @@ export const get = workspaceQuery({
       };
     } catch {
       return {
+        projection: null,
         assessment: retained,
         recommendations: null,
         applicable: false,

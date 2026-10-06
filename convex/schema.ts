@@ -1,4 +1,7 @@
-import { modelFields as calibrationModelFields } from "./performance/modelFields";
+import {
+  modelFields as calibrationModelFields,
+  calibrationControlFields,
+} from "./performance/modelFields";
 import {
   purposeFields as calibrationPurposeFields,
   referenceFields as calibrationReferenceFields,
@@ -109,6 +112,10 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  calibrationControls: defineTable(calibrationControlFields).index(
+    "by_workspaceId_and_accountId",
+    ["workspaceId", "accountId"],
+  ),
   calibrationModels: defineTable(calibrationModelFields)
     .index("by_workspaceId_and_accountId_and_kind_and_createdAt", [
       "workspaceId",
@@ -121,6 +128,8 @@ export default defineSchema({
       "actorId",
       "commandKey",
     ])
+    .index("by_candidateId_and_kind", ["candidateId", "kind"])
+    .index("by_declarationId_and_blockNumber", ["declarationId", "blockNumber"])
     .index("by_specId_and_kind", ["specId", "kind"])
     .index("by_experimentId_and_kind", ["experimentId", "kind"])
     .index("by_purposeId", ["purposeId"])
@@ -211,9 +220,10 @@ export default defineSchema({
     "by_workspaceId_and_accountId",
     ["workspaceId", "accountId"],
   ),
-  publicationKnowledge: defineTable(knowledgeFields).index("by_postAttemptId", [
-    "postAttemptId",
-  ]),
+  publicationKnowledge: defineTable(knowledgeFields)
+    .index("by_postAttemptId", ["postAttemptId"])
+    .index("by_projection_pin_purposeId", ["projection.pin.purposeId"])
+    .index("by_projection_proofUntil", ["projection.proofUntil"]),
   performanceSnapshots: defineTable(snapshotFields)
     .index("by_postAttemptId_and_windowHours", ["postAttemptId", "windowHours"])
     .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])

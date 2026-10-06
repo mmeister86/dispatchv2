@@ -1,6 +1,6 @@
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
@@ -8,7 +8,7 @@ const mocks = {
   "convex/react": `import {useSyncExternalStore} from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});return useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>name==='intelligence/assessments:get'?window.rows[args.draftVersionId]??window.blank:name==='intelligence/assessments:history'?window.historyRows:name==='ai/jev/access:availability'?window.availability:name==='intelligence/recommendations:compare'?window.compareRow:undefined);};export const useAction=ref=>getFunctionName(ref)==="intelligence/assessments:analyze"?args=>new Promise((resolve,reject)=>window.pending.push({name:getFunctionName(ref),args,resolve,reject})):async()=>null;export const useMutation=ref=>getFunctionName(ref)==='intelligence/recommendations:adopt'?args=>new Promise((resolve,reject)=>window.pending.push({name:getFunctionName(ref),args,resolve,reject})):async()=>null;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
   "@/lib/store": `import {useSyncExternalStore} from 'react';export const useStore=()=>{const state=useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>window.store.state);return {...window.store,state};};`,
 };
-const entry = `import "/src/index.css";import React from 'react';import ReactDOM from 'react-dom/client';import {createMemoryRouter,RouterProvider} from 'react-router-dom';import {ComposerPage} from '/src/pages/Drafts.tsx';import {CalendarPage} from '/src/pages/Calendar.tsx';import {createSeed} from '/src/lib/model.ts';
+const entry = `import "/src/index.css";import React from 'react';import ReactDOM from 'react-dom/client';import {createMemoryRouter,RouterProvider} from 'react-router-dom';import {ComposerPage} from '/src/pages/Drafts.tsx';import {SavedAssessment} from '/src/features/intelligence/assessments.tsx';import {CalendarPage} from '/src/pages/Calendar.tsx';import {createSeed} from '/src/lib/model.ts';
 window.compareRow=undefined;window.pending=[];window.listeners=new Set();window.queries=[];window.blank={assessment:null,applicable:false,sourceUntil:null};window.rows={};window.historyRows={page:[],isDone:true,continueCursor:''};window.availability={status:'ready',guidance:'Synthetic ready'};window.recovery={aborted:false,positions:[{position:0,stage:"confirmed",errorCode:null,notBefore:null},{position:1,stage:"unknown",errorCode:null,notBefore:null}]};
 const seed=createSeed(),ws=seed.activeWorkspaceId;
 const account={...seed.accounts.find(a=>a.channel==='X' && a.workspaceId===ws),connection:'connected',capability:{maxText:280,maxThread:100,maxMedia:4,mediaTypes:['image'],publish:false},xEvidence:{scopes:['tweet.write','tweet.read','users.read','media.write'],identityVerifiedAt:1,connectionSequence:1,textScopeEligible:true,mediaScopeEligible:true,liveWrite:'unverified'}};
@@ -18,7 +18,7 @@ const command=(kind,args)=>new Promise(resolve=>window.pending.push({kind,args,r
 const no=()=>false;
 window.store={state:{...seed,role:'Owner',accounts:[account],media:[],drafts:[draft],schedules:[]},approveFirstWrite:d=>command('approve',{versionId:d.versions.at(-1).id,accountId:d.accountId}),confirmFirstWrite:(d,id)=>command('confirm',{versionId:d.versions.at(-1).id,accountId:d.accountId,approvalId:id}),saveDraft:d=>command('save',d),approveVersion:async()=>false,revokeApproval:async()=>false,cancelSchedule:s=>command('cancel',{scheduleId:s.id,expectedGeneration:s.generation}),replaceSchedule:async()=>false,createDraft:async()=>'',loadMoreVersions:no,hasMoreVersions:false,loadMoreMedia:no,hasMoreMedia:false,members:[],mutate:no,addComment:async()=>false,resolveComment:async()=>false,assignDraft:async()=>false};
 window.update=(fn)=>{window.store.state=fn(window.store.state);window.listeners.forEach(cb=>cb());};
-const root=ReactDOM.createRoot(document.getElementById('root')),router=createMemoryRouter([{path:'/drafts/:id',element:React.createElement(ComposerPage)},{path:'/calendar',element:React.createElement(CalendarPage)}],{initialEntries:['/drafts/thread']});
+const root=ReactDOM.createRoot(document.getElementById('root')),router=createMemoryRouter([{path:'/calibration-assessment',element:React.createElement(SavedAssessment,{draftId:'projection-single',accountId:account.id,version:{id:'projection-version',number:1,text:['Synthetic saved independent single text question?'],mediaIds:[],media:[],createdAt:new Date().toISOString(),reason:'Synthetic fixture'},dirty:false,conflict:false,saving:false})},{path:'/drafts/:id',element:React.createElement(ComposerPage)},{path:'/calendar',element:React.createElement(CalendarPage)}],{initialEntries:['/drafts/thread']});
 window.router=router;root.render(React.createElement(React.StrictMode,null,React.createElement(RouterProvider,{router})));
 `;
 const server = await createServer({
@@ -653,6 +653,85 @@ try {
     ).toHaveCount(0);
     await expect(page.getByText("65 / 100", { exact: true })).toHaveCount(0);
   }
+  mkdirSync("/tmp/dispatch-task43.3-evidence/browser", { recursive: true });
+  await page.clock.install();
+  await page.evaluate((r) => {
+    window.historyRows = { page: [], isDone: true, continueCursor: "" };
+    window.rows["projection-version"] = {
+      assessment: {
+        ...r,
+        draftId: "projection-single",
+        draftVersionId: "projection-version",
+      },
+      applicable: true,
+      sourceUntil: null,
+      projection: {
+        version: "prospective-calibration-v1",
+        state: "candidate",
+        score: 66.8,
+        reason: null,
+        formulaVersion: "dispatch-score-v1",
+        thresholdVersion: "jev-confidence-startup-v1",
+        proofUntil: Date.now() + 20000,
+        operatingUntil: Date.now() + 10000,
+        pin: null,
+      },
+    };
+    window.availability = { status: "ready", guidance: "Synthetic ready" };
+    window.router.navigate("/calibration-assessment");
+    window.listeners.forEach((cb) => cb());
+  }, assessment);
+  await expect(page.getByText("65 / 100", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Befristeter lokaler Kandidat: 66.8 / 100", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("ein gemessener Kontrollblock, kein laufender Driftbeleg.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 1000 });
+  await page.screenshot({
+    path: "/tmp/dispatch-task43.3-evidence/browser/assessment-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(() => document.documentElement.scrollWidth),
+  ).toBeLessThanOrEqual(
+    await page.evaluate(() => document.documentElement.clientWidth),
+  );
+  await page.screenshot({
+    path: "/tmp/dispatch-task43.3-evidence/browser/assessment-mobile.png",
+    fullPage: true,
+  });
+  await page.clock.runFor(10001);
+  await expect(
+    page.getByText("Befristeter lokaler Kandidat: 66.8 / 100", {
+      exact: false,
+    }),
+  ).toHaveCount(0);
+  await expect(page.getByText("65 / 100", { exact: true })).toBeVisible();
+  await page.evaluate(() => {
+    window.rows["projection-version"] = {
+      ...window.rows["projection-version"],
+      projection: {
+        ...window.rows["projection-version"].projection,
+        state: "static",
+        score: 65,
+        reason: "CALIBRATION_OWNER_ACTIVATION_REQUIRED",
+        operatingUntil: null,
+        proofUntil: null,
+      },
+    };
+    window.listeners.forEach((cb) => cb());
+  });
+  await expect(
+    page.getByText("Statische Formel: 65.0 / 100", { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByText("65 / 100", { exact: true })).toBeVisible();
   expect(errors).toEqual([]);
   console.log(
     "Actual styled Composer TASK29: production analysis, default-OFF, saved ID/no text mutation, awaited failure/retry, dirty/role/version guards, historical expiry/withdrawal; whole-thread/media frozen diff, explicit individually awaited adoption, stable operation retry, late ACK preserves typing, sibling invalidation, changed comparison guard, minimum, rapid typing/no calls, low/missing/running/provider error retained PASS. Transport mocked; no live auth/model/manual acceptance.",

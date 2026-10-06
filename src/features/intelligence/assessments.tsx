@@ -131,6 +131,8 @@ function AssessmentVersion({
   const nextWake = Math.min(
     ...[
       until,
+      row?.projection?.proofUntil ?? Infinity,
+      row?.projection?.operatingUntil ?? Infinity,
       ...(history?.page.map((r) => r.sourceUntil ?? Infinity) ?? []),
     ].filter((horizon) => horizon > clock),
   );
@@ -240,6 +242,51 @@ function AssessmentVersion({
               : "Veraltete / derzeit nicht anwendbare Bewertung"}
           </p>
           <AssessmentResult row={assessment} />
+          <div className="mt-4 space-y-1 break-words border-t pt-3 text-xs">
+            <h4 className="font-semibold">
+              Separate aktuelle Kalibrierungsprojektion
+            </h4>
+            {row?.projection &&
+            !blocked &&
+            row.applicable &&
+            !busy &&
+            !error &&
+            (row.projection.proofUntil === null ||
+              row.projection.proofUntil > clock) &&
+            (row.projection.operatingUntil === null ||
+              row.projection.operatingUntil > clock) ? (
+              <>
+                <p>
+                  {row.projection.state === "candidate"
+                    ? "Befristeter lokaler Kandidat"
+                    : row.projection.state === "static"
+                      ? "Statische Formel"
+                      : "Nicht verfügbar"}
+                  :{" "}
+                  {row.projection.score === null
+                    ? "—"
+                    : row.projection.score.toFixed(1)}{" "}
+                  / 100 · {row.projection.reason}
+                </p>
+                <p>
+                  {row.projection.formulaVersion} ·{" "}
+                  {row.projection.thresholdVersion} · ein gemessener
+                  Kontrollblock, kein laufender Driftbeleg.
+                </p>
+                {row.projection.operatingUntil !== null && (
+                  <p>
+                    Verwendbar bis{" "}
+                    {new Date(row.projection.operatingUntil).toISOString()}.
+                  </p>
+                )}
+              </>
+            ) : (
+              <p>
+                Derzeit keine lesbare aktuelle Projektion. Die ursprüngliche
+                Bewertung bleibt separat erhalten.
+              </p>
+            )}
+          </div>
           {row?.recommendations && (
             <Recommendations
               workspaceId={workspaceId}

@@ -1,7 +1,7 @@
 import { vi } from "vitest";
 import { makeFunctionReference } from "convex/server";
 import { jevFixture } from "../../jev-fixture";
-import { components } from "../../../convex/_generated/api";
+import { components, api, internal } from "../../../convex/_generated/api";
 import { sha256 } from "../../../convex/lib/crypto";
 import {
   describeThread,
@@ -310,7 +310,7 @@ export async function corpus() {
         scheduleId,
       };
     });
-    vi.setSystemTime(publishedAt + DAY);
+    vi.setSystemTime(publishedAt + DAY + 300);
     const observed = await f.t.run(async (ctx) => {
       const snapshotId = await ctx.db.insert("performanceSnapshots", {
         ...args,
@@ -327,8 +327,8 @@ export async function corpus() {
         generation: 1,
         state: "observed",
         attemptId: null,
-        requestedAt: publishedAt + DAY - 100,
-        observedAt: publishedAt + DAY,
+        requestedAt: publishedAt + DAY + 150,
+        observedAt: publishedAt + DAY + 300,
         providerCreatedAt: publishedAt,
         definitionVersion: "synthetic-reply-v1",
         dialect: "post-fields-repost-v2",
@@ -372,8 +372,8 @@ export async function corpus() {
         estimatedMicros: 1,
         billedMicros: null,
         state: "settled",
-        sentAt: publishedAt + DAY - 100,
-        settledAt: publishedAt + DAY - 50,
+        sentAt: publishedAt + DAY + 100,
+        settledAt: publishedAt + DAY + 250,
         receiptFingerprint: `synthetic-outcome-${id}`,
         errorCode: null,
       });
@@ -460,5 +460,261 @@ export async function corpus() {
     specInput,
     specId,
     buildInput,
+  };
+}
+
+// A genuine native 30-post/28-day prospective screen. Synthetic mechanics only, never live rights or empirical defaults.
+export async function qualifiedCorpus() {
+  const f = await corpus();
+  await f.t.run(async (ctx) => {
+    await ctx.db.patch(f.setup.policyId, { expiresAt: NOW + 60 * DAY });
+    const metrics = (await ctx.db.get(f.setup.policyId))!,
+      fingerprint = await sha256(JSON.stringify(metrics));
+    await ctx.db.patch(f.setup.jevPolicy._id, { expiresAt: NOW + 60 * DAY });
+    const jev = (await ctx.db.get(f.setup.jevPolicy._id))!;
+    Object.assign(f.setup.jevPolicy, jev);
+    for (const u of f.units) {
+      await ctx.db.patch(u.metricReceiptId, { policyFingerprint: fingerprint });
+      await ctx.db.patch(u.analysisReceiptId, {
+        policyFingerprint: await sha256(JSON.stringify(jev)),
+      });
+    }
+    await ctx.db.patch(f.setup.credentialId, {
+      expiresAt: NOW + 60 * DAY,
+      scopes: ["tweet.read", "users.read", "tweet.write"],
+    });
+    const account = (await ctx.db.get(f.args.accountId))!;
+    await ctx.db.patch(account._id, {
+      capability: { ...account.capability, publish: true },
+      xEvidence: {
+        scopes: ["tweet.read", "users.read", "tweet.write"],
+        identityVerifiedAt: NOW,
+        connectionSequence: 0,
+        textScopeEligible: true,
+        mediaScopeEligible: false,
+        liveWrite: "verified",
+      },
+    });
+    for (const b of await ctx.db.query("aiBudgets").take(10))
+      await ctx.db.patch(b._id, { expiresAt: NOW + 60 * DAY });
+    const alg = (await ctx.db.get(f.request.algorithmId))!;
+    await ctx.db.patch(alg._id, {
+      payload: { ...alg.payload, reviewDueAt: NOW + 60 * DAY },
+    });
+  });
+  async function features(units: Awaited<ReturnType<typeof f.publication>>[]) {
+    await f.t.run(async (ctx) => {
+      for (const [i, u] of units.entries()) {
+        const a = (await ctx.db.get(u.assessmentId))!,
+          snap = (await ctx.db.get(u.snapshotId))!,
+          even = i % 2 === 0;
+        const answers = {
+          ...a.result.answers!,
+          clarity: {
+            type: "score" as const,
+            value: even ? 0.9 : 0.1,
+            confidence: 1,
+          },
+          discussionPotential: {
+            type: "score" as const,
+            value: even ? 0.1 : 0.9,
+            confidence: 1,
+          },
+        };
+        await ctx.db.patch(a._id, {
+          result: {
+            ...a.result,
+            answers,
+            score: dispatchScore(answers, a.result.deterministic.structure),
+          },
+        });
+        await ctx.db.patch(snap._id, {
+          fields: snap.fields.map((x) =>
+            x.name === "replies" ? { ...x, value: even ? 1 : 4 } : x,
+          ),
+        });
+      }
+    });
+  }
+  const train = [...f.units];
+  for (let i = 0; i < 23; i++) train.push(await f.publication(NOW + 60000 * i));
+  await features(train);
+  vi.setSystemTime(NOW + 2 * DAY + 6000);
+  const purposeId = await f.t.mutation(
+    internal.performance.calibration.configurePurpose,
+    {
+      ...f.args,
+      version: "finite-native-purpose",
+      target: "dispatch-local-reply-ordering-v1",
+      providerIdentity: "synthetic",
+      rightsEvidence: "Synthetic native test only; no real permission",
+      explanation: "Synthetic mechanics only",
+      approvedBy: f.userId,
+      expiresAt: NOW + 60 * DAY,
+      retentionMs: 30 * DAY,
+    },
+  );
+  const view = await f.signed.query(api.performance.calibration.get, f.args);
+  await f.signed.mutation(api.performance.calibration.consent, {
+    ...f.args,
+    purposeId,
+    purposeFingerprint: view.configuration!.fingerprint,
+    enabled: true,
+    commandKey: "finite-consent",
+  });
+  const specId = await f.signed.mutation(
+    api.performance.calibration.createSpec,
+    {
+      ...f.specInput,
+      purposeId,
+      commandKey: "finite-original-spec",
+      mode: "prospective",
+      fitCutoff: NOW + 2 * DAY,
+      holdout1Start: NOW + 3 * DAY,
+      holdout1End: NOW + 6 * DAY,
+      holdout2Start: NOW + 20 * DAY,
+      holdout2End: NOW + 23 * DAY + 1000,
+    },
+  );
+  const experimentId = await f.signed.mutation(
+    api.performance.models.predeclare,
+    {
+      ...f.args,
+      specId,
+      commandKey: "finite-original-experiment",
+      policy: {
+        minTrainN: 2,
+        minTrainSpanMs: DAY,
+        minBlockN: 2,
+        maxExcludedFraction: 1,
+        minImprovement: 0,
+        maxVariation: 1,
+        maxClarityDrift: 1,
+        maxDiscussionDrift: 1,
+        maxReplyRateDrift: 100,
+        reviewUntil: NOW + 60 * DAY,
+        evidence: "Synthetic engineering mechanics",
+        rationale: "No actual thresholds or empirical suitability claim",
+      },
+    },
+  );
+  const trainSnapshotId = await f.signed.mutation(
+    api.performance.calibration.build,
+    {
+      ...f.args,
+      specId,
+      asOf: Date.now(),
+      commandKey: "finite-train",
+    },
+  );
+  const candidateId = await f.signed.mutation(api.performance.models.fit, {
+    ...f.args,
+    experimentId,
+    snapshotId: trainSnapshotId,
+    commandKey: "finite-freeze",
+  });
+  const held = [];
+  for (const day of [3, 4, 21, 22])
+    held.push(await f.publication(NOW + day * DAY));
+  await features(held);
+  vi.setSystemTime(NOW + 23 * DAY + 1000);
+  const snapshotId = await f.signed.mutation(
+    api.performance.calibration.build,
+    {
+      ...f.args,
+      specId,
+      asOf: Date.now(),
+      commandKey: "finite-original-mature",
+    },
+  );
+  const evaluationId = await f.signed.mutation(api.performance.models.compare, {
+    ...f.args,
+    experimentId,
+    snapshotId,
+    commandKey: "finite-original-compare",
+  });
+  const monitoringSpecId = await f.signed.mutation(
+    api.performance.calibration.createSpec,
+    {
+      ...f.specInput,
+      purposeId,
+      referencePostAttemptId: held[3].postAttemptId,
+      referenceAssessmentId: held[3].assessmentId,
+      commandKey: "finite-monitor-spec",
+      mode: "prospective",
+      from: NOW + 22 * DAY - 1,
+      fitCutoff: NOW + 23 * DAY + 500,
+      holdout1Start: NOW + 23 * DAY + 4000,
+      holdout1End: NOW + 24 * DAY + 8000,
+      holdout2Start: NOW + 24 * DAY + 3600000,
+      holdout2End: NOW + 25 * DAY,
+    },
+  );
+  const monitoringPolicy = {
+    minBlockN: 2,
+    minBlockSpanMs: 500,
+    maxExcludedFraction: 1,
+    minImprovement: 0,
+    maxClarityDrift: 1,
+    maxDiscussionDrift: 1,
+    maxReplyRateDrift: 100,
+    reviewUntil: NOW + 25 * DAY,
+    finalValidUntil: NOW + 24 * DAY + 3600000,
+    evidence: "Synthetic engineering mechanics only",
+    rationale: "One measured checkpoint; no empirical adequacy claim",
+  };
+  const declarationId = await f.signed.mutation(
+    api.performance.models.declareMonitoring,
+    {
+      ...f.args,
+      candidateId,
+      evaluationId,
+      monitoringSpecId,
+      policy: monitoringPolicy,
+      commandKey: "finite-monitor-declare",
+    },
+  );
+  async function mature(pass = true) {
+    const units: Awaited<ReturnType<typeof f.publication>>[] = [];
+    for (const offset of [5000, 6000])
+      units.push(await f.publication(NOW + 23 * DAY + offset));
+    await features(units);
+    if (!pass)
+      await f.t.run(async (ctx) => {
+        for (const u of units) {
+          const snap = (await ctx.db.get(u.snapshotId))!;
+          await ctx.db.patch(u.snapshotId, {
+            fields: snap.fields.map((x) =>
+              x.name === "replies" ? { ...x, value: 1 } : x,
+            ),
+          });
+        }
+      });
+    vi.setSystemTime(NOW + 24 * DAY + 8000);
+    const monitoringSnapshotId = await f.signed.mutation(
+      api.performance.calibration.build,
+      {
+        ...f.args,
+        specId: monitoringSpecId,
+        asOf: Date.now(),
+        commandKey: "finite-monitor-mature",
+      },
+    );
+    return { units, monitoringSnapshotId };
+  }
+  return {
+    ...f,
+    train,
+    features,
+    held,
+    purposeId,
+    specId,
+    experimentId,
+    candidateId,
+    evaluationId,
+    monitoringSpecId,
+    monitoringPolicy,
+    declarationId,
+    mature,
   };
 }

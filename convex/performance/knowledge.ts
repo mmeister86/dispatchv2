@@ -1,3 +1,6 @@
+import { ConvexError, type Infer } from "convex/values";
+import { internal } from "../_generated/api";
+import { projection as projectionValidator } from "./modelFields";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { draftResearchProof } from "../research/contentProof";
@@ -83,6 +86,69 @@ export async function capture(
     assessment = null;
     reason = "ASSESSMENT_SOURCE_UNAVAILABLE";
   }
+  let projection: Infer<typeof projectionValidator> = {
+    version: "prospective-calibration-v1",
+    state: "unavailable",
+    score: null,
+    reason: "CALIBRATION_NO_CURRENT_ASSESSMENT",
+    formulaVersion: "dispatch-score-v1",
+    thresholdVersion: "jev-confidence-startup-v1",
+    proofUntil: null,
+    operatingUntil: null,
+    pin: null,
+  };
+  if (assessment && applicable) {
+    // Reserve the publishing tail plus one attempted read overflow; exhausted children charge their parent.
+    const metrics = await ctx.meta.getTransactionMetrics(),
+      transactionLimits = {
+        databaseQueries: metrics.databaseQueries.remaining - 33,
+        documentsRead: metrics.documentsRead.remaining - 65,
+        bytesRead: metrics.bytesRead.remaining - 2 * 1024 * 1024,
+      };
+    projection = {
+      ...projection,
+      state: "static",
+      reason: "CALIBRATION_PROJECTION_PROOF_CAPACITY",
+    };
+    if (
+      Object.values(transactionLimits).every(
+        (n) => Number.isSafeInteger(n) && n > 0,
+      )
+    ) {
+      try {
+        projection = await ctx.runQuery(
+          internal.performance.models.projection,
+          {
+            workspaceId: s.workspaceId,
+            accountId: s.accountId,
+            actorId: s.actorId,
+            assessmentId: assessment._id,
+          },
+          { transactionLimits },
+        );
+      } catch (err) {
+        const code =
+          err instanceof ConvexError
+            ? String(err.data)
+            : err instanceof Error
+              ? err.message
+              : "";
+        const capacity =
+          code === "CALIBRATION_READ_CAPACITY" ||
+          /limit|too many|too much|capacity/i.test(code);
+        projection = {
+          ...projection,
+          state: capacity ? "static" : "unavailable",
+          reason: capacity
+            ? "CALIBRATION_PROJECTION_PROOF_CAPACITY"
+            : "CALIBRATION_PROJECTION_UNAVAILABLE",
+        };
+      }
+    }
+    // The original assessment already owns its static scalar; store only the candidate derivative.
+    if (projection.state !== "candidate")
+      projection = { ...projection, score: null, pin: null };
+  }
   await ctx.db.insert("publicationKnowledge", {
     workspaceId: s.workspaceId,
     accountId: s.accountId,
@@ -96,5 +162,6 @@ export async function capture(
     assessmentId: assessment?._id ?? null,
     applicable,
     reason,
+    projection,
   });
 }

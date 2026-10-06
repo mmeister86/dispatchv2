@@ -126,12 +126,162 @@ export const evaluationFields = {
     activationEligible: v.literal(false),
   }),
 };
+export const monitoringPolicyInput = v.object({
+  minBlockN: v.number(),
+  minBlockSpanMs: v.number(),
+  maxExcludedFraction: v.number(),
+  minImprovement: v.number(),
+  maxClarityDrift: v.number(),
+  maxDiscussionDrift: v.number(),
+  maxReplyRateDrift: v.number(),
+  reviewUntil: v.number(),
+  finalValidUntil: v.number(),
+  evidence: v.string(),
+  rationale: v.string(),
+});
+export const declarationFields = {
+  ...common,
+  kind: v.literal("monitoring-declaration"),
+  experimentId: v.id("calibrationModels"),
+  candidateId: v.id("calibrationModels"),
+  declarationId: v.null(),
+  payload: v.object({
+    version: v.literal("one-finite-checkpoint-v1"),
+    candidateFingerprint: v.string(),
+    evaluationId: v.id("calibrationModels"),
+    evaluationFingerprint: v.string(),
+    specFingerprint: v.string(),
+    purposeFingerprint: v.string(),
+    compatibility,
+    policy: v.object({
+      ...monitoringPolicyInput.fields,
+      reviewerId: v.id("users"),
+      reviewedAt: v.number(),
+    }),
+    policyFingerprint: v.string(),
+    firstEnd: v.number(),
+    unusedSecondStart: v.number(),
+  }),
+};
+export const checkFields = {
+  ...common,
+  kind: v.literal("monitoring-check"),
+  experimentId: v.id("calibrationModels"),
+  candidateId: v.id("calibrationModels"),
+  declarationId: v.id("calibrationModels"),
+  blockNumber: v.literal(1),
+  payload: v.object({
+    declarationFingerprint: v.string(),
+    snapshotId: v.id("calibrationReferences"),
+    snapshotFingerprint: v.string(),
+    computedAt: v.number(),
+    asOf: v.number(),
+    block,
+    excludedFraction: v.number(),
+    coverageBasis: v.literal("whole-declared-frame"),
+    status: v.union(v.literal("pass"), v.literal("fail"), v.literal("unknown")),
+    reasons: v.array(v.string()),
+  }),
+};
+const decisionCommon = {
+  workspaceId: common.workspaceId,
+  accountId: common.accountId,
+  actorId: common.actorId,
+  createdAt: common.createdAt,
+  commandKey: common.commandKey,
+  requestFingerprint: common.requestFingerprint,
+  kind: v.literal("activation-decision"),
+};
+export const activationFields = {
+  ...common,
+  ...decisionCommon,
+  experimentId: v.id("calibrationModels"),
+  declarationId: v.id("calibrationModels"),
+  payload: v.object({
+    action: v.literal("activate"),
+    evaluationId: v.id("calibrationModels"),
+    candidateId: v.id("calibrationModels"),
+    declarationFingerprint: v.string(),
+    checkId: v.id("calibrationModels"),
+    checkFingerprint: v.string(),
+    expectedRevision: v.number(),
+    resultingRevision: v.number(),
+  }),
+};
+export const rollbackFields = {
+  ...decisionCommon,
+  payload: v.object({
+    action: v.literal("rollback-static"),
+    expectedRevision: v.number(),
+    resultingRevision: v.number(),
+    formulaVersion: v.literal("dispatch-score-v1"),
+    thresholdVersion: v.literal("jev-confidence-startup-v1"),
+  }),
+};
+export const calibrationControlFields = {
+  workspaceId: common.workspaceId,
+  accountId: common.accountId,
+  revision: v.number(),
+  activeDecisionId: v.union(v.id("calibrationModels"), v.null()),
+  actorId: common.actorId,
+  updatedAt: v.number(),
+};
+export const projection = v.object({
+  version: v.literal("prospective-calibration-v1"),
+  state: v.union(
+    v.literal("candidate"),
+    v.literal("static"),
+    v.literal("unavailable"),
+  ),
+  score: v.union(v.number(), v.null()),
+  reason: v.union(v.string(), v.null()),
+  formulaVersion: v.literal("dispatch-score-v1"),
+  thresholdVersion: v.literal("jev-confidence-startup-v1"),
+  proofUntil: v.union(v.number(), v.null()),
+  operatingUntil: v.union(v.number(), v.null()),
+  pin: v.union(
+    v.null(),
+    v.object({
+      assessmentId: v.id("jevAssessments"),
+      assessmentFingerprint: v.string(),
+      semanticKey: v.string(),
+      purposeId: v.id("calibrationPurposes"),
+      generation: v.number(),
+      decisionId: v.id("calibrationModels"),
+      decisionFingerprint: v.string(),
+      candidateId: v.id("calibrationModels"),
+      evaluationId: v.id("calibrationModels"),
+      declarationId: v.id("calibrationModels"),
+      declarationFingerprint: v.string(),
+      checkId: v.id("calibrationModels"),
+      checkFingerprint: v.string(),
+      capturedAt: v.number(),
+    }),
+  ),
+});
+export const tombstoneFields = {
+  workspaceId: v.id("workspaces"),
+  accountId: v.id("socialAccounts"),
+  kind: v.literal("monitoring-tombstone"),
+  createdAt: v.number(),
+  expiresAt: v.number(),
+  candidateId: v.id("calibrationModels"),
+  declarationId: v.union(v.id("calibrationModels"), v.null()),
+  blockNumber: v.union(v.literal(1), v.null()),
+};
 export const modelFields = v.union(
   v.object(experimentFields),
   v.object(candidateFields),
   v.object(evaluationFields),
+  v.object(declarationFields),
+  v.object(checkFields),
+  v.object(activationFields),
+  v.object(rollbackFields),
+  v.object(tombstoneFields),
 );
 const doc = { _id: v.id("calibrationModels"), _creationTime: v.number() };
 export const experimentDoc = v.object({ ...doc, ...experimentFields });
 export const candidateDoc = v.object({ ...doc, ...candidateFields });
 export const evaluationDoc = v.object({ ...doc, ...evaluationFields });
+export const declarationDoc = v.object({ ...doc, ...declarationFields });
+export const checkDoc = v.object({ ...doc, ...checkFields });

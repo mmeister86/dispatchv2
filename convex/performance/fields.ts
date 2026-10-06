@@ -1,3 +1,4 @@
+import { projection } from "./modelFields";
 import { v } from "convex/values";
 export const scope = {
   workspaceId: v.id("workspaces"),
@@ -45,6 +46,7 @@ export const controlFields = {
   updatedAt: v.number(),
 };
 export const knowledgeFields = {
+  projection: v.optional(projection),
   postAttemptId: v.id("xPostAttempts"),
   generation: v.number(),
   ...scope,

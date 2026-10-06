@@ -82,7 +82,9 @@ test("native diagnostic experiment is immutable and a no-pairs fit cannot preten
     ctx.db.get(candidateId as Id<"calibrationModels">),
   );
   expect(candidate?.kind).toBe("candidate");
-  expect(candidate?.payload).toMatchObject({
+  expect(
+    candidate?.kind === "candidate" ? candidate.payload : null,
+  ).toMatchObject({
     transfer: null,
     n: 1,
     status: "no-comparable-pairs",
@@ -90,7 +92,7 @@ test("native diagnostic experiment is immutable and a no-pairs fit cannot preten
   });
 });
 
-import { api, internal } from "../../../convex/_generated/api";
+import { api, internal, components } from "../../../convex/_generated/api";
 import { modelProof } from "../../../convex/performance/calibration";
 import { dispatchScore } from "../../../convex/ai/scoring/dispatchScore";
 import { DAY, NOW } from "./fixture";
@@ -778,4 +780,679 @@ test("unexpected platform failure preserves valid models; current source withdra
   expect(
     await f.t.run((ctx) => ctx.db.get(f.units[0].analysisReceiptId)),
   ).not.toBe(null);
+});
+
+import { qualifiedCorpus } from "./fixture";
+test("genuine qualified native lineage reaches one finite checkpoint, terminal unknown, and rollback beyond expiry", async () => {
+  const f = await qualifiedCorpus();
+  for (const policy of [
+    { ...f.monitoringPolicy, minBlockN: 1 },
+    { ...f.monitoringPolicy, maxReplyRateDrift: -1 },
+    { ...f.monitoringPolicy, evidence: "" },
+    { ...f.monitoringPolicy, finalValidUntil: NOW + 26 * DAY },
+  ])
+    await expect(
+      f.signed.mutation(api.performance.models.declareMonitoring, {
+        ...f.args,
+        candidateId: f.candidateId,
+        evaluationId: f.evaluationId,
+        monitoringSpecId: f.monitoringSpecId,
+        policy,
+        commandKey: crypto.randomUUID(),
+      }),
+    ).rejects.toThrow(/CALIBRATION_MONITORING_(POLICY|INTERVAL)_INVALID/);
+  const original = await f.signed.query(api.performance.models.get, {
+    ...f.args,
+    selectedExperimentId: f.experimentId,
+  });
+  expect(original.evaluation?.payload).toMatchObject({
+    engineeringScreen: true,
+    evidenceQualified: true,
+    activationEligible: false,
+  });
+  expect(original.evaluation?.payload.trainN).toBe(26);
+  expect(
+    (await f.signed.query(api.performance.models.control, f.args)).reason,
+  ).toBe("CALIBRATION_MONITORING_FIRST_BLOCK_NOT_MATURE");
+  await expect(
+    f.signed.mutation(api.performance.models.checkMonitoring, {
+      ...f.args,
+      declarationId: f.declarationId,
+      snapshotId: f.buildInput.specId,
+      block: 1,
+      commandKey: "premature-final",
+    }),
+  ).rejects.toThrow("CALIBRATION_MONITORING_NOT_MATURE");
+  expect(
+    await f.t.run((ctx) =>
+      ctx.db
+        .query("calibrationModels")
+        .withIndex("by_declarationId_and_blockNumber", (q) =>
+          q.eq("declarationId", f.declarationId).eq("blockNumber", 1),
+        )
+        .take(2),
+    ),
+  ).toHaveLength(0);
+  const { monitoringSnapshotId } = await f.mature(false);
+  const checkId = await f.signed.mutation(
+    api.performance.models.checkMonitoring,
+    {
+      ...f.args,
+      declarationId: f.declarationId,
+      snapshotId: monitoringSnapshotId,
+      block: 1,
+      commandKey: "unknown-final",
+    },
+  );
+  const check = await f.t.run((ctx) => ctx.db.get(checkId));
+  expect(check?.kind).toBe("monitoring-check");
+  expect(
+    check?.kind === "monitoring-check" ? check.payload : null,
+  ).toMatchObject({
+    status: "unknown",
+    block: { n: 2 },
+    coverageBasis: "whole-declared-frame",
+  });
+  await expect(
+    f.signed.mutation(api.performance.models.checkMonitoring, {
+      ...f.args,
+      declarationId: f.declarationId,
+      snapshotId: monitoringSnapshotId,
+      block: 1,
+      commandKey: "rescue-final",
+    }),
+  ).rejects.toThrow("CALIBRATION_MONITORING_CHECK_FINAL");
+  await expect(
+    f.signed.mutation(api.performance.models.activate, {
+      ...f.args,
+      evaluationId: f.evaluationId,
+      declarationId: f.declarationId,
+      checkId,
+      expectedRevision: 0,
+      commandKey: "unknown-activate",
+    }),
+  ).rejects.toThrow("CALIBRATION_MONITORING_TERMINAL_UNKNOWN");
+  vi.setSystemTime(NOW + 26 * DAY);
+  const input = {
+    ...f.args,
+    expectedRevision: 0,
+    commandKey: "expired-static-rollback",
+  };
+  const rollbackId = await f.signed.mutation(
+    api.performance.models.rollback,
+    input,
+  );
+  expect(await f.signed.mutation(api.performance.models.rollback, input)).toBe(
+    rollbackId,
+  );
+  expect(
+    await f.signed.query(api.performance.models.control, f.args),
+  ).toMatchObject({ revision: 1, activeDecisionId: null, state: "static" });
+  await expect(
+    f.signed.mutation(api.performance.models.rollback, {
+      ...input,
+      commandKey: "stale-rollback",
+    }),
+  ).rejects.toThrow("CALIBRATION_REVISION_CONFLICT");
+});
+
+import { POST_ANALYSIS } from "../../../convex/ai/jev/questions/postAnalysis";
+function nativeAnalysisResponse() {
+  return new Response(
+    JSON.stringify({
+      model: "jev-1.13.0",
+      usage: { input_tokens: 20, output_tokens: 10 },
+      answers: Object.fromEntries(
+        Object.entries(POST_ANALYSIS.questions).map(([key, q]) => [
+          key,
+          q.type === "choice"
+            ? {
+                type: "choice",
+                choice: "educational",
+                confidence: 0.9,
+                probabilities: Object.fromEntries(
+                  Object.keys(q.criteria).map((k) => [k, 0.125]),
+                ),
+              }
+            : q.type === "score"
+              ? {
+                  type: "score",
+                  score:
+                    key === "clarity"
+                      ? 4
+                      : key === "discussionPotential"
+                        ? 0
+                        : 2.5,
+                  confidence: 0.9,
+                  probabilities: { 0: 0.2, 1: 0.2, 2: 0.2, 3: 0.2, 4: 0.2 },
+                  legend: Object.fromEntries(
+                    q.criteria.map((s, i) => [String(i), s]),
+                  ),
+                }
+              : { type: "noul", noul: 0.2 },
+        ]),
+      ),
+    }),
+  );
+}
+async function targetSchedule(f: Awaited<ReturnType<typeof qualifiedCorpus>>) {
+  const versionId = f.request.draftVersionId;
+  await f.t.run(async (ctx) => {
+    const ver = (await ctx.db.get(versionId))!;
+    await ctx.db.patch(versionId, {
+      content: {
+        ...ver.content,
+        text: ["Synthetic new single text question?"],
+      },
+    });
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => nativeAnalysisResponse()),
+  );
+  const args = {
+    ...f.args,
+    draftId: f.request.draftId,
+    draftVersionId: versionId,
+  };
+  expect(
+    await f.signed.action(api.intelligence.assessments.analyze, {
+      ...args,
+      operationKey: crypto.randomUUID(),
+    }),
+  ).toMatchObject({ outcome: "success" });
+  const assessment = (
+    await f.signed.query(api.intelligence.assessments.get, args)
+  ).assessment!;
+  expect(assessment).not.toBeNull();
+  const approvalId = await f.signed.mutation(api.editorial.approve, {
+    ...f.args,
+    versionId,
+  });
+  const at = Math.ceil((Date.now() + 60000) / 60000) * 60000;
+  const scheduleId = await f.signed.mutation(api.editorial.schedule, {
+    ...f.args,
+    versionId,
+    approvalId,
+    at,
+    timezone: "UTC",
+    localTime: new Date(at).toISOString().slice(0, 16),
+  });
+  vi.setSystemTime(at);
+  const job = { scheduleId, generation: 1 };
+  await f.t.mutation(internal.publishing.claim, job);
+  const attempt = await f.t.mutation(internal.publishing.attempts.claim, job);
+  expect(attempt).not.toBeNull();
+  return {
+    args,
+    assessment,
+    scheduleId,
+    attempt: attempt!,
+    send: {
+      attemptId: attempt!._id,
+      claimSequence: attempt!.claimSequence,
+      credentialGeneration: 1,
+      mediaIds: [],
+    },
+  };
+}
+test("registered beforeSend pins a genuinely qualified finite candidate, exact replay does not reactivate, and expiry removes only protected derivatives", async () => {
+  const f = await qualifiedCorpus(),
+    transfer = await f.t.run((ctx) => ctx.db.get(f.candidateId));
+  const { monitoringSnapshotId } = await f.mature();
+  const checkId = await f.signed.mutation(
+    api.performance.models.checkMonitoring,
+    {
+      ...f.args,
+      declarationId: f.declarationId,
+      snapshotId: monitoringSnapshotId,
+      block: 1,
+      commandKey: "pass-final",
+    },
+  );
+  const check = await f.t.run((ctx) => ctx.db.get(checkId));
+  expect(
+    check?.kind === "monitoring-check" ? check.payload : null,
+  ).toMatchObject({
+    status: "pass",
+    block: { n: 2, spanMs: 1000 },
+  });
+  expect(await f.t.run((ctx) => ctx.db.get(f.candidateId))).toEqual(transfer);
+  const activateInput = {
+    ...f.args,
+    evaluationId: f.evaluationId,
+    declarationId: f.declarationId,
+    checkId,
+    expectedRevision: 0,
+    commandKey: "finite-activate",
+  };
+  const decisionId = await f.signed.mutation(
+    api.performance.models.activate,
+    activateInput,
+  );
+  const operating = await f.signed.query(
+    api.performance.models.control,
+    f.args,
+  );
+  expect(operating).toMatchObject({
+    state: "candidate",
+    revision: 1,
+    activeDecisionId: decisionId,
+  });
+  const t = await targetSchedule(f),
+    baseline = t.assessment;
+  const financialBefore = await f.t.run((ctx) =>
+    ctx.db.query("aiBudgets").take(10),
+  );
+  const get = await f.signed.query(api.intelligence.assessments.get, t.args);
+  const cappedGet = await f.signed.run((ctx) =>
+    ctx.runQuery(api.intelligence.assessments.get, t.args, {
+      transactionLimits: { databaseQueries: 160 },
+    }),
+  );
+  expect(cappedGet.assessment).toEqual(baseline);
+  expect(cappedGet.applicable).toBe(true);
+  expect(cappedGet.projection).toBeNull();
+  expect(get.assessment).toEqual(baseline);
+  expect(get.projection).toMatchObject({
+    state: "candidate",
+    pin: { decisionId, candidateId: f.candidateId, checkId },
+  });
+  const metrics = await f.t.run(async (ctx) => {
+    expect(
+      await ctx.runMutation(internal.publishing.attempts.beforeSend, t.send),
+    ).toBe(true);
+    return ctx.meta.getTransactionMetrics();
+  });
+  expect(metrics.databaseQueries.used).toBeLessThan(4096);
+  await import("node:fs").then(({ writeFileSync }) =>
+    writeFileSync(
+      "/tmp/dispatch43.3-native-beforeSend.json",
+      JSON.stringify(
+        {
+          qualification:
+            "Synthetic engineering mechanics only; no live rights, empirical adequacy, or CPU certificate",
+          nativeCounts: { train: 26, block1: 2, block2: 2 },
+          originalProofUntil: operating.proofUntil,
+          operatingUntil: operating.operatingUntil,
+          projection: get.projection,
+          beforeSendMetrics: metrics,
+        },
+        null,
+        2,
+      ),
+    ),
+  );
+  const k = (await f.t.run((ctx) =>
+    ctx.db
+      .query("publicationKnowledge")
+      .withIndex("by_postAttemptId", (q) =>
+        q.eq("postAttemptId", t.attempt._id),
+      )
+      .unique(),
+  ))!;
+  expect(k.projection).toMatchObject({
+    state: "candidate",
+    score: get.projection?.score,
+    pin: {
+      decisionId,
+      candidateId: f.candidateId,
+      evaluationId: f.evaluationId,
+      declarationId: f.declarationId,
+      checkId,
+    },
+  });
+  const sent = await f.t.run((ctx) => ctx.db.get(t.attempt._id));
+  expect(sent?.stage).toBe("sending");
+  expect(k.capturedAt).toBeLessThanOrEqual(sent!.requestStartedAt!);
+  expect(k.projection?.pin?.capturedAt).toBeLessThanOrEqual(
+    sent!.requestStartedAt!,
+  );
+  const historical = await f.signed.query(
+    api.performance.models.publicationProjection,
+    { ...f.args, postAttemptId: t.attempt._id },
+  );
+  await f.signed.mutation(api.performance.models.rollback, {
+    ...f.args,
+    expectedRevision: 1,
+    commandKey: "return-static",
+  });
+  expect(
+    await f.signed.mutation(api.performance.models.activate, activateInput),
+  ).toBe(decisionId);
+  expect(
+    await f.signed.query(api.performance.models.control, f.args),
+  ).toMatchObject({ revision: 2, activeDecisionId: null, state: "static" });
+  expect(
+    await f.signed.query(api.performance.models.publicationProjection, {
+      ...f.args,
+      postAttemptId: t.attempt._id,
+    }),
+  ).toEqual(historical);
+  expect(
+    (await f.signed.query(api.intelligence.assessments.get, t.args)).assessment,
+  ).toEqual(baseline);
+  expect(await f.t.run((ctx) => ctx.db.query("aiBudgets").take(10))).toEqual(
+    financialBefore,
+  );
+  expect(
+    await f.t.mutation(internal.publishing.attempts.beforeSend, t.send),
+  ).toBe(false);
+  expect(await f.t.run((ctx) => ctx.db.get(k._id))).toEqual(k);
+  await f.signed.mutation(api.performance.models.activate, {
+    ...activateInput,
+    expectedRevision: 2,
+    commandKey: "fresh-same-finite-approval",
+  });
+  vi.setSystemTime(f.monitoringPolicy.finalValidUntil);
+  expect(
+    (await f.signed.query(api.intelligence.assessments.get, t.args)).projection,
+  ).toMatchObject({ state: "static", reason: "CALIBRATION_OPERATING_EXPIRED" });
+  await expect(
+    f.signed.mutation(api.performance.models.activate, {
+      ...activateInput,
+      expectedRevision: 3,
+      commandKey: "expired-renewal",
+    }),
+  ).rejects.toThrow("CALIBRATION_OPERATING_EXPIRED");
+
+  expect(
+    await f.signed.query(api.performance.models.publicationProjection, {
+      ...f.args,
+      postAttemptId: t.attempt._id,
+    }),
+  ).toEqual(historical);
+  vi.setSystemTime(NOW + 26 * DAY);
+  expect(
+    await f.signed.query(api.performance.models.publicationProjection, {
+      ...f.args,
+      postAttemptId: t.attempt._id,
+    }),
+  ).toMatchObject({ state: "unavailable", score: null, pin: null });
+  await f.t.mutation(internal.performance.models.sweep, {
+    cursor: null,
+    pins: true,
+  });
+  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+  const removed = await f.t.run((ctx) => ctx.db.get(k._id));
+  expect(removed?.projection).toMatchObject({
+    state: "unavailable",
+    score: null,
+    pin: null,
+  });
+  expect(removed?.assessmentId).toBe(baseline._id);
+  expect(await f.t.run((ctx) => ctx.db.get(t.attempt._id))).not.toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.get(t.scheduleId))).not.toBeNull();
+});
+
+async function signedAdmin(f: Awaited<ReturnType<typeof qualifiedCorpus>>) {
+  const identity = await f.t.run(async (ctx) => {
+    const user = await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "user",
+        data: {
+          name: "Synthetic Admin",
+          email: "calibration-admin@example.test",
+          emailVerified: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      },
+    });
+    const session = await ctx.runMutation(
+      components.betterAuth.adapter.create,
+      {
+        input: {
+          model: "session",
+          data: {
+            userId: user._id,
+            token: crypto.randomUUID(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            expiresAt: NOW + 30 * DAY,
+          },
+        },
+      },
+    );
+    return { subject: user._id, sessionId: session._id };
+  });
+  const signed = f.t.withIdentity(identity),
+    userId = await signed.mutation(api.users.bootstrap, {});
+  await f.t.run((ctx) =>
+    ctx.db.insert("memberships", {
+      userId,
+      workspaceId: f.workspaceId,
+      role: "Admin",
+    }),
+  );
+  return signed;
+}
+test("Owner/Admin split, capped proof abort, actual capped child fallback commits sending, and reviewer loss fails closed", async () => {
+  const f = await qualifiedCorpus(),
+    admin = await signedAdmin(f);
+  await expect(
+    admin.mutation(api.performance.models.declareMonitoring, {
+      ...f.args,
+      candidateId: f.candidateId,
+      evaluationId: f.evaluationId,
+      monitoringSpecId: f.monitoringSpecId,
+      policy: f.monitoringPolicy,
+      commandKey: "admin-declaration",
+    }),
+  ).rejects.toThrow("ROLE_ACCESS_DENIED");
+  const { monitoringSnapshotId } = await f.mature();
+  const checkInput = {
+    ...f.args,
+    declarationId: f.declarationId,
+    snapshotId: monitoringSnapshotId,
+    block: 1 as const,
+    commandKey: "admin-final",
+  };
+  await expect(
+    admin.run((ctx) =>
+      ctx.runMutation(api.performance.models.checkMonitoring, checkInput, {
+        transactionLimits: { databaseQueries: 900 },
+      }),
+    ),
+  ).rejects.toThrow("CALIBRATION_READ_CAPACITY");
+  expect(
+    await f.t.run((ctx) =>
+      ctx.db
+        .query("calibrationModels")
+        .withIndex("by_declarationId_and_blockNumber", (q) =>
+          q.eq("declarationId", f.declarationId).eq("blockNumber", 1),
+        )
+        .take(2),
+    ),
+  ).toHaveLength(0);
+  const checkId = await admin.mutation(
+    api.performance.models.checkMonitoring,
+    checkInput,
+  );
+  const activateInput = {
+    ...f.args,
+    evaluationId: f.evaluationId,
+    declarationId: f.declarationId,
+    checkId,
+    expectedRevision: 0,
+    commandKey: "owner-real-activate",
+  };
+  await expect(
+    admin.mutation(api.performance.models.activate, activateInput),
+  ).rejects.toThrow("ROLE_ACCESS_DENIED");
+  await expect(
+    admin.mutation(api.performance.models.rollback, {
+      ...f.args,
+      expectedRevision: 0,
+      commandKey: "admin-rollback",
+    }),
+  ).rejects.toThrow("ROLE_ACCESS_DENIED");
+  await f.signed.mutation(api.performance.models.activate, activateInput);
+  await expect(
+    f.signed.mutation(api.performance.models.activate, {
+      ...activateInput,
+      commandKey: "stale-cas",
+    }),
+  ).rejects.toThrow("CALIBRATION_REVISION_CONFLICT");
+  const t = await targetSchedule(f),
+    financial = await f.t.run((ctx) => ctx.db.query("aiBudgets").take(10));
+  const metrics = await f.t.run(async (ctx) => {
+    expect(
+      await ctx.runMutation(internal.publishing.attempts.beforeSend, t.send, {
+        transactionLimits: { databaseQueries: 160 },
+      }),
+    ).toBe(true);
+    return ctx.meta.getTransactionMetrics();
+  });
+  expect(metrics.databaseQueries.used).toBeLessThanOrEqual(160);
+  expect((await f.t.run((ctx) => ctx.db.get(t.attempt._id)))?.stage).toBe(
+    "sending",
+  );
+  const pin = (await f.t.run((ctx) =>
+    ctx.db
+      .query("publicationKnowledge")
+      .withIndex("by_postAttemptId", (q) =>
+        q.eq("postAttemptId", t.attempt._id),
+      )
+      .unique(),
+  ))!;
+  expect(pin.projection).toMatchObject({
+    state: "static",
+    reason: "CALIBRATION_PROJECTION_PROOF_CAPACITY",
+    score: null,
+    pin: null,
+  });
+  expect(pin.assessmentId).toBe(t.assessment._id);
+  expect(await f.t.run((ctx) => ctx.db.query("aiBudgets").take(10))).toEqual(
+    financial,
+  );
+  expect(
+    (
+      await f.signed.query(api.performance.models.publicationProjection, {
+        ...f.args,
+        postAttemptId: t.attempt._id,
+      })
+    ).score,
+  ).toBe(t.assessment.result.score?.aggregate);
+  await f.t.run(async (ctx) => {
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId_and_workspaceId", (q) =>
+        q.eq("userId", f.userId).eq("workspaceId", f.workspaceId),
+      )
+      .unique();
+    await ctx.db.patch(membership!._id, { role: "Admin" });
+  });
+  expect(
+    (await f.signed.query(api.intelligence.assessments.get, t.args)).projection,
+  ).toMatchObject({ state: "static", reason: "ROLE_ACCESS_DENIED" });
+  expect(
+    (await f.signed.query(api.intelligence.assessments.get, t.args)).assessment,
+  ).toEqual(t.assessment);
+});
+
+async function changeRole(
+  f: Awaited<ReturnType<typeof qualifiedCorpus>>,
+  userId: Id<"users">,
+  role: "Owner" | "Admin" | "Viewer",
+) {
+  await f.t.run(async (ctx) => {
+    const membership = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId_and_workspaceId", (q) =>
+        q.eq("userId", userId).eq("workspaceId", f.workspaceId),
+      )
+      .unique();
+    await ctx.db.patch(membership!._id, { role });
+  });
+}
+async function sweepModelsOnly(f: Awaited<ReturnType<typeof qualifiedCorpus>>) {
+  await f.t.mutation(internal.performance.models.sweep, { cursor: null });
+  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+}
+test("Owner restoration cannot redeclare a spent candidate after protected declaration cleanup", async () => {
+  const f = await qualifiedCorpus(),
+    before = await f.t.run((ctx) => ctx.db.get(f.candidateId));
+  await changeRole(f, f.userId, "Admin");
+  await sweepModelsOnly(f);
+  const tombstone = await f.t.run((ctx) => ctx.db.get(f.declarationId));
+  expect(tombstone).toMatchObject({
+    kind: "monitoring-tombstone",
+    candidateId: f.candidateId,
+    declarationId: null,
+    blockNumber: null,
+  });
+  expect(tombstone && "payload" in tombstone).toBe(false);
+  expect(tombstone && "requestFingerprint" in tombstone).toBe(false);
+  expect(
+    tombstone?.kind === "monitoring-tombstone" ? tombstone.expiresAt : null,
+  ).toBe(before?.kind === "candidate" ? before.expiresAt : null);
+  expect(
+    (
+      await f.signed.query(api.performance.models.get, {
+        ...f.args,
+        selectedExperimentId: f.experimentId,
+      })
+    ).evaluation?.payload.evidenceQualified,
+  ).toBe(true);
+  await changeRole(f, f.userId, "Owner");
+  await expect(
+    f.signed.mutation(api.performance.models.declareMonitoring, {
+      ...f.args,
+      candidateId: f.candidateId,
+      evaluationId: f.evaluationId,
+      monitoringSpecId: f.monitoringSpecId,
+      policy: f.monitoringPolicy,
+      commandKey: "restored-owner-new-declaration",
+    }),
+  ).rejects.toThrow("CALIBRATION_DECLARATION_EXISTS");
+});
+test("Admin restoration cannot replace an unknown terminal check after protected cleanup", async () => {
+  const f = await qualifiedCorpus(),
+    admin = await signedAdmin(f),
+    { monitoringSnapshotId } = await f.mature(false);
+  const input = {
+    ...f.args,
+    declarationId: f.declarationId,
+    snapshotId: monitoringSnapshotId,
+    block: 1 as const,
+    commandKey: "admin-unknown-terminal",
+  };
+  const checkId = await admin.mutation(
+      api.performance.models.checkMonitoring,
+      input,
+    ),
+    check = await f.t.run((ctx) => ctx.db.get(checkId));
+  if (check?.kind !== "monitoring-check") throw Error("fixture");
+  expect(check.payload.status).toBe("unknown");
+  expect(
+    await f.signed.query(api.performance.models.control, f.args),
+  ).toMatchObject({
+    checkFinal: true,
+    check: { payload: { status: "unknown" } },
+  });
+  await changeRole(f, check.actorId, "Viewer");
+  expect(
+    await f.signed.query(api.performance.models.control, f.args),
+  ).toMatchObject({ checkFinal: true, check: null, state: "static" });
+  await sweepModelsOnly(f);
+  const tombstone = await f.t.run((ctx) => ctx.db.get(checkId));
+  expect(tombstone).toMatchObject({
+    kind: "monitoring-tombstone",
+    candidateId: f.candidateId,
+    declarationId: f.declarationId,
+    blockNumber: 1,
+  });
+  expect(tombstone && "payload" in tombstone).toBe(false);
+  expect(tombstone && "requestFingerprint" in tombstone).toBe(false);
+  expect(
+    await f.signed.query(api.performance.models.control, f.args),
+  ).toMatchObject({ checkFinal: true, check: null, state: "static" });
+  await changeRole(f, check.actorId, "Admin");
+  await expect(
+    admin.mutation(api.performance.models.checkMonitoring, {
+      ...input,
+      commandKey: "restored-admin-replacement",
+    }),
+  ).rejects.toThrow("CALIBRATION_MONITORING_CHECK_FINAL");
 });

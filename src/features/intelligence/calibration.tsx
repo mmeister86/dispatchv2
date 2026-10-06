@@ -191,7 +191,8 @@ function AccountReferences({
           Vorgeschlagene lokale Klarheit/Diskussion-Gewichtsverschiebungen: −0,1
           bis +0,1 in neun Stufen. Andere Gewichte und Historie 0,5 bleiben
           unverändert. Referenzpläne bleiben unverändert; Kandidaten entstehen
-          nur im getrennten Schattenvergleich. Keine Aktivierung.
+          nur im getrennten Schattenvergleich. Befristete Freigaben stehen
+          separat.
         </p>
         <p role="status">
           {enabled
@@ -547,6 +548,17 @@ function AccountReferences({
           <p key={x.id}>Geschützter Nachweis nicht mehr lesbar: {x.reason}.</p>
         ))}
       </Section>
+      <OperationalCalibration
+        workspaceId={workspaceId}
+        accountId={accountId}
+        admin={admin}
+        owner={state.role === "Owner"}
+        writable={writable}
+        locked={busy || !!failed}
+        specs={specs}
+        snapshots={snapshots.map((x) => x.row)}
+        run={run}
+      />
       <ShadowModels
         workspaceId={workspaceId}
         accountId={accountId}
@@ -621,7 +633,7 @@ function ShadowModels({
   return (
     <Section
       title="Kalibrierung im Schattenbetrieb"
-      description="Statische Baseline gegen genau einen eingefrorenen lokalen Kandidaten. Produktionsaktivierung bleibt AUS."
+      description="Statische Baseline gegen genau einen eingefrorenen lokalen Kandidaten. Dieser Schattennachweis selbst erteilt keine Betriebsfreigabe."
     >
       <div className="stack break-words">
         <p>
@@ -868,6 +880,501 @@ function ShadowModels({
                 </p>
               </>
             )}
+          </>
+        )}
+      </div>
+    </Section>
+  );
+}
+
+const monitoringLabels = {
+  minBlockN: "Unabhängige Mindestfälle im Kontrollblock",
+  minBlockSpanMs: "Mindestspanne im Kontrollblock (ms)",
+  maxExcludedFraction: "Maximaler Ausschlussanteil im gesamten Rahmen (0–1)",
+  minImprovement: "Minimaler Nutzen im Paarordnungsfehler (0–1)",
+  maxClarityDrift: "Maximale Klarheitsdrift (0–1)",
+  maxDiscussionDrift: "Maximale Diskussionsdrift (0–1)",
+  maxReplyRateDrift: "Maximale Antwortraten-Drift (Ereignisse/Impressionen)",
+};
+
+function OperationalCalibration({
+  workspaceId,
+  accountId,
+  admin,
+  owner,
+  writable,
+  locked,
+  specs,
+  snapshots,
+  run,
+}: {
+  workspaceId: Id<"workspaces">;
+  accountId: Id<"socialAccounts">;
+  admin: boolean;
+  owner: boolean;
+  writable: boolean;
+  locked: boolean;
+  specs: Extract<Doc<"calibrationReferences">, { kind: "spec" }>[];
+  snapshots: Extract<Doc<"calibrationReferences">, { kind: "snapshot" }>[];
+  run: (action: () => Promise<unknown>) => Promise<void>;
+}) {
+  const [selected, setSelected] = useState(""),
+    [snapshotId, setSnapshotId] = useState(""),
+    [now, setNow] = useState(Date.now());
+  const [experimentId, setExperimentId] = useState(""),
+    [monitoringSpecId, setMonitoringSpecId] = useState(""),
+    [numbers, setNumbers] = useState(
+      () =>
+        Object.fromEntries(
+          Object.keys(monitoringLabels).map((k) => [k, ""]),
+        ) as Record<keyof typeof monitoringLabels, string>,
+    ),
+    [reviewUntil, setReviewUntil] = useState(""),
+    [finalValidUntil, setFinalValidUntil] = useState(""),
+    [evidence, setEvidence] = useState(""),
+    [rationale, setRationale] = useState("");
+  const model = useQuery(
+    api.performance.models.get,
+    admin
+      ? {
+          workspaceId,
+          accountId,
+          ...(experimentId
+            ? { selectedExperimentId: experimentId as Id<"calibrationModels"> }
+            : {}),
+        }
+      : "skip",
+  );
+  const declare = useMutation(api.performance.models.declareMonitoring);
+  const policy = {
+    ...(Object.fromEntries(
+      Object.entries(numbers).map(([k, v]) => [k, Number(v)]),
+    ) as Record<keyof typeof monitoringLabels, number>),
+    reviewUntil: parseUTC(reviewUntil),
+    finalValidUntil: parseUTC(finalValidUntil),
+    evidence,
+    rationale,
+  };
+  const plan = specs.find((s) => s._id === monitoringSpecId),
+    qualified =
+      model?.evaluation?.payload.evidenceQualified &&
+      model.experiment?.payload.mode === "prospective" &&
+      !!model.candidate &&
+      (model.proofUntil ?? 0) > now;
+  const validPolicy =
+    Object.values(numbers).every(
+      (v) => v.trim() !== "" && Number.isFinite(Number(v)) && Number(v) >= 0,
+    ) &&
+    Number.isSafeInteger(policy.minBlockN) &&
+    policy.minBlockN >= 2 &&
+    policy.minBlockN <= 200 &&
+    Number.isSafeInteger(policy.minBlockSpanMs) &&
+    [
+      policy.maxExcludedFraction,
+      policy.minImprovement,
+      policy.maxClarityDrift,
+      policy.maxDiscussionDrift,
+    ].every((n) => n <= 1) &&
+    Number.isSafeInteger(policy.reviewUntil) &&
+    policy.reviewUntil > now &&
+    Number.isSafeInteger(policy.finalValidUntil) &&
+    evidence.trim().length > 0 &&
+    evidence.length <= 2000 &&
+    rationale.trim().length > 0 &&
+    rationale.length <= 2000 &&
+    !!plan &&
+    plan.payload.mode === "prospective" &&
+    plan.payload.holdout1Start > now &&
+    plan._id !== model?.experiment?.specId &&
+    plan.purposeId === model?.experiment?.purposeId &&
+    policy.finalValidUntil > plan.payload.holdout1End &&
+    policy.finalValidUntil <=
+      Math.min(
+        plan.payload.holdout2Start,
+        policy.reviewUntil,
+        model?.proofUntil ?? 0,
+        plan.expiresAt,
+      ) &&
+    policy.minBlockSpanMs <=
+      plan.payload.holdout1End - plan.payload.holdout1Start;
+  const scope = { workspaceId, accountId },
+    data = useQuery(
+      api.performance.models.control,
+      admin
+        ? {
+            ...scope,
+            ...(selected
+              ? { selectedDeclarationId: selected as Id<"calibrationModels"> }
+              : {}),
+          }
+        : "skip",
+    );
+  const check = useMutation(api.performance.models.checkMonitoring),
+    activate = useMutation(api.performance.models.activate),
+    rollback = useMutation(api.performance.models.rollback);
+  const d = data?.declaration,
+    p = d?.payload.policy,
+    until = Math.min(
+      data?.proofUntil ?? Infinity,
+      p?.finalValidUntil ?? Infinity,
+    );
+  const next = Math.min(
+    ...[
+      until,
+      d?.payload.firstEnd ?? Infinity,
+      model?.proofUntil ?? Infinity,
+    ].filter((t) => t > now),
+  );
+  useEffect(() => {
+    if (!Number.isFinite(next)) return;
+    const timer = setTimeout(
+      () => setNow(Date.now()),
+      Math.min(2147483647, Math.max(0, next - Date.now() + 1)),
+    );
+    return () => clearTimeout(timer);
+  }, [next]);
+  const visible = !!d && until > now,
+    chosen = snapshots.find(
+      (s) => s._id === snapshotId && s.specId === d?.specId,
+    ),
+    final = !!data?.check || data?.checkFinal,
+    ready =
+      visible &&
+      now >= d.payload.firstEnd &&
+      data?.check?.payload.status === "pass";
+  return (
+    <Section
+      title="Befristete lokale Kalibrierungsfreigabe"
+      description="Ein gemessener Kontrollblock, befristete Freigabe; kein laufender Driftbeleg."
+    >
+      <div className="stack break-words">
+        <p>
+          Nur derselbe eigene X-Account, Einzeltext und exakt gleiche Fragen-,
+          Profil-, Modell-, Formel-, Schwellen- und Messversion. Neue
+          Bewertungen erhalten eine getrennte Projektion; Originalscore und
+          Jev-Antworten bleiben erhalten.
+        </p>
+        {!admin ? (
+          <p>
+            Owner/Admin für Nachweise; ausschließlich Owner für Freigabe und
+            Rückkehr zur statischen Formel.
+          </p>
+        ) : !data ? (
+          <p role="status">Freigabestatus wird geladen …</p>
+        ) : (
+          <>
+            <p role="status">
+              {data.state === "candidate" && visible
+                ? "Befristete Kandidatenprojektion freigegeben"
+                : "Statische Formel aktiv"}{" "}
+              · Revision {data.revision} ·{" "}
+              {visible
+                ? data.reason
+                : (data.reason ?? "Ursprüngliche Frist abgelaufen")}
+            </p>
+            {!data.declarations.length && (
+              <p>
+                Betriebspolitik UNGESETZT. Vor zukünftiger Sammlung muss ein
+                Owner einen neuen prospektiven Referenzplan an einen
+                qualifizierten eingefrorenen Kandidaten und dessen exakten
+                Vergleich binden. Mindestzahl, Mindestspanne,
+                Gesamtrahmen-Abdeckung, Nutzen, Driftgrenzen, absolute Prüf- und
+                Endfrist sowie tatsächliche Belege sind bewusst ohne
+                Vorgabewerte.
+              </p>
+            )}
+            <details>
+              <summary>Neue Betriebspolitik ausdrücklich vorerklären</summary>
+              <fieldset className="stack mt-3" disabled={!owner || !writable}>
+                <label>
+                  Qualifizierter ursprünglicher Schattenversuch
+                  <select
+                    className="w-full rounded border p-2"
+                    value={model?.selectedId ?? experimentId}
+                    onChange={(e) => {
+                      setExperimentId(e.target.value);
+                      setMonitoringSpecId("");
+                    }}
+                  >
+                    <option value="">Versuch auswählen</option>
+                    {model?.experiments.map((e) => (
+                      <option key={e.id} value={e.id}>
+                        {new Date(e.createdAt).toISOString()} · {e.mode}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {!qualified && (
+                  <p>
+                    Ein aktuell lesbarer qualifizierter prospektiver Vergleich
+                    mit eingefrorenem Kandidaten ist erforderlich. NULL-Politik
+                    und rückblickende Diagnose reichen nicht aus.
+                  </p>
+                )}
+                {qualified && (
+                  <p>
+                    Exakte Bindung: Kandidat {model!.candidate!._id} · Vergleich{" "}
+                    {model!.evaluation!._id} · Ursprung bis{" "}
+                    {new Date(model!.proofUntil!).toISOString()}.
+                  </p>
+                )}
+                <label>
+                  Neuer prospektiver Kontrollplan
+                  <select
+                    className="w-full rounded border p-2"
+                    value={monitoringSpecId}
+                    onChange={(e) => setMonitoringSpecId(e.target.value)}
+                  >
+                    <option value="">Kontrollplan auswählen</option>
+                    {specs
+                      .filter(
+                        (s) =>
+                          s.payload.mode === "prospective" &&
+                          s._id !== model?.experiment?.specId,
+                      )
+                      .map((s) => (
+                        <option key={s._id} value={s._id}>
+                          {new Date(s.createdAt).toISOString()} · Kontrollende{" "}
+                          {new Date(s.payload.holdout1End).toISOString()} ·{" "}
+                          {s.payload.compatibility.resolvedModel}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <div className="grid gap-4 md:grid-cols-2">
+                  {Object.entries(monitoringLabels).map(([key, label]) => (
+                    <label key={key}>
+                      {label}
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        value={numbers[key as keyof typeof monitoringLabels]}
+                        onChange={(e) =>
+                          setNumbers((v) => ({ ...v, [key]: e.target.value }))
+                        }
+                      />
+                    </label>
+                  ))}
+                </div>
+                <label>
+                  Betriebspolitik prüfen bis (UTC)
+                  <Input
+                    type="datetime-local"
+                    step="1"
+                    value={reviewUntil}
+                    onChange={(e) => setReviewUntil(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Absolute Betriebs-Endfrist (UTC)
+                  <Input
+                    type="datetime-local"
+                    step="1"
+                    value={finalValidUntil}
+                    onChange={(e) => setFinalValidUntil(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Tatsächlicher Betriebspolitik-Beleg
+                  <Input
+                    maxLength={2000}
+                    value={evidence}
+                    onChange={(e) => setEvidence(e.target.value)}
+                  />
+                </label>
+                <label>
+                  Begründung der erklärten Betriebspolitik
+                  <Input
+                    maxLength={2000}
+                    value={rationale}
+                    onChange={(e) => setRationale(e.target.value)}
+                  />
+                </label>
+                <p>
+                  Eine Deklaration pro Kandidat, ein abschließender
+                  Kontrollbeleg – auch nach Rechteverlust oder
+                  Wiederherstellung. Alle Zahlen bewusst leer. Endfrist nach dem
+                  gemessenen Kontrollende und spätestens beim ungenutzten
+                  zweiten Blockbeginn sowie der frühesten ursprünglichen
+                  Nachweisfrist. Die Serverprüfung bindet exakte
+                  Versionsfingerprints.
+                </p>
+                <Button
+                  className="h-auto whitespace-normal"
+                  disabled={!qualified || !validPolicy}
+                  onClick={() => {
+                    if (
+                      !model?.candidate ||
+                      !model.evaluation ||
+                      !plan ||
+                      !validPolicy
+                    )
+                      return;
+                    const input = {
+                      workspaceId,
+                      accountId,
+                      candidateId: model.candidate._id,
+                      evaluationId: model.evaluation._id,
+                      monitoringSpecId: plan._id,
+                      policy,
+                      commandKey: crypto.randomUUID(),
+                    };
+                    void run(() => declare(input));
+                  }}
+                >
+                  Betriebspolitik und Kontrollplan unveränderlich binden
+                </Button>
+              </fieldset>
+            </details>
+            <label>
+              Gespeicherte Betriebsdeklaration
+              <select
+                className="w-full rounded border p-2"
+                disabled={locked}
+                value={d?._id ?? selected}
+                onChange={(e) => {
+                  setSelected(e.target.value);
+                  setSnapshotId("");
+                }}
+              >
+                <option value="">Keine Deklaration</option>
+                {data.declarations.map((x) => (
+                  <option key={x.id} value={x.id}>
+                    {new Date(x.createdAt).toISOString()} · Kontrollende{" "}
+                    {new Date(x.firstEnd).toISOString()} · Freigabe bis{" "}
+                    {new Date(x.finalValidUntil).toISOString()}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {visible && (
+              <>
+                <p>
+                  Kontrollende {new Date(d.payload.firstEnd).toISOString()} ·
+                  absolute Endfrist {new Date(p!.finalValidUntil).toISOString()}{" "}
+                  · früheste Nachweisfrist {new Date(until).toISOString()}.
+                  Spätestens dann automatisch statisch; Wiederholen oder
+                  erneutes Freigeben verlängert keine Frist.
+                </p>
+                <p>
+                  Kontrollstatus:{" "}
+                  {data.check?.payload.status ??
+                    (data.checkFinal
+                      ? "geschützter endgültiger Nachweis nicht mehr lesbar"
+                      : "noch kein abschließender Nachweis")}
+                  . Ein reifes unbekanntes oder fehlgeschlagenes Ergebnis bleibt
+                  endgültig.
+                </p>
+                <details>
+                  <summary>Exakte Bindung und erklärte Betriebspolitik</summary>
+                  <p>
+                    Deklaration {d._id} · Kandidat {d.candidateId} · Vergleich{" "}
+                    {d.payload.evaluationId} · Referenzplan {d.specId} ·
+                    Kontrollbeleg {data.check?._id ?? "fehlt"}.
+                  </p>
+                  <p>
+                    {d.payload.compatibility.questionVersion} ·{" "}
+                    {d.payload.compatibility.resolvedModel} ·{" "}
+                    {d.payload.compatibility.metricVersion} ·{" "}
+                    {d.payload.compatibility.formulaVersion} ·{" "}
+                    {d.payload.compatibility.thresholdVersion}.
+                  </p>
+                  <p>
+                    n ≥ {p!.minBlockN} · Spanne ≥ {p!.minBlockSpanMs} ms ·
+                    Ausschlüsse im gesamten erklärten Rahmen ≤{" "}
+                    {p!.maxExcludedFraction} · Nutzen ≥ {p!.minImprovement} ·
+                    Drift Klarheit/Diskussion/Antwortrate ≤ {p!.maxClarityDrift}
+                    /{p!.maxDiscussionDrift}/{p!.maxReplyRateDrift}.
+                  </p>
+                  <p>
+                    {p!.evidence} · {p!.rationale}
+                  </p>
+                </details>
+                <label>
+                  Native Kontrollmaterialisierung
+                  <select
+                    className="w-full rounded border p-2"
+                    disabled={!writable || final}
+                    value={snapshotId}
+                    onChange={(e) => setSnapshotId(e.target.value)}
+                  >
+                    <option value="">Materialisierung auswählen</option>
+                    {snapshots
+                      .filter((s) => s.specId === d.specId)
+                      .map((s) => (
+                        <option key={s._id} value={s._id}>
+                          {new Date(s.payload.asOf).toISOString()} ·
+                          Kontrollblock n={s.payload.counts.block1} ·{" "}
+                          {s.payload.frameComplete
+                            ? "vollständig"
+                            : "unvollständig"}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <Button
+                  className="h-auto whitespace-normal"
+                  disabled={
+                    !writable ||
+                    final ||
+                    !chosen ||
+                    now < d.payload.firstEnd ||
+                    chosen.payload.asOf < d.payload.firstEnd
+                  }
+                  onClick={() => {
+                    if (!chosen) return;
+                    const input = {
+                      ...scope,
+                      declarationId: d._id,
+                      snapshotId: chosen._id,
+                      block: 1 as const,
+                      commandKey: crypto.randomUUID(),
+                    };
+                    void run(() => check(input));
+                  }}
+                >
+                  Reifen Kontrollblock abschließend prüfen
+                </Button>
+                <Button
+                  className="h-auto whitespace-normal"
+                  disabled={!owner || !writable || !ready}
+                  onClick={() => {
+                    if (!data.check) return;
+                    const input = {
+                      ...scope,
+                      evaluationId: d.payload.evaluationId,
+                      declarationId: d._id,
+                      checkId: data.check._id,
+                      expectedRevision: data.revision,
+                      commandKey: crypto.randomUUID(),
+                    };
+                    void run(() => activate(input));
+                  }}
+                >
+                  Exakten Kandidaten bis zur Endfrist freigeben
+                </Button>
+              </>
+            )}
+            <p>
+              Rückkehr: dispatch-score-v1 mit ursprünglichen Gewichten und
+              jev-confidence-startup-v1. Keine Schwellenanpassung.
+            </p>
+            <Button
+              variant="outline"
+              className="h-auto whitespace-normal"
+              disabled={!owner || locked}
+              onClick={() => {
+                const input = {
+                  ...scope,
+                  expectedRevision: data.revision,
+                  commandKey: crypto.randomUUID(),
+                };
+                void run(() => rollback(input));
+              }}
+            >
+              Zur ursprünglichen statischen Formel zurückkehren
+            </Button>
           </>
         )}
       </div>
