@@ -4,7 +4,7 @@ title: 'Gezielte Recherche mit persönlichen Agent-Chats verbinden (P06.04, Teil
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 01:53'
+updated_date: '2026-10-06 01:57'
 labels: []
 dependencies:
   - TASK-23.1
@@ -23,10 +23,10 @@ Teilpaket zu TASK23/J05: expliziten themengebundenen Research-Auftrag aus dem pe
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Ein expliziter persönlicher Chat-Auftrag erzeugt gezielte Recherche ohne GitHub mit unveränderlicher Themenabsicht, tatsächlichen Auftrag-IDs und bestehenden aktuellen Budget- und Abbruchprüfungen.
-- [ ] #2 Rechercheergebnisse werden nur mit aktuellen evidenzgebundenen Referenzen in den eigenen Chat übernommen; Fremdthread, fremder Account, Ablauf und Entzug sind gesperrt.
-- [ ] #3 Chat-Historie, Folgeanfragen und Idee-Tools erhalten die vollständige Quellenkette und können Research nicht als freie Notiz ohne Quellenprüfungen weitergeben.
-- [ ] #4 Fehlende Konfiguration, Wiederholung, Stop, unbekannter Verbrauch und Wiederaufnahme bleiben ehrlich und erzeugen keine zusätzlichen bezahlten Aufrufe.
+- [x] #1 Ein expliziter persönlicher Chat-Auftrag erzeugt gezielte Recherche ohne GitHub mit unveränderlicher Themenabsicht, tatsächlichen Auftrag-IDs und bestehenden aktuellen Budget- und Abbruchprüfungen.
+- [x] #2 Rechercheergebnisse werden nur mit aktuellen evidenzgebundenen Referenzen in den eigenen Chat übernommen; Fremdthread, fremder Account, Ablauf und Entzug sind gesperrt.
+- [x] #3 Chat-Historie, Folgeanfragen und Idee-Tools erhalten die vollständige Quellenkette und können Research nicht als freie Notiz ohne Quellenprüfungen weitergeben.
+- [x] #4 Fehlende Konfiguration, Wiederholung, Stop, unbekannter Verbrauch und Wiederaufnahme bleiben ehrlich und erzeugen keine zusätzlichen bezahlten Aufrufe.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -72,4 +72,6 @@ SOURCE caec14dd9c80ff65a53efe26da8f2327019b175b exactly29 approved paths on mast
 Fresh SPEC PASS receipt /tmp/dispatch-targeted-chat-spec-receipt.md SHA4bf4e2b0d52b3cfa36a2cac56be5530d619ceda067745e9b83c30a660ed9dde3 ROOTreadfull: all29SOURCE bytes,104 registered checks+4 independent probesPASS. Edited/restored compound/secondary withdrawal/comment cleanup/beforefunding/topic bodies/context10 tested;11-order probe original5s harness timeout retained, unchanged30sPASS. Raw JSONinventorySHA04cb433 distinct canonical60be0d. Fresh AppSec QUALITY started exactSOURCEcaec14d, no AC/Done untilPASS.
 
 Fresh QUALITY PASS /tmp/dispatch-targeted-chat-quality-receipt.md SHA8109369b6d3b4ea853177c5cfa04ccce1be4fdc885a1e5fd4a4215ff695ca900 ROOTreadfull. 29 source hashes/104 affected/3 independent/577 full/typePASS, no Critical or Important. Optional minor generic Research revision error mislabeled conversation/title; original implementer receives tiny profile/topic recovery copy refinement with UI checks, no unrelated backend deploy. SAME SPEC then QUALITY delta review; source caec14dd and original receipts preserved. No AC/Done.
+
+Final SOURCE eb4feb042f83abc999615bf0719e2910d9523cbd UI-only recovery correction; actual Agent browser/static checksPASS. ROOT read SAME SPEC delta PASS SHAf5d6e7bca16d20be543bef6753cb4306b01934d9eb1b2e8852a0d9763bcd3fbd and SAME QUALITY delta PASS SHA83e2a3b3c0869e155fbc3a87eaaabcb695cd2ca16dc71f335da1568128f2da99. Corecaec14dd fresh577/104/4SPEC/3QUALITY independent checks accepted; no backend redeploy for copy, finalEUDev03:39:01. AC1–4 software verified; InProgress/manualDone open. TASK23.3 released, whole original backlog continues.
 <!-- SECTION:NOTES:END -->
