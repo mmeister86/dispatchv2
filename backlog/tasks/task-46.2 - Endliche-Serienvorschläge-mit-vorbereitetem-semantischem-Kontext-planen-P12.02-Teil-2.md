@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 15:21'
-updated_date: '2026-10-06 22:53'
+updated_date: '2026-10-06 22:55'
 labels: []
 dependencies:
   - TASK-46.1
@@ -28,12 +28,12 @@ Nach separat akzeptiertem46.1 und finalem45: native konkrete Serienversion/CAS/R
 - [x] #1 Konkrete thematische Serien berücksichtigen kompatible Account-Vektoren, Wiederholung und explizite Nutzerwerte; fehlende oder unvollständige Semantik erzeugt sichtbare Sperre/Shortage.
 - [x] #2 Endliche native Wiederholungen enden an Grenze und stale/replayed/disabled Callbacks erzeugen weder neue Provider-Aufrufe noch unbeauftragte Termine.
 - [x] #3 Bestehende mögliche/unklare/bestätigte Publishing-Effekte und Termine bleiben geschützt; nur explizite native selektive Annahme erstellt neue Termine mit exakten Proofs.
-- [ ] #4 Native Lifecycle/Slot/CAS/DST/ScopeChecks, tatsächliche PlansBrowser und separate frische SPEC/QUALITY plus exaktes EUDev sind dokumentiert; empirical/live/manualDone bleiben offen.
+- [x] #4 Native Lifecycle/Slot/CAS/DST/ScopeChecks, tatsächliche PlansBrowser und separate frische SPEC/QUALITY plus exaktes EUDev sind dokumentiert; empirical/live/manualDone bleiben offen.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Automatisierte Prüfungen und noch offene manuelle Abnahme sind konkret dokumentiert.
+- [x] #1 Automatisierte Prüfungen und noch offene manuelle Abnahme sind konkret dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
@@ -69,4 +69,6 @@ Alle fünf Review-Funde minimal korrigiert; regulärer style retire erhält sour
 Korrigierter314-Freeze: fresh SPEC PASS (109registered/4Files+3 unveränderte ursprüngliche Repros), distinct QUALITY PASS (33native+7ordinary+bother actualstyledBrowser+originalFingerprint/SPEC/Pillar-/explicitReviewCAS-Probes). Keine verbleibenden P0/P1/P2; alle314Hashes vorher/nachher unverändert. Vollständige Reports .docs/reviews/task-46.2-spec.md und -quality.md, qualifiedValidation laufend; RootFullSuite10405 läuft mit durablem Exit/Hash-Beleg und Original900000ms, Release/exaktesEUDev/manualDone noch offen.
 
 Vollständiger frischer Root-Gate auf exakt korrigiertem314-Freeze PASS:983Tests/50Files,708.01s native/708.366s Runner, Exit0; alle314SourceHashes unverändert. Originale950BaselineCases und900000ms bleiben unverändert,10628 nichtalsPASSgezählt. DauerhafterBeleg /tmp/dispatch-continuation-46.2-all-final-receipt.json bindet SHA3001d05f; finalCodegen/TSC/lint/format/build+originalbundle/diff sowie frische SPEC/distinctQUALITY PASS. AC1–3 technisch geprüft; AC4 exaktesEUDev nochpending. 92SourceDefinedApplicationTables introducedInventory erweitert; full33/36/manualDone offen.
+
+Technisch akzeptiert und exaktes bestehendesEUDev synchronisiert: Source5195984f4a92b2d5c5ca38ed9b790e1d5e744966,2026-10-06T22:54:08.405799+00:00,Exit0,target accurate-lion-749.eu-west-1.convex.cloud. Read-only native function-spec bestätigt370MetadatenEntries/exakt7NeueInterfaces (2publicChange/Get+5internalFire/Purges/Sweep),5HTTPEntries unverändert, alle314Hashes unverändert;0Domain/ProviderCalls. Voll983/50 nativePASS708.01s/freshSPEC/distinctQUALITY/bothactualstyledBrowser/static/codegen/bundle; beide frühere Review-Repros und reale gewöhnlicheRetirementSemantik korrigiert. Alle technischenACs und dokumentierteAutomatik/ManualGrenzen geprüft, Status In Progress/DoD2 bleibt offen bis ausdrücklicher manueller Nutzerbestätigung. Durable .docs/reviews/task-46.2-finite-series-validation.md plus SPEC/QUALITY; introduced92-TableInventory aktualisiert. Fortsetzung47.1 nach finalem Root-Verifikationscommit.
 <!-- SECTION:NOTES:END -->

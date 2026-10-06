@@ -3,10 +3,10 @@ id: TASK-47.1
 title: >-
   Endliche redaktionelle Experimente mit exakten Feedback-Ereignissen beobachten
   (P12.03, Teil 1)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-06 15:23'
-updated_date: '2026-10-06 22:28'
+updated_date: '2026-10-06 22:55'
 labels: []
 dependencies: []
 references:
@@ -52,4 +52,6 @@ Nach akzeptiertem48/45/46 konkrete native Hypothese/eine Hook-Format-TimingDimen
 Read-only /tmp/dispatch-47-preflight.md liegt vor; SourceWriter erst nach separat technisch akzeptierter46.2. Bestehendes Feedback/Evidence wiederverwenden, keine ObservationTextkopien/Generatorrate/Kausalwinner/Provider/Approval/Schedule. Nativeprospective Start/Stop darf same-ms Ereignisse nicht rückwirkendzulassen; exact eventSequence statt guessedTimestamp, Legacyfehlend nichtbackfillen. Finalvorhandene47.1Tables/indices erstnachSourceReconciliation wählen; standaloneVorarbeitkeinSourceReview.
 
 Konkreter zukünftigerSoleWriterBrief /tmp/dispatch-47.1-writer-brief.md vorbereitet nachContract+readonlyPreflight; nochkeineSourceFreigabe. Technische46.2Akzeptanz undfinaleSourceProof/Style/Series/VectorCleanup-Reconciliation bleibenVoraussetzung; Legacyfeedback nichtprospectiveBackfill, nativeSameMsStart/StopSequence, exakteVersion+ReviewerEinheit undkeineObservationLedger/Provider/Approval/Schedule.
+
+Technische Voraussetzung46.2 akzeptiert: Source5195984,983NativeTests/50FilesPASS,freshSPEC/distinctQUALITY,bothactualstyledBrowser/static/codegen/bundle,exactexistingEUDev22:54:08UTC/370MetadataEntries/sevenNewInterfaces/314Hashes unverändert. FinalseriesVersionProof/current=false-retained versus current-use, exactsemanticPlanBindings/fingerprint replacement and source-through-slot cleanup sind maßgeblich. Brief /tmp/dispatch-47.1-writer-brief.md wird einem frischen einzigenSourceWriter nach Root-Verifikationscommit freigegeben; keine neue Provider/Approval/Schedule-Authority. manualDone offen.
 <!-- SECTION:NOTES:END -->

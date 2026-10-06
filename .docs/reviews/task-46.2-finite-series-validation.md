@@ -1,6 +1,6 @@
 # TASK-46.2 finite native series — release validation
 
-Status: corrected frozen source; fresh SPEC, distinct QUALITY and complete native suite PASS; exact source commit/EU Dev verification pending. No deployment, empirical or manual acceptance is implied by this intermediate record. Backlog remains In Progress until explicit human confirmation after manual testing.
+Status: technically accepted and synchronized to the existing EU Dev. Fresh SPEC, distinct QUALITY, complete native suite/static/build/bundle/codegen and exact remote metadata verification PASS. Empirical/authenticated manual acceptance remains open; Backlog remains In Progress until explicit human confirmation after manual testing.
 
 ## Exact source and corrections
 
@@ -49,6 +49,8 @@ Both writer actual styled fixtures—`tests/finite-series.browser.mjs` and exist
 
 Root final codegen including typecheck, App/Convex TypeScript, configured lint/scoped formatter, native Vite production build with original bundle-secret assertions and diff check PASS. Installed Node binaries avoid unrelated pnpm signature/DNS failures; no claim that pnpm's bootstrap check passed. Source hashes remain unchanged. Logs `/tmp/dispatch-continuation-46.2-codegen-final.log`, `-app-tsc-final.log`, `-convex-tsc-final.log`, `-lint-final.log`, `-format-final.log`, `-bundle-final.log`.
 
-Root existing EU Dev sync/read-only API metadata gate is pending regular exact-source master commit. Complete native/distinct QUALITY gates have passed. No real series/consent/grant/policy activation, provider call, paid embedding, email or publication is performed by validation/deployment.
+Regular source commit `5195984f4a92b2d5c5ca38ed9b790e1d5e744966` was synchronized with **`dev:accurate-lion-749`**, **`https://accurate-lion-749.eu-west-1.convex.cloud`**, at **2026-10-06T22:54:08.405799+00:00**, exit0. The guard checked actual target configuration, exact HEAD, all314 hashes and the successful full native gate bound to the same freeze. Receipts `/tmp/dispatch-continuation-46.2-dev-sync-receipt.json`, `-dev-sync.log`.
+
+Read-only `function-spec --deployment accurate-lion-749` then verified the same URL and **370 metadata entries**, including exactly seven introduced interfaces: public `planning/strategy.change` mutation and `get` query; internal-only `planning/recurring.fire`, `purgeStyle`, `purgeVector`, `purgeVersion`, `sweep` mutations. Five existing HTTP metadata entries remain identical. All314 frozen file hashes stayed unchanged after synchronization. Receipts `/tmp/dispatch-continuation-46.2-dev-function-spec.json`, `-dev-metadata-verification.json`. This metadata verification invokes zero domain/provider functions; no real series/consent/grant/policy activation, paid embedding, email or publication was performed.
 
 Empirical semantic/threshold/theme/format/timing quality, genuine provider rights/configuration, authenticated manual tests and explicit Done remain open. Full33/36 export/identity/audit-retention/provider-backup/restore acceptance is separate. Whole backend continuation proceeds to47.1/47.2 after technical46.2 release.
