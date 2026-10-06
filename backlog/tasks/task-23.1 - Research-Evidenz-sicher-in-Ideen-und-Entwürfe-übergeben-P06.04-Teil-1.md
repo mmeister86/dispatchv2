@@ -4,7 +4,7 @@ title: 'Research-Evidenz sicher in Ideen und Entwürfe übergeben (P06.04, Teil 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:37'
-updated_date: '2026-10-06 01:02'
+updated_date: '2026-10-06 01:04'
 labels: []
 dependencies:
   - TASK-22.3
@@ -23,10 +23,10 @@ Teilpaket zu TASK23: aktuelle Research-Evidenz, Inbox-Reviewzustände und wieder
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Ignore und Archivierung sind persistent, rollen- und revisionsgebunden und verändern nicht das Ergebnis des Research-Auftrags.
-- [ ] #2 Jede Übergabe prüft aktuelle primäre und sekundäre Evidenz, Zweck, Account, Materialhash, Ablauf und Autorität; abgelaufene oder fremde Inhalte werden nicht offengelegt.
-- [ ] #3 Explizite begrenzte Absicht und Anzahl sind unveränderlich gebunden; parallele Wiederholung erzeugt keine zusätzlichen Vorschläge und liefert echte IDs mit vollständiger Quellenkette.
-- [ ] #4 Ideen und Entwürfe behalten menschliche Freigabepflicht; bestehende Inhalte, Versionen und Finanzbuchungen werden nicht überschrieben.
+- [x] #1 Ignore und Archivierung sind persistent, rollen- und revisionsgebunden und verändern nicht das Ergebnis des Research-Auftrags.
+- [x] #2 Jede Übergabe prüft aktuelle primäre und sekundäre Evidenz, Zweck, Account, Materialhash, Ablauf und Autorität; abgelaufene oder fremde Inhalte werden nicht offengelegt.
+- [x] #3 Explizite begrenzte Absicht und Anzahl sind unveränderlich gebunden; parallele Wiederholung erzeugt keine zusätzlichen Vorschläge und liefert echte IDs mit vollständiger Quellenkette.
+- [x] #4 Ideen und Entwürfe behalten menschliche Freigabepflicht; bestehende Inhalte, Versionen und Finanzbuchungen werden nicht überschrieben.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -69,4 +69,6 @@ Permanent actual Workflow/native/model ancestor regression RED /tmp/task231-hist
 Correction SOURCE6fde7a93e92814b0482326da5722b28f0668e56c exact6paths, clean index/tree; inherited history and dedup-context horizons propagated; existing status check avoids completed-native cancellation rollback while actual cleanup retained. Permanent real Workflow/native/model/history/public scheduled expiry GREEN with journal/isDone/Agent erasure + financial/confirmed IDs retained; distinct labeled context MockLanguageModel GREEN and isolated genuineRED retained. Final554/30 +75/3/static/codegen/posttypes PASS, actualEUDev02:57:21. SAME SPEC correction verification active, freshQUALITY gatedPASS; noAC/Done/newbrowser/paid/prod.
 
 SAME SPEC correction PASS/ReadyYes /tmp/dispatch-research-content-spec-correction-receipt.md; independent2/2 +75/3 PASS, all ancestor/descendant retention/proof/cached deadlines equal1791248731139 and expire together; actual completed-native public scheduled journal/isDone/Agent erasure verified, all30 finalsourcehash match6fde7a9, originalRED untouched. Fresh separate QUALITY research_content_quality Application Security Engineer astra/medium nowactive; noAC/Done untilPASS/manual.
+
+Software accepted after final SAME SPEC PASS + fresh QUALITY PASS/ReadyYes /tmp/dispatch-research-content-quality-receipt.md; independent77/5PASS, all30hashmatch6fde7a9/treeclean. Full554/30, finalEUDev02:57:21 and independent actual cached-deadline browser receipts retained. AC1–4 software checked; noDone/manual/liveclaim; originalREDs/initialNEEDS_FIXES preserved. Release next23.2 targetedpersonalchat source-aware transport,23.3automaticoption deferred.
 <!-- SECTION:NOTES:END -->

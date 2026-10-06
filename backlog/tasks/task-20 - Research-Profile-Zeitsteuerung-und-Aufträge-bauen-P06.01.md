@@ -4,7 +4,7 @@ title: 'Research-Profile, Zeitsteuerung und Aufträge bauen (P06.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 00:07'
+updated_date: '2026-10-06 01:04'
 labels:
   - p06
   - r2
@@ -42,7 +42,7 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 - [x] #1 Recherche läuft ohne GitHub-Ereignis.
 - [x] #2 Pause verhindert neue Läufe.
 - [x] #3 doppelte Scheduler-Aufrufe erzeugen keinen doppelten Auftrag.
-- [ ] #4 ein Profilwechsel verändert laufende Jobs nicht rückwirkend.
+- [x] #4 ein Profilwechsel verändert laufende Jobs nicht rückwirkend.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -84,4 +84,6 @@ Fresh SPEC at frozen 6f1d062 reproduced a P2 lost-ACK UI defect in actual React:
 Final code source c300fa4 (backend32ed459 / initial6f1d062); independent re-SPEC and fresh QUALITY PASS. Review .docs/reviews/task-20-research-profile-validation.md preserves original P2 lost-ACK browser RED and corrected visible exact-retry/fresh-intent path. Initial implementer387/26 and full checks/codegen/EU Dev20:52:14 remain separate; UI-only correction actual browser/type/lint/build/bundle/diff passed, no backend/Dev rerun. Initial SPEC19+9own backend/browser RED; delta six own actual UI groups+registered browser PASS. QUALITY23 registered+7own native+3own actual UI+registered browser PASS, harness role-render correction explicit. AC2 pause and AC3 exact native occurrence checked as code criteria. AC1 real independent research and full AC4 running downstream research remain unchecked for21/22; immutable queued snapshot proof is not paid running execution. Actual search funding/rights/processing/pricing/invoice/Content-Agent caller/lifecycle/manual gates remain open. No provider/grant activation or Done; In Progress pending explicit manual user confirmation.
 
 AC1 nowSOFTWAREverified byreviewedactual22.2/22.3registered fundednative+model Workflow fixtures withoutGitHub; profiles/schedules/providers/pipeline actualhelpers useaccountwithnoGitHub. No paid/provideractivation/manualclaim. AC4 exactordinarysaveWHILEnative/modelIOunresolved+oldprompt/evidenceprofileVersion notyettested: currentqueued/finishedcasesinsufficient. Read-onlysupplement /tmp/dispatch-research-content-provenance-map.md; keepAC4open pendingmeaningfulactualIOregression inupcomingsourcehandoffintegration. Pause/deletewithdrawal cancels bydesign, ordinarysave retainsimmutableorder. TaskInProgress, noDone.
+
+AC4 SOFTWAREverified at reviewed TASK23.1 SOURCE6fde7a9: genuine registered unresolved native-I/O Promise held while ordinary profile save; original immutable query/model prompt/evidence profileVersion retained with exactly settled accounting. SAME SPEC75/3 and fresh QUALITY77/5 independently rerun actual case; pause/delete intentionally cancels separately. AllAC software nowchecked, statusInProgress/user manualconfirmation/Done remainopen.
 <!-- SECTION:NOTES:END -->

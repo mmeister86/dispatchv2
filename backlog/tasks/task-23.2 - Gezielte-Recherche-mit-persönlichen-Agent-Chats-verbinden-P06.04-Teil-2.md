@@ -1,9 +1,10 @@
 ---
 id: TASK-23.2
 title: 'Gezielte Recherche mit persönlichen Agent-Chats verbinden (P06.04, Teil 2)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
+updated_date: '2026-10-06 01:04'
 labels: []
 dependencies:
   - TASK-23.1
@@ -33,3 +34,20 @@ Teilpaket zu TASK23/J05: expliziten themengebundenen Research-Auftrag aus dem pe
 - [ ] #1 Relevante automatisierte Prüfungen und offene manuelle Abnahme sind dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Trace reviewed23.1 typed evidence/current proof and actual personal Agent/thread/run/funding/cleanup callers.
+2. Add narrow immutable one-off targeted pipeline admission from scoped personal chat, preserving saved profile and separately bound semantic topic; stable receipts and honest configuration outcomes.
+3. Persist deterministic supported evidence summaries in actual native history and carry current bounded sources through history/stream/followup/idea generation and tool consumers; immediate read fence and concrete cleanup preserve unknown/late financial receipts.
+4. Wire awaited existing real Chat commands with stable exact retry, profile/config guidance and genuine order/result links; preserve account/role epochs and finite source-clock resets.
+5. Prove actual registered no-GitHub Workflow/Agent/native J05, source-negative/replay/stop/unknown/expiry/cleanup controls and changed actual browser paths; full/static/build/bundle/codegen/EU Dev onlyaftergreen.
+6. Scoped master commit/freeze, fresh SPEC thenQUALITY; ROOT tracks software criteria onlyafterPASS, manualDone remainsopen.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+ROOTrelease after23.1 finalSOURCE6fde7a9 SAME SPEC+freshQUALITYPASS. Concrete brief /tmp/dispatch-task23.2-release-brief.md, trustedcurrentmap /tmp/dispatch-targeted-chat-research-map.md. Explicitdomainbutton/current savedprofile+revision, immutabletopic usedretrieval ANDmodel/evidence; no temporarysave/autocreate/arbitrary oldorderpromotion/general researchtool. Actualscopedconversation, deterministicdurable currentevidence summary noextra paidchatcall; separatelyfundedexplicit followup. Review vseligible vsapproval distinct; source-aware existingIdeasgenerate/conversationssend sibling mustleave23.1 block ONLYwithreal source-bound transport. Concretefullhistory/currentproof/nativecleanup/executionFinished/isDone/unknownholds; noNote laundering/newmessagesstore/ledger/paid/provideractivation. One freshimplementationwriter; ROOTownsmetadata/exactcommitwindow; noDone.
+<!-- SECTION:NOTES:END -->
