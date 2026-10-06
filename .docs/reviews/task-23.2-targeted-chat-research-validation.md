@@ -20,3 +20,10 @@ Implementation has reported a first admission RED and basic transport work. Exac
 ## First registered admission proof — not full J05 yet
 
 Contract RED `/tmp/task232-red.log` asserts the missing real domain research export/admission, not a historical disclosure defect. First registered GREEN covers actual Workflow empty search, immutable native topic without profile rewrite, exact replay, conflict denial and a durable technical native message; one intercepted search, no paid call. Interim affected suite **107/4 PASS** at03:10:18, `/tmp/task232-target.log`, and typecheck PASS `/tmp/task232-type.log`. These are intermediate bytes; successful funded semantic model/evidence/durable summary/follow-up/multi-source cleanup and changed browser/full/static/Dev/frozen independent reviews still remain. No AC/Done.
+
+
+## Successful multi-source integration being exercised
+
+Implementer is building the registered chain of two scoped targeted Workflow/native/model orders, two durable summaries, separately funded native Agent create_idea, flat all-source Idea and actual draft handoff, then secondary-only withdrawal with native/content erasure and financial receipts preserved. This chain is not yet claimed PASS. An implementation edge defect was found: GitHub-only context-set was initially treated as Research account retention. The branch now distinguishes actual Research dependencies; until an executed regression is retained, this is a discovered implementation defect, not a claimed historical RED. New GitHub primitive captures gain an optional immutable finite horizon while old populated refs remain readable through the existing contract.
+
+ROOT additionally requires deleting/inactivating the original scoped chat while targeted I/O is unresolved to fence subsequent new paid steps and summary delivery. Already sent model/search usage must still settle once and unknown holds remain. Reuse existing concrete order/run lifecycle; no general cancel engine. Final integration/static/browser/source freeze and independent reviews remain pending.

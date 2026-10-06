@@ -4,7 +4,7 @@ title: 'Gezielte Recherche mit persönlichen Agent-Chats verbinden (P06.04, Teil
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 01:11'
+updated_date: '2026-10-06 01:16'
 labels: []
 dependencies:
   - TASK-23.1
@@ -56,4 +56,6 @@ ROOT multi-source clarification: one selected evidence summary per explicit rese
 Fresh soleimplementer targeted_chat_research Backend Architect sol/medium releasedat977bb28. ROOTapproved concrete context-set source1..10 exact flat primitiveAgentrefs; shared currentproof/minhorizon, no recursiveengine. Actualrun/conversationssourcesflat. Narrow researchCopyBindings evidence->exactconversation/ideaVersion indexedstate forsecondary-copyphysicalcleanup permitted; existinginsert/edit/restore/cleanupnativecallersmustpreserveallhistory/ownership/proof/unknownholds/realexecutionFinished/isDone. FirstactualadmissionRED reported, implementationchecks pending; noAC/Done.
 
 Firstregisteredadmission contractRED /tmp/task232-red.log ->GREEN actualWorkflowemptysearch/nativeimmutabletopic/profileunchanged/exactreplay/conflict/durabletechnicalnativeMessage, one interceptedsearch. Interim107/4PASS03:10:18 /tmp/task232-target.log +typePASS /tmp/task232-type.log. NOTfullJ05/source-disclosure/finalbytes: fundedsemantic/evidence/summary/followup/multi-sourcecleanup/newbrowser/full/static/Dev/freshreviews stillpending. NoAC/Done.
+
+Successfulactualchainbeingimplemented twoScopedWorkflow native+fundedsemantic->durablesummaries->separatelyfundednativeChatcreateIdea->actualIdeaDraft->secondaryonlywithdrawalerasure/retainedfinance; NOTyetPASS. DiscoveredimplementationGH-onlycontextsettreatedasResearchretention fixed, executionREDnotyetclaimed; optionalfiniteGHhorizonNEWcaptures preservesoldrefs. ROOTrequiresoriginalchatdelete/inactivewhiletargetedIOheld fencefurthernewpaidsteps/summarydelivery, retainonceusage/unknownhold viaexistinglifecycle. Finalfull/browser/Dev/freshreviews pending.
 <!-- SECTION:NOTES:END -->
