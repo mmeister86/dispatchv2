@@ -23,13 +23,16 @@ export async function capture(
   try {
     if (!ver || ver.sourceUnavailable) throw new Error("SOURCE_UNAVAILABLE");
     await draftResearchProof(ctx, ver);
-    const rows = await ctx.db
+    const allRows = await ctx.db
       .query("jevAssessments")
       .withIndex("by_draftVersionId", (q) =>
         q.eq("draftVersionId", s.versionId),
       )
       .order("desc")
       .take(20);
+    const rows = allRows.filter(
+      (r) => r.sourceUntil === null || r.sourceUntil > Date.now(),
+    );
     assessment =
       rows.find(
         (r) =>

@@ -32,7 +32,19 @@ import { normalize } from "./normalize";
 import { POST_ANALYSIS } from "../ai/jev/questions/postAnalysis";
 import { extent } from "../content/feedback";
 afterEach(() => vi.useRealTimers());
-async function publishingFixture(metrics = false) {
+async function publishingFixture(
+  metrics = false,
+  base?: Parameters<typeof jevFixture>[1],
+  existingAccountId?: Parameters<typeof jevFixture>[2],
+  original?: {
+    draftId: NonNullable<
+      Awaited<ReturnType<typeof jevFixture>>
+    >["request"]["draftId"];
+    draftVersionId: NonNullable<
+      Awaited<ReturnType<typeof jevFixture>>
+    >["request"]["draftVersionId"];
+  },
+) {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-06T12:00Z"));
   vi.stubEnv(
@@ -40,7 +52,7 @@ async function publishingFixture(metrics = false) {
     Buffer.alloc(32, 1).toString("base64"),
   );
   vi.stubEnv("INTEGRATION_ENCRYPTION_KEY_ID", "synthetic");
-  const f = await jevFixture(true),
+  const f = await jevFixture(true, base, existingAccountId),
     accountId = f.request.accountId;
   await f.t.run(async (ctx) => {
     const a = (await ctx.db.get(accountId))!;
@@ -145,6 +157,10 @@ async function publishingFixture(metrics = false) {
       ...args,
       enabled: true,
     });
+  }
+  if (original) {
+    f.request.draftId = original.draftId;
+    f.request.draftVersionId = original.draftVersionId;
   }
   const approvalId = await f.signed.mutation(api.editorial.approve, {
     ...args,
@@ -891,4 +907,305 @@ test("registered native20s crash watchdog keeps one funded unknown hold and cann
   expect(await f.t.run((ctx) => ctx.db.get(admitted!.attemptId))).toMatchObject(
     { state: "settled", heldMicros: 0, estimatedMicros: 10 },
   );
+});
+
+import { fixture as researchFixture } from "../../tests/research-fixture";
+async function protectedDraft(
+  f: Awaited<ReturnType<typeof publishingFixture>>,
+) {
+  const r = await researchFixture(["x-recent"], 300, f);
+  await r.t.run(async (ctx) =>
+    ctx.db.patch(r.accountId, {
+      providerIdentity: "123",
+      xEvidence: (await ctx.db.get(f.accountId))!.xEvidence,
+    }),
+  );
+  // Use the real source/evidence/handoff chain, attaching to the metrics account's draft below.
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () =>
+      Response.json({
+        data: [
+          {
+            id: "876543",
+            text: "Controlled protected source",
+            created_at: new Date(Date.now() - 60000).toISOString(),
+          },
+        ],
+      }),
+    ),
+  );
+  const orderId = await r.start();
+  await r.t.action(internal.research.execute.execute, {
+    orderId,
+    generation: 1,
+  });
+  const source = (
+    await r.signed.query(api.research.native.results, {
+      workspaceId: r.workspaceId,
+      orderId,
+    })
+  )[0].sources[0];
+  const evidenceId = await r.signed.mutation(api.research.evidence.create, {
+    workspaceId: r.workspaceId,
+    orderId,
+    sourceId: source.sourceId,
+    expectedMaterialHash: source.materialHash,
+    commandKey: "spec-evidence",
+    annotation: {
+      claim: "Controlled source",
+      quote: "Controlled protected source",
+      interpretation: "Controlled",
+      gaps: [],
+      relevance: "Relevant",
+      novelty: "Unknown",
+      uncertainty: "Unverified",
+      freshness: "context-dependent",
+      validityReason: "Bounded",
+      consequentialOrContested: false,
+      eventBased: false,
+    },
+  });
+  const [copy] = await r.signed.mutation(api.research.handoff.consume, {
+    workspaceId: r.workspaceId,
+    accountId: r.accountId,
+    evidenceIds: [evidenceId],
+    intent: "Controlled copy",
+    target: "draft",
+    requestedCount: 1,
+    commandKey: "spec-copy",
+  });
+  return { ...r, source, copy };
+}
+test("TASK30 original feedback horizon is enforced server-side and physically cleared after current budget renewal", async () => {
+  const f = await publishingFixture();
+  const r = await protectedDraft(f);
+  const ver = (await r.t.run((ctx) => ctx.db.get(r.copy.draftVersionId!)))!;
+  const before = Date.now();
+  // Budget expiry is a genuine current-proof horizon, independent from retained source/copy horizon.
+  const budget = await r.t.run(async (ctx) => {
+    const b = (await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", `native:account:${r.accountId}`))
+      .unique())!;
+    await ctx.db.patch(b._id, { expiresAt: before + 10000 });
+    return b;
+  });
+  const d = (await r.t.run((ctx) => ctx.db.get(r.copy.draftId!)))!;
+  await r.signed.mutation(api.editorial.save, {
+    workspaceId: r.workspaceId,
+    draftId: d._id,
+    expectedRevision: d.revision,
+    content: { ...ver.content, text: ["Changed protected text"] },
+    reason: "Spec edit",
+  });
+  const feedback = (
+    await r.signed.query(api.content.feedback.list, {
+      workspaceId: r.workspaceId,
+      accountId: r.accountId,
+    })
+  ).find((x) => x.kind === "edit")!;
+  expect(feedback.sourceUntil).toBe(before + 10000);
+  expect(feedback.editExtent).toBeGreaterThan(0);
+  await r.t.run((ctx) =>
+    ctx.db.patch(budget._id, { expiresAt: budget.expiresAt }),
+  );
+  vi.setSystemTime(before + 10000);
+  const expired = (
+    await r.signed.query(api.content.feedback.list, {
+      workspaceId: r.workspaceId,
+      accountId: r.accountId,
+    })
+  ).find((x) => x._id === feedback._id)!;
+  expect(expired).toMatchObject({ editExtent: null, sourceUnavailable: true });
+  expect(
+    (await r.t.run((ctx) => ctx.db.get(feedback._id)))?.editExtent,
+  ).toBeGreaterThan(0);
+  await r.t.mutation(internal.content.feedback.sweep, { cursor: null });
+  const stored = await r.t.run((ctx) => ctx.db.get(feedback._id));
+  const projected = (
+    await r.signed.query(api.content.feedback.list, {
+      workspaceId: r.workspaceId,
+      accountId: r.accountId,
+    })
+  ).find((x) => x._id === feedback._id)!;
+
+  expect
+    .soft(
+      stored?.editExtent,
+      "expired derived extent must be physically cleared",
+    )
+    .toBeNull();
+  expect
+    .soft(
+      projected.editExtent,
+      "fresh server query must not return expired original derived extent",
+    )
+    .toBeNull();
+});
+
+test("TASK30 original assessment horizon remains binding after renewal across reads, history, cache and fresh analysis", async () => {
+  const f = await publishingFixture();
+  const r = await protectedDraft(f);
+  // Release the first fixture's identity binding so this separate owned account can use the same synthetic provider identity.
+  await r.t.run(async (ctx) => {
+    for (const b of await ctx.db.query("xBindings").collect())
+      await ctx.db.delete(b._id);
+    const c = await ctx.db
+      .query("jevControls")
+      .withIndex("by_key", (q) => q.eq("key", "global"))
+      .unique();
+    await ctx.db.delete(c!._id);
+    const b = await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", "jev:provider"))
+      .unique();
+    await ctx.db.delete(b!._id);
+    const w = await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", `jev:workspace:${f.workspaceId}`))
+      .unique();
+    await ctx.db.delete(w!._id);
+  });
+  const g = await publishingFixture(true, r, r.accountId, {
+    draftId: r.copy.draftId!,
+    draftVersionId: r.copy.draftVersionId!,
+  });
+  const before = Date.now();
+  const budget = await g.t.run(async (ctx) => {
+    const b = (await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", `native:account:${r.accountId}`))
+      .unique())!;
+    await ctx.db.patch(b._id, { expiresAt: before + 10000 });
+    return b;
+  });
+  await analyze(g, "spec-original-horizon");
+  await g.send();
+  await g.confirm();
+  const k = (await knowledge(g))!;
+  expect(k.assessmentId).not.toBeNull();
+  const a = (await g.t.run((ctx) => ctx.db.get(k.assessmentId!)))!;
+  expect(a.sourceUntil).toBe(before + 10000);
+  await g.t.run((ctx) =>
+    ctx.db.patch(budget._id, { expiresAt: budget.expiresAt }),
+  );
+  vi.setSystemTime(before + 10001);
+  const view = await g.signed.query(api.performance.snapshots.overview, g.args);
+  const current = view.posts.find((x) => x.postAttemptId === g.first._id)!;
+  expect
+    .soft(
+      current.knowledge?.assessment,
+      "expired original assessment must be unavailable even if current proof renewed",
+    )
+    .toBeNull();
+  const target = {
+    ...g.args,
+    draftId: g.request.draftId,
+    draftVersionId: g.request.draftVersionId,
+  };
+  expect(
+    (await g.signed.query(api.intelligence.assessments.get, target)).assessment,
+  ).toBeNull();
+  expect(
+    (
+      await g.signed.query(api.intelligence.assessments.history, {
+        ...g.args,
+        draftId: g.request.draftId,
+        paginationOpts: { numItems: 20, cursor: null },
+      })
+    ).page,
+  ).toEqual([]);
+  expect(
+    (
+      await g.signed.mutation(internal.intelligence.assessments.prepare, {
+        ...target,
+        operationKey: "new-expired-cache-probe",
+      })
+    ).cached,
+  ).toBeNull();
+  await expect(
+    g.signed.mutation(internal.intelligence.assessments.prepare, {
+      ...target,
+      operationKey: "spec-original-horizon",
+    }),
+  ).rejects.toThrow("JEV_SOURCE_CHANGED");
+  await analyze(g, "fresh-authorized-renewed-analysis");
+  const fresh = (await g.signed.query(api.intelligence.assessments.get, target))
+    .assessment!;
+  expect(fresh).not.toBeNull();
+  expect(fresh._id).not.toBe(a._id);
+  expect(fresh.sourceUntil).toBeGreaterThan(Date.now());
+  expect(await analyze(g, "fresh-authorized-renewed-analysis")).toMatchObject({
+    cached: true,
+  });
+  expect(
+    (await g.signed.query(api.performance.snapshots.overview, g.args)).posts[0]
+      .knowledge,
+  ).toMatchObject({ assessmentId: a._id, assessment: null });
+  await g.t.mutation(internal.intelligence.assessments.sweep, { cursor: null });
+  expect
+    .soft(
+      await g.t.run((ctx) => ctx.db.get(a._id)),
+      "expired original assessment must be physically removed",
+    )
+    .toBeNull();
+});
+
+test("TASK30 renewed permission cannot make expired assessment available at a new first send", async () => {
+  const f = await publishingFixture();
+  const r = await protectedDraft(f);
+  // Release the first fixture's identity binding so this separate owned account can use the same synthetic provider identity.
+  await r.t.run(async (ctx) => {
+    for (const b of await ctx.db.query("xBindings").collect())
+      await ctx.db.delete(b._id);
+    const c = await ctx.db
+      .query("jevControls")
+      .withIndex("by_key", (q) => q.eq("key", "global"))
+      .unique();
+    await ctx.db.delete(c!._id);
+    const b = await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", "jev:provider"))
+      .unique();
+    await ctx.db.delete(b!._id);
+    const w = await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", `jev:workspace:${f.workspaceId}`))
+      .unique();
+    await ctx.db.delete(w!._id);
+  });
+  const g = await publishingFixture(true, r, r.accountId, {
+    draftId: r.copy.draftId!,
+    draftVersionId: r.copy.draftVersionId!,
+  });
+  const before = Date.now();
+  const budget = await g.t.run(async (ctx) => {
+    const b = (await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", `native:account:${r.accountId}`))
+      .unique())!;
+    await ctx.db.patch(b._id, { expiresAt: before + 10000 });
+    return b;
+  });
+  await analyze(g, "spec-original-horizon");
+  const a = (
+    await g.signed.query(api.intelligence.assessments.get, {
+      ...g.args,
+      draftId: g.request.draftId,
+      draftVersionId: g.request.draftVersionId,
+    })
+  ).assessment!;
+  expect(a.sourceUntil).toBe(before + 10000);
+  await g.t.run((ctx) =>
+    ctx.db.patch(budget._id, { expiresAt: budget.expiresAt }),
+  );
+  vi.setSystemTime(before + 10001);
+  expect(await g.send()).toBe(true);
+  await g.confirm();
+  expect(await knowledge(g)).toMatchObject({
+    assessmentId: null,
+    applicable: false,
+    reason: "NO_ASSESSMENT_AT_PUBLISH",
+  });
 });

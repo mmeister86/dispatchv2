@@ -35,6 +35,7 @@ async function source(
     accountId: Id<"socialAccounts">;
     draftId: Id<"drafts">;
     draftVersionId: Id<"draftVersions">;
+    sourceUntil?: number | null;
   },
 ) {
   requireActiveWorkspace(await ctx.db.get(workspaceId));
@@ -53,7 +54,12 @@ async function source(
     ver.sourceUnavailable
   )
     throw new ConvexError("JEV_SOURCE_CHANGED");
-  const sourceUntil = await draftResearchProof(ctx, ver);
+  const horizon = Math.min(
+    a.sourceUntil ?? Infinity,
+    (await draftResearchProof(ctx, ver)) ?? Infinity,
+  );
+  if (horizon <= Date.now()) throw new ConvexError("JEV_SOURCE_CHANGED");
+  const sourceUntil = Number.isFinite(horizon) ? horizon : null;
   return { draft, ver, sourceUntil };
 }
 export async function request(
@@ -98,7 +104,7 @@ export const prepare = workspaceInternalMutation({
       a.operationKey,
     );
     const x = await current(ctx, r);
-    const cached = await ctx.db
+    const candidate = await ctx.db
       .query("jevAssessments")
       .withIndex(
         "by_workspaceId_and_accountId_and_draftVersionId_and_semanticKey",
@@ -110,6 +116,11 @@ export const prepare = workspaceInternalMutation({
             .eq("semanticKey", x.semanticKey),
       )
       .first();
+    const cached =
+      candidate &&
+      (candidate.sourceUntil === null || candidate.sourceUntil > Date.now())
+        ? candidate
+        : null;
     const old = await ctx.db
       .query("jevAssessmentRequests")
       .withIndex("by_workspaceId_and_actorId_and_operationKey", (q) =>
@@ -121,6 +132,10 @@ export const prepare = workspaceInternalMutation({
       .unique();
     const draft = (await ctx.db.get(a.draftId))!;
     if (old) {
+      await source(ctx, old.workspaceId, {
+        ...old.request,
+        sourceUntil: old.sourceUntil,
+      });
       if (
         old.request.accountId !== r.accountId ||
         old.request.draftId !== r.draftId ||
@@ -176,6 +191,17 @@ export const finish = internalMutation({
       fence.semanticKey !== x.semanticKey
     )
       return null;
+    let retainedSourceUntil;
+    try {
+      retainedSourceUntil = (
+        await source(ctx, r.workspaceId, {
+          ...r,
+          sourceUntil: fence.sourceUntil,
+        })
+      ).sourceUntil;
+    } catch {
+      return null;
+    }
     const receipt = await ctx.db
       .query("aiAttempts")
       .withIndex("by_jev_operation", (q) =>
@@ -212,7 +238,14 @@ export const finish = internalMutation({
             .eq("semanticKey", x.semanticKey),
       )
       .first();
-    if (existing) return existing._id;
+    if (existing) {
+      try {
+        await source(ctx, r.workspaceId, existing);
+        return existing._id;
+      } catch {
+        await ctx.db.delete(existing._id);
+      }
+    }
     const { deterministic } = result;
     return ctx.db.insert("jevAssessments", {
       workspaceId: r.workspaceId,
@@ -238,7 +271,7 @@ export const finish = internalMutation({
         selectionRevision: receipt.selectionRevision,
       },
       createdAt: Date.now(),
-      sourceUntil: x.sourceUntil,
+      sourceUntil: retainedSourceUntil,
       result: {
         outcome: result.outcome,
         answers: result.answers,
@@ -317,7 +350,8 @@ export const get = workspaceQuery({
       rows.find(
         (row) =>
           row.workspaceId === ctx.workspace._id &&
-          row.accountId === a.accountId,
+          row.accountId === a.accountId &&
+          (row.sourceUntil === null || row.sourceUntil > Date.now()),
       ) ?? null;
     try {
       const x = await current(
@@ -330,7 +364,7 @@ export const get = workspaceQuery({
           "current-read-assessment",
         ),
       );
-      const matched = await ctx.db
+      const found = await ctx.db
         .query("jevAssessments")
         .withIndex(
           "by_workspaceId_and_accountId_and_draftVersionId_and_semanticKey",
@@ -342,6 +376,10 @@ export const get = workspaceQuery({
               .eq("semanticKey", x.semanticKey),
         )
         .first();
+      const matched =
+        found && (found.sourceUntil === null || found.sourceUntil > Date.now())
+          ? found
+          : null;
       const receipt = matched ? await ctx.db.get(matched.attemptId) : null;
       const usable =
         matched &&
@@ -372,14 +410,17 @@ export const get = workspaceQuery({
             }
           : null,
         applicable: !!matched,
-        sourceUntil: proof.sourceUntil,
+        sourceUntil: (
+          await source(ctx, ctx.workspace._id, matched ?? retained ?? a)
+        ).sourceUntil,
       };
     } catch {
       return {
         assessment: retained,
         recommendations: null,
         applicable: false,
-        sourceUntil: proof.sourceUntil,
+        sourceUntil: (await source(ctx, ctx.workspace._id, retained ?? a))
+          .sourceUntil,
       };
     }
   },
@@ -494,7 +535,10 @@ export const sweepRequests = internalMutation({
     for (const row of batch.page) {
       let remove = row.createdAt < Date.now() - 30 * 86400000;
       try {
-        await source(ctx, row.workspaceId, row.request);
+        await source(ctx, row.workspaceId, {
+          ...row.request,
+          sourceUntil: row.sourceUntil,
+        });
       } catch {
         remove = true;
       }

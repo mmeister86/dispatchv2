@@ -97,6 +97,7 @@ export const list = workspaceQuery({
           r.sourceUntil ?? Infinity,
           (await draftResearchProof(ctx, ver)) ?? Infinity,
         );
+        if (horizon <= Date.now()) throw new Error();
         sourceUntil = Number.isFinite(horizon) ? horizon : null;
       } catch {
         valid = false;
@@ -141,6 +142,8 @@ export const sweep = internalMutation({
       .paginate({ cursor: a.cursor, numItems: 25 });
     for (const r of batch.page) {
       try {
+        if (r.sourceUntil !== null && r.sourceUntil <= Date.now())
+          throw new Error();
         const ver = await ctx.db.get(r.versionId);
         if (!ver || ver.sourceUnavailable) throw new Error();
         await draftResearchProof(ctx, ver);

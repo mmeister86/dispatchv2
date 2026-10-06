@@ -496,6 +496,7 @@ export const overview = workspaceQuery({
             assessment.sourceUntil ?? Infinity,
             (await draftResearchProof(ctx, ver)) ?? Infinity,
           );
+          if (horizon <= Date.now()) throw new Error();
           assessment = {
             ...assessment,
             sourceUntil: Number.isFinite(horizon) ? horizon : null,
