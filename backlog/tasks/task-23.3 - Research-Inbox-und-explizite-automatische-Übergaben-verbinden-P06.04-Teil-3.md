@@ -4,7 +4,7 @@ title: 'Research-Inbox und explizite automatische Übergaben verbinden (P06.04, 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 02:04'
+updated_date: '2026-10-06 02:11'
 labels: []
 dependencies:
   - TASK-23.2
@@ -54,4 +54,6 @@ ROOT release after final23.2 SOURCEeb4feb0 freshSPEC/QUALITY+sameUIcopydeltaPASS
 ROOT read first contractRED /tmp/task23-3-inbox-original-red.log03:59:11 missing public evidence.inbox, not historical privacy exposure. RetainedGREEN /tmp/task23-3-inbox-green.log03:59:43 actual9/9 tests1file, current compound-index paged Inbox and stable disposition replay. Initial20 reported count mistaken, implementer acknowledged9. Intermediate bytes; attachment/lineage/marked auto/UI/full/Dev/freeze/reviews remain. No AC/Done.
 
 ROOT read attachGREEN /tmp/task23-3-attach-green.log04:00:34 actual10/10 tests1file, genuine native message/receipt and current proof barrier. Markedauto originalRED /tmp/task23-3-auto-original-red.log04:02:30 rejects explicit new option under old validator, executed before auto implementation. Lineage code was written before tests; future lineage controls validation-only, not retroactive TDDRED. Current native/material32/all descendant proof and copy order-target reported, tests pending. ROOT explicit negative: captured Owner/Admin demoted to Editor cannot obtain auto content authority via ordinary edit rights, original usage settles once. No AC/Done.
+
+ROOT read markedautoJ04 firstGREEN04:03:33 oneactual test: waits humanReview,1 unapprovedDraft undermax3, secondreview nofill/dup. Intermediate229/5PASS04:03:43/types. Actual React InboxGREEN mockedtransport stablehandoff/attach/lostack/currentexpiry. EPERM log environment only; actualmissingUI RED separate actual-original-red. New6/1 authority+lineage controlsPASS04:08:09; targetedFixture undefined earlierlog fixture error, notproductRED. Genuine noGH parent2-source native+semantic→newtopic native+semantic→Draft finitehorizon/secondarywithdrawal/actualSDKcleanup4settledreceipts PASS04:10:08. Lineage validation implementation-first honestly. Auto insertion catch boundary corrected for atomicity; full/static pending. No AC/Done.
 <!-- SECTION:NOTES:END -->
