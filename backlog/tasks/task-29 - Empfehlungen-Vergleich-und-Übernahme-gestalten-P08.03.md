@@ -4,7 +4,7 @@ title: 'Empfehlungen, Vergleich und Übernahme gestalten (P08.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 06:01'
+updated_date: '2026-10-06 06:08'
 labels:
   - p08
   - jev
@@ -45,11 +45,11 @@ Manuelle Analyse und optionales Debouncing (Startwert 800 ms) mit Mindesttextlä
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 J07 funktioniert.
-- [ ] #2 Ein Klick auf „Analysieren“ verändert keinen Text.
-- [ ] #3 Übernommene Optimierung ersetzt keinen geplanten Inhalt und übernimmt keine frühere Freigabe.
-- [ ] #4 UI-Fälle für niedrige Confidence, unvollständige Daten, laufende/veraltete Analyse und Providerausfall sind geprüft; unbelegte Audience-Passung wird nicht angezeigt.
-- [ ] #5 Schnelle Texteingabe erzeugt begrenzte Analysen; eine ältere Antwort überschreibt keine aktuelle Bewertung, und Eingabe bleibt bedienbar.
+- [x] #1 J07 funktioniert.
+- [x] #2 Ein Klick auf „Analysieren“ verändert keinen Text.
+- [x] #3 Übernommene Optimierung ersetzt keinen geplanten Inhalt und übernimmt keine frühere Freigabe.
+- [x] #4 UI-Fälle für niedrige Confidence, unvollständige Daten, laufende/veraltete Analyse und Providerausfall sind geprüft; unbelegte Audience-Passung wird nicht angezeigt.
+- [x] #5 Schnelle Texteingabe erzeugt begrenzte Analysen; eine ältere Antwort überschreibt keine aktuelle Bewertung, und Eingabe bleibt bedienbar.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -94,4 +94,6 @@ Originalwriter correctionfreeze bc80b2d4 exact2paths/cumulative13 verifiedcurren
 CorrectionSOURCE43647691ca5c2f8e377f452626b213b25d6613ad tree d0869f3cbfac8c1e594523f9a7705d03a866b7cb scoped2paths/cumulative13 verifiedROOT current+committedSHA/exactpathset/tree/clean; commitreceipt845af49030,571bytes/all71artifacts. SourcewindowCLOSED; SAMESPEC recheck dispatched preservingfirst failedreceipt and originalexploit. Separatefinalreceipt/4authoritycontrolsunchanged+newcorrectedinvariant; distinctQUALITYonlyafteractualPASS. NoAC/manualDone yet.
 
 SAME finalSPEC softwarePASSf1347128 receipt12,153bytes; ROOTreadfull/verified14reviewerartifactSHAs and7owncontrols:4unchanged(1intentionalexploit skipped)07:57:31, separatetildeinvariant1PASS07:57:32, causalCURRENTnativewithdraw/expiry2PASS08:00:05. OriginaloldbaseNEWdenials also revisionstale; new2 proves currenteligibleproposal before sourcewithdrawal then denied whileversionstillcurrent; finance/physicalcleanup/no extra savedversion/receipt pass. Originalfailedreceipt/RED intact; oldacceptedproofACK runtime notclaimed. Final13+71integrity clean. Fresh distinct AstraCodeReviewer recommendation_quality successfullyspawned afterPASS; sourcefrozen/manualDone/QUALITYacceptance pending.
+
+Bounded software acceptance at corrected SOURCE43647691/tree d0869f3c after independent final SPEC7 own controls and fresh distinct QUALITY3 own controls PASS08:03:08. ROOT read full QUALITY receipt9bc14d09 and actual controls/config/log; verified four reviewer artifacts,13 current/committed source and71 writer artifacts; clean tree/index. Historical old-proof accepted receipt compatibility uses explicit historical database fixture executing current registered replay, not old live runtime. Current role/workspace and malformed/fractional/NaN input controls pass. Full674/39/static/codegen/existingEUDev07:52:14 and explicitly mocked styled Composer evidence; AC1–5 checked for bounded software only. Original tilde RED/correction retained. Manual UI/Done, human Eval calibration, live provider and actual EU approval remain open; In Progress. Continue TASK30 fresh sole writer, no unit stop.
 <!-- SECTION:NOTES:END -->
