@@ -74,6 +74,17 @@ try {
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("http://127.0.0.1:5174/intelligence-fixture");
+  await expect(page.getByText("Lokale Demo", { exact: true })).toBeVisible();
+  await page.getByRole("tab", { name: "Algorithmusprofile" }).click();
+  await expect(
+    page.getByText("Gespeicherte Profile", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Lokale Demo", { exact: true })).toHaveCount(0);
+  await page.getByRole("tab", { name: "Systemzustand" }).click();
+  await expect(page.getByText("Lokale Demo", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Gespeicherte Profile", { exact: true }),
+  ).toHaveCount(0);
   await page.getByRole("tab", { name: "Algorithmusprofile" }).click();
   await expect(
     page.getByText("Intelligence-Profile werden geladen …"),
@@ -291,7 +302,12 @@ try {
     ),
   ).toBeVisible();
   await page.goto("http://127.0.0.1:5174/intelligence-fixture?demo=1");
+  await expect(page.getByText("Lokale Demo", { exact: true })).toBeVisible();
   await page.getByRole("tab", { name: "Algorithmusprofile" }).click();
+  await expect(page.getByText("Lokale Demo", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Gespeicherte Profile", { exact: true }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("button", {
       name: "Öffentlichen Snapshot als Kandidat anlegen",

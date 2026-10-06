@@ -66,6 +66,7 @@ const label = {
 export function OperationsPage() {
   const { state } = useStore();
   const admin = state.role === "Owner" || state.role === "Admin";
+  const [tab, setTab] = useState("health");
   return (
     <>
       <PageHeader
@@ -75,11 +76,13 @@ export function OperationsPage() {
         actions={
           <Status>
             <Activity size={12} />
-            Lokale Demo
+            {!demoMode && tab === "algorithm"
+              ? "Gespeicherte Profile"
+              : "Lokale Demo"}
           </Status>
         }
       />
-      <Tabs defaultValue="health">
+      <Tabs value={tab} onValueChange={setTab}>
         <TabsList className="h-auto flex-wrap justify-start mb-6">
           <TabsTrigger value="health">Systemzustand</TabsTrigger>
           <TabsTrigger value="pilot">Pilot-Auswertung</TabsTrigger>
