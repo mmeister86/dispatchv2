@@ -28,7 +28,7 @@ import { resultContract } from "../ai/jev/resultFields";
 import { draftResearchProof } from "../research/contentProof";
 import { assessmentDoc, targetFields } from "./assessmentFields";
 import type { Doc, Id } from "../_generated/dataModel";
-async function source(
+export async function source(
   ctx: QueryCtx | MutationCtx,
   workspaceId: Id<"workspaces">,
   a: {

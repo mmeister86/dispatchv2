@@ -1,3 +1,4 @@
+import { CalibrationReferences } from "@/features/intelligence/calibration";
 import { IntelligenceProfiles } from "@/features/intelligence/profiles";
 import { demoMode } from "@/lib/auth-client";
 import { useState } from "react";
@@ -64,6 +65,45 @@ const label = {
   retrying: "Wiederholung läuft",
 };
 export function OperationsPage() {
+  return demoMode ? <DemoOperationsPage /> : <RealOperationsPage />;
+}
+function RealOperationsPage() {
+  return (
+    <>
+      <PageHeader
+        eyebrow="Unter der Oberfläche"
+        title="Betrieb & Qualität"
+        description="Gespeicherte Profile und nachvollziehbare Referenzen. Lokale Kalibrierung standardmäßig aus."
+        actions={<Status>Gespeicherte Nachweise</Status>}
+      />
+      <Tabs defaultValue="calibration">
+        <TabsList className="h-auto flex-wrap justify-start mb-6">
+          <TabsTrigger value="health">Systemzustand</TabsTrigger>
+          <TabsTrigger value="pilot">Pilot-Auswertung</TabsTrigger>
+          <TabsTrigger value="calibration">Kalibrierungsreferenzen</TabsTrigger>
+          <TabsTrigger value="algorithm">Algorithmusprofile</TabsTrigger>
+        </TabsList>
+        <TabsContent value="health">
+          <Section title="Systemzustand">
+            <p>Echte Systemzustandsprüfung noch nicht verfügbar (TASK-31).</p>
+          </Section>
+        </TabsContent>
+        <TabsContent value="pilot">
+          <Section title="Pilot-Auswertung">
+            <p>Echte Pilot-Auswertung noch nicht verfügbar (TASK-35).</p>
+          </Section>
+        </TabsContent>
+        <TabsContent value="calibration">
+          <CalibrationReferences />
+        </TabsContent>
+        <TabsContent value="algorithm">
+          <IntelligenceProfiles />
+        </TabsContent>
+      </Tabs>
+    </>
+  );
+}
+function DemoOperationsPage() {
   const { state } = useStore();
   const admin = state.role === "Owner" || state.role === "Admin";
   const [tab, setTab] = useState("health");

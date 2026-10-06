@@ -788,7 +788,7 @@ export const timeout = internalMutation({
   },
 });
 
-async function retainedSnapshotHorizon(
+export async function retainedSnapshotHorizon(
   ctx: QueryCtx,
   row: Doc<"performanceSnapshots">,
 ) {

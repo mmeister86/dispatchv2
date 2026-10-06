@@ -540,7 +540,7 @@ export function AppShell() {
             >
               <div key={state.activeWorkspaceId}>
                 {demoMode ||
-                /^\/(overview|settings|calendar|drafts|ideas|signals|plans|research|agent|analytics|media)(\/|$)/.test(
+                /^\/(overview|settings|calendar|drafts|ideas|signals|plans|research|agent|analytics|media|operations)(\/|$)/.test(
                   location.pathname,
                 ) ? (
                   <Outlet />

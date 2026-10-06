@@ -77,6 +77,8 @@ import type * as media_uploads from "../media/uploads.js";
 import type * as media_validation from "../media/validation.js";
 import type * as performance_backfill from "../performance/backfill.js";
 import type * as performance_baselines from "../performance/baselines.js";
+import type * as performance_calibration from "../performance/calibration.js";
+import type * as performance_calibrationFields from "../performance/calibrationFields.js";
 import type * as performance_capabilities from "../performance/capabilities.js";
 import type * as performance_collect from "../performance/collect.js";
 import type * as performance_fields from "../performance/fields.js";
@@ -201,6 +203,8 @@ declare const fullApi: ApiFromModules<{
   "media/validation": typeof media_validation;
   "performance/backfill": typeof performance_backfill;
   "performance/baselines": typeof performance_baselines;
+  "performance/calibration": typeof performance_calibration;
+  "performance/calibrationFields": typeof performance_calibrationFields;
   "performance/capabilities": typeof performance_capabilities;
   "performance/collect": typeof performance_collect;
   "performance/fields": typeof performance_fields;

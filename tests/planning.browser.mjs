@@ -504,6 +504,7 @@ try {
     "/agent",
     "/analytics",
     "/media",
+    "/operations",
   ]) {
     await page.evaluate((path) => {
       window.path = path;
@@ -513,7 +514,7 @@ try {
   }
   for (const path of [
     "/team",
-    "/operations",
+    "/operations-invented",
     "/experiments",
     "/repurpose",
     "/trends",
@@ -531,7 +532,7 @@ try {
     await expect(page.getByTestId("route-marker")).toHaveCount(0);
   }
   console.log(
-    "Actual AppShell gate: reviewed route Outlet markers accessible; unimplemented Team/Operations/Experiments/Repurpose/Trends and prefix collision remain guarded. Child markers are stubs; Plans child above is actual mounted source.",
+    "Actual AppShell gate: reviewed route Outlet markers accessible; unimplemented Team/Experiments/Repurpose/Trends and operations prefix collision remain guarded. Operations child marker is STUB, not E2E. Child markers are stubs; Plans child above is actual mounted source.",
   );
   expect(errors).toEqual([]);
   console.log(

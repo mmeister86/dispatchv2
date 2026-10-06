@@ -1,3 +1,7 @@
+import {
+  purposeFields as calibrationPurposeFields,
+  referenceFields as calibrationReferenceFields,
+} from "./performance/calibrationFields";
 import { planFields, itemFields } from "./planning/fields";
 import { contentPerformancePolicyFields } from "./content/performanceFields";
 import {
@@ -104,6 +108,31 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  calibrationPurposes: defineTable(calibrationPurposeFields)
+    .index("by_workspaceId_and_accountId_and_version", [
+      "workspaceId",
+      "accountId",
+      "version",
+    ])
+    .index("by_workspaceId_and_accountId_and_createdAt", [
+      "workspaceId",
+      "accountId",
+      "createdAt",
+    ]),
+  calibrationReferences: defineTable(calibrationReferenceFields)
+    .index("by_workspaceId_and_accountId_and_kind_and_createdAt", [
+      "workspaceId",
+      "accountId",
+      "kind",
+      "createdAt",
+    ])
+    .index("by_workspaceId_and_actorId_and_commandKey", [
+      "workspaceId",
+      "actorId",
+      "commandKey",
+    ])
+    .index("by_purposeId", ["purposeId"])
+    .index("by_expiresAt", ["expiresAt"]),
   contentPlans: defineTable(planFields)
     .index("by_workspaceId_and_accountId_and_createdAt", [
       "workspaceId",
@@ -542,6 +571,12 @@ export default defineSchema({
       "workspaceId",
       "accountId",
       "stage",
+    ])
+    .index("by_workspaceId_and_accountId_and_stage_and_confirmedAt", [
+      "workspaceId",
+      "accountId",
+      "stage",
+      "confirmedAt",
     ]),
   xMediaCheckpoints: defineTable(checkpointFields)
     .index("by_scheduleId_and_generation_and_mediaPosition", [

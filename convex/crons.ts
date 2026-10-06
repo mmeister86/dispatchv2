@@ -55,4 +55,10 @@ crons.interval(
   internal.performance.history.expire,
   {},
 );
+crons.interval(
+  "Local calibration reference cleanup",
+  { minutes: 15 },
+  internal.performance.calibration.sweep,
+  { cursor: null },
+);
 export default crons;
