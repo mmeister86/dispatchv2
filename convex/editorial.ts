@@ -1234,15 +1234,69 @@ export const cancel = workspaceMutation({
   },
 });
 
-async function occupied(
+export async function scheduleBlocksSlot(
+  ctx: QueryCtx,
+  row: Doc<"schedules">,
+  attemptsBudget = { remaining: 100 },
+  readBudget?: { remaining: number },
+) {
+  if (
+    [
+      "scheduled",
+      "publishing",
+      "partially_published",
+      "reconciliation_required",
+      "published",
+    ].includes(row.state) ||
+    row.publishedCount > 0 ||
+    row.externalPosts?.length ||
+    (row.confirmedAt && row.purpose !== "first_write_verification")
+  )
+    return true;
+  if (readBudget && readBudget.remaining <= 0)
+    throw new ConvexError("SLOT_SCAN_LIMIT");
+  const limit = Math.min(
+    attemptsBudget.remaining,
+    readBudget?.remaining ?? 100,
+  );
+  const attempts = await ctx.db
+    .query("xPostAttempts")
+    .withIndex("by_scheduleId_and_generation_and_position", (q) =>
+      q.eq("scheduleId", row._id),
+    )
+    .take(limit + 1);
+  if (attempts.length > limit) throw new ConvexError("SLOT_SCAN_LIMIT");
+  attemptsBudget.remaining -= attempts.length;
+  if (readBudget) readBudget.remaining -= attempts.length;
+  return attempts.some(
+    (a) =>
+      ["confirmed", "sending", "unknown"].includes(a.stage) ||
+      a.externalId ||
+      a.confirmedAt,
+  );
+}
+export async function occupied(
   ctx: QueryCtx,
   workspaceId: Id<"workspaces">,
   accountId: Id<"socialAccounts">,
   at: number,
   except?: Id<"schedules">,
+  readBudget?: { remaining: number },
 ) {
-  for (const state of ["scheduled", "publishing"] as const) {
-    const rows = await ctx.db
+  if (readBudget && readBudget.remaining <= 0)
+    throw new ConvexError("SLOT_SCAN_LIMIT");
+  // Preserve indexed certainty even when harmless cancelled history exceeds the scan cap.
+  for (const state of [
+    "scheduled",
+    "publishing",
+    "partially_published",
+    "reconciliation_required",
+    "published",
+  ] as const) {
+    if (readBudget && readBudget.remaining <= 0)
+      throw new ConvexError("SLOT_SCAN_LIMIT");
+    const limit = Math.min(2, readBudget?.remaining ?? 2);
+    const active = await ctx.db
       .query("schedules")
       .withIndex("by_workspaceId_and_accountId_and_at_and_state", (q) =>
         q
@@ -1251,9 +1305,26 @@ async function occupied(
           .eq("at", at)
           .eq("state", state),
       )
-      .take(2);
-    if (rows.some((x) => x._id !== except)) return true;
+      .take(limit);
+    if (readBudget) readBudget.remaining -= active.length;
+    if (active.some((s) => s._id !== except)) return true;
   }
+  const limit = Math.min(100, readBudget?.remaining ?? 100);
+  const rows = await ctx.db
+    .query("schedules")
+    .withIndex("by_workspaceId_and_accountId_and_at", (q) =>
+      q.eq("workspaceId", workspaceId).eq("accountId", accountId).eq("at", at),
+    )
+    .take(limit + 1);
+  if (rows.length > limit) throw new ConvexError("SLOT_SCAN_LIMIT");
+  if (readBudget) readBudget.remaining -= rows.length;
+  const attemptsBudget = { remaining: 100 };
+  for (const row of rows)
+    if (
+      row._id !== except &&
+      (await scheduleBlocksSlot(ctx, row, attemptsBudget, readBudget))
+    )
+      return true;
   return false;
 }
 

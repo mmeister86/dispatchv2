@@ -1,4 +1,4 @@
-import type { MutationCtx } from "../_generated/server";
+import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { internalMutation } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { orderLiability } from "./pipelineAccess";
@@ -227,7 +227,7 @@ export async function consumeEvidence(
 }
 
 export async function proposalFamily(
-  ctx: MutationCtx,
+  ctx: QueryCtx,
   workspaceId: Id<"workspaces">,
   e: Doc<"researchEvidence">,
 ) {

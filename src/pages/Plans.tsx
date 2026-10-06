@@ -1,3 +1,5 @@
+import { demoMode } from "@/lib/auth-client";
+import { RealPlans } from "@/features/plans/plans";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import {
@@ -42,6 +44,9 @@ interface Proposal {
   status: "proposed" | "accepted" | "rejected" | "expired";
 }
 export function PlansPage() {
+  return demoMode ? <DemoPlans /> : <RealPlans />;
+}
+function DemoPlans() {
   const { state, mutate } = useStore();
   const [proposals, setProposals] = useWorkspaceLocalState<Proposal[]>(
     "plan-proposals",

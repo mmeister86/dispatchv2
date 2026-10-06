@@ -1,3 +1,4 @@
+import { planFields, itemFields } from "./planning/fields";
 import { contentPerformancePolicyFields } from "./content/performanceFields";
 import {
   historyPolicyFields,
@@ -103,6 +104,20 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  contentPlans: defineTable(planFields)
+    .index("by_workspaceId_and_accountId_and_createdAt", [
+      "workspaceId",
+      "accountId",
+      "createdAt",
+    ])
+    .index("by_workspaceId_and_actorId_and_commandKey", [
+      "workspaceId",
+      "actorId",
+      "commandKey",
+    ]),
+  contentPlanItems: defineTable(itemFields)
+    .index("by_planId", ["planId"])
+    .index("by_versionId", ["versionId"]),
   performanceContentPolicies: defineTable(contentPerformancePolicyFields)
     .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
     .index("by_workspaceId_and_accountId_and_version", [

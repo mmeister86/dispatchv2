@@ -199,7 +199,7 @@ function Logo() {
     </Link>
   );
 }
-function AppShell() {
+export function AppShell() {
   const { state, setState, selectWorkspace, createDraft, selectAccount } =
     useStore();
   const nav = useNavigate();
@@ -540,7 +540,9 @@ function AppShell() {
             >
               <div key={state.activeWorkspaceId}>
                 {demoMode ||
-                /^\/(overview|settings)(\/|$)/.test(location.pathname) ? (
+                /^\/(overview|settings|calendar|drafts|ideas|signals|plans|research|agent|analytics|media)(\/|$)/.test(
+                  location.pathname,
+                ) ? (
                   <Outlet />
                 ) : (
                   <EmptyState
