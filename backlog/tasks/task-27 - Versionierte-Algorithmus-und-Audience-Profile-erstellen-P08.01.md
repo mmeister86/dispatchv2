@@ -4,7 +4,7 @@ title: Versionierte Algorithmus- und Audience-Profile erstellen (P08.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 03:25'
+updated_date: '2026-10-06 05:22'
 labels:
   - p08
   - jev
@@ -45,11 +45,11 @@ Fragesätze, aufgelöstes Modell soweit verfügbar, Normalisierung, Algorithmus-
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Eine Analyse referenziert genau einen aktiven Profilstand.
-- [ ] #2 Profilwechsel verändern historische Predictions nicht.
+- [x] #1 Eine Analyse referenziert genau einen aktiven Profilstand.
+- [x] #2 Profilwechsel verändern historische Predictions nicht.
 - [x] #3 Fehlendes Audience-Profil führt zu ehrlicher unvollständiger Bewertung, nicht zu erfundener Passung.
 - [x] #4 Eine Zuordnung dokumentiert für jede bisherige Dimension, ob sie Jev, deterministische Logik, ein eigenes Audience-Signal oder spätere gemessene Analytics benötigt.
-- [ ] #5 Frage-/Formel-/Policy-Änderungen erhalten neue Versionen; fehlende Signale und niedrige Confidence besitzen definierte Zustände.
+- [x] #5 Frage-/Formel-/Policy-Änderungen erhalten neue Versionen; fehlende Signale und niedrige Confidence besitzen definierte Zustände.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -98,4 +98,6 @@ Fresh independent SPEC PASS (9 registered +4 adversarial) and QUALITY PASS (9 re
 Minor label-only SOURCE2a8603b frozen exact2 Operations/browser paths; genuine browser RED before fix, separate new badge transition/Demo assertions GREEN plus types/format/build/bundle. ROOT hashes verified; remaining11 source unchanged, no repeated backend deployment claimed. Same SPEC correction dispatched; same QUALITY next only PASS. No AC/Done yet.
 
 Final software profile boundary accepted after original fresh SPEC/QUALITY and same-reviewer correctionPASS; source2a8603b/original4f757835. AC3 truthful unavailable Audience projection and AC4 seven-dimension mapping checked software. AC1/2 genuine analysis/historical assessment consumer and executable AC5 remain pending28.2/3. No fake measured fit/model/reach/invoice/live/manual acceptance, In Progress/no Done. Fresh28.1 adapter writer next.
+
+Actual reviewed28.2/28.3 consumer completes software AC1/2/5: one exact selected immutable algorithm/Audience pair consumed by real analyzer; changed selected profile retains old normalized historical math; separately versioned executable questions/formula/policy with missing/lowConfidence definitions. SOURCE93270d5 fresh SPEC/QUALITY PASS, full647/38. Prior profileAC3/4 remain valid. No measured Audience/reach, human calibration, EU/provider/manual acceptance or Done implied.
 <!-- SECTION:NOTES:END -->

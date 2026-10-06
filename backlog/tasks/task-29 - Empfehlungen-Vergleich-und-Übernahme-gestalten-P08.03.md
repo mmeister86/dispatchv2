@@ -4,7 +4,7 @@ title: 'Empfehlungen, Vergleich und Übernahme gestalten (P08.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 04:34'
+updated_date: '2026-10-06 05:22'
 labels:
   - p08
   - jev
@@ -76,4 +76,6 @@ Manuelle Analyse und optionales Debouncing (Startwert 800 ms) mit Mindesttextlä
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence. Manual mock analysis does not change text; up to three explained recommendations with before/after review, explicit acceptance into a new unapproved version. Grenze: No generated recommendations, reach guarantee or automatic rewrite. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 ROOT preparation only, implementation waits accepted28.3 actual API. Read-only requirement-grounded design advice /tmp/dispatch-task29-minimal-design-advice.md SHAb236f964c5ea49d6500d1255bca09fbfa524bd2feb2642e878587fceaaee5b3d reviewed complete. Actual TASK29/J07 does not mandate arbitrary generative rewriting. Choose conditional structural/accessibility recommendations: precise adjacent byte-identical duplicate, explicitly selected safe standalone token reduction, human-entered missing image alt; at most3 and zero when no safe edit, fixed actual reasons permitted. Product limits explicit, no demo transform/semantic guarantee. Exact current server rederivation and shared editorial-save transaction, idempotent ACK, full diff, first adoption invalidates siblings; no old approval or planned snapshot replacement. Future brief /tmp/dispatch-task29-implementation-brief.md SHA f3d1dbd799b90616daae0468f70658f779f1566e69ca4b99f129bff6ad5b1c8d. No code/live/provider/manual acceptance.
+
+Released after reviewed28.3 SOURCE93270d5 exact18 normalizedassessment/currenteligibility APIs, fresh SPEC09987505/QUALITY08729df0 PASS/full647/38. Consume actualanalyze/get/history and sharededitorialsave transaction. Brief f3d1dbd7/designb236f964; currentpinned twitter-text UTF16/fulltoken API source +slice control docs d30a3a9b. Existing normalmedia saves alreadyrequire nonblankalt; do not weaken validation to manufacture missingalt recommendations, onlyconditionallegacy recovery. Atmost3 genuine safe edits/zero allowed; source/current exactbinding/idempotent explicitnewversion/fullorderedfrozendiff, no oldapproval/schedule replacement/semanticreach promises. Freshsolewriter then frozenindependentSPEC/QUALITY; ROOTownsmetadata/manualDoneopen.
 <!-- SECTION:NOTES:END -->
