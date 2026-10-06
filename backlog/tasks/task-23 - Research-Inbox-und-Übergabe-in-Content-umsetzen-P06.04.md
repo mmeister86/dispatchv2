@@ -4,7 +4,7 @@ title: Research Inbox und Übergabe in Content umsetzen (P06.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 23:38'
+updated_date: '2026-10-06 02:49'
 labels:
   - p06
   - r2
@@ -36,9 +36,9 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 J04 und J05 funktionieren ohne GitHub-Anschluss.
-- [ ] #2 Aus einer Forschungsquelle entsteht höchstens die ausdrücklich gewünschte Zahl von Vorschlägen.
-- [ ] #3 Inhalte bleiben vor Veröffentlichung freigabepflichtig.
+- [x] #1 J04 und J05 funktionieren ohne GitHub-Anschluss.
+- [x] #2 Aus einer Forschungsquelle entsteht höchstens die ausdrücklich gewünschte Zahl von Vorschlägen.
+- [x] #3 Inhalte bleiben vor Veröffentlichung freigabepflichtig.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -62,4 +62,6 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /research, /ideas, /drafts/:id, /agent. Inbox filtering/detail, archive/ignore/update, ask-agent transition, create idea/draft and retained source chain; duplicate local handoffs reopen existing objects. Grenze: Updating a demo source changes local metadata; it performs no new research. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Read-only actual23map /tmp/dispatch-research-inbox-current-code-map.md basedaccepted22.2source3b51807. RealpipelineInbox alreadydisplaysresults butonlyresumeaction; ignore/archive/research/chat/idea remainDemo. Existing18/19 sources acceptGitHub/note notResearch; research→note wouldlosecurrentprimary/secondarysource/purpose/expiryguards. AutoHandoff literalfalse acrossschema/config/projection, J05 needsactualtargetedorder notjustchatcontext. ROOT decomposed23 intoCLIchildren23.1→23.2→23.3 ToDo withexplicitAC/DoD/manualconfirmation; no backendimplementationreleasebefore22.3review. Reusecurrentexistingprimitive/sourceguards/physicalcomponentfixtures, no genericbus/provider/newInboxstore.
+
+ROOT read complete freshQUALITY PASS SHAa877ff2feaca7bb4bec0605d43d31fb036a479eaa238bc4d014477f73ca98fba entire24pathscope SOURCEd9caca72 vsBASE734dce2, all24hashesverifiedtwice/noCriticalImportantactionableMinor. Independent95/2PASS04:46:04 +3automatic negativecontrolsPASS04:47:02 expiredhumanassessment/unattestedsupport/archivedproposal noIdeasDrafts/selection absent/exactfinance unchanged. SAME SPEC correctionPASS includesunchangedoriginal3probes04:43:26/95registered04:43:27. Corrected594full/static/codegen/EUDev04:41:35 andfiveunchangedUIbrowserreceipts honestlyreused. All23.3AC1–4 SOFTWARE checked; actualregistered/intercepted transports plusmockedConvexbrowser, notlive/authenticated/manual. Parent23AC1–3software checked noautomaticapproval/schedule/publish. BothremainInProgress/DoDmanual open. NextfreshTASK27released profileboundaryonly; noanalyzer/EUactivation.
 <!-- SECTION:NOTES:END -->

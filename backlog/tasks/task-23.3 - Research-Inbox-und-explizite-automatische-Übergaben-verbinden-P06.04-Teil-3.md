@@ -4,7 +4,7 @@ title: 'Research-Inbox und explizite automatische Übergaben verbinden (P06.04, 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 02:45'
+updated_date: '2026-10-06 02:49'
 labels: []
 dependencies:
   - TASK-23.2
@@ -23,10 +23,10 @@ Teilpaket zu TASK23/J04/J05: vorhandene echte Research- und Agent-Oberflächen m
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Account-Inbox und Details zeigen tatsächliche aktuelle Quellen, Zeitprovenienz, Perspektive, Unsicherheit und getrennte Lauf- und Reviewzustände mit begrenzter Pagination.
-- [ ] #2 Ignorieren, Archivieren, echte Nachrecherche, Agent befragen und Idee-/Entwurf-Übergaben sind awaited Server-Kommandos mit echten Ergebnislinks und erhaltener Eingabe bei Fehlern.
-- [ ] #3 Automatische Content-Übergabe erfordert neue explizite aktuelle versionierte Profiloption und begrenzte Anzahl; alte Profile/Aufträge werden nicht still aktiviert, Wiederholung dupliziert keine Vorschläge.
-- [ ] #4 J04 und J05 laufen in echten registrierten Domain- und betroffenen Browserprüfungen ohne GitHub; kein Inhalt wird automatisch freigegeben, geplant oder veröffentlicht.
+- [x] #1 Account-Inbox und Details zeigen tatsächliche aktuelle Quellen, Zeitprovenienz, Perspektive, Unsicherheit und getrennte Lauf- und Reviewzustände mit begrenzter Pagination.
+- [x] #2 Ignorieren, Archivieren, echte Nachrecherche, Agent befragen und Idee-/Entwurf-Übergaben sind awaited Server-Kommandos mit echten Ergebnislinks und erhaltener Eingabe bei Fehlern.
+- [x] #3 Automatische Content-Übergabe erfordert neue explizite aktuelle versionierte Profiloption und begrenzte Anzahl; alte Profile/Aufträge werden nicht still aktiviert, Wiederholung dupliziert keine Vorschläge.
+- [x] #4 J04 und J05 laufen in echten registrierten Domain- und betroffenen Browserprüfungen ohne GitHub; kein Inhalt wird automatisch freigegeben, geplant oder veröffentlicht.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -72,4 +72,6 @@ ROOT read genuine correctionRED /tmp/task23-3-correction-original-red.log04:38:1
 ROOT independently reverified corrected SOURCE d9caca72ba34ae2f90ab9e98bf18965defcbb89e exact2 path bytes against rawinventorye7c1d9b66925e3c4532058fac67ba28a5ad06f372b317ce882840ecedc2fdee8, scopedcommit and clean tree/index. Readfinal95/2 affected04:40:19,594/30full04:40:30, types/lint/2pathformat/build/bundle/officialcodegen/posttype PASS and existingEUDev04:41:35/posttypePASS. Original24inventory/593/e99c56e receipts retained, unchangedUI/API fivebrowserreceipts honestlyreused. SAME SPEC dispatched original independentphysicalcopyprobe/newcontinuation/historicalcomplete guard recheck; freshQUALITYonlyafterPASS. Sourcewindowclosed/no AC/Done.
 
 ROOT read complete SAME SPEC correctionPASS /tmp/dispatch-research-inbox-spec-correction-receipt.md SHA62deff98ee4fc52a25f7e805fbc275ab2689cd57cfd945c4e7182e4f90a68651: all24 actualSOURCEd9caca72bytes match2overrides+22original. Unmodified independent manualchild/copiedcontentREDs and clarifiedsafe replay now3PASS04:43:26; correctedactual95/2PASS04:43:27. Bounded20all-order retirement/matchingremain+historicalcomplete guard solvesrootcause, existingcopy/native/finance preserved. Broad594/static/Dev inspected, fiveunchangedUIbrowserreceipts reusedhonestly. Fresh independent AppSec quality research_inbox_quality dispatched entire24pathscope fromBASE734dce2; noAC/Done untilfinalQUALITY.
+
+ROOT read complete freshQUALITY PASS SHAa877ff2feaca7bb4bec0605d43d31fb036a479eaa238bc4d014477f73ca98fba entire24pathscope SOURCEd9caca72 vsBASE734dce2, all24hashesverifiedtwice/noCriticalImportantactionableMinor. Independent95/2PASS04:46:04 +3automatic negativecontrolsPASS04:47:02 expiredhumanassessment/unattestedsupport/archivedproposal noIdeasDrafts/selection absent/exactfinance unchanged. SAME SPEC correctionPASS includesunchangedoriginal3probes04:43:26/95registered04:43:27. Corrected594full/static/codegen/EUDev04:41:35 andfiveunchangedUIbrowserreceipts honestlyreused. All23.3AC1–4 SOFTWARE checked; actualregistered/intercepted transports plusmockedConvexbrowser, notlive/authenticated/manual. Parent23AC1–3software checked noautomaticapproval/schedule/publish. BothremainInProgress/DoDmanual open. NextfreshTASK27released profileboundaryonly; noanalyzer/EUactivation.
 <!-- SECTION:NOTES:END -->

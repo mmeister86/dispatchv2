@@ -4,7 +4,7 @@ title: Versionierte Algorithmus- und Audience-Profile erstellen (P08.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 09:41'
+updated_date: '2026-10-06 02:49'
 labels:
   - p08
   - jev
@@ -61,7 +61,11 @@ Fragesätze, aufgelöstes Modell soweit verfügbar, Normalisierung, Algorithmus-
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Prüfe öffentliche Quellstände und definiere genau einen Analysevertrag. 2. Implementiere versionierte Profilstände und ehrliche fehlende Signale. 3. Verifiziere Zuordnung, historische Stabilität und Cache-/Versionsgrenzen.
+1. Trace actual immutable editorial/account/current role and Demo Operations/Settings/Composer profile boundaries; use reviewed pinned public context and approved analysis contract.
+2. Persist immutable algorithm/declared Audience version payloads and atomic current selection with current Owner/Admin review, activation/rollback/retirement receipts.
+3. Wire real current profile UI/status through awaited scoped commands; expose missing Audience/embedding/executable analysis honestly, preserve unrelated Demo Operations.
+4. Meaningful registered version/selection concurrency/foreign scope/role/lifecycle/replay/rollback/missing signal tests and affected actual React browser; no dummy predictions or model calls.
+5. Full/static/build/bundle/codegen/existingEUDev aftergreen/posttypes; exact scoped sourcefreeze, freshSPEC thenQUALITY. Softwareprofileboundary distinguished from actual28.3 analysis AC1/2 and manualDone.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -72,4 +76,6 @@ Fragesätze, aufgelöstes Modell soweit verfügbar, Normalisierung, Algorithmus-
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence, /operations — Algorithmusprofile. Profile/question/formula references, honest missing audience fit and cold-start marker; internal candidate/source review and profile version controls. Grenze: No verified X-algorithm model, embeddings, real audience signal or production profile activation. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Delegierte Implementierungsentscheidung vor Score-Code in .docs/decisions/analysis-contract.md dokumentiert: genau dispatch-score-v1 nach TASK-28.2, Cold-Start 0.5 ausdrücklich angenommener Standard, keine erfundene Audience-/Reach-Messung. Menschliche Evals, aktuelle Quellenprüfung und EU-Datenpfad bleiben tatsächliche Abnahmetore.
+
+ROOT release after corrected23.3 SOURCEd9caca72 finalSAME SPEC/freshQUALITY PASS, userwholebackendUI scope/ordinarychoices delegated. Full /tmp/dispatch-intelligence-profiles-implementation-brief.md and trusted /tmp/dispatch-task27-current-profile-map.md; ROOTownsmetadata, onefreshsolewriter source. Versioned immutable algorithm/declared Audience +atomic account/network/surface selection, explicitcurrentOwnerAdmin review/activate/rollback/retire; report publiccodecontext notalreadyactive/no productionrankingclaim/scoringInfluence none. ExistingAudience mutablepreference isdeclaredcontext, noGoodfit/embeddings/measurement. Noactualanalysis/Prediction table now; AC1/2 end-to-end pendingreal28.3 consumer, nofake analyzer. Distinct versionrefs honest unavailable executableSDK until28; no2ledger/genericfactory/promptcopy/vectorstore. ActualcurrentSDKmap /tmp/dispatch-task28-current-adapter-map.md forfuture28, noSDKinstalled/processingproof, nopaidactivation. AllTASK27AC/manualDone remainopen beforefreshreviews.
 <!-- SECTION:NOTES:END -->
