@@ -4,7 +4,7 @@ title: 'Gezielte Recherche mit persönlichen Agent-Chats verbinden (P06.04, Teil
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 01:04'
+updated_date: '2026-10-06 01:08'
 labels: []
 dependencies:
   - TASK-23.1
@@ -50,4 +50,6 @@ Teilpaket zu TASK23/J05: expliziten themengebundenen Research-Auftrag aus dem pe
 
 <!-- SECTION:NOTES:BEGIN -->
 ROOTrelease after23.1 finalSOURCE6fde7a9 SAME SPEC+freshQUALITYPASS. Concrete brief /tmp/dispatch-task23.2-release-brief.md, trustedcurrentmap /tmp/dispatch-targeted-chat-research-map.md. Explicitdomainbutton/current savedprofile+revision, immutabletopic usedretrieval ANDmodel/evidence; no temporarysave/autocreate/arbitrary oldorderpromotion/general researchtool. Actualscopedconversation, deterministicdurable currentevidence summary noextra paidchatcall; separatelyfundedexplicit followup. Review vseligible vsapproval distinct; source-aware existingIdeasgenerate/conversationssend sibling mustleave23.1 block ONLYwithreal source-bound transport. Concretefullhistory/currentproof/nativecleanup/executionFinished/isDone/unknownholds; noNote laundering/newmessagesstore/ledger/paid/provideractivation. One freshimplementationwriter; ROOTownsmetadata/exactcommitwindow; noDone.
+
+ROOT multi-source clarification: one selected evidence summary per explicit researchcommand permitted, but rejectcreateIdea at>1 researchdependency wouldcut actualpersonal-followup scope. Minimalfinite flatcompound source mayreuseexact primitiveResearch/GitHubrefs, dedupimmutablepins/flatten, minimumhorizon andALLactualconsumers. Narrowindexedreverseprovenancerelation permittedonlyifexistingrun/chatOperationrelations lackexactcleanupreachability, notnewmessages/contentstore/graph. Requiretwoindependent summaries->fundedfollowup->onegenuineIdea +secondary-onlyrevocation/expiry physicalnative/copiedcleanup/currentproof/financiallateonce. Solewriter proposes exactshape/paths beforeexpansion; noAC/Done.
 <!-- SECTION:NOTES:END -->
