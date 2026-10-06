@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 14:00'
-updated_date: '2026-10-06 19:15'
+updated_date: '2026-10-06 20:14'
 labels: []
 dependencies: []
 references:
@@ -67,4 +67,6 @@ Frische Fortsetzungsprüfungen: App/Backend-TypeScript, scoped Prettier, git dif
 Frischer QUALITY-Bericht /tmp/dispatch-continuation-45.1-resume-quality.md: PASS im betroffenen eingefrorenen45.1Software-Scope, 51nativePASS/20bewusstgefiltert und echteDesktop390/DemoBrowserPASS. Alle16Source/50Kontext/160Artefakte live+copy unverändert. Vorheriger unabhängigerSPEC-B vollständig gelesen. Separater unveränderterSchedulerFixture-Befund ausdrücklich qualifiziert; kontrollierte temporäre Kopie besteht Originalassertions, nicht all-native-green behauptet. Technische Softwareprüfung akzeptiert; Commit/EUDev folgt, manueller Done bleibt offen.
 
 Software gesichert in Commit f13f3f8 auf codex/backend-style-continuation. Versuch des vorhandenen EU-Dev-Deployments wurde vom automatischen Approval-Reviewer abgelehnt: fehlende explizite Autorisierung für die gemeinsame Remote-Umgebung. Kein Deployment ausgeführt. Technische45.1Softwarefreigabe liegt vor;45.2kann lokal umgesetzt/getestet werden. Remote-Bereitstellung bleibt bis Nutzerfreigabe offen.
+
+Integrierter finaler 45.1/45.2-Source auf master als e54ea78 bereitgestellt: erfolgreicher exakter EU-Dev-Sync accurate-lion-749 nach neuer automatischer Prüfung der inzwischen direkt belegten ursprünglichen Nutzerautorisation. Alle 928 nativen Tests, unabhängiger SPEC/QUALITY und tatsächliche Browser bestehen; remote API-Metadaten bestätigt. Frühere Ablehnung bleibt als nicht ausgeführter Versuch dokumentiert. Details .docs/reviews/task-45.2-style-generator-validation.md. Status weiterhin In Progress bis ausdrücklicher manueller Abnahme.
 <!-- SECTION:NOTES:END -->

@@ -4,7 +4,7 @@ title: 'Exakten Stilkontext im bestehenden Draft-Generator sichern (P12.01, Teil
 status: In Progress
 assignee: []
 created_date: '2026-10-06 14:00'
-updated_date: '2026-10-06 20:09'
+updated_date: '2026-10-06 20:14'
 labels: []
 dependencies:
   - TASK-45.1
@@ -56,4 +56,6 @@ Frischer SPEC-Reviewer bestätigte P1 durch echten nativen Ablauf: Account-A-Sti
 Finaler kompatibler Stand: 926 native Tests in 48 Dateien PASS; ausschließlich zwei unveränderte disjoint26-Fälle separat in Prüfung. Frischer SPEC PASS (16 Repository-Checks plus 2 unabhängige native Diagnosen), separater frischer QUALITY PASS (16 Checks sowie Ideas-Browser Desktop und 390px); alle 298 eingefrorenen Source-Hashes unverändert. Bestätigter P1 bei accountfremdem Stil-Input und danach entdeckte GitHub-Kompatibilitätsregression im gemeinsamen tatsächlichen Style-/Research-Proof korrigiert; ursprüngliche GitHub- und Stiltests unverändert. App-/Backend-Typen, lokale Convex-Codegenerierung, konfigurierter Lint, Build und ursprüngliche Bundle-Secret-Assertions bestehen. Noch kein finaler großer Test-PASS oder Deployment; manuelle Abnahme und Done bleiben offen.
 
 Finale Gesamtprüfung: 926 Tests in 48 Dateien plus beide unveränderten disjoint26-Fälle PASS (928 insgesamt; große Fälle 698,42 Sekunden, bestehende 900000-ms-Grenze unverändert). Alle 298 Source-Hashes passen weiterhin zur endgültigen Freeze 3657f4dc7b41ae3ce431324e0293e31407814c0989a3f13b87c6c00d4114fb0d. Evidenz und Grenzen stehen in .docs/reviews/task-45.2-style-generator-validation.md. Alle technischen AC verifiziert; Status bleibt bis ausdrücklicher manueller Nutzerabnahme In Progress. Root bereitet regulären Commit auf master und anschließende exakt geprüfte Dev-Synchronisierung vor.
+
+Source-Commit e54ea78a0ac5340f5a8349ca1fafafd42919df4e auf master. Neue automatische Freigabeprüfung akzeptierte die konkrete Dev-Synchronisierung nach nachgewiesener ursprünglicher menschlicher Dev-Zugriffs- und Entscheidungsautorisation. Exakt eingefrorener Source-Stand am 2026-10-06 20:11:19 UTC erfolgreich auf https://accurate-lion-749.eu-west-1.convex.cloud bereitgestellt (Exit 0); tatsächlicher CLI-Target identisch. Read-only function-spec für accurate-lion-749 bestätigt öffentliche Style-/Ideas-APIs, interne Cleanup-Sichtbarkeit und fünf neue Generation-Statusfelder. Keine Domain-/Modell-/Publishing-Aktivierung oder Freigabe-Seeds. Gesamte Evidenz: .docs/reviews/task-45.2-style-generator-validation.md. Technische Umsetzung verifiziert; manuelle Nutzerabnahme/Done weiterhin offen.
 <!-- SECTION:NOTES:END -->
