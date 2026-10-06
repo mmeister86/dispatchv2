@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 16:13'
+updated_date: '2026-10-06 22:01'
 labels: []
 dependencies:
   - TASK-49.1
@@ -35,3 +36,9 @@ Nach akzeptiertem49.1 reale Team/Demo-Split, auth-only Acceptance und notwendige
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind dokumentiert.
 - [ ] #2 Der Nutzer bestätigt nach manueller Prüfung ausdrücklich die Freigabe zum Done-Status.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Read-onlySpezialisten-Vorarbeit .docs/reviews/task-49-team-preflight.md angenommen: nativeTeam/DemoSplit+auth-onlyverifiedInvitationReturnRoute+StoreRecovery auf separataccepted49.1, keine localGuest/Support/Review50Mockfreigabe. OptionalResend viaexistingdirectFetch: explicitSend/durableClaim/fixedunchangedbytes+key/originalboundedwindow/providerAccepted≠delivered, currentInviteAuthority, unknown/lateOriginalReceipt undPersonalCleanup vorConsumer. Keine tatsächlicheMail, keineSecretsgeprüft, aktuelleProviderdocs vorImplementation viactx7. Styles/desktop390/nativeRoute/dirtyretry/role-workspace-unmount-expiry; reineVorarbeitkeineImplementierung/Review/Done.
+<!-- SECTION:NOTES:END -->

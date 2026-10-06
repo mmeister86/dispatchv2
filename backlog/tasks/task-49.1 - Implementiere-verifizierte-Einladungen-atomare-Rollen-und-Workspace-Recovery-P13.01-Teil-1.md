@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 16:13'
+updated_date: '2026-10-06 22:01'
 labels: []
 dependencies: []
 references:
@@ -34,3 +35,9 @@ Erstes kohäsives natives Team-Paket nach final45-47-Reconciliation. Bestehende 
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind dokumentiert.
 - [ ] #2 Der Nutzer bestätigt nach manueller Prüfung ausdrücklich die Freigabe zum Done-Status.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Read-onlyVorarbeit .docs/reviews/task-49-team-preflight.md von getrenntemTeam/Authority-Spezialisten, rootvollständiggelesen; baseline8cfdf19/accepted46.1, moving46.2 ausdrücklichkeinReview. Sharedusers.current Recovery blockiert aktuell verloreneactiveMembership, nimmtinactiveWorkspace-Daten undmissinginvitedPrefs nicht sicherauf. Minimumverifiedauth-only öffentlicheInviteCommands/nativeMemberCAS/lastOwner/privatecap+1/realViewerPreferences und Recovery ohne requireWorkspace zu schwächen. GegenactualAgent/Research/Jev/history/text/media/firstWrite/continuation next-boundaries nachpublicInvitejoin testen; originalLateMoney/possibleEffects bleiben. Final45–47 und APIs vorSource erneutreconciliieren; keine neuenTests/Source/Provider/Abnahme durchPreflight, StatusToDo.
+<!-- SECTION:NOTES:END -->
