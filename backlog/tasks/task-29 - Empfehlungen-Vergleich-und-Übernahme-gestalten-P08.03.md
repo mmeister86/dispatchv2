@@ -4,7 +4,7 @@ title: 'Empfehlungen, Vergleich und Übernahme gestalten (P08.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 05:41'
+updated_date: '2026-10-06 05:44'
 labels:
   - p08
   - jev
@@ -82,4 +82,6 @@ Released after reviewed28.3 SOURCE93270d5 exact18 normalizedassessment/currentel
 Actualprefeature behaviorRED07:24:22 /tmp/task29-red.log: recommendations absent,647PASS1FAIL/648total38files (commandlabel lookedscoped butranfull). Minimalshare save/actualcurrentproposal derivation WIP, notaccepted. ROOTactualtrace foundno mintextinoldcurrent/UI; routineprocessinglimit20 nonwhitespaceUnicodecodepoints fullsavedthread withtinysharedguard beforefunding/cache andUIhint, noempiricalquality/normalization/publishingrestriction. Quoted/code ambiguous tokencontexts conservativelyskip; multiplemissinglegacyalts cannot individuallypasssharedsave, keepvalidationandmanualrepair/conditionalonefix. Originalwriter ownsrefinements, no inventedsecurityRED, sourcewindowCLOSED.
 
 ROOT verified frozen13 source bytes/SHA/Git+BASE blobs and all46 artifacts, inventory1e091c6b. Full672/39PASS07:34:51; final focused23PASS07:37:31; final affected types/format/build/bundle/diff exit0, full lintPASS, officialcodegen upload/evaluate and actualEUDev07:35:52/posttypesPASS. Read final production UI/full browser fixture and viewed named-media/nonmodal diff+incomplete/provider-error screenshots; mockedtransport only. All failures retained/honestly categorized incl minimum-fixture overlength and purgeVersion source-free permanentACK expectation correction; explicit sourceUnavailable fixture is not nativewithdrawal. FreshSPEC→QUALITY pending, source scoped13 commit authorized after frozen verification; no AC/manualDone acceptance yet.
+
+SOURCE9799eebc9e5e88d08ab03e903973311748ebc403 treecf5edcf44d68fc9af8100cd500e497fd67945dcb exact13 committedsourcepaths, ROOTverifiedcurrent/committedSHA/pathset/clean; commitreceipt9ec6b602. SourcewindowCLOSED. Two freshSPECspawns refused agent-thread-limit; independent existing research_content_handoff (not TASK29writer) assigned completecuratedreview and own/tmp-onlycontrols. Sessionfreshness exception explicit, not fabricatedfreshreview. DistinctQUALITY onlyafterSPECPASS; originalwriteronlysourcecorrection.
 <!-- SECTION:NOTES:END -->
