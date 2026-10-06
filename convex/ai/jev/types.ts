@@ -173,6 +173,8 @@ export const contextResult = v.object({
   capability: v.object({ maxText: v.number() }),
   questionVersion: v.string(),
   requestFingerprint: v.string(),
+  semanticKey: v.string(),
+  sourceUntil: v.union(v.number(), v.null()),
   budgetIds: v.array(v.id("aiBudgets")),
   p: v.object({
     ...policyFields,

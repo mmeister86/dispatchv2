@@ -250,7 +250,11 @@ export async function current(ctx: Ctx, a: Request) {
     thread: version!.content.text.map((text, position) => ({ position, text })),
     media,
     network: "x" as const,
-    audience: aud!.payload.description,
+    audience: JSON.stringify({
+      version: "dispatch-audience-objective-v1",
+      description: aud!.payload.description,
+      objective: version!.content.strategy,
+    }),
   };
   const body = JSON.stringify({
     state,
@@ -260,6 +264,28 @@ export async function current(ctx: Ctx, a: Request) {
   // ponytail: UTF-8 bytes conservatively bound tokens; replace only with a verified Jev tokenizer if restrictive.
   if (new TextEncoder().encode(body).length > p.maxInputTokens)
     fail("JEV_INPUT_LIMIT");
+  const semanticKey = await sha256(
+    JSON.stringify({
+      version: "dispatch-assessment-input-v1",
+      workspaceId: a.workspaceId,
+      accountId: a.accountId,
+      draftVersionId: a.draftVersionId,
+      state,
+      questions: definition.questions,
+      algorithmId: a.algorithmId,
+      audienceId: a.audienceId,
+      refs: alg!.payload.refs,
+      questionVersion: definition.version,
+      normalizationVersion: NORMALIZATION_VERSION,
+      formulaVersion: "dispatch-score-v1",
+      thresholdVersion: "jev-confidence-startup-v1",
+      model: p.model,
+      policyId: p._id,
+      policyVersion: p.version,
+      accountIdentity: account!.providerIdentity,
+      capability: account!.capability,
+    }),
+  );
   const requestFingerprint = await sha256(
     JSON.stringify({
       a,
@@ -285,6 +311,8 @@ export async function current(ctx: Ctx, a: Request) {
     c,
     budgetIds: await grants(ctx, p),
     requestFingerprint,
+    semanticKey,
+    sourceUntil,
   };
 }
 export const context = internalQuery({
@@ -531,6 +559,7 @@ export const availability = workspaceQuery({
   args: { accountId: v.id("socialAccounts") },
   returns: v.object({
     status: v.union(
+      v.literal("ready"),
       v.literal("disabled"),
       v.literal("configuration_required"),
       v.literal("unavailable"),
@@ -541,7 +570,32 @@ export const availability = workspaceQuery({
     requireReference(ctx.workspace._id, await ctx.db.get(a.accountId));
     try {
       const c = await controls(ctx, ctx.workspace._id, a.accountId);
-      await policy(ctx, c);
+      const p = await policy(ctx, c);
+      await grants(ctx, p);
+      const selected = await selection(ctx, ctx.workspace._id, a.accountId);
+      if (
+        !selected?.algorithmId ||
+        !selected.audienceId ||
+        !selected.selectedBy
+      )
+        fail("JEV_PROFILE_CHANGED");
+      await admin(ctx, ctx.workspace._id, selected.selectedBy);
+      const alg = await ctx.db.get(selected.algorithmId),
+        aud = await ctx.db.get(selected.audienceId);
+      for (const profile of [alg, aud]) {
+        if (
+          !profile ||
+          profile.workspaceId !== ctx.workspace._id ||
+          profile.accountId !== a.accountId ||
+          profile.status !== "reviewed" ||
+          !profile.review
+        )
+          fail("JEV_PROFILE_CHANGED");
+        await admin(ctx, ctx.workspace._id, profile.createdBy);
+        await admin(ctx, ctx.workspace._id, profile.review!.actorId);
+      }
+      if (alg!.payload.reviewDueAt <= Date.now()) fail("JEV_PROFILE_CHANGED");
+      validQuestions(resolveQuestions(alg!).questions);
     } catch (e) {
       return {
         status: String(e).includes("JEV_DISABLED")
@@ -554,9 +608,9 @@ export const availability = workspaceQuery({
       };
     }
     return {
-      status: "configuration_required" as const,
+      status: "ready" as const,
       guidance:
-        "Jev-Bewertung benötigt freigegebene Analysefragen und aktuelle geprüfte Profile. Routing, Verifikation und Netzwerk-Fit bleiben deaktiviert.",
+        "Jev-Bewertung ist konfiguriert. Jede gespeicherte Version wird vor dem Aufruf erneut geprüft.",
     };
   },
 });

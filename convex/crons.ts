@@ -31,4 +31,10 @@ crons.interval(
   internal.integrations.github.recovery.scan,
   {},
 );
+crons.interval(
+  "Protected assessment cleanup",
+  { minutes: 15 },
+  internal.intelligence.assessments.sweep,
+  { cursor: null },
+);
 export default crons;

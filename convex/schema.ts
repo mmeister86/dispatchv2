@@ -1,4 +1,8 @@
 import {
+  assessmentFields,
+  assessmentRequestFields,
+} from "./intelligence/assessmentFields";
+import {
   policyFields as jevPolicyFields,
   controlFields as jevControlFields,
   attemptFields as jevAttemptFields,
@@ -82,6 +86,28 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  jevAssessmentRequests: defineTable(assessmentRequestFields)
+    .index("by_request_draftVersionId", ["request.draftVersionId"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_workspaceId_and_actorId_and_operationKey", [
+      "workspaceId",
+      "actorId",
+      "operationKey",
+    ]),
+  jevAssessments: defineTable(assessmentFields)
+    .index("by_workspaceId_and_accountId_and_draftVersionId_and_semanticKey", [
+      "workspaceId",
+      "accountId",
+      "draftVersionId",
+      "semanticKey",
+    ])
+    .index("by_draftVersionId", ["draftVersionId"])
+    .index("by_workspaceId_and_accountId_and_draftId", [
+      "workspaceId",
+      "accountId",
+      "draftId",
+    ])
+    .index("by_sourceUntil", ["sourceUntil"]),
   algorithmProfiles: defineTable(intelligenceAlgorithmFields).index(
     "by_scope",
     ["workspaceId", "accountId", "network", "surface"],

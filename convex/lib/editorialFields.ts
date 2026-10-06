@@ -83,6 +83,7 @@ export const assetFields = {
   r2AccountId: v.optional(v.string()),
 };
 export const draftFields = {
+  assessmentRequestId: v.optional(v.id("jevAssessmentRequests")),
   workspaceId: v.id("workspaces"),
   revision: v.number(),
   currentVersionId: v.union(v.id("draftVersions"), v.null()),

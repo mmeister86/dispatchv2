@@ -1,3 +1,4 @@
+import { SavedAssessment } from "@/features/intelligence/assessments";
 import { IntelligenceProfiles } from "@/features/intelligence/profiles";
 import {
   FirstWriteConfirmation,
@@ -587,7 +588,7 @@ export function ComposerPage() {
     };
   }, [dirty]);
   useEffect(() => {
-    if (analysis !== "loading") return;
+    if (!demoMode || analysis !== "loading") return;
     const analyzedIdentity = identity;
     const analyzedText = [...(v?.text ?? [])];
     const analyzedVersion = v?.number ?? 0;
@@ -1327,11 +1328,7 @@ export function ComposerPage() {
               <TabsTrigger value="preview" className="flex-1">
                 Vorschau
               </TabsTrigger>
-              <TabsTrigger
-                value="intelligence"
-                className="flex-1"
-                disabled={!demoMode}
-              >
+              <TabsTrigger value="intelligence" className="flex-1">
                 Intelligence
               </TabsTrigger>
               <TabsTrigger value="versions" className="flex-1">
@@ -1422,289 +1419,306 @@ export function ComposerPage() {
               </Section>
             </TabsContent>
             <TabsContent value="intelligence">
-              <Section title="Dispatch Score" actions={<Status>Demo</Status>}>
-                <p className="text-xs leading-relaxed muted">
-                  Freiwillige Heuristik zu einer konkreten Version. Keine
-                  Reichweitenprognose.
-                </p>
-                <div className="mb-4 flex flex-wrap gap-2">
-                  <Button
-                    size="sm"
-                    disabled={dirty || analysis === "loading"}
-                    onClick={() => setAnalysis("loading")}
-                  >
-                    <Sparkles size={13} />
-                    {analysis === "loading"
-                      ? "Beispiel wird geladen …"
-                      : "Beispielanalyse ansehen"}
-                  </Button>
-                  <select
-                    className="native-select w-auto text-xs"
-                    aria-label="Analysezustand demonstrieren"
-                    value={analysis}
-                    onChange={(e) => {
-                      setAnalysis(e.target.value as typeof analysis);
-                      if (
-                        e.target.value === "ready" ||
-                        e.target.value === "low-confidence"
-                      ) {
-                        setAnalysisVersion(v.number);
-                        setAnalysisIdentity(identity);
-                        setAnalysisText([...v.text]);
-                      }
-                    }}
-                  >
-                    <option value="idle">Nicht analysiert</option>
-                    <option value="ready">Ergebnis verfügbar</option>
-                    <option value="low-confidence">
-                      Niedrige Sicherheit / unvollständig
-                    </option>
-                    <option value="failed">Ausfall</option>
-                    <option value="disabled">Deaktiviert</option>
-                  </select>
-                </div>
-                {(analysis === "failed" || analysis === "disabled") && (
-                  <DemoNote>
-                    Intelligence ist{" "}
-                    {analysis === "failed" ? "nicht verfügbar" : "deaktiviert"}.
-                    Dein freigegebener Beitrag kann weiterhin separat geplant
-                    werden.
-                  </DemoNote>
-                )}
-                {analysis === "idle" && (
-                  <DemoNote>
-                    Keine KI-Aufrufe. Du kannst ein festes Analyse-Beispiel
-                    laden.
-                  </DemoNote>
-                )}
-                {(analysis === "ready" || analysis === "low-confidence") && (
-                  <>
-                    <div className="mb-5 flex items-center gap-4">
-                      <span className="text-5xl font-semibold tracking-tight">
-                        {analysis === "low-confidence" ? "—" : 75}
-                        <span className="text-lg muted"> / 100</span>
-                      </span>
-                      <div>
-                        <Status
-                          tone={
-                            analysis === "low-confidence" ? "orange" : "green"
-                          }
-                        >
-                          {analysis === "low-confidence"
-                            ? "Unvollständige Bewertung"
-                            : "Solide Grundlage"}
-                        </Status>
-                        <p className="mt-2 mb-0 text-[10px] muted">
-                          v{analysisVersion} · Formel Demo 1.0
-                        </p>
-                      </div>
-                    </div>
-                    {(analysisIdentity !== identity || dirty) && (
-                      <p role="status" className="mb-3 text-xs text-primary">
-                        Ergebnis ist veraltet. Es gehört zu v{analysisVersion}.
-                      </p>
-                    )}
-                    {[
-                      ["Hook · 20 %", 72],
-                      ["Klarheit · 20 %", 81],
-                      [
-                        "Diskussion · 20 %",
-                        analysis === "low-confidence" ? null : 78,
-                      ],
-                      [
-                        "Originalität · 15 %",
-                        analysis === "low-confidence" ? null : 74,
-                      ],
-                      ["Natürliche CTA · 5 %", 70],
-                      ["Struktur · 10 %", 91],
-                      ["Historische Passung · 10 %", 50],
-                    ].map(([n, value]) => (
-                      <div key={n} className="mb-3">
-                        <div className="mb-1 flex justify-between text-[10px]">
-                          <span>{n}</span>
-                          <span className="muted">
-                            {value ?? "Keine Daten"}
-                          </span>
-                        </div>
-                        {value !== null && (
-                          <div className="h-1 rounded-full bg-secondary">
-                            <div
-                              className="h-1 rounded-full bg-[#74866a]"
-                              style={{ width: `${value}%` }}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                    <p className="my-4 text-[10px] leading-relaxed muted">
-                      {analysis === "low-confidence" ? "Niedrige" : "Mittlere"}{" "}
-                      Sicherheit · Profil {account?.channel} Demo v3 · Frage-Set
-                      Demo v1 · Audience Fit: keine Daten. Historische Passung
-                      50 ist ein ausdrücklich markierter Cold-Start-Standard,
-                      kein Messwert. Gewichteter Score nur bei vollständigen
-                      Kernsignalen. Hypothetische Werte · Kosten: kein
-                      Provider-Aufruf.
-                    </p>
-                    <h4 className="mb-3 text-xs font-semibold">
-                      Drei mögliche Verbesserungen
-                    </h4>
-                    {suggestions.map((s, i) => (
-                      <div key={s.title} className="mb-3 border-t pt-3">
-                        <h4 className="mb-1 text-xs font-semibold">
-                          {i + 1}. {s.title}
-                        </h4>
-                        <p className="mb-2 text-[11px] leading-relaxed muted">
-                          {s.reason}
-                        </p>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          disabled={
-                            !canWrite ||
-                            dirty ||
-                            analysisIdentity !== identity ||
-                            analysis === "low-confidence"
-                          }
-                          onClick={() => setRecommendation(i)}
-                        >
-                          <GitCompareArrows size={13} />
-                          Änderung prüfen
-                        </Button>
-                      </div>
-                    ))}
-                  </>
-                )}
-                <div className="mt-5 border-t pt-4">
-                  <h4 className="mb-2 text-xs font-semibold">
-                    Inhaltliche Verifikation
-                  </h4>
-                  <p className="text-[11px] leading-relaxed muted">
-                    Version {v.number}, Quellenaussagen, Ton und Netzwerkformat.
-                    Fester Demo-Check, keine tatsächliche Prüfung.
+              {!demoMode ? (
+                <SavedAssessment
+                  draftId={draft.id}
+                  accountId={accountId}
+                  version={v}
+                  dirty={dirty}
+                  conflict={conflict}
+                  saving={saving}
+                />
+              ) : (
+                <Section title="Dispatch Score" actions={<Status>Demo</Status>}>
+                  <p className="text-xs leading-relaxed muted">
+                    Freiwillige Heuristik zu einer konkreten Version. Keine
+                    Reichweitenprognose.
                   </p>
-                  <div className="mb-3 flex flex-wrap gap-2">
+                  <div className="mb-4 flex flex-wrap gap-2">
                     <Button
-                      variant="outline"
                       size="sm"
-                      disabled={
-                        dirty ||
-                        verification === "loading" ||
-                        verifyAttempts >= 2
-                      }
-                      onClick={() => {
-                        setVerifyAttempts((n) => n + 1);
-                        setVerification("loading");
+                      disabled={dirty || analysis === "loading"}
+                      onClick={() => setAnalysis("loading")}
+                    >
+                      <Sparkles size={13} />
+                      {analysis === "loading"
+                        ? "Beispiel wird geladen …"
+                        : "Beispielanalyse ansehen"}
+                    </Button>
+                    <select
+                      className="native-select w-auto text-xs"
+                      aria-label="Analysezustand demonstrieren"
+                      value={analysis}
+                      onChange={(e) => {
+                        setAnalysis(e.target.value as typeof analysis);
+                        if (
+                          e.target.value === "ready" ||
+                          e.target.value === "low-confidence"
+                        ) {
+                          setAnalysisVersion(v.number);
+                          setAnalysisIdentity(identity);
+                          setAnalysisText([...v.text]);
+                        }
                       }}
                     >
-                      {verification === "loading"
-                        ? "Prüfung simulieren …"
-                        : "Demo-Check ansehen"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setVerification("unavailable")}
-                    >
-                      Ausfall zeigen
-                    </Button>
+                      <option value="idle">Nicht analysiert</option>
+                      <option value="ready">Ergebnis verfügbar</option>
+                      <option value="low-confidence">
+                        Niedrige Sicherheit / unvollständig
+                      </option>
+                      <option value="failed">Ausfall</option>
+                      <option value="disabled">Deaktiviert</option>
+                    </select>
                   </div>
-                  <Status
-                    tone={
-                      verification === "passed"
-                        ? "green"
-                        : verification === "warning"
-                          ? "orange"
-                          : "neutral"
-                    }
-                  >
-                    {
-                      {
-                        unchecked: "Ungeprüft",
-                        loading: "Demo-Prüfung läuft",
-                        warning: "Manueller Review empfohlen",
-                        passed: "Demo-Check bestätigt",
-                        unavailable: "Prüfung nicht verfügbar",
-                      }[verification]
-                    }
-                  </Status>
-                  <p className="mt-3 mb-2 text-[10px] muted">
-                    Prüfungen: {verifyAttempts}/2 · Demo-Budget: höchstens 2
-                    Versuche, 0 € · Version {v.number}, {account?.channel},{" "}
-                    {account?.handle}
-                  </p>
-                  {verifyAttempts >= 2 && (
-                    <p role="status" className="text-xs text-primary">
-                      Versuchslimit erreicht. Redaktionell prüfen oder die neue
-                      Version bewusst bearbeiten.
-                    </p>
+                  {(analysis === "failed" || analysis === "disabled") && (
+                    <DemoNote>
+                      Intelligence ist{" "}
+                      {analysis === "failed"
+                        ? "nicht verfügbar"
+                        : "deaktiviert"}
+                      . Dein freigegebener Beitrag kann weiterhin separat
+                      geplant werden.
+                    </DemoNote>
                   )}
-                  {verification !== "unchecked" &&
-                    verification !== "loading" && (
-                      <ul className="space-y-1 pl-4 text-[10px] muted">
-                        <li>
-                          Bedeutung und Quellenaussagen: manuelle Bestätigung
-                          nötig
-                        </li>
-                        <li>
-                          Ton und CTA: keine künstlichen Engagement-Fragen
-                        </li>
-                        <li>
-                          Netzwerkformat: {account?.channel}, Zeichenlimit
-                          separat geprüft
-                        </li>
-                        <li>
-                          Starke Behauptungen: Quelle und Unsicherheit prüfen
-                        </li>
-                      </ul>
-                    )}
-                  {verification === "warning" && (
-                    <p className="mt-3 text-xs leading-relaxed">
-                      Prüfe konkrete Zahlen gegen die Originalquelle. Die Demo
-                      kann deren Richtigkeit nicht bestätigen.
-                    </p>
+                  {analysis === "idle" && (
+                    <DemoNote>
+                      Keine KI-Aufrufe. Du kannst ein festes Analyse-Beispiel
+                      laden.
+                    </DemoNote>
                   )}
-                  {verification === "warning" && (
-                    <div className="flex flex-wrap gap-2">
+                  {(analysis === "ready" || analysis === "low-confidence") && (
+                    <>
+                      <div className="mb-5 flex items-center gap-4">
+                        <span className="text-5xl font-semibold tracking-tight">
+                          {analysis === "low-confidence" ? "—" : 75}
+                          <span className="text-lg muted"> / 100</span>
+                        </span>
+                        <div>
+                          <Status
+                            tone={
+                              analysis === "low-confidence" ? "orange" : "green"
+                            }
+                          >
+                            {analysis === "low-confidence"
+                              ? "Unvollständige Bewertung"
+                              : "Solide Grundlage"}
+                          </Status>
+                          <p className="mt-2 mb-0 text-[10px] muted">
+                            v{analysisVersion} · Formel Demo 1.0
+                          </p>
+                        </div>
+                      </div>
+                      {(analysisIdentity !== identity || dirty) && (
+                        <p role="status" className="mb-3 text-xs text-primary">
+                          Ergebnis ist veraltet. Es gehört zu v{analysisVersion}
+                          .
+                        </p>
+                      )}
+                      {[
+                        ["Hook · 20 %", 72],
+                        ["Klarheit · 20 %", 81],
+                        [
+                          "Diskussion · 20 %",
+                          analysis === "low-confidence" ? null : 78,
+                        ],
+                        [
+                          "Originalität · 15 %",
+                          analysis === "low-confidence" ? null : 74,
+                        ],
+                        ["Natürliche CTA · 5 %", 70],
+                        ["Struktur · 10 %", 91],
+                        ["Historische Passung · 10 %", 50],
+                      ].map(([n, value]) => (
+                        <div key={n} className="mb-3">
+                          <div className="mb-1 flex justify-between text-[10px]">
+                            <span>{n}</span>
+                            <span className="muted">
+                              {value ?? "Keine Daten"}
+                            </span>
+                          </div>
+                          {value !== null && (
+                            <div className="h-1 rounded-full bg-secondary">
+                              <div
+                                className="h-1 rounded-full bg-[#74866a]"
+                                style={{ width: `${value}%` }}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                      <p className="my-4 text-[10px] leading-relaxed muted">
+                        {analysis === "low-confidence"
+                          ? "Niedrige"
+                          : "Mittlere"}{" "}
+                        Sicherheit · Profil {account?.channel} Demo v3 ·
+                        Frage-Set Demo v1 · Audience Fit: keine Daten.
+                        Historische Passung 50 ist ein ausdrücklich markierter
+                        Cold-Start-Standard, kein Messwert. Gewichteter Score
+                        nur bei vollständigen Kernsignalen. Hypothetische Werte
+                        · Kosten: kein Provider-Aufruf.
+                      </p>
+                      <h4 className="mb-3 text-xs font-semibold">
+                        Drei mögliche Verbesserungen
+                      </h4>
+                      {suggestions.map((s, i) => (
+                        <div key={s.title} className="mb-3 border-t pt-3">
+                          <h4 className="mb-1 text-xs font-semibold">
+                            {i + 1}. {s.title}
+                          </h4>
+                          <p className="mb-2 text-[11px] leading-relaxed muted">
+                            {s.reason}
+                          </p>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={
+                              !canWrite ||
+                              dirty ||
+                              analysisIdentity !== identity ||
+                              analysis === "low-confidence"
+                            }
+                            onClick={() => setRecommendation(i)}
+                          >
+                            <GitCompareArrows size={13} />
+                            Änderung prüfen
+                          </Button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  <div className="mt-5 border-t pt-4">
+                    <h4 className="mb-2 text-xs font-semibold">
+                      Inhaltliche Verifikation
+                    </h4>
+                    <p className="text-[11px] leading-relaxed muted">
+                      Version {v.number}, Quellenaussagen, Ton und
+                      Netzwerkformat. Fester Demo-Check, keine tatsächliche
+                      Prüfung.
+                    </p>
+                    <div className="mb-3 flex flex-wrap gap-2">
                       <Button
-                        size="sm"
                         variant="outline"
-                        disabled={!canWrite}
-                        onClick={() => setVerification("passed")}
+                        size="sm"
+                        disabled={
+                          dirty ||
+                          verification === "loading" ||
+                          verifyAttempts >= 2
+                        }
+                        onClick={() => {
+                          setVerifyAttempts((n) => n + 1);
+                          setVerification("loading");
+                        }}
                       >
-                        Hinweis als geprüft markieren
+                        {verification === "loading"
+                          ? "Prüfung simulieren …"
+                          : "Demo-Check ansehen"}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={!canWrite || dirty || verifyAttempts >= 2}
-                        onClick={() => {
-                          const updated = v.text.map((t) =>
-                            t
-                              .replace(/ein bisschen /g, "")
-                              .replace(
-                                "überraschende Erkenntnis",
-                                "Erkenntnis",
-                              ),
-                          );
-                          if (
-                            JSON.stringify(updated) === JSON.stringify(v.text)
-                          ) {
-                            toast.info(
-                              "Kein sinnvoller fester Demo-Rewrite vorhanden. Bitte manuell bearbeiten.",
-                            );
-                            setVerification("unavailable");
-                            return;
-                          }
-                          setAnalysisText([...v.text]);
-                          setRecommendation(1);
-                        }}
+                        onClick={() => setVerification("unavailable")}
                       >
-                        Demo-Nachbesserung prüfen
+                        Ausfall zeigen
                       </Button>
                     </div>
-                  )}
-                </div>
-              </Section>
+                    <Status
+                      tone={
+                        verification === "passed"
+                          ? "green"
+                          : verification === "warning"
+                            ? "orange"
+                            : "neutral"
+                      }
+                    >
+                      {
+                        {
+                          unchecked: "Ungeprüft",
+                          loading: "Demo-Prüfung läuft",
+                          warning: "Manueller Review empfohlen",
+                          passed: "Demo-Check bestätigt",
+                          unavailable: "Prüfung nicht verfügbar",
+                        }[verification]
+                      }
+                    </Status>
+                    <p className="mt-3 mb-2 text-[10px] muted">
+                      Prüfungen: {verifyAttempts}/2 · Demo-Budget: höchstens 2
+                      Versuche, 0 € · Version {v.number}, {account?.channel},{" "}
+                      {account?.handle}
+                    </p>
+                    {verifyAttempts >= 2 && (
+                      <p role="status" className="text-xs text-primary">
+                        Versuchslimit erreicht. Redaktionell prüfen oder die
+                        neue Version bewusst bearbeiten.
+                      </p>
+                    )}
+                    {verification !== "unchecked" &&
+                      verification !== "loading" && (
+                        <ul className="space-y-1 pl-4 text-[10px] muted">
+                          <li>
+                            Bedeutung und Quellenaussagen: manuelle Bestätigung
+                            nötig
+                          </li>
+                          <li>
+                            Ton und CTA: keine künstlichen Engagement-Fragen
+                          </li>
+                          <li>
+                            Netzwerkformat: {account?.channel}, Zeichenlimit
+                            separat geprüft
+                          </li>
+                          <li>
+                            Starke Behauptungen: Quelle und Unsicherheit prüfen
+                          </li>
+                        </ul>
+                      )}
+                    {verification === "warning" && (
+                      <p className="mt-3 text-xs leading-relaxed">
+                        Prüfe konkrete Zahlen gegen die Originalquelle. Die Demo
+                        kann deren Richtigkeit nicht bestätigen.
+                      </p>
+                    )}
+                    {verification === "warning" && (
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={!canWrite}
+                          onClick={() => setVerification("passed")}
+                        >
+                          Hinweis als geprüft markieren
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={!canWrite || dirty || verifyAttempts >= 2}
+                          onClick={() => {
+                            const updated = v.text.map((t) =>
+                              t
+                                .replace(/ein bisschen /g, "")
+                                .replace(
+                                  "überraschende Erkenntnis",
+                                  "Erkenntnis",
+                                ),
+                            );
+                            if (
+                              JSON.stringify(updated) === JSON.stringify(v.text)
+                            ) {
+                              toast.info(
+                                "Kein sinnvoller fester Demo-Rewrite vorhanden. Bitte manuell bearbeiten.",
+                              );
+                              setVerification("unavailable");
+                              return;
+                            }
+                            setAnalysisText([...v.text]);
+                            setRecommendation(1);
+                          }}
+                        >
+                          Demo-Nachbesserung prüfen
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </Section>
+              )}
             </TabsContent>
             <TabsContent value="versions">
               <Section title="Versionsverlauf" actions={<History size={15} />}>

@@ -19,6 +19,11 @@ async function scrubDraft(ctx: MutationCtx, id: Id<"draftVersions">) {
     sourceUnavailable: true,
     researchCleanupPending: false,
   });
+  await ctx.scheduler.runAfter(
+    0,
+    internal.intelligence.assessments.purgeVersion,
+    { versionId: id },
+  );
   await ctx.scheduler.runAfter(0, internal.research.contentCleanup.comments, {
     versionId: id,
   });

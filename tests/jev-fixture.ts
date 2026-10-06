@@ -1,25 +1,31 @@
 import { vi } from "vitest";
 import { mediaFixture } from "./media-fixture";
 import { sha256 } from "../convex/lib/crypto";
-export async function jevFixture(executable = false) {
+export async function jevFixture(
+  executable = false,
+  base?: Awaited<ReturnType<typeof mediaFixture>>,
+  existingAccountId?: import("../convex/_generated/dataModel").Id<"socialAccounts">,
+) {
   vi.stubEnv("TYPESAFE_API_KEY", "synthetic-secret-no-live-key");
-  const f = await mediaFixture();
+  const f = base ?? (await mediaFixture());
   const request = await f.t.run(async (ctx) => {
-    const accountId = await ctx.db.insert("socialAccounts", {
-      workspaceId: f.workspaceId,
-      provider: "X",
-      providerIdentity: "synthetic",
-      name: "Fixture",
-      handle: "fixture",
-      connection: "connected",
-      capability: {
-        maxText: 280,
-        maxThread: 10,
-        maxMedia: 4,
-        mediaTypes: ["image"],
-        publish: false,
-      },
-    });
+    const accountId =
+      existingAccountId ??
+      (await ctx.db.insert("socialAccounts", {
+        workspaceId: f.workspaceId,
+        provider: "X",
+        providerIdentity: "synthetic",
+        name: "Fixture",
+        handle: "fixture",
+        connection: "connected",
+        capability: {
+          maxText: 280,
+          maxThread: 10,
+          maxMedia: 4,
+          mediaTypes: ["image"],
+          publish: false,
+        },
+      }));
     const common = {
       workspaceId: f.workspaceId,
       accountId,
