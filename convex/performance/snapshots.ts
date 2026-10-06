@@ -74,6 +74,7 @@ export async function enqueue(ctx: MutationCtx, c: Doc<"xPostAttempts">) {
 export async function source(
   ctx: QueryCtx | MutationCtx,
   a: { snapshotId: Doc<"performanceSnapshots">["_id"]; generation: number },
+  reserve = true,
 ) {
   const row = await ctx.db.get(a.snapshotId);
   if (
@@ -83,7 +84,7 @@ export async function source(
     row.expiresAt <= Date.now()
   )
     throw new ConvexError("OWN_METRICS_INTENT_INACTIVE");
-  const x = await authority(ctx, row, a.generation),
+  const x = await authority(ctx, row, a.generation, reserve),
     c = await ctx.db.get(row.postAttemptId),
     s = await ctx.db.get(row.scheduleId);
   if (
@@ -302,10 +303,11 @@ export const finish = internalMutation({
     });
     let allowed = false;
     try {
-      const x = await source(ctx, {
-        snapshotId: row._id,
-        generation: t.generation,
-      });
+      const x = await source(
+        ctx,
+        { snapshotId: row._id, generation: t.generation },
+        false,
+      );
       allowed =
         x.credential.generation === t.credentialGeneration &&
         (await fingerprint(x.p)) === t.policyFingerprint;
@@ -319,6 +321,11 @@ export const finish = internalMutation({
         observedAt: Date.now(),
         providerCreatedAt: a.providerCreatedAt,
         reason: a.reason,
+      });
+    else if (row.state === "reading")
+      await ctx.db.patch(row._id, {
+        state: "blocked",
+        reason: "OWN_METRICS_AUTHORITY_UNAVAILABLE",
       });
     return null;
   },

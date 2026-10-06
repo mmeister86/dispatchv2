@@ -85,7 +85,11 @@ export async function policy(
   await admin(ctx, a.workspaceId, p.approvedBy);
   return p;
 }
-export async function grants(ctx: Ctx, p: Doc<"performancePolicies">) {
+export async function grants(
+  ctx: Ctx,
+  p: Doc<"performancePolicies">,
+  reserve = true,
+) {
   const result: Id<"aiBudgets">[] = [];
   for (const [i, key] of [
     "metrics:x",
@@ -119,7 +123,7 @@ export async function grants(ctx: Ctx, p: Doc<"performancePolicies">) {
       (i > 0 && !b.approvedBy)
     )
       throw new ConvexError("OWN_METRICS_BUDGET_CONFIGURATION_REQUIRED");
-    if (b.heldMicros + b.spentMicros + p.unitMicros > b.limitMicros)
+    if (reserve && b.heldMicros + b.spentMicros + p.unitMicros > b.limitMicros)
       throw new ConvexError("OWN_METRICS_BUDGET_EXHAUSTED");
     if (b.approvedBy) await admin(ctx, p.workspaceId, b.approvedBy);
     result.push(b._id);
@@ -158,6 +162,7 @@ export async function authority(
   ctx: Ctx,
   a: { workspaceId: Id<"workspaces">; accountId: Id<"socialAccounts"> },
   generation?: number,
+  reserve = true,
 ) {
   const control = await ctx.db
     .query("performanceControls")
@@ -179,7 +184,7 @@ export async function authority(
   return {
     control,
     p,
-    budgetIds: await grants(ctx, p),
+    budgetIds: await grants(ctx, p, reserve),
     credential: await credential(ctx, a, p),
   };
 }

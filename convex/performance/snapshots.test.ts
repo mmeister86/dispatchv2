@@ -1209,3 +1209,143 @@ test("TASK30 renewed permission cannot make expired assessment available at a ne
     reason: "NO_ASSESSMENT_AT_PUBLISH",
   });
 });
+
+test.each(["provider", "workspace", "account"] as const)(
+  "TASK30 last funded %s unit retains numeric payload while the next window cannot spend",
+  async (scope) => {
+    const f = await publishingFixture(true);
+    await f.send();
+    await f.confirm();
+    const row = (await snapshot(f))!;
+    vi.setSystemTime(row.dueAt);
+    const budgetId = await f.t.run(async (ctx) => {
+      const b = (await ctx.db.query("aiBudgets").collect()).find(
+        (b) => b.purposes.includes("own-metrics") && b.scope === scope,
+      )!;
+      await ctx.db.patch(b._id, { spentMicros: b.limitMicros - 10 });
+      return b._id;
+    });
+    const fetcher = vi.fn(async () => metricsResponse());
+    vi.stubGlobal("fetch", fetcher);
+    await f.t.action(internal.performance.collect.read, {
+      snapshotId: row._id,
+      generation: row.generation,
+    });
+    const observed = (await snapshot(f))!;
+    expect(observed.state).toBe("observed");
+    expect(observed.fields.find((x) => x.name === "impressions")).toMatchObject(
+      { status: "measured", value: 0 },
+    );
+    expect(
+      (
+        await f.signed.query(api.performance.snapshots.overview, f.args)
+      ).posts[0].snapshots
+        .find((x) => x._id === row._id)
+        ?.fields.find((x) => x.name === "likes")?.value,
+    ).toBe(3);
+    expect(
+      await f.t.run((ctx) => ctx.db.get(observed.attemptId!)),
+    ).toMatchObject({ state: "settled", heldMicros: 0, estimatedMicros: 10 });
+    expect(await f.t.run((ctx) => ctx.db.get(budgetId))).toMatchObject({
+      heldMicros: 0,
+      spentMicros: 1000,
+    });
+    const next = (
+      await f.t.run((ctx) => ctx.db.query("performanceSnapshots").collect())
+    ).find((x) => x.windowHours === 48)!;
+    vi.setSystemTime(next.dueAt);
+    await f.t.action(internal.performance.collect.read, {
+      snapshotId: next._id,
+      generation: next.generation,
+    });
+    expect(await f.t.run((ctx) => ctx.db.get(next._id))).toMatchObject({
+      state: "blocked",
+      attemptId: null,
+      reason: "OWN_METRICS_BUDGET_EXHAUSTED",
+    });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  },
+);
+
+test.each(["credential", "grant"] as const)(
+  "TASK30 lost %s authority terminalizes the owned read and settles exactly once without payload or retry",
+  async (lost) => {
+    const f = await publishingFixture(true);
+    await f.send();
+    await f.confirm();
+    const row = (await snapshot(f))!;
+    vi.setSystemTime(row.dueAt);
+    const fetcher = vi.fn(async () => {
+      await f.t.run(async (ctx) => {
+        if (lost === "credential") {
+          const c = (await ctx.db.query("xCredentials").first())!;
+          await ctx.db.patch(c._id, { generation: c.generation + 1 });
+        } else {
+          const b = (await ctx.db
+            .query("aiBudgets")
+            .withIndex("by_key", (q) =>
+              q.eq("key", `metrics:account:${f.accountId}`),
+            )
+            .unique())!;
+          await ctx.db.patch(b._id, { expiresAt: Date.now() });
+        }
+      });
+      return metricsResponse();
+    });
+    vi.stubGlobal("fetch", fetcher);
+    await f.t.action(internal.performance.collect.read, {
+      snapshotId: row._id,
+      generation: row.generation,
+    });
+    const blocked = (await snapshot(f))!;
+    expect(blocked).toMatchObject({
+      state: "blocked",
+      reason: "OWN_METRICS_AUTHORITY_UNAVAILABLE",
+      fields: [],
+      observedAt: null,
+      providerCreatedAt: null,
+    });
+    const receipt = normalize(
+      await metricsResponse().json(),
+      "101",
+      "123",
+      ["impressions", "likes", "reposts", "url_clicks"],
+      "post-fields-repost-v2",
+    );
+    const args = {
+      attemptId: blocked.attemptId!,
+      knownCharge: true,
+      fields: receipt.fields,
+      providerCreatedAt: receipt.providerCreatedAt,
+      reason: null,
+    };
+    await f.t.mutation(internal.performance.snapshots.finish, args);
+    await expect(
+      f.t.mutation(internal.performance.snapshots.finish, {
+        ...args,
+        reason: "conflicting",
+      }),
+    ).rejects.toThrow("OWN_METRICS_RECEIPT_CONFLICT");
+    await f.t.mutation(internal.performance.snapshots.timeout, {
+      attemptId: blocked.attemptId!,
+    });
+    await f.t.action(internal.performance.collect.read, {
+      snapshotId: row._id,
+      generation: row.generation,
+    });
+    expect(await snapshot(f)).toEqual(blocked);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(
+      await f.t.run((ctx) => ctx.db.get(blocked.attemptId!)),
+    ).toMatchObject({ state: "settled", heldMicros: 0, estimatedMicros: 10 });
+    expect(
+      (await f.t.run((ctx) => ctx.db.query("aiBudgets").collect()))
+        .filter((b) => b.purposes.includes("own-metrics"))
+        .map((b) => [b.heldMicros, b.spentMicros]),
+    ).toEqual([
+      [0, 10],
+      [0, 10],
+      [0, 10],
+    ]);
+  },
+);
