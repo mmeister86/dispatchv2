@@ -4,7 +4,7 @@ title: 'Research-Inbox und explizite automatische Übergaben verbinden (P06.04, 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 02:37'
+updated_date: '2026-10-06 02:41'
 labels: []
 dependencies:
   - TASK-23.2
@@ -66,4 +66,6 @@ SOURCE e99c56eae5e0169e93c2d4513479018e8c90b202 exact24approvedpaths on master, 
 FreshSPEC confirms24hashes. ROOT clarifies accidental replay-barrier wording: currentowner/account/activehistory+source proof before receipt, all executionFinished barriers before NEW append; committedreceipt replay allowed with no newnative/money/horizon effect. Original04:27 replay expectation log preserved as prompt ambiguity, independent invariants underway. Actual manual-descendant cleanupRED /tmp/dispatch-spec-independent-manual-cleanup.log04:28:10: public evidence.create on realreResearch child retainsprotectedpayload after ancestorsecondarywithdrawal/purgecomplete. Reads alreadyfenced; physical manual/contentcopies omitted by modelOrigin-only scan. Required minimal existingorder-index all-evidence retirement/copycleanup; no sourceedit untilcompleteSPEC findings. No AC/Done, QUALITYnotstarted.
 
 ROOT read complete freshSPEC NEEDS_FIXES: oneP1 only manual descendant physicalcleanup, all24hashes/94registeredPASS. Expanded originalRED04:29:35 afterduejobs shows manualpayload/Idea/Draft copyflags retained295900ms beforeexpiry, publicreads correctlyfenced. Clarifiedsafe exact+alias receipt replay invariants/newintentbarrier independentPASS04:28:42; no replaycodefix. Original solewriter correction released ONLYpipeline.ts +pipeline.test.ts via existingorder-index ALL evidence retirement/matching completion/contentCleanup propagation. Actualmanualchild→Draft regression RED→physicalGREEN/native/finance required, separatecorrectioninventory/finalchecks/Dev/SAME SPEC thenfreshQUALITY; sourcewindowclosed/no AC/Done.
+
+ROOT read genuine correctionRED /tmp/task23-3-correction-original-red.log04:38:16: actual manual child physical state review after read fence. Two owned-path correction uses existing order index for all review evidence and matching continuation; historical complete marker cannot suppress remaining rows. Permanent actual registered21manual+model continuation GREEN04:39:07; separately controlled historical-complete input variant and95/2 affectedPASS04:40:19 reported. No API/UI/index/finance-store change, original5 frozen browser receipts reused honestly for backend-only purge selection. Final594/30/staticGREEN reported, codegen/EUDev/posttype readiness pending. Sourcewindowclosed, SAME SPEC thenfreshQUALITY; no AC/Done.
 <!-- SECTION:NOTES:END -->
