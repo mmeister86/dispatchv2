@@ -4,7 +4,7 @@ title: Versionierte Algorithmus- und Audience-Profile erstellen (P08.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 03:04'
+updated_date: '2026-10-06 03:08'
 labels:
   - p08
   - jev
@@ -88,4 +88,6 @@ ROOT read expanded registeredGREEN6/1 at04:58:03 /tmp/dispatch-task27-green-expa
 ROOT independently read actualReactbrowser /tmp/dispatch-task27-browser-fixed.log PASSOperations/profile/Audience/read-only/retry/account-and-rolewithdrawrestoreACKcontrols. Earlier initialEPERM127.0.0.1:5174 isenvironmentonly; escalated missingmockuseAction moduleexport causedtabtimeout, fixtureimportfailure notproductRED. Separateoriginals preserved. ActualmockedConvextransport noauthenticated/live/analyzer acceptance; own5174reportedfinallyclosed/user5173preserved. Distinctimmutableformula/question/normalization/routing/verification projection refs SDK-unavailable/nullaggregate/declaredOnly fit implemented. Full/static/finalcodegen/Dev/freeze/reviews pending, noAC/Done.
 
 ROOT read actual lifecycle browserPASS /tmp/dispatch-task27-browser-lifecycle.log (registeredmocktransport). IndependentAdmin reviewer/activationactor currentrevocation/removal checkaddedimplementation-first, reported7/1GREEN. Readpre-finalfull601/31PASS05:02:29. GenuineinputRED /tmp/dispatch-task27-multiline-red.log05:03:11: sharedtextvalidator rejectedTextarea newline context; minimalvalidator permits textual newline/tab while rejectingnontextcontrols, separate8/1GREEN05:03:18. Newbackendtrustboundarybytes require freshfinalfull/static/codegen/posttype/Dev/posttypes; priorreceipts retained asintermediate. NoAC/Done/sourcewindowstillclosed.
+
+ROOT read pre-index readiness inventory13ownedpaths RAW7e2205a0aeb3e61f7e44e249f070c6828e01fffccafe6e7541fc2566febb33d8, retainedseparately /tmp/dispatch-task27-pre-index-source-inventory.json. Implementerreports602/31final/static/build/bundle/browser/codegen/posttype/existingEUDev05:04:56/posttypePASS; notSOURCEcommitted. ROOT actualcommoncode review foundrollback exacthistoricalpair by_scope+filter hasunboundedreceipt scan (unlike50versionlist/pagedhistory), noactualruntimefailureclaimed. Originalwriterconfirmsrootcallers andfixessameownedprofiles.ts/schema.ts withoneexactscope/pair/actionindex andmax1select+max1rollbacklookup aftercurrentproof; oldpairafter>50unrelatedcommandscontrol validation-only, noengine/newtable/helper. Sourcewindowclosed, freshfull/static/codegen/Dev/inventory requiredaftercorrection; original602receipts preserved. NoAC/Done.
 <!-- SECTION:NOTES:END -->

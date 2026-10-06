@@ -30,3 +30,8 @@ ROOT independently read actualReactbrowser /tmp/dispatch-task27-browser-fixed.lo
 ## Pre-final full checks and genuine multiline validation correction
 
 ROOT read actual lifecycle browserPASS /tmp/dispatch-task27-browser-lifecycle.log (registeredmocktransport). IndependentAdmin reviewer/activationactor currentrevocation/removal checkaddedimplementation-first, reported7/1GREEN. Readpre-finalfull601/31PASS05:02:29. GenuineinputRED /tmp/dispatch-task27-multiline-red.log05:03:11: sharedtextvalidator rejectedTextarea newline context; minimalvalidator permits textual newline/tab while rejectingnontextcontrols, separate8/1GREEN05:03:18. Newbackendtrustboundarybytes require freshfinalfull/static/codegen/posttype/Dev/posttypes; priorreceipts retained asintermediate. NoAC/Done/sourcewindowstillclosed.
+
+
+## Pre-freeze ROOT bounded rollback correction
+
+ROOT read pre-index readiness inventory13ownedpaths RAW7e2205a0aeb3e61f7e44e249f070c6828e01fffccafe6e7541fc2566febb33d8, retainedseparately /tmp/dispatch-task27-pre-index-source-inventory.json. Implementerreports602/31final/static/build/bundle/browser/codegen/posttype/existingEUDev05:04:56/posttypePASS; notSOURCEcommitted. ROOT actualcommoncode review foundrollback exacthistoricalpair by_scope+filter hasunboundedreceipt scan (unlike50versionlist/pagedhistory), noactualruntimefailureclaimed. Originalwriterconfirmsrootcallers andfixessameownedprofiles.ts/schema.ts withoneexactscope/pair/actionindex andmax1select+max1rollbacklookup aftercurrentproof; oldpairafter>50unrelatedcommandscontrol validation-only, noengine/newtable/helper. Sourcewindowclosed, freshfull/static/codegen/Dev/inventory requiredaftercorrection; original602receipts preserved. NoAC/Done.
