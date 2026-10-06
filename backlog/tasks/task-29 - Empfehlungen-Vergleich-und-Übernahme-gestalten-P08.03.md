@@ -4,7 +4,7 @@ title: 'Empfehlungen, Vergleich und Übernahme gestalten (P08.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 05:52'
+updated_date: '2026-10-06 05:54'
 labels:
   - p08
   - jev
@@ -88,4 +88,6 @@ SOURCE9799eebc9e5e88d08ab03e903973311748ebc403 treecf5edcf44d68fc9af8100cd500e49
 IndependentSPEC07:48:47 actual5controls4PASS1genuineRED. Actualsecondpubliccaller/workspace and reorderedACK pass; genuine native→human evidence→handoff withdrawal+expiry block newadoption/acceptedACK, drainphysicalprotectedcopycleanup, moneyunchanged. Tilde~~~codefence accepted unsafe tokencandidate/publiccompare removal/publicadopt; sharedbacktick-onlyguard gap. ROOTreadfullcontrol/log/config, originalwriteronlynarrowfix+properpermanentRED→GREEN. Originalexploit intentionallyassertsbugsuccess beforefinalsafetyassertion; preserveimmutableoriginalRED, re-SPEC other4unchanged plus separatefixedinvariant, not fabricatedunchangedGREEN. SourcewindowCLOSED/noAC/manualacceptance.
 
 FirstSPEC receipt5c2a8cab NEEDS_FIXES/ReadyNo10,605bytes; ROOTreadallreceipt/control/log/config/integrity and verified6 reviewerartifacts. Originalsource13/46artifact integrityPASS. Correctsharedtildeguard plus tiny internalderivationrevision inexistingproofhash prevents oldreviewcandidateindex shifting ontoanothercandidate. Preserve publicv1shape/permanentacceptedexactACK beforefreshreview. Originalwriter properregisteredRED→GREEN/staleproof/ACKcompatibility; independent originalexploit retained, separatefixedinvariant re-SPEC. No acceptance/manualDone yet.
+
+Originalwriter correctionfreeze bc80b2d4 exact2paths/cumulative13 verifiedcurrentSHA/Git/oldSOURCE/BASE, all46old+25new artifacts. Sharedtildefenceguard +internalcode-fence-v2 proof, publicv1/acceptedACKbranch unchanged; permanent proper publicregressionRED24/22PASS2FAIL07:50:04→24GREEN07:50:25; newoldmixedsegmentproof guard25focusedPASS07:50:59/full674/39PASS07:51:02. All8staticvalidation+4officialcodegen/Dev/posttypes exit0; actualEUDev07:52:14. UI/browser unchanged explicitreuse. Oldexploit/firstSPEC retained, no fabricatedunchangedexploitGREEN. Scoped2-sourcecommit next, SAMEreSPEC→distinctQUALITY/manualDoneopen.
 <!-- SECTION:NOTES:END -->
