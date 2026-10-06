@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 14:00'
-updated_date: '2026-10-06 15:57'
+updated_date: '2026-10-06 16:17'
 labels: []
 dependencies: []
 references:
@@ -50,4 +50,6 @@ Read-only47-Folgeaudit vonRoot vollständig gelesen: contentFeedback record/list
 Root ownsourceTrace draftResearchProof→ideaProofUntil/currentIdeaSource erwiesauchGithubSignal/ContextAncestors trotzHelperName. Stylefeedback/Examples müssen diese echtenCurrentProofs+OriginalHorizons binden; neu eingeführteStyleDerivatives physischmask/removen vorConsumer, bestehendeGithubBaseContext-ErasureDeferral33 nichtalspermissionübernehmen. .docs/style-profile-contract.md präzisiert; read-only33/36Report separatgelesen, keine45SourceImplementation.
 
 Writerstart freigegeben erst nach vollständig akzeptiertem TASK48source d5cb59235ee8f023d570cd4b3056fc8db5e9b7f2 samt RootEUDev2026-10-06T15:56:25Z. Root las vollständige read-only preparation /tmp/dispatch-continuation-45.1-preparation.md; keine blockierende Scope-Frage. SoleSourceWriter; vorhandene selectedVersionId/selectedBy/selectionReceiptId bleiben bei unselektiertem Save/Proposal/Reject stabil, commandRevision ist kein Selector-Beleg. Vollständige bilateralFeedback-/neueGithubStyleDerivate-Cleanup vorConsumer; bestehendeGithubBaseErase33 bleibt ausdrücklich separat. Root besitzt Metadaten/Commit/Dev; nach Freeze SPEC→QUALITY.
+
+Root las tatsächliche initial4RED-Logs:2missingStyleModule(expectednewfeature),2realeSharedFeedbackLücken(resultPurge/nullHorizonSweep). Writer meldet initialSharedCasesGREEN und15currentnativePASS inkl signedGithub→Idea→Draft→Feedback und56-copyContinuation/financeParentRetention, nochkeinFreeze/reviewAcceptance. Root explizit retirementdistinction .docs/style-profile-contract.md: retained-sourceHistory(v1+copiedv2) bleibt bei ordinaryv1Retire physisch erhalten, eligibleCurrentAncestry(v2) select/copy/propose/rollback denied; source/expiry/currentAuthorityLoss separat erasure. Writer ergänzt tatsächlichenNativeCase; Reports bisfinalFreeze vorläufig.
 <!-- SECTION:NOTES:END -->
