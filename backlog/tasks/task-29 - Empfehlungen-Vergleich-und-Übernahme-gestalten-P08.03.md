@@ -4,7 +4,7 @@ title: 'Empfehlungen, Vergleich und Übernahme gestalten (P08.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 05:49'
+updated_date: '2026-10-06 05:52'
 labels:
   - p08
   - jev
@@ -86,4 +86,6 @@ ROOT verified frozen13 source bytes/SHA/Git+BASE blobs and all46 artifacts, inve
 SOURCE9799eebc9e5e88d08ab03e903973311748ebc403 treecf5edcf44d68fc9af8100cd500e497fd67945dcb exact13 committedsourcepaths, ROOTverifiedcurrent/committedSHA/pathset/clean; commitreceipt9ec6b602. SourcewindowCLOSED. Two freshSPECspawns refused agent-thread-limit; independent existing research_content_handoff (not TASK29writer) assigned completecuratedreview and own/tmp-onlycontrols. Sessionfreshness exception explicit, not fabricatedfreshreview. DistinctQUALITY onlyafterSPECPASS; originalwriteronlysourcecorrection.
 
 IndependentSPEC07:48:47 actual5controls4PASS1genuineRED. Actualsecondpubliccaller/workspace and reorderedACK pass; genuine native→human evidence→handoff withdrawal+expiry block newadoption/acceptedACK, drainphysicalprotectedcopycleanup, moneyunchanged. Tilde~~~codefence accepted unsafe tokencandidate/publiccompare removal/publicadopt; sharedbacktick-onlyguard gap. ROOTreadfullcontrol/log/config, originalwriteronlynarrowfix+properpermanentRED→GREEN. Originalexploit intentionallyassertsbugsuccess beforefinalsafetyassertion; preserveimmutableoriginalRED, re-SPEC other4unchanged plus separatefixedinvariant, not fabricatedunchangedGREEN. SourcewindowCLOSED/noAC/manualacceptance.
+
+FirstSPEC receipt5c2a8cab NEEDS_FIXES/ReadyNo10,605bytes; ROOTreadallreceipt/control/log/config/integrity and verified6 reviewerartifacts. Originalsource13/46artifact integrityPASS. Correctsharedtildeguard plus tiny internalderivationrevision inexistingproofhash prevents oldreviewcandidateindex shifting ontoanothercandidate. Preserve publicv1shape/permanentacceptedexactACK beforefreshreview. Originalwriter properregisteredRED→GREEN/staleproof/ACKcompatibility; independent originalexploit retained, separatefixedinvariant re-SPEC. No acceptance/manualDone yet.
 <!-- SECTION:NOTES:END -->
