@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 15:23'
+updated_date: '2026-10-06 22:17'
 labels: []
 dependencies:
   - TASK-47.1
@@ -35,3 +36,19 @@ Nach separat akzeptiertem47.1 exakte vorhandene freigegebeneSchedule/Version/Acc
 - [ ] #1 Automatisierte Prüfungen und noch offene manuelle Abnahme sind konkret dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Nach separat technisch akzeptierter47.1 die finalen Publishing-, Metric-, Source- und Actor-Proofs abgleichen.
+2. Vor erster möglicher Text- oder Medienwirkung exakt bestehende freigegebene Schedule/Version/Account einem unveränderlichen Arm zuordnen; alle historischen Generationen prüfen.
+3. Unabhängig zugelassene vergleichbare retained Messungen je kompletter PublicationUnit verbinden, echte Missingness und Nenner erhalten; keine neue Sammlung oder Termine erzeugen.
+4. LocalUse/Purpose/Metric/Source/Actor-Kanten indexiert vor Consumer bereinigen und vorhandene Publishing/Approval/Finanz-Belege erhalten.
+5. Registered native first-effect/Race/Scope/MetricAge/Lifecycle/0IO und actualstyledUI prüfen, SourceFreeze/freshSPEC/distinctQUALITY und rootCommit/exaktesEUDev; empirical/manualDone bleiben offen.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Vorarbeit /tmp/dispatch-47-preflight.md nach final47.1 erneutabgleichen. firstSend bedeutet nicht nur textrequestStartedAt: actualmedia beforeRequest/providerMediaRequests/preparingCheckpoint können vorher eineWirkung haben, daheralleGenerationen bounded prüfen. Native3PositionThread bleibt1PublicationUnit; echte0≠missing/partial/unknown; matchingRawDefinition/Window/ProviderAge/ownedSettledReceipt und independentretainedRights. KeinMetricsCall/Funding/AutoWinner/Schedule/Publishfrequenz ausExperiment; keineSource-/Review-Abnahme durchPlan.
+<!-- SECTION:NOTES:END -->

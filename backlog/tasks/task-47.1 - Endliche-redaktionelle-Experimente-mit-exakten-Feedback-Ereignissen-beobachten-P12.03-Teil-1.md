@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 15:23'
-updated_date: '2026-10-06 22:01'
+updated_date: '2026-10-06 22:28'
 labels: []
 dependencies: []
 references:
@@ -50,4 +50,6 @@ Nach akzeptiertem48/45/46 konkrete native Hypothese/eine Hook-Format-TimingDimen
 
 <!-- SECTION:NOTES:BEGIN -->
 Read-only /tmp/dispatch-47-preflight.md liegt vor; SourceWriter erst nach separat technisch akzeptierter46.2. Bestehendes Feedback/Evidence wiederverwenden, keine ObservationTextkopien/Generatorrate/Kausalwinner/Provider/Approval/Schedule. Nativeprospective Start/Stop darf same-ms Ereignisse nicht rückwirkendzulassen; exact eventSequence statt guessedTimestamp, Legacyfehlend nichtbackfillen. Finalvorhandene47.1Tables/indices erstnachSourceReconciliation wählen; standaloneVorarbeitkeinSourceReview.
+
+Konkreter zukünftigerSoleWriterBrief /tmp/dispatch-47.1-writer-brief.md vorbereitet nachContract+readonlyPreflight; nochkeineSourceFreigabe. Technische46.2Akzeptanz undfinaleSourceProof/Style/Series/VectorCleanup-Reconciliation bleibenVoraussetzung; Legacyfeedback nichtprospectiveBackfill, nativeSameMsStart/StopSequence, exakteVersion+ReviewerEinheit undkeineObservationLedger/Provider/Approval/Schedule.
 <!-- SECTION:NOTES:END -->

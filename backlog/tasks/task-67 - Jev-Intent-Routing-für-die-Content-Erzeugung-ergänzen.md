@@ -4,7 +4,7 @@ title: Jev-Intent-Routing für die Content-Erzeugung ergänzen
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-06 21:56'
+updated_date: '2026-10-06 22:34'
 labels:
   - r5
   - jev
@@ -57,4 +57,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 Root read/adopted complete read-only /tmp/dispatch-continuation-67-68-contract-proposal.md; .docs/jev-generation-continuation-contract.md governs after final45/46/47/49/50ProofReconciliation. Actualgenerator only perspectiveJSONIdea generic, all9strategy map honestgeneric; explicituserstrategy wins, thought-leadership boundaryalias→thoughtLeadership nohistoryrewrite. Jevaccess/resolver/receipts currentlyanalyzeronly, concrete operationpurpose/control union extension needed separatelydefaultOFF/sharedledger/proof+cleanup; notmere analyzePost relabel.67.1native then67.2consumer suggested beforeconcreteCLIcreation/source. NoSource/Test/Provider/Abnahme diesesReports.
 
 Read-only Folgeabgleich nach technisch akzeptiertem45/46.1 (Source1700ee7/Verifikation8cfdf19): tatsächliche Jev types/control/request/access/questionResolver bleibenAnalyzer-only; routing/verification literalfalse. NativeClient existiert, doch neuerZweck benötigt operation-specific unions/funding/ownedreceipts/resolver/currentproofs, keine Umbenennung vonAnalyzer. Inhaltspfad content/ideas.generate bleibtPerspectiveJSON; actualpostcandidate seam68Prereq weiterhinfehlend. AutoritativerVertrag .docs/jev-generation-continuation-contract.md und ursprüngliche /tmp/dispatch-continuation-67-68-contract-proposal.md. Keine Tests/Implementierung/Providerfreigabe durch diesenAbgleich. CLI-Teilaufgaben67.1/67.2 noch nicht angelegt; vor jeweiligemSourceStart nach final46/47/49/50 anlegen und genaueaktuelleCaller/CleanupAPI erneutreconciliieren. Pflicht:0Retries/realsharedLedger/lateunknownHolds, source/stylecanonical32, physischederivativeCleanupvorConsumer, keine Fiktivpreise/Modell-/EU-Fakten.
+
+TASK-67.1 und TASK-67.2 jetzt per CLI mit konkreten ACs/Plans/manual-DoD als To Do angelegt. 67.1 hängt an50.2,67.2 an67.1; keine technische Implementierung oder Provideraktivierung durch diese Vorbereitung. Der ältere Hinweis noch nicht angelegt ist dadurch überholt. Aktuelle finale45-50-Source/Cleanup bleiben vor jedem Writer abzugleichen.
 <!-- SECTION:NOTES:END -->
