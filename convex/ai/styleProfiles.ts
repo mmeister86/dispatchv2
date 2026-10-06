@@ -1,3 +1,8 @@
+import {
+  materialWalk,
+  enterMaterial,
+  type MaterialWalk,
+} from "../research/pipelineAccess";
 import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 import { ConvexError, v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
@@ -115,11 +120,18 @@ async function feedbackProof(
   ctx: QueryCtx,
   row: Doc<"contentFeedback">,
   reads?: Reads,
+  w?: MaterialWalk,
 ) {
-  if (!reads) return evidence(ctx, row);
-  if (!reads.feedback.has(row._id))
-    reads.feedback.set(row._id, evidence(ctx, row));
-  return reads.feedback.get(row._id)!;
+  if (!reads) return evidence(ctx, row, w);
+  const cached = reads.feedback.get(row._id);
+  if (cached) {
+    const proof = await cached;
+    if (!proof.recursive) return proof;
+  }
+  const proof = await evidence(ctx, row, w);
+  // Only terminal human feedback can be reused outside the shared ancestry walk.
+  if (!proof.recursive) reads.feedback.set(row._id, Promise.resolve(proof));
+  return proof;
 }
 async function account(
   ctx: QueryCtx,
@@ -163,25 +175,14 @@ async function control(
     )
     .unique();
 }
-type Walk = {
-  remaining: number;
-  active: Set<string>;
-  done: Map<string, number | null>;
-  eligible: boolean;
-  reads?: Reads;
-};
+type Walk = MaterialWalk & { eligible?: boolean; reads?: Reads };
 const walk = (eligible = false, remaining = 32, reads?: Reads): Walk => ({
-  remaining,
-  active: new Set(),
-  done: new Map(),
+  ...materialWalk(remaining),
   eligible,
   reads,
 });
 function enter(w: Walk, id: string) {
-  // ponytail: at most 32 style version/proposal ancestors; fresh full human declarations start independent lineage.
-  if (w.active.has(id) || w.remaining-- <= 0)
-    throw new ConvexError("STYLE_ANCESTRY_LIMIT");
-  w.active.add(id);
+  enterMaterial(w, id, "STYLE_ANCESTRY_LIMIT");
 }
 async function scoped<
   T extends
@@ -201,9 +202,11 @@ async function scoped<
 export async function versionProof(
   ctx: QueryCtx,
   version: Doc<"styleProfileVersions">,
-  w = walk(),
+  w: Walk = walk(),
 ): Promise<number | null> {
-  if (w.done.has(version._id)) return w.done.get(version._id)!;
+  const memo = `${version._id}:${!!w.eligible}`;
+  if (w.active.has(version._id)) throw new ConvexError("STYLE_ANCESTRY_LIMIT");
+  if (w.done.has(memo)) return w.done.get(memo)!;
   enter(w, version._id);
   try {
     await account(ctx, version.workspaceId, version.accountId, w.reads);
@@ -266,7 +269,7 @@ export async function versionProof(
       until = minimum(until, await proposalProof(ctx, p, w));
     }
     until = minimum(until);
-    w.done.set(version._id, until);
+    w.done.set(memo, until);
     return until;
   } finally {
     w.active.delete(version._id);
@@ -275,9 +278,11 @@ export async function versionProof(
 async function proposalProof(
   ctx: QueryCtx,
   p: Doc<"learningProposals">,
-  w = walk(),
+  w: Walk = walk(),
 ): Promise<number | null> {
-  if (w.done.has(p._id)) return w.done.get(p._id)!;
+  const memo = `${p._id}:${!!w.eligible}`;
+  if (w.active.has(p._id)) throw new ConvexError("STYLE_ANCESTRY_LIMIT");
+  if (w.done.has(memo)) return w.done.get(memo)!;
   enter(w, p._id);
   try {
     await account(ctx, p.workspaceId, p.accountId, w.reads);
@@ -318,7 +323,7 @@ async function proposalProof(
       f.resultingVersionId !== p.resultingVersionId
     )
       throw new ConvexError("STYLE_SOURCE_UNAVAILABLE");
-    const proof = await feedbackProof(ctx, f, w.reads);
+    const proof = await feedbackProof(ctx, f, w.reads, w);
     if (proof.ver.draftId !== p.draftId)
       throw new ConvexError("STYLE_SOURCE_UNAVAILABLE");
     const until = minimum(
@@ -330,7 +335,7 @@ async function proposalProof(
       proof.beforeUntil,
       proof.resultUntil,
     );
-    w.done.set(p._id, until);
+    w.done.set(memo, until);
     return until;
   } finally {
     w.active.delete(p._id);
@@ -527,7 +532,8 @@ export const change = workspaceMutation({
         feedback.accountId !== a.accountId
       )
         throw new ConvexError("STYLE_REFERENCE_ACCESS_DENIED");
-      const proof = await evidence(ctx, feedback);
+      const ancestry = walk(true, 31);
+      const proof = await evidence(ctx, feedback, ancestry);
       if (x.preferences.examples.length && !x.ownExamples)
         throw new ConvexError("STYLE_OWN_EXAMPLES_REQUIRED");
       const { author, experiences, ...prefs } = validate({
@@ -551,7 +557,7 @@ export const change = workspaceMutation({
         resultUntil: proof.resultUntil,
         sourceUntil: minimum(
           proof.sourceUntil,
-          await versionProof(ctx, base!, walk(true, 31)),
+          await versionProof(ctx, base!, ancestry),
         ),
         preferences: prefs,
         ownExamples: x.ownExamples,
@@ -951,6 +957,11 @@ async function eraseVersion(
   ctx: MutationCtx,
   row: Doc<"styleProfileVersions">,
 ) {
+  if (!row.sourceUnavailable)
+    await ctx.scheduler.runAfter(0, internal.ai.styleProfiles.purgeRuns, {
+      versionId: row._id,
+      cursor: null,
+    });
   await ctx.db.patch(row._id, {
     payload: null,
     reason: "",
@@ -1129,6 +1140,18 @@ export const sweep = internalMutation({
       for (const r of batch.page)
         try {
           await versionProof(ctx, r);
+          const run = await ctx.db
+            .query("agentRuns")
+            .withIndex("by_styleContext_versionId", (q) =>
+              q.eq("styleContext.versionId", r._id),
+            )
+            .first();
+          if (run)
+            await ctx.scheduler.runAfter(
+              0,
+              internal.ai.styleProfiles.sweepRuns,
+              { versionId: r._id, cursor: null },
+            );
         } catch (error) {
           rethrowUnexpectedSourceError(error);
           await eraseVersion(ctx, r);
@@ -1160,6 +1183,116 @@ export const sweep = internalMutation({
           table: "commands",
         });
     }
+    return null;
+  },
+});
+
+// Server-only pin. Selection revision changes unrelated to selection never recapture a run.
+export async function captureStyle(
+  ctx: QueryCtx,
+  ws: Id<"workspaces">,
+  acc: Id<"socialAccounts">,
+) {
+  const c = await control(ctx, ws, acc);
+  if (!c?.selectedVersionId) return undefined;
+  const { version, sourceUntil } = await selectedProof(ctx, c);
+  return {
+    versionId: version._id,
+    fingerprint: version.fingerprint,
+    selectedBy: c.selectedBy!,
+    selectionReceiptId: c.selectionReceiptId!,
+    sourceUntil,
+  };
+}
+export async function runStyleProof(
+  ctx: QueryCtx,
+  r: Doc<"agentRuns">,
+  current = false,
+  w: MaterialWalk = materialWalk(),
+) {
+  const pin = r.styleContext;
+  if (!pin) return { payload: null, sourceUntil: null };
+  await authorized(ctx, r.workspaceId, pin.selectedBy);
+  const receipt = await scoped(
+    ctx,
+    pin.selectionReceiptId,
+    r.workspaceId,
+    r.accountId,
+  );
+  const version = await scoped(ctx, pin.versionId, r.workspaceId, r.accountId);
+  if (
+    receipt.sourceUnavailable ||
+    !["select", "rollback"].includes(receipt.action) ||
+    receipt.versionId !== pin.versionId ||
+    receipt.actorId !== pin.selectedBy ||
+    version.fingerprint !== pin.fingerprint
+  )
+    throw new ConvexError("STYLE_SELECTION_CHANGED");
+  if (current) {
+    const c = await control(ctx, r.workspaceId, r.accountId);
+    if (
+      c?.selectedVersionId !== pin.versionId ||
+      c.selectedBy !== pin.selectedBy ||
+      c.selectionReceiptId !== pin.selectionReceiptId
+    )
+      throw new ConvexError("STYLE_SELECTION_CHANGED");
+  }
+  const sourceUntil = minimum(
+    pin.sourceUntil,
+    await versionProof(ctx, version, { ...w, eligible: current }),
+  );
+  return { payload: version.payload!, sourceUntil };
+}
+export const purgeRuns = internalMutation({
+  args: {
+    versionId: v.id("styleProfileVersions"),
+    cursor: v.union(v.string(), v.null()),
+  },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const page = await ctx.db
+      .query("agentRuns")
+      .withIndex("by_styleContext_versionId", (q) =>
+        q.eq("styleContext.versionId", a.versionId),
+      )
+      .paginate({ numItems: 25, cursor: a.cursor });
+    for (const r of page.page)
+      await ctx.scheduler.runAfter(0, internal.ai.runs.purgeSource, {
+        runId: r._id,
+      });
+    if (!page.isDone)
+      await ctx.scheduler.runAfter(0, internal.ai.styleProfiles.purgeRuns, {
+        versionId: a.versionId,
+        cursor: page.continueCursor,
+      });
+    return null;
+  },
+});
+
+export const sweepRuns = internalMutation({
+  args: {
+    versionId: v.id("styleProfileVersions"),
+    cursor: v.union(v.string(), v.null()),
+  },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const page = await ctx.db
+      .query("agentRuns")
+      .withIndex("by_styleContext_versionId", (q) =>
+        q.eq("styleContext.versionId", a.versionId),
+      )
+      .paginate({ numItems: 1, cursor: a.cursor });
+    for (const r of page.page)
+      await ctx.scheduler.runAfter(0, internal.ai.contentCopies.sweep, {
+        runId: r._id,
+        cursor: null,
+        path: [],
+      });
+    if (!page.isDone)
+      await ctx.scheduler.runAfter(0, internal.ai.styleProfiles.sweepRuns, {
+        versionId: a.versionId,
+        cursor: page.continueCursor,
+      });
     return null;
   },
 });

@@ -9,7 +9,7 @@ import {
 } from "../lib/authorization";
 import { generationAttempt } from "./accounting";
 import { currentRunSources } from "./sourceAccess";
-import { currentIdeaSource } from "../content/ideas";
+import { ideaProofUntil } from "../research/contentProof";
 export async function conversationAccess(
   ctx: QueryCtx | MutationCtx,
   workspaceId: Id<"workspaces">,
@@ -32,7 +32,13 @@ export async function historyAuthority(
 ) {
   if (c.state !== "active") throw new ConvexError("CHAT_INACTIVE");
   const walk = materialWalk();
-  await currentRunSources(ctx, c.workspaceId, c.accountId, c.sources, walk);
+  const horizons: (number | null)[] = await currentRunSources(
+    ctx,
+    c.workspaceId,
+    c.accountId,
+    c.sources,
+    walk,
+  );
   for (const id of c.ideaVersionIds) {
     const version = await ctx.db.get(id);
     requireReference(c.workspaceId, version);
@@ -40,8 +46,10 @@ export async function historyAuthority(
     requireReference(c.workspaceId, idea);
     if (idea!.status === "archived")
       throw new ConvexError("CHAT_HISTORY_SOURCE_WITHDRAWN");
-    await currentIdeaSource(ctx, c.workspaceId, version!.source, walk);
+    horizons.push(await ideaProofUntil(ctx, version!, walk, c.accountId));
   }
+  const until = Math.min(...horizons.map((x) => x ?? Infinity));
+  return Number.isFinite(until) ? until : null;
 }
 export async function operationRun(
   ctx: QueryCtx | MutationCtx,

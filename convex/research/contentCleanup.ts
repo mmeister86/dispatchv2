@@ -5,7 +5,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 async function scrubDraft(ctx: MutationCtx, id: Id<"draftVersions">) {
   const ver = await ctx.db.get(id);
-  if (!ver?.researchCleanupPending) return;
+  if (!ver || (!ver.researchCleanupPending && !ver.sourceUnavailable)) return;
   await ctx.db.patch(id, {
     content: {
       ...ver.content,
@@ -30,6 +30,11 @@ async function scrubDraft(ctx: MutationCtx, id: Id<"draftVersions">) {
   await ctx.scheduler.runAfter(0, internal.research.contentCleanup.comments, {
     versionId: id,
   });
+  await ctx.scheduler.runAfter(
+    0,
+    internal.research.contentCleanup.draftCopies,
+    { versionId: id },
+  );
 }
 export const comments = internalMutation({
   args: { versionId: v.id("draftVersions") },
@@ -57,15 +62,58 @@ export const comments = internalMutation({
   },
 });
 export const version = internalMutation({
-  args: { versionId: v.id("ideaVersions") },
+  args: {
+    versionId: v.id("ideaVersions"),
+    family: v.optional(v.union(v.literal("ideas"), v.literal("requests"))),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
   returns: v.null(),
   handler: async (ctx, a) => {
     const ver = await ctx.db.get(a.versionId);
     if (
       !ver ||
-      (ver.source.kind !== "research" && ver.source.kind !== "context-set")
+      ver.sourceCleanupState === "complete" ||
+      (!ver.researchCleanupPending && !ver.sourceUnavailable)
     )
       return null;
+    if (a.family === "ideas") {
+      const page = await ctx.db
+        .query("ideaVersions")
+        .withIndex("by_inputVersionId", (q) => q.eq("inputVersionId", ver._id))
+        .paginate({ numItems: 25, cursor: a.cursor ?? null });
+      for (const child of page.page)
+        await ctx.scheduler.runAfter(
+          0,
+          internal.research.contentCleanup.version,
+          { versionId: child._id },
+        );
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.version,
+        page.isDone
+          ? { versionId: ver._id, family: "requests", cursor: null }
+          : { ...a, cursor: page.continueCursor },
+      );
+      return null;
+    }
+    if (a.family === "requests") {
+      const page = await ctx.db
+        .query("contentRequests")
+        .withIndex("by_inputVersionId", (q) => q.eq("inputVersionId", ver._id))
+        .paginate({ numItems: 25, cursor: a.cursor ?? null });
+      for (const request of page.page)
+        await ctx.scheduler.runAfter(0, internal.ai.runs.purgeSource, {
+          runId: request.runId,
+        });
+      if (!page.isDone)
+        await ctx.scheduler.runAfter(
+          0,
+          internal.research.contentCleanup.version,
+          { ...a, cursor: page.continueCursor },
+        );
+      else await ctx.db.patch(ver._id, { sourceCleanupState: "complete" });
+      return null;
+    }
     if (ver.researchCleanupPending) {
       await ctx.db.patch(ver._id, {
         title: "",
@@ -75,6 +123,7 @@ export const version = internalMutation({
         rationale: "",
         questions: [],
         sourceUnavailable: true,
+        sourceCleanupState: "pending",
         researchCleanupPending: false,
       });
       const idea = await ctx.db.get(ver.ideaId);
@@ -82,6 +131,24 @@ export const version = internalMutation({
         await ctx.db.patch(idea._id, {
           handoff: { ...idea.handoff, intent: "", text: "" },
         });
+    }
+    const copies = await ctx.db
+      .query("ideaRunCopies")
+      .withIndex("by_ideaVersionId_and_state", (q) =>
+        q.eq("ideaVersionId", ver._id).eq("state", "retained"),
+      )
+      .take(25);
+    for (const copy of copies) {
+      await ctx.db.patch(copy._id, { state: "removed" });
+      await ctx.scheduler.runAfter(0, internal.ai.runs.purgeSource, {
+        runId: copy.runId,
+      });
+      if (copy.conversationId)
+        await ctx.scheduler.runAfter(
+          0,
+          internal.ai.conversations.expireSource,
+          { conversationId: copy.conversationId },
+        );
     }
     const feedback = await ctx.db
       .query("ideaFeedback")
@@ -102,10 +169,41 @@ export const version = internalMutation({
       )
       .take(50);
     for (const row of drafts) await scrubDraft(ctx, row._id);
-    if (feedback.length === 50 || drafts.length === 50)
+    if (feedback.length === 50 || drafts.length === 50 || copies.length === 25)
       await ctx.scheduler.runAfter(
         0,
         internal.research.contentCleanup.version,
+        a,
+      );
+    else
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.version,
+        { versionId: ver._id, family: "ideas", cursor: null },
+      );
+    return null;
+  },
+});
+export const draftCopies = internalMutation({
+  args: { versionId: v.id("draftVersions") },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const rows = await ctx.db
+      .query("draftResearchCopies")
+      .withIndex("by_draftVersionId_and_state", (q) =>
+        q.eq("draftVersionId", a.versionId).eq("state", "retained"),
+      )
+      .take(25);
+    for (const row of rows) {
+      await ctx.db.patch(row._id, { state: "removed" });
+      await ctx.scheduler.runAfter(0, internal.research.pipeline.purge, {
+        orderId: row.orderId,
+      });
+    }
+    if (rows.length === 25)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.draftCopies,
         a,
       );
     return null;
@@ -176,6 +274,7 @@ export const expired = internalMutation({
       .withIndex("by_researchCleanupPending_and_researchProofUntil", (q) =>
         q
           .eq("researchCleanupPending", true)
+          .gte("researchProofUntil", Number.MIN_SAFE_INTEGER)
           .lte("researchProofUntil", Date.now()),
       )
       .take(25);

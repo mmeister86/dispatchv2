@@ -9,7 +9,8 @@ import { draftResearchProof, researchSourceProof } from "./contentProof";
 import { deliveredSource, materialHash, currentEvidence } from "./evidence";
 type Ctx = QueryCtx | MutationCtx;
 export type MaterialWalk = {
-  remaining: number;
+  budget: { remaining: number; counted: Set<string> };
+  done: Map<string, number | null>;
   active: Set<string>;
   resolved: Map<
     string,
@@ -19,8 +20,30 @@ export type MaterialWalk = {
     }
   >;
 };
-export function materialWalk(): MaterialWalk {
-  return { remaining: 32, active: new Set(), resolved: new Map() };
+export function materialWalk(remaining = 32): MaterialWalk {
+  return {
+    budget: { remaining, counted: new Set() },
+    active: new Set(),
+    done: new Map(),
+    resolved: new Map(),
+  };
+}
+export function enterMaterial(
+  w: MaterialWalk,
+  id: string,
+  code = "RESEARCH_PROOF_ANCESTRY_LIMIT",
+) {
+  // ponytail: 32 distinct recursive protected ancestors across all material families.
+  if (
+    w.active.has(id) ||
+    (!w.budget.counted.has(id) && w.budget.remaining <= 0)
+  )
+    throw new ConvexError(code);
+  if (!w.budget.counted.has(id)) {
+    w.budget.remaining--;
+    w.budget.counted.add(id);
+  }
+  w.active.add(id);
 }
 
 export async function historyMaterial(
@@ -132,12 +155,11 @@ export async function currentMaterialProof(
   o: Doc<"researchOrders">,
   walk: MaterialWalk = materialWalk(),
 ) {
+  if (walk.active.has(o._id))
+    throw new ConvexError("RESEARCH_PROOF_ANCESTRY_LIMIT");
   const prior = walk.resolved.get(o._id);
   if (prior) return prior;
-  // ponytail: at most 32 distinct retained orders per proof; flatten older context before increasing this ceiling.
-  if (walk.active.has(o._id) || walk.remaining-- <= 0)
-    throw new ConvexError("RESEARCH_PROOF_ANCESTRY_LIMIT");
-  walk.active.add(o._id);
+  enterMaterial(walk, o._id);
   try {
     let proofUntil = await materialAuthority(ctx, o, walk);
     for (const pin of o.pipeline!.contextPins ?? []) {

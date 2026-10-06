@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 14:00'
-updated_date: '2026-10-06 19:14'
+updated_date: '2026-10-06 19:15'
 labels: []
 dependencies: []
 references:
@@ -65,4 +65,6 @@ Fortsetzung im Chat 01a1129d-4c93-7a42-b04c-e870c8d05b62: ursprünglicher Chat u
 Frische Fortsetzungsprüfungen: App/Backend-TypeScript, scoped Prettier, git diff --check, Vite Build und unveränderte Secret-Bundle-Assertions bestanden (installierte Node-Entrypoints). QUALITY: 51 gezielte native Tests und echte gestylte Settings-Browserprüfung bestanden. Unveränderter Scheduler-Test hat Fake-Clock-Race; temporäre Kopie mit kontrolliertem Zeitfortschritt erfüllt alle Originalassertions. Maintained Harness-Korrektur folgt in45.2; keine Produktänderung am Publishing. Abschlussstatus bleibt In Progress; manuelle Abnahme offen.
 
 Frischer QUALITY-Bericht /tmp/dispatch-continuation-45.1-resume-quality.md: PASS im betroffenen eingefrorenen45.1Software-Scope, 51nativePASS/20bewusstgefiltert und echteDesktop390/DemoBrowserPASS. Alle16Source/50Kontext/160Artefakte live+copy unverändert. Vorheriger unabhängigerSPEC-B vollständig gelesen. Separater unveränderterSchedulerFixture-Befund ausdrücklich qualifiziert; kontrollierte temporäre Kopie besteht Originalassertions, nicht all-native-green behauptet. Technische Softwareprüfung akzeptiert; Commit/EUDev folgt, manueller Done bleibt offen.
+
+Software gesichert in Commit f13f3f8 auf codex/backend-style-continuation. Versuch des vorhandenen EU-Dev-Deployments wurde vom automatischen Approval-Reviewer abgelehnt: fehlende explizite Autorisierung für die gemeinsame Remote-Umgebung. Kein Deployment ausgeführt. Technische45.1Softwarefreigabe liegt vor;45.2kann lokal umgesetzt/getestet werden. Remote-Bereitstellung bleibt bis Nutzerfreigabe offen.
 <!-- SECTION:NOTES:END -->

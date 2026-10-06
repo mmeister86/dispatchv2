@@ -1,3 +1,4 @@
+import { ConvexError } from "convex/values";
 import { test, expect, afterEach, beforeEach, vi } from "vitest";
 import { api, internal, components } from "../_generated/api";
 import { mediaFixture } from "../../tests/media-fixture";
@@ -751,3 +752,634 @@ test("manual trust boundary rejects control text and forged actor fields", async
     } as never),
   ).rejects.toThrow("Unexpected field");
 });
+
+const declaredStyle = {
+  author: "Declared author",
+  experiences: ["User asserts this experience"],
+  tone: "Concise and curious",
+  positioning: "Ask precise questions",
+  pillars: [{ name: "Practice", weight: 100 }],
+  examples: ["An example, never biography"],
+  forbidden: ["guaranteed success"],
+};
+async function styledGeneration() {
+  const f = await modelFixture();
+  const scope = { workspaceId: f.workspaceId, accountId: f.accountId };
+  const saved = await f.signed.mutation(api.ai.styleProfiles.change, {
+    ...scope,
+    expectedRevision: 0,
+    commandKey: "style-save-one",
+    action: {
+      kind: "save",
+      payload: declaredStyle,
+      freshDeclaration: true,
+      baseVersionId: null,
+      reason: "Explicit declaration",
+    },
+  });
+  const selected = await f.signed.mutation(api.ai.styleProfiles.change, {
+    ...scope,
+    expectedRevision: 1,
+    commandKey: "style-select-one",
+    action: {
+      kind: "select",
+      versionId: saved.versionId!,
+      reason: "Use this style",
+    },
+  });
+  const ideaId = await f.signed.mutation(api.content.ideas.create, {
+    workspaceId: f.workspaceId,
+    ...input,
+    operationKey: "styled-note-one",
+  });
+  const runId = await f.signed.mutation(api.content.ideas.generate, {
+    ...scope,
+    ideaId,
+    expectedRevision: 1,
+    intent: "Ask a precise question",
+    operationKey: "styled-generation-one",
+  });
+  return { ...f, scope, saved, selected, ideaId, runId };
+}
+test("TASK45.2 exact style pin survives unselected saves and retained output is erased after selector loss", async () => {
+  const f = await styledGeneration();
+  const run = (await f.t.run((ctx) => ctx.db.get(f.runId)))!;
+  expect(run).toHaveProperty("styleContext", {
+    versionId: f.saved.versionId,
+    fingerprint: expect.any(String),
+    selectedBy: f.userId,
+    selectionReceiptId: f.selected.receiptId,
+    sourceUntil: null,
+  });
+  vi.stubEnv("REQUESTY_API_KEY", "synthetic-key");
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
+    const body = JSON.parse(String(init!.body));
+    expect(JSON.stringify(body.messages)).toContain("explicitUserAssertions");
+    expect(JSON.stringify(body.messages)).toContain(declaredStyle.author);
+    expect(JSON.stringify(body.messages)).toContain("preferencesAndExamples");
+    return Response.json({
+      id: "styled-result",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({ text: JSON.stringify(proposal) }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    });
+  });
+  await f.signed.mutation(api.ai.styleProfiles.change, {
+    ...f.scope,
+    expectedRevision: 2,
+    commandKey: "style-unselected-two",
+    action: {
+      kind: "save",
+      payload: { ...declaredStyle, tone: "Other" },
+      freshDeclaration: true,
+      baseVersionId: null,
+      reason: "Unselected",
+    },
+  });
+  await f.t.action(internal.ai.provider.execute, { runId: f.runId });
+  const request = (await f.t.run((ctx) =>
+    ctx.db.query("contentRequests").first(),
+  ))!;
+  expect(request.resultIdeaId).not.toBeNull();
+  const result = (await f.signed.query(api.content.ideas.get, {
+    workspaceId: f.workspaceId,
+    ideaId: request.resultIdeaId!,
+  }))!;
+  await f.signed.mutation(api.content.ideas.edit, {
+    workspaceId: f.workspaceId,
+    ideaId: result.idea._id,
+    expectedRevision: 1,
+    title: "Styled edit",
+    note: "Retained user claim",
+    perspective: "Edited interpretation",
+    priority: "normal",
+    feedback: "Protected feedback",
+  });
+  for (let n = 2; n <= 27; n++)
+    await f.signed.mutation(api.content.ideas.edit, {
+      workspaceId: f.workspaceId,
+      ideaId: result.idea._id,
+      expectedRevision: n,
+      title: "Styled edit",
+      note: "Retained user claim",
+      perspective: "Edited interpretation",
+      priority: "normal",
+      feedback: "Protected feedback",
+    });
+  await f.t.mutation(internal.research.contentCleanup.expired, {});
+  await f.t.finishInProgressScheduledFunctions();
+  expect(
+    (await f.signed.query(api.content.ideas.get, {
+      workspaceId: f.workspaceId,
+      ideaId: result.idea._id,
+    }))!.version.title,
+  ).toBe("Styled edit");
+  const handoff = await f.signed.mutation(api.content.ideas.handoff, {
+    ...f.scope,
+    ideaId: result.idea._id,
+    expectedRevision: 28,
+    intent: "Protected intent",
+    draftText: "Protected draft text",
+    clarificationConfirmed: true,
+  });
+  await f.signed.mutation(api.editorial.addComment, {
+    workspaceId: f.workspaceId,
+    versionId: handoff.versionId,
+    text: "Protected comment",
+  });
+  await f.t.run(async (ctx) => {
+    const member = (await ctx.db
+      .query("memberships")
+      .withIndex("by_userId_and_workspaceId", (q) =>
+        q.eq("userId", f.userId).eq("workspaceId", f.workspaceId),
+      )
+      .unique())!;
+    await ctx.db.patch(member._id, { role: "Editor" });
+  });
+  const masked = (await f.signed.query(api.content.ideas.get, {
+    workspaceId: f.workspaceId,
+    ideaId: result.idea._id,
+  }))!;
+  expect(masked.version.sourceUnavailable).toBe(true);
+  expect(masked.version.title).toBe("");
+  await f.t.mutation(internal.ai.styleProfiles.purge, {
+    versionId: f.saved.versionId!,
+    proposalId: null,
+  });
+  await f.t.finishInProgressScheduledFunctions();
+  for (let i = 0; i < 15; i++) {
+    await vi.advanceTimersByTimeAsync(1000);
+    await f.t.finishInProgressScheduledFunctions();
+  }
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(handoff.versionId)))!.content.text,
+  ).toEqual([""]);
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("editorialComments").first()))!.text,
+  ).toBe("");
+  const erased = await f.t.run((ctx) =>
+    ctx.db
+      .query("ideaVersions")
+      .withIndex("by_runId", (q) => q.eq("runId", f.runId))
+      .take(50),
+  );
+  expect(erased).toHaveLength(28);
+  expect(
+    erased.every(
+      (v) => v.sourceUnavailable && !v.title && !v.note && !v.perspective,
+    ),
+  ).toBe(true);
+  expect((await f.t.run((ctx) => ctx.db.get(request._id)))!.intent).toBe("");
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("aiAttempts").first()))!.state,
+  ).toBe("settled");
+  const messages = await f.t.query(
+    components.agent.messages.listMessagesByThreadId,
+    {
+      threadId: run.threadId,
+      order: "desc",
+      paginationOpts: { numItems: 10, cursor: null },
+    },
+  );
+  expect(messages.page).toEqual([]);
+});
+
+test("TASK45.2 reselection of the same immutable version fences funding and exact retry never recaptures", async () => {
+  const f = await styledGeneration(),
+    executionKey = "same-style-selection";
+  await f.t.mutation(internal.ai.runs.claim, { runId: f.runId, executionKey });
+  await f.signed.mutation(api.ai.styleProfiles.change, {
+    ...f.scope,
+    expectedRevision: 2,
+    commandKey: "style-reselect-same",
+    action: {
+      kind: "select",
+      versionId: f.saved.versionId!,
+      reason: "New explicit selection",
+    },
+  });
+  await expect(
+    f.t.mutation(internal.ai.runs.fund, {
+      runId: f.runId,
+      generation: 1,
+      executionKey,
+      key: "reselection-attempt",
+    }),
+  ).rejects.toThrow("STYLE_SELECTION_CHANGED");
+  expect(
+    await f.signed.mutation(api.content.ideas.generate, {
+      ...f.scope,
+      ideaId: f.ideaId,
+      expectedRevision: 1,
+      intent: "Ask a precise question",
+      operationKey: "styled-generation-one",
+    }),
+  ).toBe(f.runId);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.runId)))!.styleContext!
+      .selectionReceiptId,
+  ).toBe(f.selected.receiptId);
+  expect(await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())).toEqual(
+    [],
+  );
+});
+test("TASK45.2 selection withdrawal during actual I/O settles cost once and rejects output", async () => {
+  const f = await styledGeneration();
+  vi.stubEnv("REQUESTY_API_KEY", "synthetic-key");
+  vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+    await f.signed.mutation(api.ai.styleProfiles.change, {
+      ...f.scope,
+      expectedRevision: 2,
+      commandKey: "style-reset-midcall",
+      action: { kind: "reset", reason: "Withdraw active style use" },
+    });
+    return Response.json({
+      id: "withdrawn-style",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({ text: JSON.stringify(proposal) }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    });
+  });
+  await f.t.action(internal.ai.provider.execute, { runId: f.runId });
+  const attempts = await f.t.run((ctx) => ctx.db.query("aiAttempts").collect());
+  expect(attempts).toHaveLength(1);
+  expect(attempts[0]).toMatchObject({ state: "settled", estimatedMicros: 30 });
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("contentRequests").first()))!
+      .resultIdeaId,
+  ).toBeNull();
+  await f.t.mutation(internal.ai.runs.purgeSource, { runId: f.runId });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.runId)))!.sourceCleanupState,
+  ).toBeUndefined();
+});
+
+test("TASK45.2 valid unbounded Owner style discovers and erases a former Editor's retained run", async () => {
+  const f = await styledGeneration();
+  const identity = await f.t.run(async (ctx) => {
+    const user = await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "user",
+        data: {
+          name: "Style Editor",
+          email: "style-editor@example.test",
+          emailVerified: true,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        },
+      },
+    });
+    const session = await ctx.runMutation(
+      components.betterAuth.adapter.create,
+      {
+        input: {
+          model: "session",
+          data: {
+            userId: user._id,
+            token: crypto.randomUUID(),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            expiresAt: Date.now() + 86400000,
+          },
+        },
+      },
+    );
+    return { subject: user._id, sessionId: session._id };
+  });
+  const editor = f.t.withIdentity(identity);
+  const editorId = await editor.mutation(api.users.bootstrap, {});
+  const membershipId = await f.t.run((ctx) =>
+    ctx.db.insert("memberships", {
+      workspaceId: f.workspaceId,
+      userId: editorId,
+      role: "Editor",
+    }),
+  );
+  const runId = await editor.mutation(api.content.ideas.generate, {
+    ...f.scope,
+    ideaId: f.ideaId,
+    expectedRevision: 1,
+    intent: "Editor perspective",
+    operationKey: "editor-generation-one",
+  });
+  const executionKey = "editor-output";
+  await f.t.mutation(internal.ai.runs.claim, { runId, executionKey });
+  const output = await f.t.action((ctx) =>
+    generateForRun(
+      ctx,
+      runId,
+      executionKey,
+      new MockLanguageModelV3({ doGenerate: async () => response() }),
+    ),
+  );
+  const ideaId = (await f.t.mutation(internal.content.ideas.commitProposal, {
+    runId,
+    executionKey,
+    output,
+  }))!;
+  await f.t.mutation(internal.ai.runs.finish, {
+    runId,
+    generation: 1,
+    executionKey,
+    failed: false,
+  });
+  await f.t.run((ctx) => ctx.db.patch(membershipId, { role: "Viewer" }));
+  expect(
+    (
+      await f.signed.query(api.ai.styleProfiles.version, {
+        ...f.scope,
+        versionId: f.saved.versionId!,
+      })
+    ).payload,
+  ).not.toBeNull();
+  expect(
+    (await f.signed.query(api.content.ideas.get, {
+      workspaceId: f.workspaceId,
+      ideaId,
+    }))!.version.sourceUnavailable,
+  ).toBe(true);
+  await f.t.mutation(internal.ai.styleProfiles.sweep, {
+    table: "versions",
+    cursor: null,
+  });
+  for (let i = 0; i < 10; i++) {
+    await vi.advanceTimersByTimeAsync(1000);
+    await f.t.finishInProgressScheduledFunctions();
+  }
+  expect((await f.t.run((ctx) => ctx.db.get(runId)))!.sourceCleanupState).toBe(
+    "complete",
+  );
+  const raw = await f.t.run(async (ctx) =>
+    ctx.db.get((await ctx.db.get(ideaId))!.currentVersionId!),
+  );
+  expect(raw!.title).toBe("");
+});
+
+test.each([
+  new Error("native resource failure"),
+  new ConvexError("UNKNOWN_RETAINED_PROOF"),
+])(
+  "TASK45.2 lifecycle catches rethrow unknown proof failures without writes: %s",
+  async (error) => {
+    const f = await styledGeneration();
+    const sourceAccess = await import("../ai/sourceAccess");
+    const before = await f.t.run(async (ctx) => ({
+      run: await ctx.db.get(f.runId),
+      scheduled: await ctx.db.system.query("_scheduled_functions").collect(),
+      inputs: await ctx.db.query("ideaRunCopies").collect(),
+    }));
+    vi.spyOn(sourceAccess, "retainedRunProof").mockRejectedValue(error);
+    await expect(
+      f.t.mutation(internal.ai.runs.purgeSource, { runId: f.runId }),
+    ).rejects.toThrow();
+    await expect(
+      f.t.mutation(internal.ai.contentCopies.sweep, {
+        runId: f.runId,
+        cursor: null,
+        path: [],
+      }),
+    ).rejects.toThrow();
+    expect(
+      await f.t.run(async (ctx) => ({
+        run: await ctx.db.get(f.runId),
+        scheduled: await ctx.db.system.query("_scheduled_functions").collect(),
+        inputs: await ctx.db.query("ideaRunCopies").collect(),
+      })),
+    ).toEqual(before);
+  },
+);
+
+test.each(["styled", "edited", "manual-parent", "inherited-run"])(
+  "TASK45.2 account-scoped input proof rejects original styled ancestry across consumers: %s",
+  async (kind) => {
+    const f = await styledGeneration();
+    await f.t.mutation(internal.ai.runs.claim, {
+      runId: f.runId,
+      executionKey: "account-origin",
+    });
+    const output = await f.t.action((ctx) =>
+      generateForRun(
+        ctx,
+        f.runId,
+        "account-origin",
+        new MockLanguageModelV3({ doGenerate: async () => response() }),
+      ),
+    );
+    let protectedId = (await f.t.mutation(
+      internal.content.ideas.commitProposal,
+      { runId: f.runId, executionKey: "account-origin", output },
+    ))!;
+    await f.t.mutation(internal.ai.runs.finish, {
+      runId: f.runId,
+      generation: 1,
+      executionKey: "account-origin",
+      failed: false,
+    });
+    let revision = 1;
+    if (kind === "edited") {
+      await f.signed.mutation(api.content.ideas.edit, {
+        workspaceId: f.workspaceId,
+        ideaId: protectedId,
+        expectedRevision: 1,
+        title: input.title,
+        note: input.note,
+        perspective: input.perspective,
+        priority: input.priority,
+        feedback: "Actual inherited edit",
+      });
+      revision = 2;
+    }
+    if (kind === "manual-parent") {
+      const { insertIdea } = await import("./ideas");
+      protectedId = await f.t.run(async (ctx) => {
+        const parent = (await ctx.db.get(protectedId))!;
+        return insertIdea(
+          ctx,
+          f.workspaceId,
+          f.userId,
+          "manual-parent-copy",
+          "manual-copy",
+          {
+            ...input,
+            originals: [],
+            rationale: "",
+            questions: [],
+            inputVersionId: parent.currentVersionId!,
+          },
+        );
+      });
+    }
+    if (kind === "inherited-run") {
+      await f.signed.mutation(api.ai.styleProfiles.change, {
+        ...f.scope,
+        expectedRevision: 2,
+        commandKey: "clear-selected-style",
+        action: { kind: "reset", reason: "No direct style on next run" },
+      });
+      const runId = await f.signed.mutation(api.content.ideas.generate, {
+        ...f.scope,
+        ideaId: protectedId,
+        expectedRevision: 1,
+        intent: "Inherit previous styled output",
+        operationKey: "inherited-unstyled-run",
+      });
+      expect(
+        (await f.t.run((ctx) => ctx.db.get(runId)))!.styleContext,
+      ).toBeUndefined();
+      await f.t.mutation(internal.ai.runs.claim, {
+        runId,
+        executionKey: "inherited-origin",
+      });
+      const inherited = await f.t.action((ctx) =>
+        generateForRun(
+          ctx,
+          runId,
+          "inherited-origin",
+          new MockLanguageModelV3({ doGenerate: async () => response() }),
+        ),
+      );
+      protectedId = (await f.t.mutation(internal.content.ideas.commitProposal, {
+        runId,
+        executionKey: "inherited-origin",
+        output: inherited,
+      }))!;
+      await f.t.mutation(internal.ai.runs.finish, {
+        runId,
+        generation: 1,
+        executionKey: "inherited-origin",
+        failed: false,
+      });
+    }
+    await expect(
+      f.signed.mutation(api.content.ideas.handoff, {
+        workspaceId: f.workspaceId,
+        ideaId: protectedId,
+        expectedRevision: revision,
+        accountId: null,
+        intent: "No-account protected handoff",
+        draftText: "Reviewed content",
+        clarificationConfirmed: true,
+      }),
+    ).rejects.toThrow("RESEARCH_CONTENT_ACCOUNT_CHANGED");
+    const accountB = await f.t.run(async (ctx) => {
+      const { _id, _creationTime, ...a } = (await ctx.db.get(f.accountId))!;
+      const id = await ctx.db.insert("socialAccounts", {
+        ...a,
+        name: "B",
+        providerIdentity: "account-B",
+      });
+      const {
+        _id: budgetId,
+        _creationTime: budgetTime,
+        ...budget
+      } = (await ctx.db
+        .query("aiBudgets")
+        .withIndex("by_key", (q) => q.eq("key", `account:${f.accountId}`))
+        .unique())!;
+      await ctx.db.insert("aiBudgets", {
+        ...budget,
+        key: `account:${id}`,
+        accountId: id,
+      });
+      return id;
+    });
+    const bScope = { workspaceId: f.workspaceId, accountId: accountB };
+    await expect(
+      f.signed.mutation(api.content.ideas.generate, {
+        ...bScope,
+        ideaId: protectedId,
+        expectedRevision: revision,
+        intent: "Cross-account copied origin",
+        operationKey: "account-B-protected",
+      }),
+    ).rejects.toThrow("RESEARCH_CONTENT_ACCOUNT_CHANGED");
+    await f.t.run(async (ctx) => {
+      const { ideaProofUntil } = await import("../research/contentProof");
+      const { materialWalk } = await import("../research/pipelineAccess");
+      const ver = (await ctx.db.get(
+        (await ctx.db.get(protectedId))!.currentVersionId!,
+      ))!;
+      const walk = materialWalk();
+      expect(await ideaProofUntil(ctx, ver, walk)).toBeNull();
+      await expect(ideaProofUntil(ctx, ver, walk, accountB)).rejects.toThrow(
+        "RESEARCH_CONTENT_ACCOUNT_CHANGED",
+      );
+    });
+    await f.t.run(async (ctx) => {
+      const policy = (await ctx.db.query("aiPolicies").first())!;
+      await ctx.db.patch(policy._id, { purposes: ["draft", "chat"] });
+      for (const budget of await ctx.db.query("aiBudgets").collect())
+        await ctx.db.patch(budget._id, { purposes: ["draft", "chat"] });
+    });
+    const chat = await f.signed.mutation(api.ai.conversations.create, {
+      ...bScope,
+      operationKey: "B-chat-one",
+    });
+    await expect(
+      f.signed.mutation(api.ai.conversations.send, {
+        ...bScope,
+        conversationId: chat,
+        ideaId: protectedId,
+        prompt: "Cross-account input",
+        operationKey: "B-chat-protected",
+        allowIdeaCreation: true,
+      }),
+    ).rejects.toThrow("RESEARCH_CONTENT_ACCOUNT_CHANGED");
+    const args = {
+      ...bScope,
+      ideaId: f.ideaId,
+      expectedRevision: 1,
+      intent: "Fresh source-free note",
+      operationKey: "B-fresh-note",
+    };
+    const fresh = await f.signed.mutation(api.content.ideas.generate, args);
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(fresh)))!.styleContext,
+    ).toBeUndefined();
+    expect(await f.signed.mutation(api.content.ideas.generate, args)).toBe(
+      fresh,
+    );
+    await f.signed.mutation(api.ai.conversations.send, {
+      ...bScope,
+      conversationId: chat,
+      ideaId: f.ideaId,
+      prompt: "Fresh workspace note",
+      operationKey: "B-chat-fresh",
+      allowIdeaCreation: true,
+    });
+    await f.t.run(async (ctx) => {
+      const copy = (await ctx.db
+        .query("ideaRunCopies")
+        .withIndex("by_runId", (q) => q.eq("runId", fresh))
+        .unique())!;
+      await ctx.db.patch(copy._id, {
+        ideaVersionId: (await ctx.db.get(protectedId))!.currentVersionId!,
+      });
+    });
+    await expect(
+      f.signed.mutation(api.content.ideas.generate, args),
+    ).rejects.toThrow("RESEARCH_CONTENT_ACCOUNT_CHANGED");
+  },
+);

@@ -1,3 +1,8 @@
+import {
+  materialWalk,
+  enterMaterial,
+  type MaterialWalk,
+} from "../research/pipelineAccess";
 import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 import { ConvexError, v } from "convex/values";
 import {
@@ -14,7 +19,7 @@ import {
   requireActiveWorkspace,
 } from "../lib/authorization";
 import type { Doc, Id } from "../_generated/dataModel";
-import { draftResearchProof } from "../research/contentProof";
+import { draftIdeaVersion, draftResearchProof } from "../research/contentProof";
 import { feedbackFields } from "./feedbackFields";
 // Common prefix/suffix leaves the changed middle; extent is descriptive, never semantic similarity.
 export function extent(before: string[], after: string[]) {
@@ -44,7 +49,8 @@ export async function evidence(
     | "createdAt"
     | "sourceUntil"
     | "sourceUnavailable"
-  >,
+  > & { _id?: Id<"contentFeedback"> },
+  walk: MaterialWalk = materialWalk(),
 ) {
   requireActiveWorkspace(await ctx.db.get(row.workspaceId));
   requireReference(row.workspaceId, await ctx.db.get(row.accountId));
@@ -86,8 +92,20 @@ export async function evidence(
       : row.resultingVersionId !== null)
   )
     throw new ConvexError("CONTENT_FEEDBACK_SOURCE_UNAVAILABLE");
-  const beforeUntil = await draftResearchProof(ctx, ver),
-    resultUntil = result ? await draftResearchProof(ctx, result) : null;
+  const recursive =
+    (await draftIdeaVersion(ctx, ver)) ||
+    (result && (await draftIdeaVersion(ctx, result)));
+  const owner =
+    row._id ??
+    `feedback:${row.versionId}:${row.resultingVersionId ?? ""}:${row.actorId}:${row.createdAt}`;
+  if (recursive) enterMaterial(walk, owner, "STYLE_ANCESTRY_LIMIT");
+  let beforeUntil: number | null, resultUntil: number | null;
+  try {
+    beforeUntil = await draftResearchProof(ctx, ver, walk);
+    resultUntil = result ? await draftResearchProof(ctx, result, walk) : null;
+  } finally {
+    if (recursive) walk.active.delete(owner);
+  }
   const until = Math.min(
     row.sourceUntil ?? Infinity,
     beforeUntil ?? Infinity,
@@ -96,6 +114,7 @@ export async function evidence(
   if (until <= Date.now())
     throw new ConvexError("CONTENT_FEEDBACK_SOURCE_UNAVAILABLE");
   return {
+    recursive: !!recursive,
     ver,
     result,
     beforeUntil,

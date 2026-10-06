@@ -1147,3 +1147,277 @@ test.each(["status", "resume", "continuation-authority"] as const)(
       );
   },
 );
+
+test.each([false, true])(
+  "TASK45.2 later note-backed chat outputs retain immutable input copies after conversation deletion or descendant actor loss: %s",
+  async (actorLoss) => {
+    vi.useFakeTimers();
+    vi.stubEnv("REQUESTY_API_KEY", "");
+    let f = await fixture();
+    const owner = f.signed;
+    let membershipId;
+    const saved = await f.signed.mutation(api.ai.styleProfiles.change, {
+      ...f.scope,
+      expectedRevision: 0,
+      commandKey: "chat-style-save",
+      action: {
+        kind: "save",
+        freshDeclaration: true,
+        baseVersionId: null,
+        reason: "Direct declaration",
+        payload: {
+          author: "Chat author",
+          experiences: [],
+          tone: "Concise",
+          positioning: "",
+          pillars: [{ name: "Questions", weight: 100 }],
+          examples: [],
+          forbidden: [],
+        },
+      },
+    });
+    await f.signed.mutation(api.ai.styleProfiles.change, {
+      ...f.scope,
+      expectedRevision: 1,
+      commandKey: "chat-style-select",
+      action: {
+        kind: "select",
+        versionId: saved.versionId!,
+        reason: "Use declared style",
+      },
+    });
+    const inputId = await f.signed.mutation(api.content.ideas.create, {
+      workspaceId: f.workspaceId,
+      operationKey: "chat-style-input",
+      title: "Own note",
+      note: "User claim",
+      perspective: "Question",
+      priority: "normal",
+      source: { kind: "note" },
+    });
+    const sourceRun = await f.signed.mutation(api.content.ideas.generate, {
+      ...f.scope,
+      ideaId: inputId,
+      expectedRevision: 1,
+      intent: "Style this perspective",
+      operationKey: "chat-style-generate",
+    });
+    await f.t.mutation(internal.ai.runs.claim, {
+      runId: sourceRun,
+      executionKey: "style-source",
+    });
+    const text = await f.t.action((ctx) =>
+      generateForRun(
+        ctx,
+        sourceRun,
+        "style-source",
+        new MockLanguageModelV3({
+          doGenerate: async () => ({
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  text: JSON.stringify({
+                    title: "Styled note",
+                    perspective: "A question",
+                    rationale: "Unverified",
+                    questions: ["What happened?"],
+                  }),
+                }),
+              },
+            ],
+            finishReason: { unified: "stop", raw: "stop" },
+            usage,
+            warnings: [],
+          }),
+        }),
+      ),
+    );
+    const styledId = await f.t.mutation(internal.content.ideas.commitProposal, {
+      runId: sourceRun,
+      executionKey: "style-source",
+      output: text,
+    });
+    await f.t.mutation(internal.ai.runs.finish, {
+      runId: sourceRun,
+      generation: 1,
+      executionKey: "style-source",
+      failed: false,
+    });
+    if (actorLoss) {
+      const identity = await f.t.run(async (ctx) => {
+        const user = await ctx.runMutation(
+          components.betterAuth.adapter.create,
+          {
+            input: {
+              model: "user",
+              data: {
+                name: "Chat Editor",
+                email: "chat-editor@example.test",
+                emailVerified: true,
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+              },
+            },
+          },
+        );
+        const session = await ctx.runMutation(
+          components.betterAuth.adapter.create,
+          {
+            input: {
+              model: "session",
+              data: {
+                userId: user._id,
+                token: crypto.randomUUID(),
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                expiresAt: Date.now() + 86400000,
+              },
+            },
+          },
+        );
+        return { subject: user._id, sessionId: session._id };
+      });
+      const editor = f.t.withIdentity(identity);
+      const editorId = await editor.mutation(api.users.bootstrap, {});
+      membershipId = await f.t.run((ctx) =>
+        ctx.db.insert("memberships", {
+          workspaceId: f.workspaceId,
+          userId: editorId,
+          role: "Editor",
+        }),
+      );
+      f = await fixture({ ...f, signed: editor, userId: editorId });
+    }
+    const first = await f.send({ ideaId: styledId });
+    const firstControl = await claim(f, first);
+    await f.t.mutation(internal.ai.runs.finish, {
+      ...firstControl,
+      failed: false,
+    });
+    const second = await f.send({
+      operationKey: "second-with-no-idea",
+      allowIdeaCreation: true,
+    });
+    const secondControl = await claim(f, second);
+    const descendant = await f.t.mutation(
+      internal.ai.conversations.createIdea,
+      {
+        ...secondControl,
+        title: "Later chat interpretation",
+        perspective: "Still protected",
+        rationale: "Earlier history",
+        questions: ["Why?"],
+      },
+    );
+    await f.t.mutation(internal.ai.runs.finish, {
+      ...secondControl,
+      failed: false,
+    });
+    const secondRun = (await f.t.run((ctx) => ctx.db.get(second)))!;
+    expect(secondRun.styleContext).toBeUndefined();
+    expect(secondRun.sources).toEqual([]);
+    const copies = await f.t.run((ctx) =>
+      ctx.db
+        .query("ideaRunCopies")
+        .withIndex("by_runId", (q) => q.eq("runId", second))
+        .take(11),
+    );
+    expect(copies).toHaveLength(1);
+    if (actorLoss) {
+      await f.t.run((ctx) => ctx.db.patch(membershipId!, { role: "Viewer" }));
+      expect(
+        (
+          await owner.query(api.ai.styleProfiles.version, {
+            ...f.scope,
+            versionId: saved.versionId!,
+          })
+        ).payload,
+      ).not.toBeNull();
+      expect(
+        (await owner.query(api.content.ideas.get, {
+          workspaceId: f.workspaceId,
+          ideaId: styledId!,
+        }))!.version.sourceUnavailable,
+      ).not.toBe(true);
+      const result = (await owner.query(api.content.ideas.get, {
+        workspaceId: f.workspaceId,
+        ideaId: descendant,
+      }))!;
+      expect(result.version.sourceUnavailable).toBe(true);
+      await f.t.mutation(internal.ai.styleProfiles.sweep, {
+        table: "versions",
+        cursor: null,
+      });
+      for (let i = 0; i < 15; i++) {
+        await vi.advanceTimersByTimeAsync(1000);
+        await f.t.finishInProgressScheduledFunctions();
+      }
+      expect(
+        (await f.t.run((ctx) => ctx.db.get(second)))!.sourceCleanupState,
+      ).toBe("complete");
+      expect(
+        (await f.t.run((ctx) => ctx.db.get(result.version._id)))!.title,
+      ).toBe("");
+      expect((await f.t.run((ctx) => ctx.db.get(copies[0]._id)))!.state).toBe(
+        "removed",
+      );
+      expect(
+        (await f.t.run((ctx) => ctx.db.get(sourceRun)))!.sourceCleanupState,
+      ).toBeUndefined();
+      return;
+    }
+    const { saveMessage } = await import("@convex-dev/agent");
+    for (let i = 0; i < 105; i++)
+      await f.t.run((ctx) =>
+        saveMessage(ctx, components.agent, {
+          threadId: secondRun.threadId,
+          userId: f.userId,
+          message: {
+            role: "assistant",
+            content: "Protected native history " + i,
+          },
+        }),
+      );
+    await f.signed.mutation(api.ai.conversations.remove, f.target);
+    await f.t.run((ctx) => ctx.db.patch(f.conversationId, { cleanupAfter: 0 }));
+    await f.t.mutation(internal.ai.conversations.cleanup, {
+      conversationId: f.conversationId,
+    });
+    for (let i = 0; i < 5; i++) {
+      await vi.advanceTimersByTimeAsync(1000);
+      await f.t.finishInProgressScheduledFunctions();
+    }
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(f.conversationId)))!.ideaVersionIds,
+    ).toEqual([]);
+    expect(
+      (await f.signed.query(api.content.ideas.get, {
+        workspaceId: f.workspaceId,
+        ideaId: descendant,
+      }))!.version.sourceUnavailable,
+    ).not.toBe(true);
+    await f.t.mutation(internal.ai.styleProfiles.purge, {
+      versionId: saved.versionId!,
+      proposalId: null,
+    });
+    for (let i = 0; i < 15; i++) {
+      await vi.advanceTimersByTimeAsync(1000);
+      await f.t.finishInProgressScheduledFunctions();
+    }
+    const result = (await f.signed.query(api.content.ideas.get, {
+      workspaceId: f.workspaceId,
+      ideaId: descendant,
+    }))!;
+    expect(result.version.sourceUnavailable).toBe(true);
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(result.version._id)))!.title,
+    ).toBe("");
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(second)))!.sourceCleanupState,
+    ).toBe("complete");
+    expect((await f.t.run((ctx) => ctx.db.get(copies[0]._id)))!.state).toBe(
+      "removed",
+    );
+  },
+);

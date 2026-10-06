@@ -1,3 +1,15 @@
+import { runStyleProof } from "./styleProfiles";
+import { runInputs } from "./contentCopies";
+import { ideaProofUntil } from "../research/contentProof";
+import {
+  requireWorkspace,
+  requireRole,
+  requireActiveWorkspace,
+} from "../lib/authorization";
+import {
+  enterMaterial,
+  currentMaterialProof,
+} from "../research/pipelineAccess";
 import { ConvexError } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -10,7 +22,8 @@ export async function currentRunSource(
   ws: Id<"workspaces">,
   accountId: Id<"socialAccounts"> | null,
   s: Doc<"agentRuns">["sources"][number],
-  walk?: MaterialWalk,
+  walk: MaterialWalk = materialWalk(),
+  expectedAccountId?: Id<"socialAccounts"> | null,
 ) {
   let versionUntil = Number.MAX_SAFE_INTEGER;
   if (s.ideaVersionId) {
@@ -43,7 +56,15 @@ export async function currentRunSource(
                 s.generation === origin.generation
               : false;
     if (!matches) throw new ConvexError("IDEA_SOURCE_CHANGED");
-    versionUntil = version.researchProofUntil ?? Number.MAX_SAFE_INTEGER;
+    versionUntil =
+      (await ideaProofUntil(
+        ctx,
+        version,
+        walk,
+        expectedAccountId === undefined
+          ? (accountId ?? undefined)
+          : expectedAccountId,
+      )) ?? Number.MAX_SAFE_INTEGER;
   }
   let until: number;
   if ("kind" in s) {
@@ -88,10 +109,13 @@ export async function currentRunSources(
   accountId: Id<"socialAccounts"> | null,
   sources: Doc<"agentRuns">["sources"],
   walk: MaterialWalk = materialWalk(),
+  expectedAccountId?: Id<"socialAccounts"> | null,
 ) {
   const deadlines: number[] = [];
   for (const s of sources)
-    deadlines.push(await currentRunSource(ctx, ws, accountId, s, walk));
+    deadlines.push(
+      await currentRunSource(ctx, ws, accountId, s, walk, expectedAccountId),
+    );
   return deadlines;
 }
 export function runSourceKey(
@@ -123,4 +147,112 @@ export function runSourceKey(
       : [s.repositoryId, s.generation, s.contextId ?? null, s.signalId ?? null],
     ...(lineage ? [s.ideaVersionId ?? null, s.proofUntil ?? null] : []),
   ]);
+}
+
+export async function retainedRunProof(
+  ctx: QueryCtx,
+  r: Doc<"agentRuns">,
+  walk: MaterialWalk = materialWalk(),
+  expectedAccountId?: Id<"socialAccounts"> | null,
+): Promise<number | null> {
+  const key = `run:${r._id}`;
+  if (walk.active.has(key)) throw new ConvexError("STYLE_ANCESTRY_LIMIT");
+  const memo = `${key}:${expectedAccountId === undefined ? "workspace" : (expectedAccountId ?? "none")}`;
+  if (walk.done.has(memo)) return walk.done.get(memo)!;
+  const inputs = await runInputs(ctx, r);
+  const request = await ctx.db
+    .query("contentRequests")
+    .withIndex("by_runId", (q) => q.eq("runId", r._id))
+    .unique();
+  const recursive = !!(
+    r.styleContext ||
+    r.research ||
+    r.sources.length ||
+    inputs.length ||
+    request
+  );
+  if (recursive) enterMaterial(walk, key, "STYLE_ANCESTRY_LIMIT");
+  try {
+    if (
+      r.sourceCleanupState ||
+      (r.sourceUntil != null && r.sourceUntil <= Date.now())
+    )
+      throw new ConvexError("MODEL_SOURCE_EXPIRED");
+    requireActiveWorkspace(await ctx.db.get(r.workspaceId));
+    const actor = await ctx.db.get(r.actorId);
+    if (!actor) throw new ConvexError("MODEL_ACTOR_UNAVAILABLE");
+    requireRole(
+      (await requireWorkspace(ctx, r.workspaceId, actor)).membership,
+      ["Owner", "Admin", "Editor"],
+    );
+    const account = await ctx.db.get(r.accountId);
+    if (
+      !account ||
+      account.workspaceId !== r.workspaceId ||
+      account.connection !== "connected" ||
+      (account.xEvidence?.connectionSequence ?? 0) !==
+        r.accountConnectionSequence
+    )
+      throw new ConvexError("MODEL_ACCOUNT_CHANGED");
+    if (
+      expectedAccountId !== undefined &&
+      (((r.styleContext || r.research) && r.accountId !== expectedAccountId) ||
+        r.sources.some((s) => "kind" in s && s.accountId !== expectedAccountId))
+    )
+      throw new ConvexError("RESEARCH_CONTENT_ACCOUNT_CHANGED");
+    const inputAccount =
+      expectedAccountId === undefined ? r.accountId : expectedAccountId;
+    const horizons = [
+      r.sourceUntil,
+      (await runStyleProof(ctx, r, false, walk)).sourceUntil,
+      ...(await currentRunSources(
+        ctx,
+        r.workspaceId,
+        r.accountId,
+        r.sources,
+        walk,
+        inputAccount,
+      )),
+    ];
+    if (r.research) {
+      const order = await ctx.db.get(r.research.orderId);
+      if (
+        !order ||
+        order.workspaceId !== r.workspaceId ||
+        order.accountId !== r.accountId ||
+        order.pipeline?.runId !== r._id
+      )
+        throw new ConvexError("RESEARCH_RUN_OWNER_INVALID");
+      horizons.push((await currentMaterialProof(ctx, order, walk)).proofUntil);
+    }
+    const ids = new Set(inputs.map((x) => x.ideaVersionId));
+    if (request) {
+      if (
+        request.workspaceId !== r.workspaceId ||
+        request.accountId !== r.accountId ||
+        request.actorId !== r.actorId
+      )
+        throw new ConvexError("IDEA_SOURCE_CHANGED");
+      ids.add(request.inputVersionId);
+    }
+    for (const row of inputs)
+      if (row.state !== "retained")
+        throw new ConvexError("IDEA_SOURCE_CHANGED");
+    for (const id of ids) {
+      const v = await ctx.db.get(id);
+      if (!v || v.workspaceId !== r.workspaceId)
+        throw new ConvexError("IDEA_SOURCE_CHANGED");
+      const owner = await ctx.db.get(v.ideaId);
+      if (!owner || owner.status === "archived")
+        throw new ConvexError("IDEA_SOURCE_CHANGED");
+      horizons.push(await ideaProofUntil(ctx, v, walk, inputAccount));
+    }
+    const n = Math.min(...horizons.map((x) => x ?? Infinity));
+    if (n <= Date.now()) throw new ConvexError("MODEL_SOURCE_EXPIRED");
+    const until = Number.isFinite(n) ? n : null;
+    walk.done.set(memo, until);
+    return until;
+  } finally {
+    if (recursive) walk.active.delete(key);
+  }
 }

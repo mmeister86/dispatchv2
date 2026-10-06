@@ -3397,12 +3397,12 @@ test("compound Draft proof retains upstream Research version ownership and share
       pipeline: {
         ...second.order.pipeline!,
         history: [historyPin],
-        contextPins: [{ ...r.order.pipeline!.sourcePins[0], orderId: ids[30] }],
+        contextPins: [{ ...r.order.pipeline!.sourcePins[0], orderId: ids[26] }],
       },
     });
     return ids;
   });
-  // second + original + 31 retained ancestors exceeds the shared 32-order budget.
+  // Orders and the retained Draft/Idea/chat-run ancestors share one 32-node budget.
   expect((await currentHistory())[0].payload).toBeNull();
   await f.t.run((ctx) =>
     ctx.db.patch(second.order._id, {
@@ -3410,14 +3410,14 @@ test("compound Draft proof retains upstream Research version ownership and share
         ...second.order.pipeline!,
         history: [historyPin],
         contextPins: [
-          { ...r.order.pipeline!.sourcePins[0], orderId: ancestors[29] },
+          { ...r.order.pipeline!.sourcePins[0], orderId: ancestors[25] },
         ],
       },
     }),
   );
   expect((await currentHistory())[0].payload).not.toBeNull();
   await f.t.run(async (ctx) => {
-    const cycle = (await ctx.db.get(ancestors[29]))!;
+    const cycle = (await ctx.db.get(ancestors[25]))!;
     await ctx.db.patch(cycle._id, {
       pipeline: {
         ...cycle.pipeline!,
@@ -4244,4 +4244,273 @@ test("known late native receipt restores awaiting human Review reason when no el
   expect(capture.reason).toBe("RESEARCH_AUTOMATIC_AWAITING_HUMAN_REVIEW");
   expect(capture.state).toBe("awaiting-review");
   expect(capture.results).toBeUndefined();
+});
+
+test("TASK45.2 published styled history erases model and later cluster copies while confirmed receipts survive", async () => {
+  const f = await pipelineFixture(20000, ["web-search"]);
+  await f.t.run(async (ctx) => {
+    const p = (await ctx.db.query("aiPolicies").first())!;
+    await ctx.db.patch(p._id, { purposes: [...p.purposes, "draft"] });
+    for (const b of await ctx.db.query("aiBudgets").collect())
+      if (b.purposes.includes("research"))
+        await ctx.db.patch(b._id, { purposes: [...b.purposes, "draft"] });
+  });
+  const scope = { workspaceId: f.workspaceId, accountId: f.accountId };
+  const saved = await f.signed.mutation(api.ai.styleProfiles.change, {
+    ...scope,
+    expectedRevision: 0,
+    commandKey: "history-style-save",
+    action: {
+      kind: "save",
+      freshDeclaration: true,
+      baseVersionId: null,
+      reason: "Explicit style",
+      payload: {
+        author: "History author",
+        experiences: [],
+        tone: "Concise",
+        positioning: "",
+        pillars: [{ name: "Questions", weight: 100 }],
+        examples: [],
+        forbidden: [],
+      },
+    },
+  });
+  await f.signed.mutation(api.ai.styleProfiles.change, {
+    ...scope,
+    expectedRevision: 1,
+    commandKey: "history-style-select",
+    action: { kind: "select", versionId: saved.versionId!, reason: "Select" },
+  });
+  const input = await f.signed.mutation(api.content.ideas.create, {
+    workspaceId: f.workspaceId,
+    operationKey: "history-style-input",
+    title: "Own idea",
+    note: "Own claim",
+    perspective: "Question",
+    priority: "normal",
+    source: { kind: "note" },
+  });
+  const runId = await f.signed.mutation(api.content.ideas.generate, {
+    ...scope,
+    ideaId: input,
+    expectedRevision: 1,
+    intent: "Interpret",
+    operationKey: "history-style-run",
+  });
+  const physical = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({
+      id: "styled-history",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({
+              text: JSON.stringify({
+                title: "Protected styled title",
+                perspective: "Question",
+                rationale: "Unverified",
+                questions: ["Why?"],
+              }),
+            }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    }),
+  );
+  await f.t.action(internal.ai.provider.execute, { runId });
+  const request = (await f.t.run((ctx) =>
+    ctx.db
+      .query("contentRequests")
+      .withIndex("by_runId", (q) => q.eq("runId", runId))
+      .unique(),
+  ))!;
+  const draft = await f.signed.mutation(api.content.ideas.handoff, {
+    ...scope,
+    ideaId: request.resultIdeaId!,
+    expectedRevision: 1,
+    intent: "Review",
+    draftText: "Protected published style text",
+    clarificationConfirmed: true,
+  });
+  const receipts = await f.t.run(async (ctx) => {
+    const approvalId = await ctx.db.insert("approvals", {
+      ...scope,
+      draftId: draft.draftId,
+      versionId: draft.versionId,
+      actorId: f.userId,
+      createdAt: Date.now(),
+      revokedAt: null,
+      revokedBy: null,
+    });
+    const scheduleId = await ctx.db.insert("schedules", {
+      ...scope,
+      draftId: draft.draftId,
+      versionId: draft.versionId,
+      approvalId,
+      actorId: f.userId,
+      generation: 1,
+      at: Date.now(),
+      timezone: "UTC",
+      localTime: "fixture",
+      purpose: "publishing",
+      state: "published",
+      publishedCount: 1,
+      errorCode: null,
+      jobId: null,
+    });
+    const attemptId = await ctx.db.insert("xPostAttempts", {
+      ...scope,
+      scheduleId,
+      versionId: draft.versionId,
+      generation: 1,
+      providerIdentity: "synthetic",
+      connectionSequence: 0,
+      position: 0,
+      attempt: 1,
+      claimSequence: 1,
+      leaseUntil: Date.now(),
+      deadline: Date.now(),
+      stage: "confirmed",
+      mediaIds: [],
+      externalId: "style-confirmed",
+      confirmedAt: Date.now(),
+      durationMs: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    await ctx.db.patch(scheduleId, {
+      externalPosts: [
+        {
+          position: 0,
+          externalId: "style-confirmed",
+          url: "https://x.com/synthetic/status/1",
+          attemptId,
+          confirmedAt: Date.now(),
+        },
+      ],
+    });
+    return { scheduleId, attemptId };
+  });
+  let currentOrder: Id<"researchOrders">;
+  physical.mockImplementation(async (_url, init) => {
+    const body = JSON.parse(String(init?.body));
+    if (body.tools?.[0]?.type === "web_search") return streamResponse();
+    expect(JSON.stringify(body.messages)).toContain(
+      "Protected published style text",
+    );
+    expect(JSON.stringify(body.messages)).not.toContain(
+      "explicitUserAssertions",
+    );
+    return Response.json({
+      id: "research-history",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({
+              text: await modelOutput(f, currentOrder),
+            }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    });
+  });
+  const first = (currentOrder = await f.start("styled-history-first"));
+  await driveUntil(f, first, (o) => o.state === "completed");
+  const firstOrder = (await f.t.run((ctx) => ctx.db.get(first)))!;
+  const originalEvidence = firstOrder.pipeline!.evidenceIds[0];
+  const manual = await f.signed.mutation(api.research.evidence.review, {
+    workspaceId: f.workspaceId,
+    evidenceId: originalEvidence,
+    commandKey: "styled-history-manual",
+    maxAgeMs: 86400000,
+    validUntil: Date.now() + 100000,
+    reason: "Human assessment",
+    substantiveSupportAttested: false,
+    eventAt: null,
+    eventQuote: null,
+  });
+  const second = (currentOrder = await f.start("styled-history-second"));
+  await driveUntil(f, second, (o) => o.state === "completed");
+  const secondOrder = (await f.t.run((ctx) => ctx.db.get(second)))!;
+  expect(
+    secondOrder.pipeline!.contextEvidence!.some(
+      (p) => p.evidenceId === originalEvidence,
+    ),
+  ).toBe(true);
+  const bindings = await f.t.run((ctx) =>
+    ctx.db
+      .query("researchCopyBindings")
+      .withIndex("by_evidenceId_and_state", (q) =>
+        q.eq("evidenceId", originalEvidence).eq("state", "retained"),
+      )
+      .take(25),
+  );
+  expect(bindings.some((b) => b.orderId === second)).toBe(true);
+  const [copy] = await f.signed.mutation(api.research.handoff.consume, {
+    ...scope,
+    evidenceIds: [manual],
+    intent: "Manual assessed parent",
+    target: "draft",
+    commandKey: "styled-history-copy",
+  });
+  await f.t.mutation(internal.ai.styleProfiles.purge, {
+    versionId: saved.versionId!,
+    proposalId: null,
+  });
+  expect(
+    (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: copy.draftId!,
+    }))!.versions[0].sourceUnavailable,
+  ).toBe(true);
+  await driveUntil(f, first, (o) => o.pipeline?.cleanupState === "complete");
+  await driveUntil(f, second, (o) => o.pipeline?.cleanupState === "complete");
+  for (let i = 0; i < 10; i++) {
+    await vi.advanceTimersByTimeAsync(1000);
+    await f.t.finishInProgressScheduledFunctions();
+  }
+  expect((await f.t.run((ctx) => ctx.db.get(manual)))!.payload).toBeNull();
+  expect(
+    (await f.t.run((ctx) =>
+      ctx.db.get(copy.draftVersionId!),
+    ))!.content.text.every((s) => s === ""),
+  ).toBe(true);
+  expect((await f.t.run((ctx) => ctx.db.get(receipts.attemptId)))!.stage).toBe(
+    "confirmed",
+  );
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(receipts.scheduleId)))!.externalPosts,
+  ).toHaveLength(1);
+  for (const order of [firstOrder, secondOrder]) {
+    const journal = await f.t.run((ctx) =>
+      workflow.listSteps(ctx, order.pipeline!.workflowId as WorkflowId, {
+        paginationOpts: { cursor: null, numItems: 1 },
+      }),
+    );
+    expect(journal.page).toEqual([]);
+    const run = (await f.t.run((ctx) => ctx.db.get(order.pipeline!.runId!)))!;
+    expect(
+      (
+        await f.t.query(components.agent.messages.listMessagesByThreadId, {
+          threadId: run.threadId,
+          order: "desc",
+          paginationOpts: { numItems: 10, cursor: null },
+        })
+      ).page,
+    ).toEqual([]);
+  }
 });

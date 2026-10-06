@@ -20,6 +20,8 @@ import {
 import { useGithubSourceProofClock } from "@/lib/github-source-proof";
 export function ideaError(e: unknown) {
   const s = e instanceof Error ? e.message : String(e);
+  if (s.includes("STYLE_"))
+    return "Der gebundene Account-Stil ist geändert oder nicht mehr verfügbar. Eingaben bleiben erhalten; starte nach Prüfung eine neue Anfrage.";
   if (s.includes("RESEARCH_CONTENT_GENERATION_NOT_CONFIGURED"))
     return "Quellengebundene Research-Generation ist noch nicht freigegeben. Übergib die geprüften Angaben manuell als ungeprüften Entwurf; eine Publishing-Freigabe bleibt separat erforderlich.";
   if (s.includes("CLARIFICATION_REQUIRED"))
@@ -135,7 +137,15 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     ...(selected ? [selected.version] : []),
   ];
   const proofClock = useGithubSourceProofClock(
-    protectedVersions
+    [
+      ...protectedVersions,
+      ...(runs ?? [])
+        .filter((r) => r.sourceUntil !== null && r.sourceUntil !== undefined)
+        .map((r) => ({
+          sourceProofUntil: r.sourceUntil!,
+          sourceUnavailable: r.styleUnavailable,
+        })),
+    ]
       .filter((v) => v.sourceProofUntil !== undefined)
       .map((v) => ({
         authorized: !v.sourceUnavailable,
@@ -561,6 +571,29 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                       ? " · neue Idee gespeichert"
                       : " · kein gespeichertes Ergebnis"}
                   </p>
+                  <p className="text-xs muted">
+                    {r.styleVersionId
+                      ? `Gebundene Stilversion: ${r.styleVersionId}`
+                      : "Kein Account-Stil gebunden"}
+                  </p>
+                  {(r.styleUnavailable ||
+                    (r.sourceUntil !== null &&
+                      r.sourceUntil !== undefined &&
+                      r.sourceUntil <= proofClock)) && (
+                    <p role="alert">
+                      Der gebundene Stil oder seine Quelle ist nicht mehr
+                      verfügbar. Eine neue Anfrage prüft die aktuelle Auswahl.
+                    </p>
+                  )}
+                  {r.usagePending && (
+                    <p role="status">
+                      Nutzung wird noch abgeglichen; ein Abbruch löscht keine
+                      offenen Kosten.
+                    </p>
+                  )}
+                  {r.errorCode && (
+                    <p role="alert">{ideaError(new Error(r.errorCode))}</p>
+                  )}
                   {(r.state === "ready" || r.state === "running") && (
                     <Button
                       variant="outline"

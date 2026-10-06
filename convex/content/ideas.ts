@@ -1,5 +1,11 @@
+import { runStyleProof } from "../ai/styleProfiles";
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 import { materialWalk, type MaterialWalk } from "../research/pipelineAccess";
-import { currentRunSources, runSourceKey } from "../ai/sourceAccess";
+import {
+  retainedRunProof,
+  currentRunSources,
+  runSourceKey,
+} from "../ai/sourceAccess";
 import { registerResearchCopies } from "../research/contentCleanup";
 import { currentContext } from "../integrations/github/contextAccess";
 import { ConvexError, v } from "convex/values";
@@ -30,7 +36,11 @@ import { sha256 } from "../lib/crypto";
 import { checkSource } from "../integrations/github/repositories";
 import { createDraftTransaction } from "../editorial";
 import { active, createRun } from "../ai/runs";
-import { researchSourceProof, projectIdea } from "../research/contentProof";
+import {
+  ideaProofUntil,
+  researchSourceProof,
+  projectIdea,
+} from "../research/contentProof";
 const editable = ["Owner", "Admin", "Editor"] as const;
 const versionDoc = v.object({
   _id: v.id("ideaVersions"),
@@ -189,6 +199,9 @@ export async function insertIdea(
   });
   const versionId = await ctx.db.insert("ideaVersions", {
     ...fields,
+    ...(fields.runId || fields.inputVersionId
+      ? { researchCleanupPending: true }
+      : {}),
     workspaceId: ws,
     ideaId: id,
     number: 1,
@@ -334,7 +347,7 @@ export const edit = workspaceMutation({
     text(a.feedback, 1000, true);
     const { idea, version } = await current(ctx, ctx.workspace._id, a.ideaId);
     cas(idea, a.expectedRevision);
-    await currentIdeaSource(ctx, ctx.workspace._id, version.source);
+    await ideaProofUntil(ctx, version);
     const { _id, _creationTime, ...old } = version;
     const resultingVersionId = await ctx.db.insert("ideaVersions", {
       ...old,
@@ -359,11 +372,11 @@ export const edit = workspaceMutation({
       ideaId: idea._id,
       versionId: version._id,
       resultingVersionId,
-      ...(version.researchProofUntil
-        ? {
-            researchProofUntil: version.researchProofUntil,
-            researchCleanupPending: true,
-          }
+      ...(version.researchProofUntil !== undefined
+        ? { researchProofUntil: version.researchProofUntil }
+        : {}),
+      ...(version.researchCleanupPending
+        ? { researchCleanupPending: true }
         : {}),
       actorId: ctx.user._id,
       kind: "edit",
@@ -386,7 +399,7 @@ export const archive = workspaceMutation({
     text(a.feedback, 1000, true);
     const { idea, version } = await current(ctx, ctx.workspace._id, a.ideaId);
     cas(idea, a.expectedRevision);
-    await currentIdeaSource(ctx, ctx.workspace._id, version.source);
+    await ideaProofUntil(ctx, version);
     await ctx.db.patch(idea._id, {
       revision: idea.revision + 1,
       status: a.archived ? "archived" : idea.handoff ? "accepted" : "new",
@@ -397,11 +410,11 @@ export const archive = workspaceMutation({
       ideaId: idea._id,
       versionId: version._id,
       actorId: ctx.user._id,
-      ...(version.researchProofUntil
-        ? {
-            researchProofUntil: version.researchProofUntil,
-            researchCleanupPending: true,
-          }
+      ...(version.researchProofUntil !== undefined
+        ? { researchProofUntil: version.researchProofUntil }
+        : {}),
+      ...(version.researchCleanupPending
+        ? { researchCleanupPending: true }
         : {}),
       kind: a.archived ? "reject" : "restore",
       text: a.feedback.trim(),
@@ -490,7 +503,7 @@ export const handoff = workspaceMutation({
       throw new ConvexError("IDEA_CLARIFICATION_REQUIRED");
     if (a.accountId)
       requireReference(ctx.workspace._id, await ctx.db.get(a.accountId));
-    await currentIdeaSource(ctx, ctx.workspace._id, version.source);
+    await ideaProofUntil(ctx, version, undefined, a.accountId);
     if (
       (version.source.kind === "research" ||
         version.source.kind === "context-set") &&
@@ -521,7 +534,7 @@ export const handoff = workspaceMutation({
     }
     cas(idea, a.expectedRevision);
     if (idea.status === "archived") throw new ConvexError("IDEA_ARCHIVED");
-    await currentIdeaSource(ctx, ctx.workspace._id, version.source);
+    await ideaProofUntil(ctx, version, undefined, a.accountId);
     const draftId = await createDraftTransaction(
       ctx,
       ctx.workspace._id,
@@ -594,12 +607,17 @@ export const generate = workspaceMutation({
       )
         throw new ConvexError("IDEA_OPERATION_CONFLICT");
       const input = await ctx.db.get(prior.inputVersionId);
-      if (input) await currentIdeaSource(ctx, ctx.workspace._id, input.source);
+      if (!input) throw new ConvexError("IDEA_SOURCE_CHANGED");
+      await ideaProofUntil(ctx, input, undefined, a.accountId);
+      const run = await ctx.db.get(prior.runId);
+      if (!run) throw new ConvexError("IDEA_RUN_CHANGED");
+      await retainedRunProof(ctx, run);
       return prior.runId;
     }
     const { idea, version } = await current(ctx, ctx.workspace._id, a.ideaId);
     cas(idea, a.expectedRevision);
     if (idea.status === "archived") throw new ConvexError("IDEA_ARCHIVED");
+    await ideaProofUntil(ctx, version, undefined, a.accountId);
     const sources = await currentIdeaSource(
       ctx,
       ctx.workspace._id,
@@ -634,6 +652,7 @@ export const generate = workspaceMutation({
           ? "idea-context-perspective-v1"
           : "idea-perspective-v1",
       sources,
+      inputVersionIds: [version._id],
     });
     await ctx.db.insert("contentRequests", {
       workspaceId: ctx.workspace._id,
@@ -696,7 +715,7 @@ export const commitProposal = internalMutation({
     cas(idea, request.inputRevision);
     if (version._id !== request.inputVersionId || idea.status === "archived")
       throw new ConvexError("IDEA_SOURCE_CHANGED");
-    await currentIdeaSource(ctx, request.workspaceId, version.source);
+    await ideaProofUntil(ctx, version, undefined, request.accountId);
     const p = proposal.parse(JSON.parse(a.output));
     validate({ title: p.title, perspective: p.perspective, note: "" });
     text(p.rationale, 1000, true);
@@ -741,6 +760,11 @@ export const generationStatus = workspaceQuery({
         v.literal("failed"),
       ),
       resultIdeaId: v.union(v.id("ideas"), v.null()),
+      styleVersionId: v.union(v.id("styleProfileVersions"), v.null()),
+      sourceUntil: v.union(v.number(), v.null()),
+      styleUnavailable: v.boolean(),
+      errorCode: v.union(v.string(), v.null()),
+      usagePending: v.boolean(),
     }),
   ),
   handler: async (ctx, a) => {
@@ -751,11 +775,49 @@ export const generationStatus = workspaceQuery({
       .order("desc")
       .take(5);
     return Promise.all(
-      requests.map(async (r) => ({
-        runId: r.runId,
-        state: (await ctx.db.get(r.runId))?.state ?? "failed",
-        resultIdeaId: r.resultIdeaId,
-      })),
+      requests.map(async (request) => {
+        const run = await ctx.db.get(request.runId);
+        if (
+          !run ||
+          run.workspaceId !== ctx.workspace._id ||
+          run.accountId !== request.accountId
+        )
+          throw new ConvexError("IDEA_RUN_CHANGED");
+        let styleUnavailable = false;
+        try {
+          await runStyleProof(
+            ctx,
+            run,
+            ["ready", "running"].includes(run.state),
+          );
+        } catch (error) {
+          rethrowUnexpectedSourceError(error);
+          styleUnavailable = true;
+        }
+        const usagePending =
+          !!(await ctx.db
+            .query("aiAttempts")
+            .withIndex("by_runId_and_state", (q) =>
+              q.eq("runId", run._id).eq("state", "sent"),
+            )
+            .first()) ||
+          !!(await ctx.db
+            .query("aiAttempts")
+            .withIndex("by_runId_and_state", (q) =>
+              q.eq("runId", run._id).eq("state", "unknown"),
+            )
+            .first());
+        return {
+          runId: run._id,
+          state: run.state,
+          resultIdeaId: request.resultIdeaId,
+          styleVersionId: run.styleContext?.versionId ?? null,
+          sourceUntil: run.sourceUntil ?? null,
+          styleUnavailable,
+          errorCode: run.errorCode,
+          usagePending,
+        };
+      }),
     );
   },
 });

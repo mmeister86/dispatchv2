@@ -34,6 +34,7 @@ import { FIRST_WRITE_MS } from "./publishing/postFields";
 import { resolveLocalTime } from "../src/lib/time";
 import {
   draftResearchProof,
+  ideaProofUntil,
   projectDraft,
   draftIdeaVersion,
 } from "./research/contentProof";
@@ -494,7 +495,7 @@ export async function createDraftTransaction(
       ) as Doc<"ideaVersions">)
     : null;
   if (sourceVersion) {
-    await currentIdeaSource(ctx, workspaceId, sourceVersion.source);
+    await ideaProofUntil(ctx, sourceVersion, undefined, a.content.accountId);
     if (
       (sourceVersion.source.kind === "research" ||
         sourceVersion.source.kind === "context-set") &&
@@ -519,11 +520,11 @@ export async function createDraftTransaction(
     draftId,
     number: 1,
     ...(a.ideaVersionId ? { ideaVersionId: a.ideaVersionId } : {}),
-    ...(sourceVersion?.researchProofUntil
-      ? {
-          researchProofUntil: sourceVersion.researchProofUntil,
-          researchCleanupPending: true,
-        }
+    ...(sourceVersion?.researchProofUntil !== undefined
+      ? { researchProofUntil: sourceVersion.researchProofUntil }
+      : {}),
+    ...(sourceVersion?.researchCleanupPending
+      ? { researchCleanupPending: true }
       : {}),
     content: a.content,
     mediaChecksums: await mediaSnapshot(ctx, a.content),
@@ -571,23 +572,30 @@ export async function saveDraftTransaction(
     throw new ConvexError("DRAFT_VERSION_CHANGED");
   await checkContentSource(ctx, currentVersion);
   if (
-    currentVersion?.researchProofUntil &&
+    currentVersion.researchProofUntil &&
     a.content.accountId !== currentVersion.content.accountId
   )
     throw new ConvexError("RESEARCH_CONTENT_ACCOUNT_CHANGED");
   await validateContent(ctx, workspaceId, a.content);
   if (a.reason.length > 500) throw new ConvexError("INVALID_REASON");
   const sourceIdeaVersion = await draftIdeaVersion(ctx, currentVersion);
+  if (sourceIdeaVersion)
+    await ideaProofUntil(
+      ctx,
+      sourceIdeaVersion,
+      undefined,
+      a.content.accountId,
+    );
   const versionId = await ctx.db.insert("draftVersions", {
     workspaceId: workspaceId,
     draftId: d._id,
     number: d.revision + 1,
     ...(sourceIdeaVersion ? { ideaVersionId: sourceIdeaVersion._id } : {}),
-    ...(currentVersion?.researchProofUntil
-      ? {
-          researchProofUntil: currentVersion.researchProofUntil,
-          researchCleanupPending: true,
-        }
+    ...(currentVersion?.researchProofUntil !== undefined
+      ? { researchProofUntil: currentVersion.researchProofUntil }
+      : {}),
+    ...(currentVersion?.researchCleanupPending
+      ? { researchCleanupPending: true }
       : {}),
     content: a.content,
     mediaChecksums: await mediaSnapshot(ctx, a.content),
@@ -1359,12 +1367,10 @@ export const addComment = workspaceMutation({
       draftId: ver.draftId,
       versionId: ver._id,
       versionNumber: ver.number,
-      ...(ver.researchProofUntil
-        ? {
-            researchProofUntil: ver.researchProofUntil,
-            researchCleanupPending: true,
-          }
+      ...(ver.researchProofUntil !== undefined
+        ? { researchProofUntil: ver.researchProofUntil }
         : {}),
+      ...(ver.researchCleanupPending ? { researchCleanupPending: true } : {}),
       text: a.text.trim(),
       authorId: ctx.user._id,
       resolved: false,

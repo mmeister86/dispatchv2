@@ -1,6 +1,10 @@
 import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
-import { currentRunSources } from "../ai/sourceAccess";
-import { materialWalk, type MaterialWalk } from "./pipelineAccess";
+import { retainedRunProof, currentRunSources } from "../ai/sourceAccess";
+import {
+  enterMaterial,
+  materialWalk,
+  type MaterialWalk,
+} from "./pipelineAccess";
 import { sha256 } from "../lib/crypto";
 import { ConvexError } from "convex/values";
 import type { QueryCtx } from "../_generated/server";
@@ -62,67 +66,104 @@ export async function draftResearchProof(
   ver: Doc<"draftVersions">,
   walk: MaterialWalk = materialWalk(),
 ) {
-  const idea = await draftIdeaVersion(ctx, ver);
-  if (!idea) return null;
-  if (
-    idea.source.kind !== "research" &&
-    (idea.source.kind !== "context-set" ||
-      !idea.source.sources.some((s) => "kind" in s))
-  ) {
-    return ideaProofUntil(ctx, idea, walk);
-  }
-  if (
-    ver.sourceUnavailable ||
-    (ver.researchProofUntil ?? 0) <= Date.now() ||
-    (idea.source.kind === "research"
-      ? ver.content.accountId !== idea.source.accountId
-      : idea.source.sources.some(
-          (s) => "kind" in s && s.accountId !== ver.content.accountId,
-        ))
-  )
+  if (ver.sourceUnavailable)
     throw new ConvexError("RESEARCH_CONTENT_SOURCE_CHANGED");
-  return Math.min(
-    ver.researchProofUntil!,
-    idea.source.kind === "research"
-      ? await researchSourceProof(ctx, ver.workspaceId, idea.source, walk)
-      : Math.min(
-          ...(await currentRunSources(
-            ctx,
-            ver.workspaceId,
-            null,
-            idea.source.sources,
-            walk,
-          )),
-        ),
-  );
+  const idea = await draftIdeaVersion(ctx, ver);
+  if (!idea) {
+    if (ver.researchCleanupPending || ver.researchProofUntil !== undefined)
+      throw new ConvexError("RESEARCH_CONTENT_SOURCE_CHANGED");
+    return null;
+  }
+  const key = `draft:${ver._id}`;
+  if (walk.active.has(key)) throw new ConvexError("STYLE_ANCESTRY_LIMIT");
+  if (walk.done.has(key)) return walk.done.get(key)!;
+  enterMaterial(walk, key, "STYLE_ANCESTRY_LIMIT");
+  try {
+    const until = await ideaProofUntil(ctx, idea, walk, ver.content.accountId);
+    if (
+      idea.source.kind === "research" ||
+      (idea.source.kind === "context-set" &&
+        idea.source.sources.some((s) => "kind" in s))
+    ) {
+      if (
+        (ver.researchProofUntil ?? 0) <= Date.now() ||
+        (idea.source.kind === "research"
+          ? ver.content.accountId !== idea.source.accountId
+          : idea.source.sources.some(
+              (s) => "kind" in s && s.accountId !== ver.content.accountId,
+            ))
+      )
+        throw new ConvexError("RESEARCH_CONTENT_SOURCE_CHANGED");
+    }
+    const n = Math.min(until ?? Infinity, ver.researchProofUntil ?? Infinity);
+    const horizon = Number.isFinite(n) ? n : null;
+    walk.done.set(key, horizon);
+    return horizon;
+  } finally {
+    walk.active.delete(key);
+  }
 }
 export async function ideaProofUntil(
   ctx: QueryCtx,
   ver: Doc<"ideaVersions">,
   walk: MaterialWalk = materialWalk(),
-) {
-  await currentIdeaSource(ctx, ver.workspaceId, ver.source, walk);
-  if (ver.source.kind === "context-set")
-    return Math.min(
+  accountId?: Id<"socialAccounts"> | null,
+): Promise<number | null> {
+  const key = `idea:${ver._id}`;
+  if (walk.active.has(key)) throw new ConvexError("STYLE_ANCESTRY_LIMIT");
+  const memo = `${key}:${accountId === undefined ? "workspace" : (accountId ?? "none")}`;
+  if (walk.done.has(memo)) return walk.done.get(memo)!;
+  const idea = await ctx.db.get(ver.ideaId);
+  if (!idea || idea.workspaceId !== ver.workspaceId || ver.sourceUnavailable)
+    throw new ConvexError("IDEA_SOURCE_CHANGED");
+  const recursive = !!(
+    ver.runId ||
+    ver.inputVersionId ||
+    ver.source.kind !== "note"
+  );
+  if (recursive) enterMaterial(walk, key, "STYLE_ANCESTRY_LIMIT");
+  try {
+    const sources = await currentIdeaSource(
+      ctx,
+      ver.workspaceId,
+      ver.source,
+      walk,
+    );
+    const horizons: (number | null | undefined)[] = [
+      ver.researchProofUntil,
       ...(await currentRunSources(
         ctx,
         ver.workspaceId,
-        null,
-        ver.source.sources,
+        accountId ?? null,
+        sources,
         walk,
       )),
-    );
-  if (ver.source.kind === "research")
-    return researchSourceProof(ctx, ver.workspaceId, ver.source, walk);
-  if (ver.source.kind === "note") return null;
-  const repositoryId =
-    ver.source.kind === "signal"
-      ? ver.source.repositoryId
-      : (await ctx.db.get(ver.source.contextId))!.repositoryId;
-  return (await ctx.db.get(repositoryId))!.proofExpiresAt;
+    ];
+    if (ver.runId) {
+      const run = await ctx.db.get(ver.runId);
+      if (!run || run.workspaceId !== ver.workspaceId)
+        throw new ConvexError("IDEA_SOURCE_CHANGED");
+      horizons.push(await retainedRunProof(ctx, run, walk, accountId));
+    }
+    if (ver.inputVersionId) {
+      const parent = await ctx.db.get(ver.inputVersionId);
+      if (!parent || parent.workspaceId !== ver.workspaceId)
+        throw new ConvexError("IDEA_SOURCE_CHANGED");
+      const owner = await ctx.db.get(parent.ideaId);
+      if (!owner || owner.status === "archived")
+        throw new ConvexError("IDEA_SOURCE_CHANGED");
+      horizons.push(await ideaProofUntil(ctx, parent, walk, accountId));
+    }
+    const n = Math.min(...horizons.map((x) => x ?? Infinity));
+    if (n <= Date.now()) throw new ConvexError("MODEL_SOURCE_EXPIRED");
+    const until = Number.isFinite(n) ? n : null;
+    walk.done.set(memo, until);
+    return until;
+  } finally {
+    if (recursive) walk.active.delete(key);
+  }
 }
 export async function projectIdea(ctx: QueryCtx, ver: Doc<"ideaVersions">) {
-  if (ver.source.kind === "note") return ver;
   try {
     const until = await ideaProofUntil(ctx, ver);
     if (!ver.sourceUnavailable)

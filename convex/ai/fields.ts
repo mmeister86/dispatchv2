@@ -59,6 +59,16 @@ export const budgetFields = {
   spentMicros: v.number(),
 };
 export const runFields = {
+  styleContext: v.optional(
+    v.object({
+      versionId: v.id("styleProfileVersions"),
+      fingerprint: v.string(),
+      selectedBy: v.id("users"),
+      selectionReceiptId: v.id("styleProfileCommands"),
+      sourceUntil: v.union(v.number(), v.null()),
+    }),
+  ),
+  sourceUntil: v.optional(v.union(v.number(), v.null())),
   sourceCleanupState: v.optional(
     v.union(v.literal("pending"), v.literal("complete")),
   ),

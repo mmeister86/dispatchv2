@@ -9,6 +9,7 @@
  */
 
 import type * as ai_accounting from "../ai/accounting.js";
+import type * as ai_contentCopies from "../ai/contentCopies.js";
 import type * as ai_conversationAccess from "../ai/conversationAccess.js";
 import type * as ai_conversations from "../ai/conversations.js";
 import type * as ai_fields from "../ai/fields.js";
@@ -70,6 +71,7 @@ import type * as intelligence_sharedFields from "../intelligence/sharedFields.js
 import type * as lib_authorization from "../lib/authorization.js";
 import type * as lib_crypto from "../lib/crypto.js";
 import type * as lib_editorialFields from "../lib/editorialFields.js";
+import type * as lib_sourceProof from "../lib/sourceProof.js";
 import type * as media_assets from "../media/assets.js";
 import type * as media_binding from "../media/binding.js";
 import type * as media_cleanup from "../media/cleanup.js";
@@ -140,6 +142,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   "ai/accounting": typeof ai_accounting;
+  "ai/contentCopies": typeof ai_contentCopies;
   "ai/conversationAccess": typeof ai_conversationAccess;
   "ai/conversations": typeof ai_conversations;
   "ai/fields": typeof ai_fields;
@@ -201,6 +204,7 @@ declare const fullApi: ApiFromModules<{
   "lib/authorization": typeof lib_authorization;
   "lib/crypto": typeof lib_crypto;
   "lib/editorialFields": typeof lib_editorialFields;
+  "lib/sourceProof": typeof lib_sourceProof;
   "media/assets": typeof media_assets;
   "media/binding": typeof media_binding;
   "media/cleanup": typeof media_cleanup;

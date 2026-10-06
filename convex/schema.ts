@@ -351,6 +351,25 @@ export default defineSchema({
       "audienceId",
       "action",
     ]),
+  ideaRunCopies: defineTable({
+    workspaceId: v.id("workspaces"),
+    accountId: v.id("socialAccounts"),
+    ideaVersionId: v.id("ideaVersions"),
+    runId: v.id("agentRuns"),
+    conversationId: v.optional(v.id("conversations")),
+    state: v.union(v.literal("retained"), v.literal("removed")),
+  })
+    .index("by_ideaVersionId_and_state", ["ideaVersionId", "state"])
+    .index("by_runId", ["runId"]),
+  draftResearchCopies: defineTable({
+    workspaceId: v.id("workspaces"),
+    accountId: v.id("socialAccounts"),
+    draftVersionId: v.id("draftVersions"),
+    orderId: v.id("researchOrders"),
+    state: v.union(v.literal("retained"), v.literal("removed")),
+  })
+    .index("by_draftVersionId_and_state", ["draftVersionId", "state"])
+    .index("by_orderId", ["orderId"]),
   researchCopyBindings: defineTable({
     evidenceId: v.id("researchEvidence"),
     orderId: v.optional(v.id("researchOrders")),
@@ -522,6 +541,8 @@ export default defineSchema({
       "operationKey",
     ]),
   ideaVersions: defineTable(ideaVersionFields)
+    .index("by_runId", ["runId"])
+    .index("by_inputVersionId", ["inputVersionId"])
     .index("by_source_evidenceId_and_researchCleanupPending", [
       "source.evidenceId",
       "researchCleanupPending",
@@ -539,6 +560,7 @@ export default defineSchema({
 
     .index("by_ideaId", ["ideaId"]),
   contentRequests: defineTable(requestFields)
+    .index("by_inputVersionId", ["inputVersionId"])
     .index("by_runId", ["runId"])
     .index("by_workspaceId_and_actorId_and_operationKey", [
       "workspaceId",
@@ -553,10 +575,9 @@ export default defineSchema({
   jevControls: defineTable(jevControlFields).index("by_key", ["key"]),
   aiPolicies: defineTable(policyFields).index("by_key", ["key"]),
   aiBudgets: defineTable(budgetFields).index("by_key", ["key"]),
-  agentRuns: defineTable(runFields).index("by_workspaceId_and_createdAt", [
-    "workspaceId",
-    "createdAt",
-  ]),
+  agentRuns: defineTable(runFields)
+    .index("by_styleContext_versionId", ["styleContext.versionId"])
+    .index("by_workspaceId_and_createdAt", ["workspaceId", "createdAt"]),
   aiAttempts: defineTable(
     v.union(
       v.object(aiAttemptFields),

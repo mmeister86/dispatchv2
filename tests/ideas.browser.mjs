@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='content/ideas:list')return window.list;if(name==='content/ideas:get')return window.linked??null;if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};if(name==='content/ideas:generationStatus')return window.runs;return {page:[],isDone:true,continueCursor:''};};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
+  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='content/ideas:list')return window.list;if(name==='content/ideas:get')return window.linked??null;if(name==='content/performance:context')return {entries:[],configuration:null};if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};if(name==='content/ideas:generationStatus')return window.runs;return {page:[],isDone:true,continueCursor:''};};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
   "@/lib/auth-client": `export const demoMode=false;`,
   "@/lib/store": `import {useState} from "react"; export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:'account-one',workspaceId:window.workspace,name:'Synthetic',channel:'X'}]}});`,
 };
@@ -286,11 +286,26 @@ try {
   await page.keyboard.press("Escape");
   await page.evaluate(() => {
     window.runs = [
-      { runId: "actual-run", state: "running", resultIdeaId: null },
+      {
+        runId: "actual-run",
+        state: "running",
+        resultIdeaId: null,
+        styleVersionId: "pinned-style",
+        sourceUntil: null,
+        styleUnavailable: false,
+        usagePending: true,
+        errorCode: null,
+      },
     ];
     window.render();
   });
   await page.getByRole("button", { name: "Perspektive vorschlagen" }).click();
+  await expect(
+    dialog.getByText("Gebundene Stilversion: pinned-style"),
+  ).toBeVisible();
+  await expect(
+    dialog.getByText("Nutzung wird noch abgeglichen", { exact: false }),
+  ).toBeVisible();
   await dialog.getByRole("button", { name: "Generierung abbrechen" }).click();
   await expect(
     dialog.getByRole("button", { name: "Generierung abbrechen" }),
@@ -409,6 +424,71 @@ try {
   expect(await page.locator("body").innerText()).not.toContain(
     "Protected edited buffer",
   );
+  await page.goto("http://127.0.0.1:5174/idea-fixture?idea=style-error-idea");
+  await page.evaluate(() => {
+    window.list = { page: [], isDone: true, continueCursor: "" };
+    window.linked = {
+      idea: {
+        _id: "style-error-idea",
+        workspaceId: window.workspace,
+        revision: 1,
+        status: "new",
+        currentVersionId: "style-error-input",
+      },
+      version: {
+        _id: "style-error-input",
+        title: "Style error input",
+        note: "User note",
+        perspective: "User perspective",
+        priority: "normal",
+        number: 1,
+        source: { kind: "note" },
+        originals: [],
+        questions: [],
+        rationale: "",
+      },
+    };
+    window.render();
+  });
+  await page.getByRole("button", { name: "Perspektive vorschlagen" }).click();
+  await dialog.getByLabel("Zielaccount").selectOption("account-one");
+  await dialog
+    .getByLabel("Konkrete Absicht / geklärte Angaben")
+    .fill("Style error buffered intent");
+  await dialog.getByRole("button", { name: "Vorschlag anfordern" }).click();
+  await page.evaluate(() =>
+    window.commands.at(-1).reject(new Error("STYLE_SELECTION_CHANGED")),
+  );
+  await expect(dialog.getByRole("alert")).toContainText(
+    "gebundene Account-Stil",
+  );
+  await expect(
+    dialog.getByLabel("Konkrete Absicht / geklärte Angaben"),
+  ).toHaveValue("Style error buffered intent");
+  await page.evaluate(() => {
+    window.runs = [
+      {
+        runId: "old-style-run",
+        state: "failed",
+        resultIdeaId: null,
+        styleVersionId: "old-style-pin",
+        sourceUntil: null,
+        styleUnavailable: true,
+        usagePending: true,
+        errorCode: "STYLE_SELECTION_CHANGED",
+      },
+    ];
+    window.render();
+  });
+  await expect(
+    dialog.getByText("Gebundene Stilversion: old-style-pin"),
+  ).toBeVisible();
+  await expect(
+    dialog.getByText(
+      "Der gebundene Stil oder seine Quelle ist nicht mehr verfügbar.",
+      { exact: false },
+    ),
+  ).toBeVisible();
   expect(errors).toEqual([]);
   console.log(
     "Actual real Ideas + signal handoff: loading/manual ack/idempotent key/pending/CAS buffer/draft-ID navigation/config failure/model clarification/account/stop/workspace/Viewer/withdrawal PASS; no provider call.",

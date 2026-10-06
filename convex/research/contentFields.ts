@@ -16,6 +16,9 @@ export const researchContentSource = v.object({
   proofUntil: v.number(),
 });
 export const researchCopyFields = {
+  sourceCleanupState: v.optional(
+    v.union(v.literal("pending"), v.literal("complete")),
+  ),
   sourceProofUntil: v.optional(v.number()),
   researchProofUntil: v.optional(v.number()),
   researchCleanupPending: v.optional(v.boolean()),

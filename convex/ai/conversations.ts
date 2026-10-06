@@ -1,4 +1,10 @@
-import { currentRunSources, runSourceKey } from "./sourceAccess";
+import { ideaProofUntil } from "../research/contentProof";
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
+import {
+  currentRunSources,
+  runSourceKey,
+  retainedRunProof,
+} from "./sourceAccess";
 import { orderLiability } from "../research/pipelineAccess";
 import { registerResearchCopies } from "../research/contentCleanup";
 import { admitPipeline } from "../research/pipeline";
@@ -231,7 +237,8 @@ export const messages = query({
     const { c } = await conversationAccess(ctx, a.workspaceId, a.accountId, id);
     try {
       await historyAuthority(ctx, c);
-    } catch {
+    } catch (error) {
+      rethrowUnexpectedSourceError(error);
       return {
         page: [],
         isDone: true,
@@ -356,7 +363,7 @@ export const send = mutation({
       inputVersionId = idea!.currentVersionId;
       const version = await ctx.db.get(inputVersionId);
       requireReference(c.workspaceId, version);
-      await currentIdeaSource(ctx, c.workspaceId, version!.source);
+      await ideaProofUntil(ctx, version!, undefined, c.accountId);
       if (!versions.includes(inputVersionId)) versions.push(inputVersionId);
       context = {
         title: version!.title,
@@ -436,6 +443,7 @@ export const send = mutation({
       conversationId: c._id,
       chatOperationId: opId,
       existingPrompt: { threadId: c.threadId, messageId: saved.messageId },
+      inputVersionIds: versions,
     });
     await ctx.db.patch(opId, { runIds: [runId] });
     for (const s of sources)
@@ -502,6 +510,7 @@ export const resume = mutation({
       conversationId: c._id,
       chatOperationId: op._id,
       existingPrompt: { threadId: c.threadId, messageId: op.promptMessageId },
+      inputVersionIds: c.ideaVersionIds,
     });
     await ctx.db.patch(op._id, { runIds: [...op.runIds, runId] });
     await ctx.db.patch(c._id, { activeRunId: runId, updatedAt: Date.now() });
@@ -673,7 +682,8 @@ export const status = query({
     let historyReadable = true;
     try {
       await historyAuthority(ctx, c);
-    } catch {
+    } catch (error) {
+      rethrowUnexpectedSourceError(error);
       historyReadable = false;
     }
     const rows = await Promise.all(
@@ -816,8 +826,8 @@ export const projection = query({
       a.conversationId,
     );
     try {
-      await historyAuthority(ctx, c);
-      let proofExpiresAt = Number.MAX_SAFE_INTEGER;
+      const historyUntil = await historyAuthority(ctx, c);
+      let proofExpiresAt = historyUntil ?? Number.MAX_SAFE_INTEGER;
       proofExpiresAt = Math.min(
         proofExpiresAt,
         ...(await currentRunSources(
@@ -828,7 +838,8 @@ export const projection = query({
         )),
       );
       return { authorized: true, proofExpiresAt };
-    } catch {
+    } catch (error) {
+      rethrowUnexpectedSourceError(error);
       return { authorized: false, proofExpiresAt: 0 };
     }
   },
@@ -915,6 +926,7 @@ export const researchResult = internalMutation({
     const c = await ctx.db.get(o.targetedChat.conversationId);
     if (
       !c ||
+      c.state !== "active" ||
       c.actorId !== o.actorId ||
       c.accountId !== o.accountId ||
       c.workspaceId !== o.workspaceId
@@ -928,7 +940,8 @@ export const researchResult = internalMutation({
         ["Owner", "Admin", "Editor"],
       );
       await historyAuthority(ctx, c);
-    } catch {
+    } catch (error) {
+      rethrowUnexpectedSourceError(error);
       return null;
     }
     // Wait for every native incarnation, including a stopped older run that can still finish SDK persistence.
@@ -975,7 +988,11 @@ export const researchResult = internalMutation({
           `Rechercheauftrag ${o._id}: ${o.pipeline.outcome}. Ungeprüfte Review; keine Wahrheits- oder Veröffentlichungsfreigabe.\n` +
           proofs.map(researchSummary).join("\n");
         sources.push(...proofs.map((p) => p.source));
-      } catch {
+      } catch (error) {
+        if (!(
+          error instanceof ConvexError && error.data === "CHAT_SOURCE_LIMIT"
+        ))
+          rethrowUnexpectedSourceError(error);
         content = `Rechercheauftrag ${o._id}: Quelle nicht mehr aktuell oder Kontextgrenze erreicht. Keine belegte Zusammenfassung übernommen.`;
       }
     }
@@ -1026,8 +1043,11 @@ export const expireSource = internalMutation({
     if (!c || c.state !== "active") return null;
     try {
       await historyAuthority(ctx, c);
+      const run = c.activeRunId ? await ctx.db.get(c.activeRunId) : null;
+      if (run) await retainedRunProof(ctx, run);
       return null;
-    } catch {
+    } catch (error) {
+      rethrowUnexpectedSourceError(error);
       /* conservative whole-history fence */
     }
     await stopCurrent(ctx, c);

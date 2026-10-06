@@ -738,7 +738,10 @@ test("real registered scheduler job executes once and stores missing credential 
   vi.stubEnv("AUTH_EMAIL_FROM", "");
   const f = await setup();
   const scheduleId = await f.plan();
-  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+  await vi.advanceTimersByTimeAsync(3600000);
+  await f.t.finishAllScheduledFunctions(() =>
+    vi.advanceTimersByTimeAsync(1000),
+  );
   const row = await f.t.run((ctx) => ctx.db.get(scheduleId));
   expect(row!.state).toBe("failed");
   expect(row!.errorCode).toBe("X_REAUTH_REQUIRED");

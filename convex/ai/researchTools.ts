@@ -1,3 +1,7 @@
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
+import { captureHistory } from "./contentCopies";
+import { registerResearchCopies } from "../research/contentCleanup";
+import { evidenceSource } from "../research/contentProof";
 import { prerequisites, sameApproval } from "../research/access";
 import { ConvexError, v } from "convex/values";
 import { z } from "zod";
@@ -356,6 +360,11 @@ export const prepare = internalMutation({
         q.eq("workspaceId", o.workspaceId).eq("accountId", o.accountId),
       )
       .take(11);
+    await captureHistory(
+      ctx,
+      o,
+      history.map((p) => p.versionId),
+    );
     await phase(ctx, o, 2, {
       history,
       historyTruncated: rows.length > 10,
@@ -570,7 +579,8 @@ export const bindModel = internalMutation({
             });
             title = e.payload.model.title;
           }
-        } catch {
+        } catch (error) {
+          rethrowUnexpectedSourceError(error);
           /* Expired cluster content is never forwarded. */
         }
         if (title) break;
@@ -594,6 +604,15 @@ export const bindModel = internalMutation({
       ...history.map((p) => p.proofUntil ?? Number.MAX_SAFE_INTEGER),
       ...contextPins.map((p) => p.until),
     );
+    for (const pin of contextEvidence) {
+      const proof = await evidenceSource(
+        ctx,
+        o.workspaceId,
+        pin.evidenceId,
+        o.accountId,
+      );
+      await registerResearchCopies(ctx, proof.source, { orderId: o._id });
+    }
     await phase(ctx, o, 4, {
       contextPins,
       contextEvidence,

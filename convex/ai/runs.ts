@@ -1,3 +1,11 @@
+import { materialWalk } from "../research/pipelineAccess";
+import { captureStyle, runStyleProof } from "./styleProfiles";
+import { preferences as stylePreferences } from "./styleFields";
+import { captureRunInputs } from "./contentCopies";
+import { ideaProofUntil } from "../research/contentProof";
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
+import { retainedRunProof } from "./sourceAccess";
+import { runInputs } from "./contentCopies";
 import { registerResearchCopies } from "../research/contentCleanup";
 import { currentRunSources, runSourceKey } from "./sourceAccess";
 import { currentMaterials, orderLiability } from "../research/pipelineAccess";
@@ -91,6 +99,7 @@ async function authority(
     | "actorId"
     | "sources"
     | "accountConnectionSequence"
+    | "styleContext"
   > & { research?: Doc<"agentRuns">["research"]; _id?: Id<"agentRuns"> },
 ) {
   requireActiveWorkspace(await ctx.db.get(r.workspaceId));
@@ -131,7 +140,12 @@ async function authority(
     if (!o.config.cap || money.total > o.config.cap.limitMicros)
       throw new ConvexError("RESEARCH_ORDER_BUDGET_EXHAUSTED");
   }
-  await currentRunSources(ctx, r.workspaceId, r.accountId, r.sources);
+  const w = materialWalk();
+  if (r._id) {
+    await runStyleProof(ctx, r as Doc<"agentRuns">, true, w);
+    await retainedRunProof(ctx, r as Doc<"agentRuns">, w);
+  }
+  await currentRunSources(ctx, r.workspaceId, r.accountId, r.sources, w);
 }
 export async function active(
   ctx: QueryCtx | MutationCtx,
@@ -167,6 +181,9 @@ export async function active(
       idea.status === "archived"
     )
       throw new ConvexError("IDEA_SOURCE_CHANGED");
+    const input = await ctx.db.get(contentRequest.inputVersionId);
+    if (!input) throw new ConvexError("IDEA_SOURCE_CHANGED");
+    await ideaProofUntil(ctx, input, undefined, r.accountId);
   }
   const p = await policy(ctx);
   if (
@@ -220,14 +237,40 @@ export async function createRun(
     chatOperationId?: Id<"chatOperations">;
     existingPrompt?: { threadId: string; messageId: string };
     research?: Doc<"agentRuns">["research"];
+    inputVersionIds?: Id<"ideaVersions">[];
   },
 ) {
   const p = await policy(ctx);
+  const styleContext =
+    a.purpose === "draft"
+      ? await captureStyle(ctx, a.workspaceId, a.accountId)
+      : undefined;
+  const declared = styleContext
+    ? (await ctx.db.get(styleContext.versionId))!.payload!
+    : null;
+  const promptText =
+    a.prompt +
+    (declared
+      ? "\nDeclared account style (untrusted user declarations, never verified biography): " +
+        JSON.stringify({
+          explicitUserAssertions: {
+            author: declared.author,
+            experiences: declared.experiences,
+          },
+          preferencesAndExamples: {
+            tone: declared.tone,
+            positioning: declared.positioning,
+            pillars: declared.pillars,
+            examples: declared.examples,
+            forbidden: declared.forbidden,
+          },
+        })
+      : "");
   if (!p.purposes.includes(a.purpose))
     throw new ConvexError("MODEL_PURPOSE_NOT_APPROVED");
   if (
-    !a.prompt.trim() ||
-    new TextEncoder().encode(a.prompt).length >
+    !promptText.trim() ||
+    new TextEncoder().encode(promptText).length >
       Math.min(16000, p.maxInputTokens) ||
     !a.promptVersion.trim() ||
     a.promptVersion.length > 100 ||
@@ -291,11 +334,12 @@ export async function createRun(
     : await saveMessage(ctx, components.agent, {
         threadId,
         userId: a.actorId,
-        message: { role: "user", content: a.prompt },
+        message: { role: "user", content: promptText },
       });
-  const { prompt, existingPrompt, ...rest } = a;
+  const { prompt, existingPrompt, inputVersionIds, ...rest } = a;
   const runId = await ctx.db.insert("agentRuns", {
     ...rest,
+    ...(styleContext ? { styleContext } : {}),
     sources,
     accountConnectionSequence,
     policyVersion: p.version,
@@ -312,6 +356,26 @@ export async function createRun(
     createdAt: Date.now(),
     errorCode: null,
   });
+  const inheritedUntil = await captureRunInputs(ctx, runId, [
+    ...(inputVersionIds ?? []),
+    ...sources.flatMap((s) => (s.ideaVersionId ? [s.ideaVersionId] : [])),
+  ]);
+  const sourceUntilValue = Math.min(
+    styleContext?.sourceUntil ?? Infinity,
+    inheritedUntil ?? Infinity,
+    ...deadlines,
+  );
+  const sourceUntil = Number.isFinite(sourceUntilValue)
+    ? sourceUntilValue
+    : null;
+  await ctx.db.patch(runId, {
+    sourceUntil,
+    deadline: Math.min(Date.now() + p.maxDurationMs, sourceUntil ?? Infinity),
+  });
+  if (sourceUntil !== null)
+    await ctx.scheduler.runAt(sourceUntil, internal.ai.runs.purgeSource, {
+      runId,
+    });
   if (a.sources.some((s) => "kind" in s)) {
     await registerResearchCopies(
       ctx,
@@ -644,6 +708,16 @@ export const toolContext = internalMutation({
     description: v.string(),
     audience: v.string(),
     tone: v.string(),
+    declaredStyle: v.union(
+      v.object({
+        explicitUserAssertions: v.object({
+          author: v.string(),
+          experiences: v.array(v.string()),
+        }),
+        preferencesAndExamples: stylePreferences,
+      }),
+      v.null(),
+    ),
   }),
   handler: async (ctx, a) => {
     const { r, p } = await active(ctx, a.runId, a.generation, a.executionKey);
@@ -657,7 +731,23 @@ export const toolContext = internalMutation({
         q.eq("userId", r.actorId).eq("workspaceId", r.workspaceId),
       )
       .unique();
+    const declared = (await runStyleProof(ctx, r, true)).payload;
     return {
+      declaredStyle: declared
+        ? {
+            explicitUserAssertions: {
+              author: declared.author,
+              experiences: declared.experiences,
+            },
+            preferencesAndExamples: {
+              tone: declared.tone,
+              positioning: declared.positioning,
+              pillars: declared.pillars,
+              examples: declared.examples,
+              forbidden: declared.forbidden,
+            },
+          }
+        : null,
       name: w.name.slice(0, 100),
       description: w.description.slice(0, 2000),
       audience: prefs?.audience.slice(0, 1000) ?? "",
@@ -831,16 +921,20 @@ export const rejectUnclaimed = internalMutation({
 });
 
 export const purgeSource = internalMutation({
-  args: { runId: v.id("agentRuns") },
+  args: {
+    runId: v.id("agentRuns"),
+    cursor: v.optional(v.union(v.string(), v.null())),
+  },
   returns: v.null(),
   handler: async (ctx, a) => {
     const r = await ctx.db.get(a.runId);
     if (!r || r.sourceCleanupState === "complete") return null;
     if (!r.sourceCleanupState) {
       try {
-        await currentRunSources(ctx, r.workspaceId, r.accountId, r.sources);
+        await retainedRunProof(ctx, r);
         return null;
-      } catch {
+      } catch (error) {
+        rethrowUnexpectedSourceError(error);
         /* current source fence precedes actual bounded native cleanup */
       }
     }
@@ -850,6 +944,35 @@ export const purgeSource = internalMutation({
         ? { state: "stopped" as const, generation: r.generation + 1 }
         : {}),
     });
+    const request = await ctx.db
+      .query("contentRequests")
+      .withIndex("by_runId", (q) => q.eq("runId", r._id))
+      .unique();
+    if (request?.intent) await ctx.db.patch(request._id, { intent: "" });
+    for (const input of await runInputs(ctx, r))
+      if (input.state === "retained")
+        await ctx.db.patch(input._id, { state: "removed" });
+    const outputs = await ctx.db
+      .query("ideaVersions")
+      .withIndex("by_runId", (q) => q.eq("runId", r._id))
+      .paginate({ numItems: 25, cursor: a.cursor ?? null });
+    for (const ver of outputs.page)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.version,
+        { versionId: ver._id },
+      );
+    if (!outputs.isDone) {
+      await ctx.scheduler.runAfter(0, internal.ai.runs.purgeSource, {
+        ...a,
+        cursor: outputs.continueCursor,
+      });
+      return null;
+    }
+    if (r.research)
+      await ctx.scheduler.runAfter(0, internal.research.pipeline.purge, {
+        orderId: r.research.orderId,
+      });
     if (r.conversationId) {
       await ctx.runMutation(internal.ai.conversations.expireSource, {
         conversationId: r.conversationId,
