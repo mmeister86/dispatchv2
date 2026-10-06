@@ -4,7 +4,7 @@ title: Algorithmuswissen kontrolliert aktualisieren (P11.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 13:34'
+updated_date: '2026-10-06 13:53'
 labels:
   - p11
   - r5
@@ -74,4 +74,6 @@ Root hat den öffentlichen Quellenbericht geprüft und unter übertragener Entsc
 Fortsetzungsdesign 2026-10-06: .docs/algorithm-source-update-contract.md. Read-only Explorer-Seammap /tmp/dispatch-continuation-44-design.md durch Root geprüft. Context7 GitHub REST resolve + zwei Docs-Fetches und offizielle fehlende Limitdetails geprüft. 13 öffentliche Dateien am ursprünglichen immutable SHA erneut gelesen: alle HTTP200, SHA256 exakt unverändert, 233297 Bytes insgesamt, Maximum55021. Kein Profil/Deadline/Revision verändert. Quellbeobachtung darf profiles.finish nicht aufrufen; echte Jev-Zulassung prüft die Auswahlrevision. Implementation wartet auf den einzigen TASK43.3-Writer und frische unabhängige Reviews.
 
 Neue reale read-only Beobachtung: öffentlicher HEAD e62790c99484b51424c2eccc488ed4e7517e8778 (2026-10-06T04:59:30Z),103 changed paths, sieben von13 bestehenden Nachweishashes geändert, alle13 HTTP200. Bericht .docs/reviews/task-44-source-observation-2026-10-06.md. Compare574391 Bytes; Link nur first, kein next; ein echter vollständiger Quellenvergleich passt in Transportlimits, nicht in alle UI-Ausschnitte. Vertrag trennt deshalb strukturelle Vollständigkeit von bewusst begrenzten Ausschnitten und expliziter menschlicher Prüfung vollständiger immutable Links. Strukturelle Lücken bleiben nicht übersteuerbar. Kein tatsächliches Profil/Review/Score/Deadline verändert, keine App-Prüfquittung erfunden.
+
+Root präzisiert aktuellen Evaluation-Nachweis: unabhängige Evaluator-/Review-Akteure bleiben möglich. Ein enger direkter Proof im bestehenden profiles.ts prüft exakte neue Profil-/Proposal-/Eval-/Variant-/Quellbindung und aktuelle Evaluator-Owner/Admin-Rechte; Legacy-Pin sofort unverändert. Wiederverwendung bei review, usable/get/select/rollback sowie bestehenden Jev current/availability-Pfaden verhindert spätere Rechteentzugs-Umgehung ohne neuen Modulzyklus oder registrierten Action-Aufruf. Historische Ergebnisse bleiben unverändert.
 <!-- SECTION:NOTES:END -->
