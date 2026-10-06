@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 12:22'
+updated_date: '2026-10-06 13:00'
 labels:
   - p11
   - r5
@@ -37,10 +37,10 @@ Globale Heuristik gegen workspace-/accountbezogene Dispatch-Gewichte und gegeben
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Statische Baseline und einfache statistische Kalibrierung werden auf zeitlich getrennten Daten verglichen.
-- [ ] #2 Schattenbetrieb berichtet Fallzahl, Stabilität, Drift und Fehler je Segment.
-- [ ] #3 Unzureichende Daten oder fehlender Nutzen lassen das Kandidatenmodell inaktiv; komplexere Verfahren benötigen eigene Begründung.
-- [ ] #4 Auswertung weist Versionsstände, Fallzahlen und normalisierte Vergleichsgruppen aus; unzureichende Daten aktivieren keine personalisierten Gewichte oder neuen Entscheidungsschwellen.
+- [x] #1 Statische Baseline und einfache statistische Kalibrierung werden auf zeitlich getrennten Daten verglichen.
+- [x] #2 Schattenbetrieb berichtet Fallzahl, Stabilität, Drift und Fehler je Segment.
+- [x] #3 Unzureichende Daten oder fehlender Nutzen lassen das Kandidatenmodell inaktiv; komplexere Verfahren benötigen eigene Begründung.
+- [x] #4 Auswertung weist Versionsstände, Fallzahlen und normalisierte Vergleichsgruppen aus; unzureichende Daten aktivieren keine personalisierten Gewichte oder neuen Entscheidungsschwellen.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -65,4 +65,10 @@ Globale Heuristik gegen workspace-/accountbezogene Dispatch-Gewichte und gegeben
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Shadow-Kalibrierung. Mock shadow comparison displays sample size, quality, drift and error with insufficient-data gate. Grenze: Fixed example evaluation, not statistical evidence. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 ROOT releases scoped engineering implementation after reviewed43.1 e5bae9cf; exact11SOURCE ownership/closed-nine train-only proof/predeclaration/retention/UI gates in .docs/calibration-model-contract.md. Actual empirical thresholds are not invented or seeded; null policy forever diagnostic/inactive, actual configured evidence/consent required. One experiment/spec, one immutable candidate, future-policy/freeze chronology, no production activation/resolver until43.3.
+
+Continuation on 2026-10-06: recovered exact prior uncommitted 11-source unit at base efd81f4. Verified all recorded full/type/lint/build/bundle/browser-final/EU-Dev receipts still match current source; fresh root full 841 tests and typecheck pass. Independent fresh SPEC running on this exact source, QUALITY follows only after SPEC. No new model/purpose/provider activation or Done transition.
+
+Fresh continuation SPEC PASS on exact11-source WIP: 41 registered native checks including 4 original adversarial cases and isolated actual styled desktop/390px/Demo browser PASS. Source unchanged. Receipt /tmp/dispatch-continuation-43.2-spec.md. No actionable blocker; positive mature30-post/28-day evidence-qualified native frame remains unproved operational limit. Separate fresh QUALITY now running; no actual processing/empirical activation/manual/Done certificate.
+
+Software accepted and committed21ccb0e after fresh independent SPEC41 + styled browser and separate QUALITY2 original cases. QUALITY additionally proves complete30-native-observation/>=28-day prospective frame with26 train+2 per block under explicit4096-query/32000-document/16MiB limits: compare1854queries/1823docs/747219bytes, get1861/1831/774843. evidenceQualified:true and activationEligible:false; no original retention extended. Root full841/46 and typecheck; existing matching format/lint/build/bundle/browser/EUDev. Durable .docs/reviews/task-43.2-calibration-model-validation.md; original receipts and failures retained. AC1-4 checked for engineering mechanics only; actual lawful/empirical/CPU/live/manual/Done open. Proceed43.3 under approved activation contract.
 <!-- SECTION:NOTES:END -->
