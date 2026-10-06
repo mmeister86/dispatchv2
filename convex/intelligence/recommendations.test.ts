@@ -1,3 +1,5 @@
+import { current } from "../ai/jev/access";
+import { sha256 } from "../lib/crypto";
 import { makeFunctionReference } from "convex/server";
 import { afterEach, expect, test, vi } from "vitest";
 import { jevFixture } from "../../tests/jev-fixture";
@@ -337,6 +339,9 @@ test("native UTF16 ranges remove only explicit trailing token; inline/code/quote
     "Inline #one #two #three #four",
     "Body\n#one #two #three #four",
     "```\nBody\n\n#one #two #three #four",
+    "~~~\nLiteral code example stays intact\n\n#one #two #three #four",
+    "  ~~~js\nBody\n\n#one #two #three #four",
+    "~~~~\nBody\n~~~~\n\n#one #two #three #four",
     "> quoted body\n\n#one #two #three #four",
     "Attribution:\n\n@alice @bob @carol @dave",
     "Body\n\n- #one #two #three #four",
@@ -453,5 +458,80 @@ test("adoption and assessment purge preserve unknown financial holds and permane
     );
     expect(await ctx.db.query("aiBudgets").collect()).toEqual(finance.budgets);
     expect((await ctx.db.get(ack.versionId))!.number).toBe(2);
+  });
+});
+
+test("tilde fenced code has no removable proposal, public comparison or adoption and keeps its immutable version", async () => {
+  const text =
+    "~~~\nLiteral code example stays intact\n\n#one #two #three #four";
+  const f = await fixture([text]);
+  const args = { ...f.args, tokenIndices: [3] };
+  const { operationKey: _key, ...review } = args;
+  const diff = await f.signed.query(compare, review);
+  let accepted = null;
+  try {
+    accepted = await f.signed.mutation(adopt, args);
+  } catch {
+    /* Expected public boundary refusal. */
+  }
+  const versions = await f.t.run((ctx) =>
+    ctx.db
+      .query("draftVersions")
+      .withIndex("by_draftId_and_number", (q) =>
+        q.eq("draftId", f.request.draftId),
+      )
+      .collect(),
+  );
+  expect.soft(f.proposals.candidates).toEqual([]);
+  expect.soft(diff).toBeNull();
+  expect.soft(accepted).toBeNull();
+  expect.soft(versions).toHaveLength(1);
+  expect(versions[0].content.text).toEqual([text]);
+});
+
+test("pre-fix reviewed token index cannot shift onto a different segment after a context-guard revision", async () => {
+  const text = [
+    "~~~\nLiteral code example stays intact\n\n#one #two #three #four",
+    "Independent body\n\n#five #six #seven #eight",
+  ];
+  const f = await fixture(text);
+  const oldProof = await f.t.run(async (ctx) => {
+    const x = await current(ctx, {
+      ...f.request,
+      operationKey: "legacy-context-proof",
+      deadline: Date.now() + 2500,
+    });
+    const v = (await ctx.db.get(f.request.draftVersionId))!;
+    // Historical v1 proof fixture from accepted SOURCE9799eeb, before the fence guard revision.
+    return sha256(
+      JSON.stringify({
+        rule: "editorial-edits-v1",
+        semanticKey: x.semanticKey,
+        policy: await sha256(JSON.stringify(x.p)),
+        content: v.content,
+        media: v.mediaChecksums ?? [],
+        sourceUntil: x.sourceUntil,
+        revision: 1,
+        selectedRevision: 1,
+      }),
+    );
+  });
+  expect(f.proposals.candidates[0]).toMatchObject({
+    kind: "tokens",
+    segment: 1,
+  });
+  const args = { ...f.args, proof: oldProof, tokenIndices: [3] };
+  const { operationKey: _key, ...review } = args;
+  expect(await f.signed.query(compare, review)).toBeNull();
+  await expect(f.signed.mutation(adopt, args)).rejects.toThrow(
+    /RECOMMENDATION_STALE/,
+  );
+  await f.t.run(async (ctx) => {
+    expect(await ctx.db.query("recommendationReceipts").collect()).toHaveLength(
+      0,
+    );
+    expect((await ctx.db.get(f.request.draftVersionId))!.content.text).toEqual(
+      text,
+    );
   });
 });

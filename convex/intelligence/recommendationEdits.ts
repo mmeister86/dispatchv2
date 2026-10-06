@@ -72,6 +72,7 @@ export function edits(content: Content, imageIndices: number[]): Candidate[] {
       !text.slice(0, start).trim() ||
       !/\r?\n[\t ]*\r?\n$/.test(text.slice(0, start)) ||
       /[`"“”«»]/.test(text) ||
+      /^[\t ]*~{3,}/m.test(text) ||
       /^[\t ]*(?:>|[-*+] |\d+[.)] )/m.test(text) ||
       /:\s*$/.test(text.slice(0, start))
     )
@@ -169,6 +170,8 @@ export async function recommendationProof(
   return sha256(
     JSON.stringify({
       rule: RULE_VERSION,
+      // Fence-guard fixes must invalidate old reviewed candidate indices; accepted receipts remain permanent.
+      contextGuard: "code-fence-v2",
       semanticKey: x.semanticKey,
       policy: await sha256(JSON.stringify(x.p)),
       content: ver.content,
