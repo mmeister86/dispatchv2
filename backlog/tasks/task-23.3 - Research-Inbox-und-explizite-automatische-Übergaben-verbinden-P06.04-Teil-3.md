@@ -4,7 +4,7 @@ title: 'Research-Inbox und explizite automatische Übergaben verbinden (P06.04, 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 02:41'
+updated_date: '2026-10-06 02:43'
 labels: []
 dependencies:
   - TASK-23.2
@@ -68,4 +68,6 @@ FreshSPEC confirms24hashes. ROOT clarifies accidental replay-barrier wording: cu
 ROOT read complete freshSPEC NEEDS_FIXES: oneP1 only manual descendant physicalcleanup, all24hashes/94registeredPASS. Expanded originalRED04:29:35 afterduejobs shows manualpayload/Idea/Draft copyflags retained295900ms beforeexpiry, publicreads correctlyfenced. Clarifiedsafe exact+alias receipt replay invariants/newintentbarrier independentPASS04:28:42; no replaycodefix. Original solewriter correction released ONLYpipeline.ts +pipeline.test.ts via existingorder-index ALL evidence retirement/matching completion/contentCleanup propagation. Actualmanualchild→Draft regression RED→physicalGREEN/native/finance required, separatecorrectioninventory/finalchecks/Dev/SAME SPEC thenfreshQUALITY; sourcewindowclosed/no AC/Done.
 
 ROOT read genuine correctionRED /tmp/task23-3-correction-original-red.log04:38:16: actual manual child physical state review after read fence. Two owned-path correction uses existing order index for all review evidence and matching continuation; historical complete marker cannot suppress remaining rows. Permanent actual registered21manual+model continuation GREEN04:39:07; separately controlled historical-complete input variant and95/2 affectedPASS04:40:19 reported. No API/UI/index/finance-store change, original5 frozen browser receipts reused honestly for backend-only purge selection. Final594/30/staticGREEN reported, codegen/EUDev/posttype readiness pending. Sourcewindowclosed, SAME SPEC thenfreshQUALITY; no AC/Done.
+
+ROOT independently reverified corrected SOURCE d9caca72ba34ae2f90ab9e98bf18965defcbb89e exact2 path bytes against rawinventorye7c1d9b66925e3c4532058fac67ba28a5ad06f372b317ce882840ecedc2fdee8, scopedcommit and clean tree/index. Readfinal95/2 affected04:40:19,594/30full04:40:30, types/lint/2pathformat/build/bundle/officialcodegen/posttype PASS and existingEUDev04:41:35/posttypePASS. Original24inventory/593/e99c56e receipts retained, unchangedUI/API fivebrowserreceipts honestlyreused. SAME SPEC dispatched original independentphysicalcopyprobe/newcontinuation/historicalcomplete guard recheck; freshQUALITYonlyafterPASS. Sourcewindowclosed/no AC/Done.
 <!-- SECTION:NOTES:END -->
