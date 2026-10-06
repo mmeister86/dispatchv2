@@ -10,3 +10,13 @@ Actual Tasks27/28 analysis contract and pinned public source report are authorit
 ## Registered profile contract original RED
 
 ROOT read original registered-command RED /tmp/dispatch-task27-red.log04:51:32 beforeprofileimplementation: Could not find module intelligence/profiles. Executed missing-feature contractRED, nothistoricalprivacy/predictionfailure. Sourceowner accepted minimalnewintelligence sharedFields/profiles/algorithmProfiles/audienceProfiles/test, additive schema, one features/intelligence UI, minimalexisting Operations/Settings/Drafts mounts/browser/contract/officialbinding. Concrete account/x/for_you atomicselection, immutablepayloads and command auditreceipt/currentOwnerAdminlifecycle, disconnectedpublishingaccount validinformationalcontext. Noadditionalsharedhelper/analyzer/SDK/embeddings. Fullgreen/reviews/manual stillpending; sourcewindowclosed.
+
+
+## Interim GREEN and schema evaluation correction
+
+ROOT read interimGREEN /tmp/dispatch-task27-green-initial.log1/1registered04:53:33 andafterhelperfixGREEN1/1at04:54:44. Officialcodegen-initial actually attemptedfunctionupload/start_push,400NoImportModuleInSchema fromschema importingcommand/authhelper. Retainedoriginalfailure; validators-onlysharedFields withcommandhelpers inalreadyownedprofiles.ts fixesrootdependencyboundary, officialcodegen-backend-fixed PASS/types. No successfulfullDev--once readiness yet. Currentauthority/expiry/lifecycle controls addedimplementation-first, futuretestsvalidation-only unlessgenuineprefailureexecuted. UI/additionalregistered/full/static/finalcodegen/Dev/reviews pending, noAC/Done.
+
+
+## Expanded registered implementation-first validation
+
+ROOT read expanded registeredGREEN6/1 at04:58:03 /tmp/dispatch-task27-green-expanded-fixed.log: actualimmutablecapture/missingstates/stablereplay/reorderedprops/CASrace/rollback-retire/history/currentcreator-reviewer-activationrights/sourceexpiry/foreign-unauth-invalid-inactive controls. Earlier expanded5PASS1Unauthenticated04:57:48 wasexpiredfixtureauthsession underadvancedclock, correctedclockbeforeauthsignup (preservedoriginal), notproductRED. Misnamed /tmp/dispatch-task27-replay-red.log actually2PASS04:57:02, immediateGREEN control nothistoricalRED. UIreportedawaitedcommand/stableretry/accountkey/roleepoch and30s informationalsource-status refresh; backendalwayscurrenttime. NoSDK/analyzer/realpredictions; full/browser/static/Dev/freeze/reviews pending.
