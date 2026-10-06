@@ -1,0 +1,27 @@
+# TASK-48 — account isolation validation
+
+Software accepted at source commit `d5cb59235ee8f023d570cd4b3056fc8db5e9b7f2` after fresh independent SPEC and distinct QUALITY. Root existing EU Dev/native component codegen passed2026-10-06T15:56:25Z. Backlog stays In Progress pending explicit manual acceptance. Commercial entitlements remain TASK-37-dependent.
+
+Actual Chat now follows the existing global account selection and clears stale conversation URLs before the new keyed session mounts; legitimate initial Inbox deep-links and current role/late-response fences remain. The shell has an explicit empty account option. Research/Inbox/Plans identify their actual targets; Composer follows its buffer and Schedule follows its immutable frozen account. A scheduled A→B save warns beforehand that the approved A snapshot remains runnable until explicit cancel/revoke/disconnect. Dirty B does not inherit A approval or assessment; protected Research reassignment remains denied.
+
+Disconnect A preserves explicit pending B reconnects, B credentials/capabilities/profile/plan/schedule and subsequent authorized B sends. Existing generic-state binding-sequence, actual identity/generation, one-use and current role/workspace/lifecycle checks remain. No remote revoke is invented. Shared feedback skips ordinary cross-account edits before insertion while legitimate reassignment succeeds; its reader masks unavailable/mixed before/result edges and uses minimum current/original horizons. Comprehensive bilateral evidence indexes and physical cleanup are separately required in45.1 before its new consumer. No schema, model, scoring, financial policy or provider configuration was changed.
+
+## Frozen writer checks
+
+Receipt `/tmp/dispatch-task48-evidence/freeze/receipt.json`, SHA256 `f2b5c813fe49c846ca222237741960cfd26c090b8e1a2f3630c66d1f9603be15`; source aggregate `51ad21ff0ee89a6ab3167a6aa83b91e272040dae9006b6092efcb1c1c18ce2c4`.16 source/test and49 context files,57 writer artifacts with frozen copies. Authoritative ten final checks pass: full native **875 tests/47 files**, affected **226/8**, app/backend types, scoped format, configured lint, build, client bundle, diff and qualified installed binding check, plus actual styled browser. Local binding is offline syntax/unchanged bytes, not a native component graph certificate. Earlier intentional mixed-feedback/disconnect RED, type/fixture/binding/browser diagnostics remain preserved.
+
+Actual styled production AppShell/Agent/Research/Inbox/Plans/Composer/Schedule desktop/390px/Demo runs use controlled Convex/store transport: engineering UI evidence, not authenticated/live provider acceptance. User port5173 and unrelated `.zcodeignore` are untouched.
+
+## Independent reviews
+
+Fresh SPEC `/tmp/dispatch-continuation-48-spec.md`: affected **226/8**, two original registered native feedback adversaries, original actual styled browser and additional successful late-A/Owner→Viewer→Owner pending-success cases pass. Original cases reject wrong draft/result unavailability/corrupt scope, preserve manual A→empty→B immutable history and ordinary B edits, and keep B buffer/history despite old-A completion.36 own artifacts verified.
+
+Distinct fresh QUALITY `/tmp/dispatch-continuation-48-quality.md`, report SHA256 `2a1008c6c2b5c04ff2a9de62bbaa636fd97d9b7a3d7320f580543810686c08c4`: affected **226/8**, nine original registered OAuth adversaries and original actual styled browser on owned5190 pass. Wrong/new/disconnected identity, generation/replay, mid-exchange role/workspace/membership/lifecycle and genuinely distinct Admin generic-state race remain denied without changing B.32 own artifacts verified. Its initial expected-error mismatch was a correct earlier binding fence; raw diagnostic retained and cases separated without source change. Writer875 and SPEC successful-late/role evidence were explicitly reused, not reviewer-fresh counts or additive unique coverage.
+
+Root read complete reports, original adversary harnesses/raw receipts/logs and reconciled all65 frozen live/copy inputs,57 writer artifacts,36 SPEC and32 QUALITY artifacts. Both reviewers report no blocking finding. Original old-A native publication preflight remains valid after new B save until explicit cancel; account budget isolation and legitimate shared workspace/provider exhaustion remain exercised.
+
+## Exact existing EU Dev
+
+Root `npx convex dev --once` against `https://accurate-lion-749.eu-west-1.convex.cloud` succeeded:2026-10-06T15:56:16–15:56:25Z, exit0. Receipt `/tmp/dispatch-continuation-48-eu-final-receipt.json`, raw log `/tmp/dispatch-continuation-48-eu-final.log`, SHA256 `456c816604a12e13993a4d771f14ae08ee114aaa061881878028e97a5446c2d3`. All65 frozen source/context hashes remain unchanged after native bundle/component/codegen. Existing original human authorization and current requested continuation govern the exact target. No actual OAuth/post/search/model call, grant/policy/profile activation, paid budget or configuration seed occurred.
+
+No new domain inventory rows: existing pending OAuth, actor/account, immutable version/approval/schedule and feedback dependencies remain in33/36. Irreversible or uncertain publication/financial receipts preserve authority. Real provider/manual/Done acceptance, full lifecycle/export/recovery and actual commercial plan permissions remain open. TASK-45.1 follows next under `.docs/style-profile-contract.md`.

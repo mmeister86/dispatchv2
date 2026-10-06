@@ -4,7 +4,7 @@ title: 'Betriebsereignisse, Alerts und Wiederherstellung konsolidieren (P09.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 15:42'
 labels:
   - p09
   - r3
@@ -59,4 +59,6 @@ Jev-Operationen und Fehlerklassen in Betriebsereignisse/Runbooks aufnehmen: Late
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Systemzustand, /calendar. Mock operational event log, correlation IDs, attention/error/uncertain states, repeat/reconcile previews and publishing next actions. Grenze: No live health monitor, alerts, runbooks exercise or provider recovery evidence. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Root hat /tmp/dispatch-continuation-31-32-seams.md vollständig gelesen. VorhandeneEvents/watchdogs/GithubRecovery/JevCircuit/nativeDeadlines/usagePending verwenden; realOperationsHealth derzeit unavailable. KleinsterfolgeReceiptScopedOverview→finiteDurableTransitions/Dedupe→realRunbookLinks, keineprivatePrompt/Research/GlobalFinanceOffenlegung oderallHealthyausleererLatestPage. Recovery verlinkt existierendeautorisiertenDomainCommands, niegenericRetryvonunknownPublishing/Cost. NeueQuelle/ActorPayloads aktuellmaskieren+physischcleanupvorConsumer, keine33Deferral. KeinSource/Test/Provider/Mail/Dev-Nachweis ausread-onlyReport; final48fflineRefs reconciliieren.
 <!-- SECTION:NOTES:END -->
