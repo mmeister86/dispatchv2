@@ -1,3 +1,5 @@
+import { capture as captureKnowledge } from "../performance/knowledge";
+import { enqueue as enqueueMetrics } from "../performance/snapshots";
 import { ConvexError, v } from "convex/values";
 import { internalMutation } from "../_generated/server";
 import { internal } from "../_generated/api";
@@ -256,7 +258,7 @@ export const beforeSend = internalMutation({
       return false;
     if (c.deadline <= Date.now())
       throw new ConvexError("X_POST_BUDGET_EXHAUSTED");
-    const { ver } = await current(ctx, c);
+    const { s, ver, account } = await current(ctx, c);
     const credential = await ctx.runQuery(
       internal.integrations.x.oauth.scheduleSource,
       { scheduleId: c.scheduleId, generation: c.generation, operation: "text" },
@@ -282,6 +284,7 @@ export const beforeSend = internalMutation({
       }
     if (JSON.stringify(expected) !== JSON.stringify(a.mediaIds))
       throw new ConvexError("X_MEDIA_ATTACHMENT_CHANGED");
+    if (c.position === 0) await captureKnowledge(ctx, s, account, c);
     await ctx.db.patch(c._id, {
       stage: "sending",
       credentialGeneration: credential.generation,
@@ -367,6 +370,12 @@ export const receipt = internalMutation({
           confirmedAt: now,
         });
       posts.sort((x, y) => x.position - y.position);
+      await enqueueMetrics(ctx, {
+        ...c,
+        stage: "confirmed",
+        externalId: a.externalId!,
+        confirmedAt: now,
+      });
       await ctx.db.patch(s._id, {
         externalPosts: posts,
         publishedCount: posts.length,

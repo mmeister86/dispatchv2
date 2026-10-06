@@ -48,6 +48,7 @@ export const budgetFields = {
       generationPurpose,
       v.literal("native-search"),
       v.literal("analyzer"),
+      v.literal("own-metrics"),
     ),
   ),
   approvedBy: v.optional(v.id("users")),

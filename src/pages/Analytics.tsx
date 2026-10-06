@@ -1,3 +1,5 @@
+import { demoMode } from "@/lib/auth-client";
+import { OwnMetrics } from "@/features/analytics/OwnMetrics";
 import { useEffect, useState } from "react";
 import { BarChart3, Download, Pause, Play, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -81,6 +83,9 @@ const examples = [
   ],
 ] as const;
 export function AnalyticsPage() {
+  return demoMode ? <DemoAnalytics /> : <OwnMetrics />;
+}
+function DemoAnalytics() {
   const { state } = useStore();
   const editable = canEdit(state.role);
   const accounts = state.accounts.filter(

@@ -1,3 +1,11 @@
+import { feedbackFields as contentFeedbackFields } from "./content/feedbackFields";
+import {
+  policyFields as performancePolicyFields,
+  controlFields as performanceControlFields,
+  knowledgeFields,
+  snapshotFields,
+  metricsAttemptFields,
+} from "./performance/fields";
 import { receiptFields as recommendationReceiptFields } from "./intelligence/recommendationEdits";
 import {
   assessmentFields,
@@ -87,6 +95,31 @@ export const profileFields = {
 };
 export const profile = v.object(profileFields);
 export default defineSchema({
+  contentFeedback: defineTable(contentFeedbackFields)
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
+    .index("by_versionId_and_sourceUnavailable", [
+      "versionId",
+      "sourceUnavailable",
+    ])
+    .index("by_sourceUntil", ["sourceUntil"]),
+  performancePolicies: defineTable(performancePolicyFields)
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
+    .index("by_workspaceId_and_accountId_and_version", [
+      "workspaceId",
+      "accountId",
+      "version",
+    ]),
+  performanceControls: defineTable(performanceControlFields).index(
+    "by_workspaceId_and_accountId",
+    ["workspaceId", "accountId"],
+  ),
+  publicationKnowledge: defineTable(knowledgeFields).index("by_postAttemptId", [
+    "postAttemptId",
+  ]),
+  performanceSnapshots: defineTable(snapshotFields)
+    .index("by_postAttemptId_and_windowHours", ["postAttemptId", "windowHours"])
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
+    .index("by_expiresAt", ["expiresAt"]),
   recommendationReceipts: defineTable(recommendationReceiptFields).index(
     "by_workspaceId_and_actorId_and_operationKey",
     ["workspaceId", "actorId", "operationKey"],
@@ -350,6 +383,7 @@ export default defineSchema({
       v.object(aiAttemptFields),
       v.object(nativeAttemptFields),
       v.object(jevAttemptFields),
+      v.object(metricsAttemptFields),
     ),
   )
     .index("by_jev_operation", [

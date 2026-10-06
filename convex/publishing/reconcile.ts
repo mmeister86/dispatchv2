@@ -1,3 +1,4 @@
+import { enqueue as enqueueMetrics } from "../performance/snapshots";
 import twitterText from "twitter-text";
 import { ConvexError, v } from "convex/values";
 import {
@@ -562,6 +563,12 @@ export const evidence = internalMutation({
           : r,
       ),
     );
+    await enqueueMetrics(ctx, {
+      ...c,
+      stage: "confirmed",
+      externalId: a.candidateId,
+      confirmedAt: posts.find((p) => p.attemptId === c._id)!.confirmedAt,
+    });
     await ctx.db.patch(s._id, {
       externalPosts: posts,
       publishedCount: posts.length,

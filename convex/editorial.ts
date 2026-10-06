@@ -1,3 +1,4 @@
+import { record as recordFeedback } from "./content/feedback";
 import { ConvexError, v } from "convex/values";
 import {
   paginationOptsValidator,
@@ -600,6 +601,13 @@ export async function saveDraftTransaction(
     currentVersionId: versionId,
     updatedAt: Date.now(),
   });
+  await recordFeedback(
+    ctx,
+    currentVersion,
+    actorId,
+    "edit",
+    (await ctx.db.get(versionId))!,
+  );
   await event(ctx, workspaceId, d._id, "VERSION_SAVED", actorId);
   return versionId;
 }
@@ -653,6 +661,7 @@ export const approve = workspaceMutation({
       revokedAt: null,
       revokedBy: null,
     });
+    await recordFeedback(ctx, ver, ctx.user._id, "accept");
     await event(
       ctx,
       ctx.workspace._id,

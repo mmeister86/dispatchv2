@@ -37,4 +37,16 @@ crons.interval(
   internal.intelligence.assessments.sweep,
   { cursor: null },
 );
+crons.interval(
+  "Own metrics retention cleanup",
+  { minutes: 15 },
+  internal.performance.snapshots.expire,
+  {},
+);
+crons.interval(
+  "Protected editorial feedback cleanup",
+  { minutes: 15 },
+  internal.content.feedback.sweep,
+  { cursor: null },
+);
 export default crons;
