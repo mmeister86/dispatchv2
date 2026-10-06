@@ -4,7 +4,7 @@ title: 'Research-Inbox und explizite automatische Übergaben verbinden (P06.04, 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 02:00'
+updated_date: '2026-10-06 02:04'
 labels: []
 dependencies:
   - TASK-23.2
@@ -52,4 +52,6 @@ Teilpaket zu TASK23/J04/J05: vorhandene echte Research- und Agent-Oberflächen m
 ROOT release after final23.2 SOURCEeb4feb0 freshSPEC/QUALITY+sameUIcopydeltaPASS. Full brief /tmp/dispatch-task23.3-release-brief.md, trusted frozen maps /tmp/dispatch-task23.3-versioned-activation-map.md and /tmp/dispatch-task23.3-chat-api-map.md. New scoped Inbox attachment needed; reuse stable create own thread then exact current evidence attach, no intermediary Note/Idea or thread picker. Genuine new pipeline re-research carries full immutable parent lineage; no old promotion/profile rewrite. New scheduled-only versioned auto capture count1..5/target/intent requires current finite HUMAN automaticEligible assessment and actor/grants; finish/review consumer frozen once with honest underfill, old versions/work inert, no automatic approve/schedule/publish. Sole source writer, ROOT metadata only; no AC/Done before fresh reviews.
 
 ROOT read first contractRED /tmp/task23-3-inbox-original-red.log03:59:11 missing public evidence.inbox, not historical privacy exposure. RetainedGREEN /tmp/task23-3-inbox-green.log03:59:43 actual9/9 tests1file, current compound-index paged Inbox and stable disposition replay. Initial20 reported count mistaken, implementer acknowledged9. Intermediate bytes; attachment/lineage/marked auto/UI/full/Dev/freeze/reviews remain. No AC/Done.
+
+ROOT read attachGREEN /tmp/task23-3-attach-green.log04:00:34 actual10/10 tests1file, genuine native message/receipt and current proof barrier. Markedauto originalRED /tmp/task23-3-auto-original-red.log04:02:30 rejects explicit new option under old validator, executed before auto implementation. Lineage code was written before tests; future lineage controls validation-only, not retroactive TDDRED. Current native/material32/all descendant proof and copy order-target reported, tests pending. ROOT explicit negative: captured Owner/Admin demoted to Editor cannot obtain auto content authority via ordinary edit rights, original usage settles once. No AC/Done.
 <!-- SECTION:NOTES:END -->
