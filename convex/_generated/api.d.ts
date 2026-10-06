@@ -87,6 +87,7 @@ import type * as performance_knowledge from "../performance/knowledge.js";
 import type * as performance_metricDefinitions from "../performance/metricDefinitions.js";
 import type * as performance_normalize from "../performance/normalize.js";
 import type * as performance_snapshots from "../performance/snapshots.js";
+import type * as planning_accept from "../planning/accept.js";
 import type * as planning_fields from "../planning/fields.js";
 import type * as planning_plans from "../planning/plans.js";
 import type * as preferences from "../preferences.js";
@@ -210,6 +211,7 @@ declare const fullApi: ApiFromModules<{
   "performance/metricDefinitions": typeof performance_metricDefinitions;
   "performance/normalize": typeof performance_normalize;
   "performance/snapshots": typeof performance_snapshots;
+  "planning/accept": typeof planning_accept;
   "planning/fields": typeof planning_fields;
   "planning/plans": typeof planning_plans;
   preferences: typeof preferences;

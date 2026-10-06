@@ -59,5 +59,15 @@ export const itemFields = {
   historyVersionIds: v.optional(v.array(v.id("draftVersions"))),
   contextProofUntil: v.optional(v.union(v.number(), v.null())),
   reason: v.string(),
-  status: v.union(v.literal("proposed"), v.literal("rejected")),
+  status: v.union(
+    v.literal("proposed"),
+    v.literal("rejected"),
+    v.literal("accepted"),
+  ),
+  acceptedApprovalId: v.optional(v.id("approvals")),
+  acceptedScheduleId: v.optional(v.id("schedules")),
+  acceptedActorId: v.optional(v.id("users")),
+  acceptedMode: v.optional(
+    v.union(v.literal("approved"), v.literal("approve_and_schedule")),
+  ),
 };

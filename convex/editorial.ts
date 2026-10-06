@@ -629,49 +629,53 @@ export const approve = workspaceMutation({
   returns: v.id("approvals"),
   handler: async (ctx, a) => {
     requireRole(ctx.membership, ["Owner", "Admin"]);
-    const ver = requireReference(
-      ctx.workspace._id,
-      await ctx.db.get(a.versionId),
-    ) as Doc<"draftVersions">;
-    if (ver.content.accountId !== a.accountId)
-      throw new ConvexError("APPROVAL_ACCOUNT_MISMATCH");
-    await checkContentSource(ctx, ver);
-    await validateContent(ctx, ctx.workspace._id, ver.content, true);
-    await immutableMedia(ctx, ver);
-    const existing = (
-      await ctx.db
-        .query("approvals")
-        .withIndex("by_versionId_and_accountId", (q) =>
-          q.eq("versionId", ver._id).eq("accountId", a.accountId),
-        )
-        .order("desc")
-        .take(100)
-    ).find(
-      (x) =>
-        x.revokedAt === null && (x.purpose ?? "publishing") === "publishing",
-    );
-    if (existing) return existing._id;
-    const id = await ctx.db.insert("approvals", {
-      workspaceId: ctx.workspace._id,
-      draftId: ver.draftId,
-      versionId: ver._id,
-      accountId: a.accountId,
-      actorId: ctx.user._id,
-      createdAt: Date.now(),
-      revokedAt: null,
-      revokedBy: null,
-    });
-    await recordFeedback(ctx, ver, ctx.user._id, "accept");
-    await event(
-      ctx,
-      ctx.workspace._id,
-      ver.draftId,
-      "VERSION_APPROVED",
-      ctx.user._id,
-    );
-    return id;
+    return approveTransaction(ctx, ctx.workspace._id, ctx.user._id, a);
   },
 });
+export async function approveTransaction(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  actorId: Id<"users">,
+  a: { versionId: Id<"draftVersions">; accountId: Id<"socialAccounts"> },
+) {
+  const ver = requireReference(
+    workspaceId,
+    await ctx.db.get(a.versionId),
+  ) as Doc<"draftVersions">;
+  if (ver.content.accountId !== a.accountId)
+    throw new ConvexError("APPROVAL_ACCOUNT_MISMATCH");
+  await checkContentSource(ctx, ver);
+  await validateContent(ctx, workspaceId, ver.content, true);
+  await immutableMedia(ctx, ver);
+  const existing = (
+    await ctx.db
+      .query("approvals")
+      .withIndex("by_versionId_and_accountId", (q) =>
+        q.eq("versionId", ver._id).eq("accountId", a.accountId),
+      )
+      .order("desc")
+      .take(100)
+  ).find(
+    (x) =>
+      x.revokedAt === null &&
+      x.actorId === actorId &&
+      (x.purpose ?? "publishing") === "publishing",
+  );
+  if (existing) return existing._id;
+  const id = await ctx.db.insert("approvals", {
+    workspaceId,
+    draftId: ver.draftId,
+    versionId: ver._id,
+    accountId: a.accountId,
+    actorId,
+    createdAt: Date.now(),
+    revokedAt: null,
+    revokedBy: null,
+  });
+  await recordFeedback(ctx, ver, actorId, "accept");
+  await event(ctx, workspaceId, ver.draftId, "VERSION_APPROVED", actorId);
+  return id;
+}
 export async function firstWriteContent(
   ctx: QueryCtx,
   workspaceId: Id<"workspaces">,
@@ -1072,55 +1076,65 @@ export const schedule = workspaceMutation({
   returns: v.id("schedules"),
   handler: async (ctx, a) => {
     requireRole(ctx.membership, ["Owner", "Admin"]);
-    validateTime(a.at, a.timezone, a.localTime);
-    const ver = await checkApproval(
-      ctx,
-      ctx.workspace._id,
-      a.versionId,
-      a.accountId,
-      a.approvalId,
-    );
-    if (await occupied(ctx, ctx.workspace._id, a.accountId, a.at))
-      throw new ConvexError("SLOT_OCCUPIED");
-    if (
-      (await activeDraftSchedules(ctx, ver.draftId)).length >=
-      ACTIVE_SCHEDULE_LIMIT
-    )
-      throw new ConvexError("DRAFT_ACTIVE_SCHEDULE_LIMIT");
-    const id = await ctx.db.insert("schedules", {
-      workspaceId: ctx.workspace._id,
-      draftId: ver.draftId,
-      versionId: a.versionId,
-      versionNumber: ver.number,
-      accountId: a.accountId,
-      approvalId: a.approvalId,
-      actorId: ctx.user._id,
-      accountConnectionSequence:
-        (await ctx.db.get(a.accountId))?.xEvidence?.connectionSequence ?? 0,
-      generation: 1,
-      ...timingValues(a),
-      state: "scheduled",
-      publishedCount: 0,
-      errorCode: null,
-      jobId: null,
-    });
-    const jobId = await ctx.scheduler.runAt(
-      a.at,
-      internal.publishing.dispatch,
-      { scheduleId: id, generation: 1 },
-    );
-    await ctx.db.patch(id, { jobId });
-    await event(
-      ctx,
-      ctx.workspace._id,
-      ver.draftId,
-      "SCHEDULE_CREATED",
-      ctx.user._id,
-      id,
-    );
-    return id;
+    return scheduleTransaction(ctx, ctx.workspace._id, ctx.user._id, a);
   },
 });
+export async function scheduleTransaction(
+  ctx: MutationCtx,
+  workspaceId: Id<"workspaces">,
+  actorId: Id<"users">,
+  a: {
+    versionId: Id<"draftVersions">;
+    accountId: Id<"socialAccounts">;
+    approvalId: Id<"approvals">;
+    at: number;
+    timezone: string;
+    localTime: string;
+  },
+  readBudget?: { remaining: number },
+) {
+  validateTime(a.at, a.timezone, a.localTime);
+  const ver = await checkApproval(
+    ctx,
+    workspaceId,
+    a.versionId,
+    a.accountId,
+    a.approvalId,
+  );
+  if (
+    await occupied(ctx, workspaceId, a.accountId, a.at, undefined, readBudget)
+  )
+    throw new ConvexError("SLOT_OCCUPIED");
+  if (
+    (await activeDraftSchedules(ctx, ver.draftId)).length >=
+    ACTIVE_SCHEDULE_LIMIT
+  )
+    throw new ConvexError("DRAFT_ACTIVE_SCHEDULE_LIMIT");
+  const id = await ctx.db.insert("schedules", {
+    workspaceId,
+    draftId: ver.draftId,
+    versionId: a.versionId,
+    versionNumber: ver.number,
+    accountId: a.accountId,
+    approvalId: a.approvalId,
+    actorId,
+    accountConnectionSequence:
+      (await ctx.db.get(a.accountId))?.xEvidence?.connectionSequence ?? 0,
+    generation: 1,
+    ...timingValues(a),
+    state: "scheduled",
+    publishedCount: 0,
+    errorCode: null,
+    jobId: null,
+  });
+  const jobId = await ctx.scheduler.runAt(a.at, internal.publishing.dispatch, {
+    scheduleId: id,
+    generation: 1,
+  });
+  await ctx.db.patch(id, { jobId });
+  await event(ctx, workspaceId, ver.draftId, "SCHEDULE_CREATED", actorId, id);
+  return id;
+}
 function timingValues(a: { at: number; timezone: string; localTime: string }) {
   return { at: a.at, timezone: a.timezone, localTime: a.localTime };
 }

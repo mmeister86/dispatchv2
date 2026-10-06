@@ -36,6 +36,7 @@ const reasons: Record<string, string> = {
 };
 const states: Record<string, string> = {
   proposed: "Vorschlag",
+  accepted: "Angenommen · im Kalender",
   rejected: "Abgelehnt",
   expired: "Abgelaufen",
   version_changed: "Version geändert · neuen Vorschlag prüfen",
@@ -89,7 +90,8 @@ function PlanForm({
   context: { preferenceId: Id<"preferences">; timezone: string };
 }) {
   const { state } = useStore(),
-    write = state.role !== "Viewer";
+    write = state.role !== "Viewer",
+    canAccept = state.role === "Owner" || state.role === "Admin";
   const first = defaultSchedule(context.timezone).slice(0, 10);
   const [start, setStart] = useState(first),
     [end, setEnd] = useState(addCivilDays(first, 6)),
@@ -99,7 +101,11 @@ function PlanForm({
     [mode, setMode] = useState<"work" | "research" | "mixed">("mixed"),
     [topics, setTopics] = useState("");
   const [selected, setSelected] = useState<Id<"contentPlans"> | null>(null),
+    [chosen, setChosen] = useState<Id<"contentPlanItems">[]>([]),
     [busy, setBusy] = useState(false),
+    [accepting, setAccepting] = useState<
+      "approved" | "approve_and_schedule" | null
+    >(null),
     [rejecting, setRejecting] = useState<Id<"contentPlanItems"> | null>(null),
     [error, setError] = useState("");
   const list = useQuery(api.planning.plans.list, { workspaceId, accountId });
@@ -108,10 +114,12 @@ function PlanForm({
     selected ? { workspaceId, planId: selected } : "skip",
   );
   const propose = useMutation(api.planning.plans.propose),
-    reject = useMutation(api.planning.plans.reject);
+    reject = useMutation(api.planning.plans.reject),
+    acceptSelected = useMutation(api.planning.accept.selected);
   const mounted = useRef(false),
     pending = useRef(false),
     currentRole = useRef(state.role);
+  const lastRole = useRef(state.role);
   currentRole.current = state.role;
   const command = useRef({ fingerprint: "", key: crypto.randomUUID() });
   useEffect(() => {
@@ -120,12 +128,37 @@ function PlanForm({
       mounted.current = false;
     };
   }, []);
+  useEffect(() => {
+    if (lastRole.current !== state.role) {
+      setChosen([]);
+      setError("");
+      lastRole.current = state.role;
+    }
+  }, [state.role]);
   const proofClock = useGithubSourceProofClock(
     detail?.items.map((p) => ({
       authorized: true,
       proofExpiresAt: p.displayUntil,
     })) ?? [],
   );
+  const formFingerprint = JSON.stringify({
+    start,
+    end,
+    clock,
+    timezone,
+    count,
+    mode,
+    topics,
+  });
+  const lastForm = useRef(formFingerprint);
+  useEffect(() => {
+    if (lastForm.current !== formFingerprint) {
+      setSelected(null);
+      setChosen([]);
+      setError("");
+      lastForm.current = formFingerprint;
+    }
+  }, [formFingerprint]);
   async function create() {
     if (!write || pending.current) return;
     const role = state.role;
@@ -154,6 +187,7 @@ function PlanForm({
       });
       if (mounted.current && currentRole.current === role) {
         setSelected(id);
+        setChosen([]);
         command.current = { fingerprint: "", key: crypto.randomUUID() };
       }
     } catch (e) {
@@ -186,6 +220,71 @@ function PlanForm({
       if (mounted.current) setRejecting(null);
     }
   }
+  async function acceptItems(action: "approved" | "approve_and_schedule") {
+    if (
+      !canAccept ||
+      pending.current ||
+      !detail ||
+      detail.plan._id !== selected ||
+      !chosen.length
+    )
+      return;
+    const role = state.role;
+    const rows = chosen.map((id) =>
+      detail.items.find(({ item }) => item._id === id),
+    );
+    if (
+      rows.some(
+        (row) =>
+          !row ||
+          row.item.status !== "proposed" ||
+          row.state !== "proposed" ||
+          row.displayUntil <= proofClock ||
+          (action === "approved" && !row.approvalId),
+      )
+    ) {
+      setError(
+        "Auswahl erneut prüfen: Version, Freigabe oder Quellennachweis ist nicht mehr aktuell.",
+      );
+      return;
+    }
+    pending.current = true;
+    setAccepting(action);
+    setError("");
+    try {
+      await acceptSelected({
+        workspaceId,
+        planId: detail.plan._id,
+        mode: action,
+        selections: rows.map((row) => ({
+          itemId: row!.item._id,
+          versionId: row!.item.versionId,
+          draftRevision: row!.item.draftRevision,
+          ...(action === "approved" ? { approvalId: row!.approvalId! } : {}),
+        })),
+      });
+      if (mounted.current && currentRole.current === role) setChosen([]);
+    } catch (e) {
+      if (mounted.current && currentRole.current === role) {
+        const code = e instanceof ConvexError ? String(e.data) : "";
+        setError(
+          code === "SLOT_OCCUPIED"
+            ? "Mindestens ein Slot ist inzwischen belegt. Keine Auswahl wurde neu geplant; prüfe den Kalender."
+            : code === "PLAN_VERSION_CHANGED" ||
+                code === "PLAN_SOURCE_CHANGED" ||
+                code === "PLAN_SOURCE_EXPIRED" ||
+                code === "PLAN_CONTEXT_CHANGED"
+              ? "Version oder Quellennachweis hat sich geändert. Keine Auswahl wurde neu geplant; neuen Vorschlag prüfen."
+              : e instanceof ConvexError
+                ? "Annahme wurde abgelehnt. Keine Auswahl wurde neu geplant; Version, Freigabe, Quelle, Account und Rolle erneut prüfen."
+                : "Ergebnis nicht bestätigt. Prüfe gespeicherten Plan und Kalender vor einem erneuten Versuch.",
+        );
+      }
+    } finally {
+      pending.current = false;
+      if (mounted.current) setAccepting(null);
+    }
+  }
   return (
     <div className="fade-in">
       <PageHeader
@@ -208,7 +307,7 @@ function PlanForm({
               . Publishing-Zugang und Quellen werden beim Erstellen geprüft.
             </p>
             <fieldset
-              disabled={!write || busy || !!rejecting}
+              disabled={!write || busy || !!rejecting || !!accepting}
               className="form-grid"
             >
               <label>
@@ -278,7 +377,10 @@ function PlanForm({
               letzten 25 Workspace-Entwürfe. Themenvielfalt bevorzugt; keine
               Reichweitenprognose oder KI-Generation.
             </p>
-            <Button disabled={!write || busy || !!rejecting} onClick={create}>
+            <Button
+              disabled={!write || busy || !!rejecting || !!accepting}
+              onClick={create}
+            >
               {busy ? "Vorschläge werden erstellt" : "Planvorschläge erstellen"}
             </Button>
             {error && (
@@ -296,7 +398,12 @@ function PlanForm({
                   <Button
                     key={p._id}
                     variant={selected === p._id ? "default" : "outline"}
-                    onClick={() => setSelected(p._id)}
+                    disabled={!!accepting}
+                    onClick={() => {
+                      setSelected(p._id);
+                      setChosen([]);
+                      setError("");
+                    }}
                   >
                     {p.selectedCount} von {p.desiredCount} Beiträgen · {p.start}
                   </Button>
@@ -360,11 +467,41 @@ function PlanForm({
               )}
               <div className="space-y-4">
                 {detail.items.map(
-                  ({ item, title, text, state: status, displayUntil }) => {
+                  ({
+                    item,
+                    title,
+                    text,
+                    state: status,
+                    displayUntil,
+                    approvalId,
+                  }) => {
                     const expired = displayUntil <= proofClock,
                       readable = !expired && !!title;
                     return (
                       <article className="surface p-5" key={item._id}>
+                        {canAccept && item.status === "proposed" && (
+                          <label className="flex items-center gap-2 text-xs mb-3">
+                            <input
+                              type="checkbox"
+                              checked={chosen.includes(item._id)}
+                              disabled={
+                                !!accepting ||
+                                busy ||
+                                !!rejecting ||
+                                status !== "proposed" ||
+                                expired
+                              }
+                              onChange={(e) =>
+                                setChosen((current) =>
+                                  e.target.checked
+                                    ? [...current, item._id]
+                                    : current.filter((id) => id !== item._id),
+                                )
+                              }
+                            />
+                            Diesen Slot auswählen
+                          </label>
+                        )}
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <h3 className="text-sm mb-0">
                             {readable ? title : "Quelle nicht mehr lesbar"}
@@ -419,6 +556,20 @@ function PlanForm({
                             </p>
                           )}
                           <p>{item.reason}</p>
+                          {approvalId && item.status === "proposed" && (
+                            <p>Deine Freigabe: {approvalId}</p>
+                          )}
+                          {item.status === "accepted" &&
+                            item.acceptedScheduleId && (
+                              <p>
+                                Termin:{" "}
+                                <Link to="/calendar" className="underline">
+                                  Kalender öffnen
+                                </Link>{" "}
+                                · {item.acceptedScheduleId} · Freigabe{" "}
+                                {item.acceptedApprovalId}
+                              </p>
+                            )}
                         </div>
                         <div className="flex flex-wrap gap-2 mt-3">
                           <Button variant="outline" size="sm" asChild>
@@ -433,6 +584,7 @@ function PlanForm({
                               !write ||
                               busy ||
                               !!rejecting ||
+                              !!accepting ||
                               item.status !== "proposed"
                             }
                             onClick={() => rejectItem(item._id)}
@@ -453,14 +605,49 @@ function PlanForm({
         <aside className="stack">
           <Section title="Vorschläge sind noch keine Termine">
             <p className="text-xs leading-relaxed">
-              Diese Auswahl reserviert keinen Slot. Freigabe und selektive
-              Annahme werden separat ergänzt. Die spätere Aktion „Version
-              freigeben und planen“ prüft konkrete Version, Quelle und Kalender
-              erneut.
+              Wähle nur die gewünschten Slots. Öffne einen Entwurf, um Text und
+              Medien separat zu prüfen und freizugeben. Die Annahme prüft
+              Version, Quelle und Kalender erneut.
             </p>
-            <Button disabled variant="outline">
-              Slots annehmen · noch nicht verfügbar
-            </Button>
+            {canAccept && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                <Button
+                  variant="outline"
+                  disabled={
+                    !chosen.length ||
+                    !!accepting ||
+                    busy ||
+                    !!rejecting ||
+                    chosen.some(
+                      (id) =>
+                        !detail?.items.find(
+                          ({ item, approvalId, state: status, displayUntil }) =>
+                            item._id === id &&
+                            !!approvalId &&
+                            status === "proposed" &&
+                            displayUntil > proofClock,
+                        ),
+                    )
+                  }
+                  onClick={() => acceptItems("approved")}
+                >
+                  Ausgewählte Slots annehmen
+                </Button>
+                <Button
+                  disabled={
+                    !chosen.length || !!accepting || busy || !!rejecting
+                  }
+                  onClick={() => acceptItems("approve_and_schedule")}
+                >
+                  Version freigeben und planen
+                </Button>
+              </div>
+            )}
+            {!!accepting && (
+              <p role="status" className="text-xs mt-2">
+                Auswahl wird verbindlich geprüft und geplant…
+              </p>
+            )}
           </Section>
           <Section title="Wiederkehrende Serien">
             <p className="text-xs muted">

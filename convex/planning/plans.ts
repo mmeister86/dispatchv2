@@ -1,4 +1,5 @@
 import { proposalFamily } from "../research/handoff";
+import { runSourceKey } from "../ai/sourceAccess";
 import { ConvexError, v } from "convex/values";
 import {
   workspaceMutation,
@@ -227,6 +228,70 @@ async function historyTopic(
     topic: projection.content.pillar,
     proofUntil: Math.min(c.proofUntil, c.validityUntil),
   };
+}
+export async function validateProposedItem(
+  ctx: QueryCtx,
+  item: Doc<"contentPlanItems">,
+  readBudget?: { remaining: number },
+  checkUnplanned = true,
+) {
+  const draft = requireReference(
+    item.workspaceId,
+    await ctx.db.get(item.draftId),
+  ) as Doc<"drafts">;
+  if (
+    draft.currentVersionId !== item.versionId ||
+    draft.revision !== item.draftRevision
+  )
+    throw new ConvexError("PLAN_VERSION_CHANGED");
+  const c = await candidate(
+    ctx,
+    draft,
+    item.accountId,
+    readBudget,
+    checkUnplanned,
+  );
+  if (
+    c.ver._id !== item.versionId ||
+    c.ver.number !== item.versionNumber ||
+    c.idea._id !== item.ideaVersionId ||
+    c.sources.length !== item.sources.length ||
+    c.sources.some(
+      (source, i) =>
+        !item.sources[i] ||
+        runSourceKey(source, false) !== runSourceKey(item.sources[i], false) ||
+        (source.ideaVersionId ?? null) !==
+          (item.sources[i].ideaVersionId ?? null),
+    ) ||
+    JSON.stringify(c.families) !== JSON.stringify(item.families) ||
+    JSON.stringify(c.rootEvidenceIds) !== JSON.stringify(item.rootEvidenceIds)
+  )
+    throw new ConvexError("PLAN_SOURCE_CHANGED");
+  if (
+    item.proofUntil <= item.at ||
+    item.validityUntil <= item.at ||
+    c.proofUntil <= item.at ||
+    c.validityUntil <= item.at
+  )
+    throw new ConvexError("PLAN_SOURCE_EXPIRED");
+  if (!item.historyVersionIds || item.historyVersionIds.length > 10)
+    throw new ConvexError("PLAN_CONTEXT_CHANGED");
+  if (
+    (item.historyVersionIds.length === 0 && item.contextProofUntil !== null) ||
+    (item.historyVersionIds.length > 0 &&
+      (!item.contextProofUntil || item.contextProofUntil <= item.at))
+  )
+    throw new ConvexError("PLAN_CONTEXT_CHANGED");
+  for (const versionId of item.historyVersionIds) {
+    const history = await historyTopic(
+      ctx,
+      item.workspaceId,
+      item.accountId,
+      versionId,
+    );
+    if (history.proofUntil <= item.at)
+      throw new ConvexError("PLAN_CONTEXT_CHANGED");
+  }
 }
 export const propose = workspaceMutation({
   args: { ...requestFields, commandKey: v.string() },
@@ -494,6 +559,7 @@ export const get = workspaceQuery({
         text: v.array(v.string()),
         state: v.string(),
         displayUntil: v.number(),
+        approvalId: v.union(v.id("approvals"), v.null()),
       }),
     ),
   }),
@@ -507,7 +573,22 @@ export const get = workspaceQuery({
     if (items.length > 7) throw new ConvexError("PLAN_ITEM_LIMIT");
     const projections = [];
     for (const item of items) {
-      let state = item.status === "rejected" ? "rejected" : "proposed",
+      const approvalId =
+        (
+          await ctx.db
+            .query("approvals")
+            .withIndex("by_versionId_and_accountId", (q) =>
+              q.eq("versionId", item.versionId).eq("accountId", item.accountId),
+            )
+            .order("desc")
+            .take(100)
+        ).find(
+          (approval) =>
+            approval.actorId === ctx.user._id &&
+            approval.revokedAt === null &&
+            (approval.purpose ?? "publishing") === "publishing",
+        )?._id ?? null;
+      let state: string = item.status,
         title = "",
         text: string[] = [];
       let displayUntil = Math.min(
@@ -543,6 +624,13 @@ export const get = workspaceQuery({
         try {
           if (!item.historyVersionIds || item.historyVersionIds.length > 10)
             throw new Error("Unknown history context");
+          if (
+            (item.historyVersionIds.length === 0 &&
+              item.contextProofUntil !== null) ||
+            (item.historyVersionIds.length > 0 &&
+              (!item.contextProofUntil || item.contextProofUntil <= item.at))
+          )
+            contextValid = false;
           for (const versionId of item.historyVersionIds) {
             const previous = await historyTopic(
               ctx,
@@ -569,13 +657,22 @@ export const get = workspaceQuery({
           title = projection.content.title;
           text = projection.content.text;
         }
-        if (await occupied(ctx, ctx.workspace._id, item.accountId, item.at))
+        if (
+          item.status === "proposed" &&
+          (await occupied(ctx, ctx.workspace._id, item.accountId, item.at))
+        )
           state = "conflict";
-      } catch {
-        state = "source_unavailable";
+      } catch (e) {
+        state =
+          e instanceof ConvexError && e.data === "PLAN_VERSION_CHANGED"
+            ? "version_changed"
+            : e instanceof ConvexError && e.data === "PLAN_CONTEXT_CHANGED"
+              ? "context_changed"
+              : "source_unavailable";
       }
       if (item.status === "rejected") state = "rejected";
-      projections.push({ item, title, text, state, displayUntil });
+      if (item.status === "accepted") state = "accepted";
+      projections.push({ item, title, text, state, displayUntil, approvalId });
     }
     return { plan: plan!, items: projections };
   },
@@ -587,6 +684,9 @@ export const reject = workspaceMutation({
     requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
     const item = await ctx.db.get(a.itemId);
     requireReference(ctx.workspace._id, item);
+    if (item!.status === "accepted")
+      throw new ConvexError("PLAN_ALREADY_ACCEPTED");
+    if (item!.status === "rejected") return null;
     await ctx.db.patch(a.itemId, { status: "rejected" });
     return null;
   },

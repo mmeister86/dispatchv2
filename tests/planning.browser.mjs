@@ -1,8 +1,9 @@
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
+mkdirSync("/tmp/dispatch-task25-evidence/browser-pixels", { recursive: true });
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const n=getFunctionName(ref);window.queries.push({n,args});if(n==='planning/plans:context')return window.context;if(n==='planning/plans:list')return window.plans;if(n==='planning/plans:get')return window.detail;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({n:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});`,
   "@/lib/auth-client": `export const demoMode=false;export const backendConfigured=true;export const AuthBoundary=({children})=>children;export const authClient={signOut:async()=>({})};export {authPath,returnPath} from '/src/lib/navigation.ts';`,
@@ -59,7 +60,7 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("http://127.0.0.1:5174/planning-fixture");
   await page.screenshot({
-    path: "/tmp/dispatch-task24-horizon-evidence/plans-shell-pre.png",
+    path: "/tmp/dispatch-task25-evidence/browser-pixels/plans-shell-pre.png",
     fullPage: true,
   });
   await expect(
@@ -169,7 +170,7 @@ try {
   await expect(page.getByText("Pinned actual draft")).toBeVisible();
   await expect(page.getByText(/Gültigkeitsgrenze bis/)).toBeVisible();
   await page.screenshot({
-    path: "/tmp/dispatch-task24-horizon-evidence/plans-shell-desktop.png",
+    path: "/tmp/dispatch-task25-evidence/browser-pixels/plans-shell-desktop.png",
     fullPage: true,
   });
   await page.getByRole("button", { name: "Ablehnen", exact: true }).click();
@@ -243,7 +244,7 @@ try {
     );
   });
   await page.screenshot({
-    path: "/tmp/dispatch-task24-horizon-evidence/plans-mobile.png",
+    path: "/tmp/dispatch-task25-evidence/browser-pixels/plans-mobile.png",
     fullPage: true,
   });
   expect(
@@ -310,6 +311,186 @@ try {
   }
   console.log(
     "Persisted proposed items remain rejectable after context/version/source/conflict/expiry invalidation; Viewer, awaited pending/error retry and durable rejected gates passed.",
+  );
+  await page.evaluate(() => {
+    const now = Date.now();
+    window.detail = {
+      plan: window.plans[0],
+      items: [
+        {
+          item: {
+            _id: "item-reviewed",
+            draftId: "draft-reviewed",
+            versionId: "version-reviewed",
+            versionNumber: 1,
+            draftRevision: 1,
+            status: "proposed",
+            at: now + 3600000,
+            timezone: "UTC",
+            localTime: "2026-10-06T13:00",
+            proofUntil: now + 7200000,
+            validityUntil: now + 7200000,
+            sources: [],
+            historyVersionIds: [],
+            contextProofUntil: null,
+            reason: "Reviewed exact slot",
+          },
+          title: "Reviewed exact draft",
+          text: ["Approved text"],
+          state: "proposed",
+          displayUntil: now + 3600000,
+          approvalId: "approval-reviewed",
+        },
+      ],
+    };
+    window.role = "Owner";
+    window.path = "/plans";
+    window.render();
+  });
+  await page.evaluate(() => {
+    window.role = "Viewer";
+    window.render();
+  });
+  await expect(page.getByLabel("Diesen Slot auswählen")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Version freigeben und planen" }),
+  ).toHaveCount(0);
+  await page.evaluate(() => {
+    window.role = "Owner";
+    window.render();
+  });
+  await page.getByLabel("Diesen Slot auswählen").check();
+  await expect(
+    page.getByRole("button", { name: "Ausgewählte Slots annehmen" }),
+  ).toBeEnabled();
+  await page
+    .getByRole("button", { name: "Ausgewählte Slots annehmen" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Ausgewählte Slots annehmen" }),
+  ).toBeDisabled();
+  expect(await page.evaluate(() => window.commands.at(-1).n)).toBe(
+    "planning/accept:selected",
+  );
+  expect(
+    await page.evaluate(
+      () => window.commands.at(-1).args.selections[0].approvalId,
+    ),
+  ).toBe("approval-reviewed");
+  await page.evaluate(() =>
+    window.commands
+      .at(-1)
+      .reject(new window.nativeConvexError("SLOT_OCCUPIED")),
+  );
+  await expect(page.getByRole("alert")).toContainText("inzwischen belegt");
+  await expect(page.getByLabel("Diesen Slot auswählen")).toBeChecked();
+  await page
+    .getByRole("button", { name: "Ausgewählte Slots annehmen" })
+    .click();
+  await page.evaluate(() =>
+    window.commands.at(-1).reject(new Error("Synthetic lost response")),
+  );
+  await expect(page.getByRole("alert")).toContainText(
+    "Prüfe gespeicherten Plan und Kalender",
+  );
+  await expect(page.getByRole("alert")).not.toContainText(
+    "Keine Auswahl wurde neu geplant",
+  );
+  await expect(page.getByLabel("Diesen Slot auswählen")).toBeChecked();
+  await page.getByLabel("Themenschwerpunkt").fill("Changed while reviewing");
+  await expect(page.getByText("Reviewed exact draft")).toHaveCount(0);
+  await page.getByRole("button", { name: /1 von 3/ }).click();
+  await expect(page.getByLabel("Diesen Slot auswählen")).not.toBeChecked();
+  await page.getByLabel("Diesen Slot auswählen").check();
+  await page
+    .getByRole("button", { name: "Ausgewählte Slots annehmen" })
+    .click();
+  await page.evaluate(() => {
+    window.detail.items[0].item.status = "accepted";
+    window.detail.items[0].item.acceptedScheduleId = "schedule-reviewed";
+    window.detail.items[0].item.acceptedApprovalId = "approval-reviewed";
+    window.detail.items[0].state = "accepted";
+    window.commands.at(-1).resolve([
+      {
+        itemId: "item-reviewed",
+        approvalId: "approval-reviewed",
+        scheduleId: "schedule-reviewed",
+      },
+    ]);
+    window.render();
+  });
+  await expect(page.getByText(/schedule-reviewed/)).toBeVisible();
+  await expect(page.getByText(/Angenommen · im Kalender/)).toBeVisible();
+  await page.evaluate(() => {
+    const now = Date.now();
+    window.detail.items[0] = {
+      ...window.detail.items[0],
+      item: {
+        ...window.detail.items[0].item,
+        _id: "item-combined",
+        versionId: "version-combined",
+        draftRevision: 1,
+        status: "proposed",
+        acceptedScheduleId: undefined,
+        acceptedApprovalId: undefined,
+        at: now + 3600000,
+        proofUntil: now + 7200000,
+        validityUntil: now + 7200000,
+      },
+      title: "Combined reviewed draft",
+      state: "proposed",
+      approvalId: null,
+      displayUntil: now + 3600000,
+    };
+    window.render();
+  });
+  await page.getByLabel("Diesen Slot auswählen").check();
+  await expect(
+    page.getByRole("button", { name: "Ausgewählte Slots annehmen" }),
+  ).toBeDisabled();
+  await page
+    .getByRole("button", { name: "Version freigeben und planen" })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Version freigeben und planen" }),
+  ).toBeDisabled();
+  expect(await page.evaluate(() => window.commands.at(-1).args.mode)).toBe(
+    "approve_and_schedule",
+  );
+  expect(
+    await page.evaluate(
+      () => window.commands.at(-1).args.selections[0].approvalId,
+    ),
+  ).toBeUndefined();
+  await page.evaluate(() => {
+    window.detail.items[0].item.status = "accepted";
+    window.detail.items[0].item.acceptedScheduleId = "schedule-combined";
+    window.detail.items[0].item.acceptedApprovalId = "approval-combined";
+    window.detail.items[0].state = "accepted";
+    window.commands.at(-1).resolve([
+      {
+        itemId: "item-combined",
+        approvalId: "approval-combined",
+        scheduleId: "schedule-combined",
+      },
+    ]);
+    window.render();
+  });
+  await expect(page.getByText(/schedule-combined/)).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.getByText("Combined reviewed draft").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "/tmp/dispatch-task25-evidence/browser-pixels/plans-accepted-desktop.png",
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByText("Combined reviewed draft").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "/tmp/dispatch-task25-evidence/browser-pixels/plans-accepted-mobile.png",
+    animations: "disabled",
+  });
+  console.log(
+    "Mounted RealPlans separate approval and explicit combined acceptance: exact refs, pending lock, failure selection retention and actual calendar receipt passed.",
   );
   for (const path of [
     "/overview",
