@@ -59,7 +59,7 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("http://127.0.0.1:5174/planning-fixture");
   await page.screenshot({
-    path: "/tmp/dispatch-task24-evidence/plans-shell-pre.png",
+    path: "/tmp/dispatch-task24-horizon-evidence/plans-shell-pre.png",
     fullPage: true,
   });
   await expect(
@@ -167,8 +167,9 @@ try {
     window.render();
   });
   await expect(page.getByText("Pinned actual draft")).toBeVisible();
+  await expect(page.getByText(/Gültigkeitsgrenze bis/)).toBeVisible();
   await page.screenshot({
-    path: "/tmp/dispatch-task24-evidence/plans-shell-desktop.png",
+    path: "/tmp/dispatch-task24-horizon-evidence/plans-shell-desktop.png",
     fullPage: true,
   });
   await page.getByRole("button", { name: "Ablehnen", exact: true }).click();
@@ -235,8 +236,14 @@ try {
     timeout: 5000,
   });
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
+  });
   await page.screenshot({
-    path: "/tmp/dispatch-task24-evidence/plans-mobile.png",
+    path: "/tmp/dispatch-task24-horizon-evidence/plans-mobile.png",
     fullPage: true,
   });
   expect(
@@ -244,6 +251,66 @@ try {
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+  for (const projection of [
+    "context_changed",
+    "expired",
+    "version_changed",
+    "conflict",
+    "source_unavailable",
+  ]) {
+    await page.evaluate((projection) => {
+      window.detail.items[0] = {
+        ...window.detail.items[0],
+        title: "",
+        text: [],
+        state: projection,
+        displayUntil:
+          projection === "expired" ? Date.now() - 1 : Date.now() + 60000,
+        item: { ...window.detail.items[0].item, status: "proposed" },
+      };
+      window.role = "Viewer";
+      window.render();
+    }, projection);
+    await expect(
+      page.getByRole("button", { name: "Ablehnen", exact: true }),
+    ).toBeDisabled();
+    await page.evaluate(() => {
+      window.role = "Owner";
+      window.render();
+    });
+    await expect(
+      page.getByRole("button", { name: "Ablehnen", exact: true }),
+    ).toBeEnabled();
+    await page.getByRole("button", { name: "Ablehnen", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Wird abgelehnt" }),
+    ).toBeDisabled();
+    await page.evaluate(() =>
+      window.commands.at(-1).reject(new Error("Synthetic rejection failure")),
+    );
+    await expect(page.getByRole("alert")).toContainText(
+      "Ablehnung wurde nicht bestätigt",
+    );
+    await expect(
+      page.getByRole("button", { name: "Ablehnen", exact: true }),
+    ).toBeEnabled();
+    await page.getByRole("button", { name: "Ablehnen", exact: true }).click();
+    await expect(
+      page.getByRole("button", { name: "Wird abgelehnt" }),
+    ).toBeDisabled();
+    await page.evaluate(() => {
+      window.commands.at(-1).resolve(null);
+      window.detail.items[0].item.status = "rejected";
+      window.detail.items[0].state = "rejected";
+      window.render();
+    });
+    await expect(
+      page.getByRole("button", { name: "Ablehnen", exact: true }),
+    ).toBeDisabled();
+  }
+  console.log(
+    "Persisted proposed items remain rejectable after context/version/source/conflict/expiry invalidation; Viewer, awaited pending/error retry and durable rejected gates passed.",
+  );
   for (const path of [
     "/overview",
     "/settings/profile",

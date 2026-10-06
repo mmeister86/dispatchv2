@@ -1209,3 +1209,65 @@ test("the twenty-sixth proposal cannot overflow the bounded exact-version histor
   });
   expect(previous.items[0].text.length).toBeGreaterThan(0);
 });
+
+test("registered immutable assessment bound is preserved separately from shortened current budget proof", async () => {
+  const f = await unified();
+  const r = await researchDraft(f);
+  const reviewed = (await f.t.run((ctx) => ctx.db.get(r.evidenceId)))!;
+  const assessedUntil = reviewed.assessment!.validUntil!;
+  const shorterProof = Date.parse("2026-10-06T09:01:30Z");
+  expect(assessedUntil).toBeGreaterThan(shorterProof);
+  expect(assessedUntil).toBeLessThan(reviewed.assessment!.requestedUntil);
+  const budgetId = await f.t.run(async (ctx) => {
+    const budget = (await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) => q.eq("key", `native:account:${f.accountId}`))
+      .unique())!;
+    await ctx.db.patch(budget._id, { expiresAt: shorterProof });
+    return budget._id;
+  });
+  const planId = await f.signed.mutation(propose, {
+    ...f.args,
+    mode: "research",
+  });
+  const before = await f.signed.query(api.planning.plans.get, {
+    workspaceId: f.workspaceId,
+    planId,
+  });
+  expect(before.items).toHaveLength(1);
+  const item = before.items[0].item;
+  expect(item.proofUntil).toBe(shorterProof);
+  expect(item.validityUntil).toBe(assessedUntil);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(r.evidenceId)))!.assessment!.validUntil,
+  ).toBe(assessedUntil);
+  await f.signed.mutation(api.planning.plans.reject, {
+    workspaceId: f.workspaceId,
+    itemId: item._id,
+  });
+  await f.t.run((ctx) =>
+    ctx.db.patch(budgetId, { expiresAt: Date.parse("2026-10-06T09:10Z") }),
+  );
+  const nextId = await f.signed.mutation(propose, {
+    ...f.args,
+    mode: "research",
+    commandKey: "renew-budget-independent-assessment",
+  });
+  const next = await f.signed.query(api.planning.plans.get, {
+    workspaceId: f.workspaceId,
+    planId: nextId,
+  });
+  expect(next.items[0].item.proofUntil).toBe(shorterProof);
+  expect(next.items[0].item.validityUntil).toBe(assessedUntil);
+  await f.signed.mutation(api.planning.plans.reject, {
+    workspaceId: f.workspaceId,
+    itemId: next.items[0].item._id,
+  });
+  const lateId = await f.signed.mutation(propose, {
+    ...f.args,
+    mode: "research",
+    clock: "09:02",
+    commandKey: "original-proof-still-excludes-late-slot",
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(lateId)))!.selectedCount).toBe(0);
+});

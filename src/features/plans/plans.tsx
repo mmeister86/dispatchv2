@@ -398,7 +398,7 @@ function PlanForm({
                           <p>
                             Quellennachweis bis{" "}
                             {new Date(item.proofUntil).toISOString()} ·
-                            Bewertung bis{" "}
+                            Gültigkeitsgrenze bis{" "}
                             {new Date(item.validityUntil).toISOString()}
                           </p>
                           {item.sources.map((s, i) => (
@@ -433,8 +433,7 @@ function PlanForm({
                               !write ||
                               busy ||
                               !!rejecting ||
-                              status !== "proposed" ||
-                              expired
+                              item.status !== "proposed"
                             }
                             onClick={() => rejectItem(item._id)}
                           >

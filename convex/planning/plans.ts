@@ -128,7 +128,7 @@ async function candidate(
   const proof = await draftResearchProof(ctx, ver);
   if (proof === null || !sources.length)
     throw new ConvexError("UNVERIFIED_LINEAGE");
-  let validity = proof;
+  let validity: number | null = null;
   const researchFamilies: string[] = [],
     rootEvidenceIds: Id<"researchEvidence">[] = [];
   for (const source of sources)
@@ -140,15 +140,17 @@ async function candidate(
         accountId,
       );
       const view = await projectEvidence(ctx, draft.workspaceId, e);
+      const assessmentUntil = e.assessment?.validUntil;
       if (
         (e.inboxDisposition ?? "active") !== "active" ||
         !e.assessment?.substantiveSupportAttested ||
         !view.validityUntil ||
+        !assessmentUntil ||
         !e.payload ||
         e.payload.annotation.freshness === "unknown"
       )
         throw new ConvexError("RESEARCH_REVIEW_REQUIRED");
-      validity = Math.min(validity, view.validityUntil);
+      validity = Math.min(validity ?? assessmentUntil, assessmentUntil);
       const family = await proposalFamily(ctx, draft.workspaceId, e);
       researchFamilies.push(await sha256(family.family));
       rootEvidenceIds.push(family.root._id);
@@ -161,7 +163,10 @@ async function candidate(
     throw new ConvexError("VERSION_PROPOSAL_LIMIT");
   // Original captured horizons survive source-grant renewal and later proposals.
   const until = Math.min(proof, ...previous.map((p) => p.proofUntil));
-  validity = Math.min(validity, ...previous.map((p) => p.validityUntil));
+  validity = Math.min(
+    validity ?? proof,
+    ...previous.map((p) => p.validityUntil),
+  );
   const families = [
     ...new Set([
       ...researchFamilies,
