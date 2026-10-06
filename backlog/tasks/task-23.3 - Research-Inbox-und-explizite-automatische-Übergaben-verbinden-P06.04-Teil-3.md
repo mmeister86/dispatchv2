@@ -4,7 +4,7 @@ title: 'Research-Inbox und explizite automatische Übergaben verbinden (P06.04, 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 02:29'
+updated_date: '2026-10-06 02:37'
 labels: []
 dependencies:
   - TASK-23.2
@@ -64,4 +64,6 @@ Final readiness ROOTread593/30 PASS04:22:47, static/type/lint/format/build/bundl
 SOURCE e99c56eae5e0169e93c2d4513479018e8c90b202 exact24approvedpaths on master, independentROOT scopedcommit/tree/index clean check. Frozen593/30/5browser/static/EUDev04:23:46. Fresh Backend Architect SPEC research_inbox_spec dispatched BASE734dce2 with complete contract/requirements/inventory/proof chronology. QUALITY onlyafterSPEC PASS, no AC/Done.
 
 FreshSPEC confirms24hashes. ROOT clarifies accidental replay-barrier wording: currentowner/account/activehistory+source proof before receipt, all executionFinished barriers before NEW append; committedreceipt replay allowed with no newnative/money/horizon effect. Original04:27 replay expectation log preserved as prompt ambiguity, independent invariants underway. Actual manual-descendant cleanupRED /tmp/dispatch-spec-independent-manual-cleanup.log04:28:10: public evidence.create on realreResearch child retainsprotectedpayload after ancestorsecondarywithdrawal/purgecomplete. Reads alreadyfenced; physical manual/contentcopies omitted by modelOrigin-only scan. Required minimal existingorder-index all-evidence retirement/copycleanup; no sourceedit untilcompleteSPEC findings. No AC/Done, QUALITYnotstarted.
+
+ROOT read complete freshSPEC NEEDS_FIXES: oneP1 only manual descendant physicalcleanup, all24hashes/94registeredPASS. Expanded originalRED04:29:35 afterduejobs shows manualpayload/Idea/Draft copyflags retained295900ms beforeexpiry, publicreads correctlyfenced. Clarifiedsafe exact+alias receipt replay invariants/newintentbarrier independentPASS04:28:42; no replaycodefix. Original solewriter correction released ONLYpipeline.ts +pipeline.test.ts via existingorder-index ALL evidence retirement/matching completion/contentCleanup propagation. Actualmanualchild→Draft regression RED→physicalGREEN/native/finance required, separatecorrectioninventory/finalchecks/Dev/SAME SPEC thenfreshQUALITY; sourcewindowclosed/no AC/Done.
 <!-- SECTION:NOTES:END -->
