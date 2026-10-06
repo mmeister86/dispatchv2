@@ -4,7 +4,7 @@ title: 'Research-Evidenz sicher in Ideen und Entwürfe übergeben (P06.04, Teil 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:37'
-updated_date: '2026-10-06 00:42'
+updated_date: '2026-10-06 00:47'
 labels: []
 dependencies:
   - TASK-22.3
@@ -59,4 +59,8 @@ Implementer reports genuine baseline disclosure RED from isolated db59b94 /tmp s
 Local WIP verification: full552/30PASS /tmp/task231-full-test.log; public hooks+late receipt8PASS /tmp/task231-public-cleanup-latefacts.log; actual WorkspaceStoreProvider/Composer two-deadline/manual-buffer fixturePASS /tmp/task231-content-browser.log, Ideas browserPASS /tmp/task231-ideas-browser.log. Count is immutable maximum with honest underfill; alias retry keys remain bound. Calendar own query/dialog guards included; technical thread positions preserved on privacy erasure. Static/Dev/freeze and fresh independent SPEC→QUALITY still pending; no AC/Done.
 
 Frozen SOURCE1bb0d0b72c79392bb7eee547adb2d0b944616259 exact29paths, clean source/index; full552/30 and static/build/bundle/codegen/posttype PASS, actualEUDevready02:39:09. ActualReact mocked-subscription Store/Composer/Calendar/Ideas/XComposer browser PASS, live/manual not claimed. Fresh independent SPEC research_content_spec Backend Architect astra/medium active, QUALITY onlyafterPASS. AllAC/Done remain unchanged;20AC4 awaits both reviews.
+
+Fresh SPEC independently reproduced inherited published-research-draft deadline gap at SOURCE1bb0d0b: parent1791247694861, child1791247794861 (+100000ms). Actual registered source/evidence/handoff and controlled exact confirmed history; /tmp/task231-spec-independent/horizon.log retained. historyMaterial discards draft source deadline; materialAuthority fails to propagate it. Reviewer completing frozen receipt; original implementer correction→sameSPEC required, QUALITY notstarted, noAC/Done.
+
+Fresh SPEC finalNEEDS_FIXES/ReadyNo oneP1 /tmp/dispatch-research-content-spec-receipt.md: history source proof AND actual ai/researchTools pipeline retention omit earliestancestor, child100000ms later; freshservermasks butcachedsnapshot99999ms remain.73registered+canonicalown+browserPASS/all29hashunchanged. Original implementer correction released forsharedhistory/proof/retention/allactualconsumers; permanentactualboundary regression, sameSPECrerunbeforefreshQUALITY. OriginalREDfrozen, noAC/Done.
 <!-- SECTION:NOTES:END -->
