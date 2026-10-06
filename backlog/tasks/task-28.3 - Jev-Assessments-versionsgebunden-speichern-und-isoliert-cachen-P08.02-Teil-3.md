@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-06 04:05'
+updated_date: '2026-10-06 04:28'
 labels:
   - p08
   - jev
@@ -71,4 +71,6 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence. Mock analysis identity binds draft/account/version; edited content marks result stale; obsolete local timers are cancelled. Grenze: No backend assessment schema, tenant-isolated cache, production retention or historical reproduction. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 ROOT preparation only, implementation waits accepted28.2 actualresult/inputtypes. Readonly persistence map7655c2a9 reviewedfull; no currentassessment/cache/history backend. Stable semanticidentity excludes transientphysicalactor/opkey/deadline; exactsavedversion/tenant binding retained. Currentproof BEFORE hit andatomiclatewrite fence/derivedwithdrawalcleanup required; no2financialledger/rawpromptcopy. No manualDone/liveprovider/EU/humaneval acceptance.
+
+Released after accepted28.2 actual analyzer SOURCE c2e81f7, fresh SPEC/QUALITY PASS. Consume actual four-field SDK state and returned normalized output; strip transient deterministic segment text before persistence. Exact saved-version/current source/profile proof, stable semantic identity distinct from physical attempts, authorization before cache and atomic latest/current writes; extend protected projection and physical cleanup while preserving financial receipts. One fresh sole writer, full checks/existingEUDev/browser/frozen source then fresh SPEC and QUALITY; no activation/manual Done.
 <!-- SECTION:NOTES:END -->

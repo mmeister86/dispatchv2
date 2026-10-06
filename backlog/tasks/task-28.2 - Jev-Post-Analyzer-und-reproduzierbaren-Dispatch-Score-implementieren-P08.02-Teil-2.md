@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-06 04:20'
+updated_date: '2026-10-06 04:28'
 labels:
   - p08
   - jev
@@ -41,10 +41,10 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Identische gespeicherte semantische und deterministische Komponenten erzeugen unter derselben Formelversion denselben Score; Grenzwerte, Cold Start und fehlende Werte sind getestet.
-- [ ] #2 Jev trifft atomare semantische Entscheidungen; Scoreaggregation, Policies und Ausführung bleiben in Dispatch/Convex.
+- [x] #1 Identische gespeicherte semantische und deterministische Komponenten erzeugen unter derselben Formelversion denselben Score; Grenzwerte, Cold Start und fehlende Werte sind getestet.
+- [x] #2 Jev trifft atomare semantische Entscheidungen; Scoreaggregation, Policies und Ausführung bleiben in Dispatch/Convex.
 - [ ] #3 Unit- und Contract-Tests prüfen Normalisierung, deterministische Signale, Gewichtung, Confidence und fehlerhafte Antworten; das versionierte Eval-Dataset besitzt menschlich geprüfte Erwartungsbereiche.
-- [ ] #4 Keine Aussage zu Audience Fit oder künftiger Reichweite wird aus einem nicht vorhandenen Messsignal abgeleitet.
+- [x] #4 Keine Aussage zu Audience Fit oder künftiger Reichweite wird aus einem nicht vorhandenen Messsignal abgeleitet.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -79,4 +79,6 @@ ROOT read genuineprefeatureRED06:05:23 missingmathmodule/newresolverrejection; f
 SOURCEc2e81f78 exact19paths frozen/treefc58102c ROOT verifiedcurrent+committedSHA/21artifacts/indexclean. Final632/37 full06:13:07/static/build/bundle/actualOperations-profile mockedbrowser/EUDev06:12:23/posttypesPASS. Firstmisnamedgreen logtwo expectationfailures retained correctedfloat/XweightedURLmath nothumanoracle; firstcodegeninferencefixedexplicitInfer. Technical15casesSHA b69ce7fa allAI/human_review_pending/inferencefalse; WHOLEAC3 staysunchecked. FreshSPEC jev_post_analyzer_spec dispatched, QUALITY onlyafterPASS. No actualprovider/EU/manualDone/persistedassessmentclaim.
 
 FreshSPEC boundedsoftwarePASS SOURCEc2e81f78; ROOTfullreceipt316292bf read. Independent19current+committedSHA/blob/BASE/tree/21artifacts verified; focused38/7+5independentactualresolver/SDK/math/inflightcurrentcapabilityandidentitycontrolsPASS06:18:11/12. No blockingfindings. FreshQUALITY released; allAC/manualDonecurrentlyopen, WHOLEhumanAC3andEUprovideracceptance remainunapproved;28.3later.
+
+ROOT accepted bounded software at SOURCE c2e81f7891c395c91fab2f44b4afbd53af636806 after fresh SPEC and QUALITY PASS. Full632/37, focused38 plus SPEC5 and QUALITY2 independent controls; static/build/bundle/browser/codegen/existingEUDev06:12:23. Whole AC3 remains unchecked: AI technical fixtures do not replace human expected-range review. Actual provider/EU approval and manual Done remain open. Complete evidence .docs/reviews/task-28.2-post-analysis-validation.md.
 <!-- SECTION:NOTES:END -->
