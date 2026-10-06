@@ -4,7 +4,7 @@ title: Begrenzte Experimente und Lernkontrolle bauen (P12.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 14:34'
+updated_date: '2026-10-06 15:23'
 labels:
   - p12
   - r5
@@ -48,10 +48,22 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Akzeptierte48Attribution/45BeforeResultSourceCleanup/46konkretePins übernehmen und final proof reconciliieren.
+2.47.1 finiteSpec/Assignment/EditorialFeedbackOutcome/CAS/Stop und tatsächlicheExperimentsRoute mit eingeführtemCleanup.
+3. Freeze/frischesSPEC→distinctQUALITY/RootCommit/exaktesbestehendesEUDev.
+4.47.2 vorPossibleEffect exakteApprovedScheduleAssignment plus separat admitted retainedMetric/LocalUseProof, transparenteMatching/Missingness.
+5. Separate47.2Freeze/Reviews/Commit/Dev, Graph33/36 und empirical/live/manualDone offen.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /experiments. Create/edit hypothesis, target metric, A/B descriptions, observation window and stop rule; start/stop/resume/complete and small-sample synthetic results. Grenze: No experiment assignment, platform posting, causal inference or actual learning. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Read-only Fortsetzung /tmp/dispatch-continuation-47-contract-proposal.md vollständig durch Root gelesen. Vorläufige Sequenz nach48/45/46: 47.1 explizite finite native A/B-Deklaration/exakte manuelle Versionzuordnung/deskriptive Editorial-Outcomes, dann47.2 separat erlaubte ursprüngliche Publishing-Zuordnung/passende retained Metrics. Keine Content-/Schedule-/Provider-Erzeugung oder automatische Gewinneraktivierung. Zusätzliche SharedFeedback-Seam: record/list/sweep/purge prüfen aktuell nur before-Version;45/47 benötigen exact resultingVersion scope/draft/account, Minimum beider original/current Quellenhorizonte und indexed result-cleanup. Aktuelle accept-Rows unterscheiden decide versus approval nicht; Wiederholungen sind keine unabhängigen Samples. Kein empirischer Aufwand-/Frequenz-/Metrikdefault, keine Permission oder Implementierungsfreigabe aus diesem Design; endgültige source ownership erst nach akzeptiertem45/46.
+
+Prospektiver .docs/editorial-experiment-contract.md und47.1/47.2 viaCLI erstellt, beideToDo. KeineSourceImplementierung. Routine32Units/28days sind endlicheSoftwareobergrenzen, keinegewähltenNutzerwerte/validierteSampleSize. ActualFeedbackOrigin explicit-vs-approval istlegacyambiguous; keineOriginInference/nInflation/EditEffort/KausalWinner. Final45/46Proofs vor47Admission reconciliieren.
 <!-- SECTION:NOTES:END -->
