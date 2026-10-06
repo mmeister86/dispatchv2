@@ -4,7 +4,7 @@ title: 'Gezielte Recherche mit persönlichen Agent-Chats verbinden (P06.04, Teil
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:38'
-updated_date: '2026-10-06 01:16'
+updated_date: '2026-10-06 01:35'
 labels: []
 dependencies:
   - TASK-23.1
@@ -58,4 +58,8 @@ Fresh soleimplementer targeted_chat_research Backend Architect sol/medium releas
 Firstregisteredadmission contractRED /tmp/task232-red.log ->GREEN actualWorkflowemptysearch/nativeimmutabletopic/profileunchanged/exactreplay/conflict/durabletechnicalnativeMessage, one interceptedsearch. Interim107/4PASS03:10:18 /tmp/task232-target.log +typePASS /tmp/task232-type.log. NOTfullJ05/source-disclosure/finalbytes: fundedsemantic/evidence/summary/followup/multi-sourcecleanup/newbrowser/full/static/Dev/freshreviews stillpending. NoAC/Done.
 
 Successfulactualchainbeingimplemented twoScopedWorkflow native+fundedsemantic->durablesummaries->separatelyfundednativeChatcreateIdea->actualIdeaDraft->secondaryonlywithdrawalerasure/retainedfinance; NOTyetPASS. DiscoveredimplementationGH-onlycontextsettreatedasResearchretention fixed, executionREDnotyetclaimed; optionalfiniteGHhorizonNEWcaptures preservesoldrefs. ROOTrequiresoriginalchatdelete/inactivewhiletargetedIOheld fencefurthernewpaidsteps/summarydelivery, retainonceusage/unknownhold viaexistinglifecycle. Finalfull/browser/Dev/freshreviews pending.
+
+Registered J05 reported GREEN: two actual Workflow/native/semantic orders, signed earlier GitHub context, two funded native chat HTTP steps, three-ref Idea, actual draft and secondary withdrawal/native isDone/content erasure with settled receipts retained. 13 current-source/grant/generation/pending/late cases GREEN at03:17:48. Two fixture targets corrected separately. Original dedup log overwritten; exact transcript excerpt /tmp/task232-source-dedup-red-excerpt.txt is explicitly an excerpt, not full original log. Exact tuple dedup fixed. Confirmed Signal/IdeaVersion lineage gap needs optional exact pins and preserved older pins; GH original deadline must fail closed after repo renewal at shared guard. Old run purge delegates native whole-conversation cleanup pending newer incarnation. Agent browser03:21 intermediate PASS; final corrections/full/static/Dev/reviews pending, no AC/Done.
+
+First readiness: 576/30 full PASS03:31:25; type/lint/format/build/bundle/codegen/posttypes and Ideas browser PASS; existing EUDev03:32:18. Initial28-path inventory digest166491b69f11746d9299afef506ac2b030f94cd24ae61e35a98d8c86d16b868d retained as pre-correction; no source commit window opened. ROOT caller review found Research compound draft bypasses currentRunSource version/parent checks and Promise.all shares active MaterialWalk unsafely; separate top-level walks also need shared32 budget. Original implementer confirmed gaps, reproducing registered REDs before minimal shared guard/sequential walk correction. Existing pipelineAccess.ts only necessary extra path authorized. New final full/static/codegen/Dev readiness required. No AC/Done.
 <!-- SECTION:NOTES:END -->
