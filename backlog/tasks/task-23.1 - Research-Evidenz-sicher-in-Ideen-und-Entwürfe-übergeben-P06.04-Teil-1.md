@@ -4,7 +4,7 @@ title: 'Research-Evidenz sicher in Ideen und Entwürfe übergeben (P06.04, Teil 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:37'
-updated_date: '2026-10-06 00:47'
+updated_date: '2026-10-06 00:51'
 labels: []
 dependencies:
   - TASK-22.3
@@ -63,4 +63,6 @@ Frozen SOURCE1bb0d0b72c79392bb7eee547adb2d0b944616259 exact29paths, clean source
 Fresh SPEC independently reproduced inherited published-research-draft deadline gap at SOURCE1bb0d0b: parent1791247694861, child1791247794861 (+100000ms). Actual registered source/evidence/handoff and controlled exact confirmed history; /tmp/task231-spec-independent/horizon.log retained. historyMaterial discards draft source deadline; materialAuthority fails to propagate it. Reviewer completing frozen receipt; original implementer correction→sameSPEC required, QUALITY notstarted, noAC/Done.
 
 Fresh SPEC finalNEEDS_FIXES/ReadyNo oneP1 /tmp/dispatch-research-content-spec-receipt.md: history source proof AND actual ai/researchTools pipeline retention omit earliestancestor, child100000ms later; freshservermasks butcachedsnapshot99999ms remain.73registered+canonicalown+browserPASS/all29hashunchanged. Original implementer correction released forsharedhistory/proof/retention/allactualconsumers; permanentactualboundary regression, sameSPECrerunbeforefreshQUALITY. OriginalREDfrozen, noAC/Done.
+
+Permanent actual Workflow/native/model ancestor regression RED /tmp/task231-history-red.log retained. After horizonfix publicexpiry finds secondactualrollback: pipeline.purge cancels nativealready-completedWorkflow→Workflow not running→Agent/journalerasure rolledback; /tmp/task231-history-scheduler-diagnostic.log. ROOT permits sixthcorrectionpathpipeline.ts existingstatus/inProgress guard, actualcleanup/isDonepending retained. SameSPEC mustverify, QUALITYnotstarted, noAC/Done.
 <!-- SECTION:NOTES:END -->
