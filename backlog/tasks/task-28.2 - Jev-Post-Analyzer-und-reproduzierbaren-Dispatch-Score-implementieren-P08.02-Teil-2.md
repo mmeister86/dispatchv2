@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 03:29'
 labels:
   - p08
   - jev
@@ -53,10 +53,22 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Consume the reviewed28.1 adapter and define a genuine immutable ordered post question/normalization version.
+2. Introduce executable profile references through new immutable payloads with explicit review/select, preserving old profile meaning.
+3. Compute descriptive structure signals and deterministic dispatch-score-v1 with missing/low-confidence and assumed cold-start states.
+4. Add transparent technical fixtures and reproducible controls; leave human-reviewed expectation-range acceptance open.
+5. Run full checks/existing EU Dev, freeze source and independent SPEC then QUALITY; retain manual Done.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 2026-09-19 D04: Nutzer verlangt Intelligence bereits im Dispatch-MVP/R2. Release-Zuordnung aktualisiert; keine Umsetzung oder Provideraktivierung. Maßgeblich: .docs/decisions/release-scope.md.
 
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence. Hook/clarity/discussion/originality/natural CTA/structure/history dimensions, fixed weighted illustrative score, missing values and declared 50 cold-start standard. Grenze: All semantic values are hypothetical; no evaluated model, audience match or reach prediction. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+ROOT preparation only, actual implementation waits reviewed28.1 adapter/sourcecontract. Current TASK27 unavailable executable refs must not be silently reinterpreted; genuine new immutable profile payloads require explicit review/select. Whole ordered thread and descriptive media, no measured Audience Fit/reach. Actual AC3 includes HUMAN reviewed expected ranges; synthetic/AI technical fixtures do not satisfy that portion or justify whole checkbox. No SDK/provider activation or human acceptance claimed.
 <!-- SECTION:NOTES:END -->
