@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 12:22'
 labels:
   - p11
   - r5
@@ -49,8 +49,20 @@ Globale Heuristik gegen workspace-/accountbezogene Dispatch-Gewichte und gegeben
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Trace accepted43.1 native proof/retention/callers and approved .docs/calibration-model-contract.md.
+2. Implement immutable passive experiment/candidate/evaluation with train-only native proof, canonical9-transfer ranking and two-block diagnostics; default empirical policy null/inactive.
+3. Wire real scoped Operations controls/results and explicit configuration/expiry/error guidance; preserve Jev/static score/cache/Demo.
+4. Verify native chronology/no-heldout-fit/rights/retention/capacity/replay, current styled desktop390 UI and appropriate full/static/build/bundle/Dev checks with actual frozen evidence.
+5. Freeze exact11SOURCE, scoped master commit after ROOT approval, fresh SPEC then QUALITY and same-writer fixes; actual rights/empirical/manual/Done remain OPEN.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Shadow-Kalibrierung. Mock shadow comparison displays sample size, quality, drift and error with insufficient-data gate. Grenze: Fixed example evaluation, not statistical evidence. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+ROOT releases scoped engineering implementation after reviewed43.1 e5bae9cf; exact11SOURCE ownership/closed-nine train-only proof/predeclaration/retention/UI gates in .docs/calibration-model-contract.md. Actual empirical thresholds are not invented or seeded; null policy forever diagnostic/inactive, actual configured evidence/consent required. One experiment/spec, one immutable candidate, future-policy/freeze chronology, no production activation/resolver until43.3.
 <!-- SECTION:NOTES:END -->

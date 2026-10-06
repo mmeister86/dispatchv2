@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 11:33'
+updated_date: '2026-10-06 12:22'
 labels:
   - p11
   - r5
@@ -38,9 +38,9 @@ Referenzdaten binden normalisierte Performance an das Assessment zum Veröffentl
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 Lernziele unterscheiden messbare Outcomes von Content-Heuristiken; der konkrete Verwendungszweck ist freigegeben.
-- [ ] #2 Datensplits enthalten keine zukünftigen Messwerte in Trainingsbeispielen.
-- [ ] #3 Mindestdaten, kleine Segmente, Drift und fehlende Werte sind als dokumentierte Eingangstore behandelt.
-- [ ] #4 Datensatz und zeitliche Splits schließen rückwirkende Scores sowie künftige Outcomes als damalige Eingaben aus und trennen inkompatible Versionen.
+- [x] #2 Datensplits enthalten keine zukünftigen Messwerte in Trainingsbeispielen.
+- [x] #3 Mindestdaten, kleine Segmente, Drift und fehlende Werte sind als dokumentierte Eingangstore behandelt.
+- [x] #4 Datensatz und zeitliche Splits schließen rückwirkende Scores sowie künftige Outcomes als damalige Eingaben aus und trennen inkompatible Versionen.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -64,4 +64,6 @@ Referenzdaten binden normalisierte Performance an das Assessment zum Veröffentl
 
 <!-- SECTION:NOTES:BEGIN -->
 ROOT releases TASK43.1 software scope after accepting TASK25 c2bfc4a under standing user project-decision authorization; TASK42 dependency software accepted, manual statuses remain open. Exact engineering contract: .docs/calibration-reference-contract.md. First purpose dispatch-local-reply-ordering-v1: independent complete single TEXT X posts, measured reply events/impressions at24h ±60s, one exact account/analysis stratum. This selects an engineering purpose, grants no actual data rights and enables no provider/model. 30 independent posts/28days is only an unvalidated engineering screen; empirical policy remains UNSET. No training/activation in43.1. Separate actual Owner/Admin consent default OFF, preserved source/metric rights, bounded cleanup and original horizons. ROOT owns all docs/Backlog metadata; fresh sole writer receives exact13 SOURCE ownership; no Done without manual human confirmation.
+
+Scoped software accepted at e5bae9cf after fresh SPEC2 and QUALITY2 original native controls; native23/full827/45, types/build/bundle/scopedformat and configured existing EU Dev ready UTC12:06:09. Exact13source/frozen/commit hashes and58 writer receipts/2822 copies verified. Backend/full receipts precede only later UI classes/planning log/browser assertions; final affected UI checks pass, qualified in .docs/reviews/task-43.1-calibration-reference-validation.md. Independent review fixtures reuse corpus helpers, no actual rights/empirical certificate. AC2/3/4 checked SOFTWARE ONLY; AC1 real lawful-purpose/manual evidence and both manual DoD remain OPEN; status In Progress, no Done. Next43.2 has separate ROOT contract, no activation43.1.
 <!-- SECTION:NOTES:END -->

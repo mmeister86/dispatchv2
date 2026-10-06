@@ -4,7 +4,7 @@ title: Kalibrierung mit Kontrollgruppe und Rollback einführen (P11.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 11:33'
+updated_date: '2026-10-06 12:22'
 labels:
   - p11
   - r5
@@ -70,4 +70,6 @@ Kalibriert werden Dispatch-eigene Scoregewichte und gegebenenfalls Routing-/Veri
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Shadow-Kalibrierung. Candidate/baseline form, synthetic sample/drift/error scenarios, blocked/allowed activation, version log and rollback. Grenze: No real learning, calibration, holdout data, measured improvement or Jev training. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 ROOT releases software subtask43.1 after accepted25/42: .docs/calibration-reference-contract.md. Separate default-OFF local-learning purpose, bounded lawful temporal reference snapshots and real Operations reference UI only. Actual use rights/adequate empirical data remain unresolved; no fitted candidate, paid provider reads, model activation or efficacy claim. 43.2/43.3 follow reviewed43.1; parent/manual DoD remain In Progress.
+
+43.1 scoped native-reference software accepted at e5bae9cf after fresh SPEC then QUALITY; exact original lineage/default-OFF separate purpose/current proofs/retention/real Operations. Evidence .docs/reviews/task-43.1-calibration-reference-validation.md. 43.2 released via .docs/calibration-model-contract.md for passive train-only fit and two-block comparison. Parent empirical improvement/real rights/human manual/Done remain OPEN; no model activation43.1/43.2.
 <!-- SECTION:NOTES:END -->
