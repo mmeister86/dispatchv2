@@ -4,7 +4,7 @@ title: 'Research-Evidenz sicher in Ideen und Entwürfe übergeben (P06.04, Teil 
 status: In Progress
 assignee: []
 created_date: '2026-10-05 23:37'
-updated_date: '2026-10-06 00:37'
+updated_date: '2026-10-06 00:42'
 labels: []
 dependencies:
   - TASK-22.3
@@ -57,4 +57,6 @@ WIP registered research cases reported green by implementer: concurrent semantic
 Implementer reports genuine baseline disclosure RED from isolated db59b94 /tmp snapshot: GitHub handoff→revoke→editorial.get exposes copied title; current legacy relation case passes. Initial snapshot optional-field mismatch was harness-only, no live rollback. Actual held-native-I/O ordinary profile-save check now reported green (old query/model/evidence-version snapshot, two settled attempts); TASK20AC4 still awaits fresh independent reviews. Concrete recursive source proof capped32 retained orders with shared active/resolved tracking; browser/full/frozen-source reviews pending.
 
 Local WIP verification: full552/30PASS /tmp/task231-full-test.log; public hooks+late receipt8PASS /tmp/task231-public-cleanup-latefacts.log; actual WorkspaceStoreProvider/Composer two-deadline/manual-buffer fixturePASS /tmp/task231-content-browser.log, Ideas browserPASS /tmp/task231-ideas-browser.log. Count is immutable maximum with honest underfill; alias retry keys remain bound. Calendar own query/dialog guards included; technical thread positions preserved on privacy erasure. Static/Dev/freeze and fresh independent SPEC→QUALITY still pending; no AC/Done.
+
+Frozen SOURCE1bb0d0b72c79392bb7eee547adb2d0b944616259 exact29paths, clean source/index; full552/30 and static/build/bundle/codegen/posttype PASS, actualEUDevready02:39:09. ActualReact mocked-subscription Store/Composer/Calendar/Ideas/XComposer browser PASS, live/manual not claimed. Fresh independent SPEC research_content_spec Backend Architect astra/medium active, QUALITY onlyafterPASS. AllAC/Done remain unchanged;20AC4 awaits both reviews.
 <!-- SECTION:NOTES:END -->
