@@ -3,7 +3,7 @@ import { chromium, expect } from "@playwright/test";
 import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
-const output = "/tmp/dispatch-task47.1-evidence/browser-pixels";
+const output = "/tmp/dispatch-task47.2-evidence/browser-pixels";
 mkdirSync(output, { recursive: true });
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const n=getFunctionName(ref);window.queries.push({n,args});if(n==='performance/experiments:list')return window.catalog;if(n==='performance/experiments:get')return window.detail;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({n:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});`,
@@ -344,6 +344,375 @@ try {
     page.getByText("Experimente werden geladen.", { exact: true }),
   ).toBeVisible();
   await expect(declare).toBeDisabled();
+  await page.reload();
+  await page.evaluate(() => {
+    const NativeDate = Date;
+    window.__publicationNow = NativeDate.parse("2026-10-07T07:59:00Z");
+    window.Date = class extends NativeDate {
+      constructor(...args) {
+        if (args.length) super(...args);
+        else super(window.__publicationNow);
+      }
+      static now() {
+        return window.__publicationNow;
+      }
+    };
+    window.render();
+  });
+  await page
+    .getByLabel("Beobachtetes Ergebnis", { exact: true })
+    .selectOption("publication-count-v1");
+  await expect(
+    page.getByText("Messkonfiguration und unabhängige Nutzungsrechte fehlen.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.commands.length)).toBe(0);
+  await page.evaluate(() => {
+    window.catalog.publicationConfiguration = {
+      policyId: "policy-one",
+      policyFingerprint: "synthetic-native-fingerprint",
+      version: "publication-test-v1",
+      dialect: "post-fields-repost-v2",
+      windows: [0.25],
+      fields: ["likes"],
+      expiresAt: Date.now() + 3600000,
+    };
+    window.catalog.schedules = [
+      {
+        scheduleId: "schedule-one",
+        versionId: "version-one",
+        at: Date.now() + 60000,
+        positions: 3,
+      },
+      {
+        scheduleId: "schedule-two",
+        versionId: "version-two",
+        at: Date.now() + 120000,
+        positions: 3,
+      },
+    ];
+    window.render();
+  });
+  for (const [label, value] of [
+    ["Hypothese", "Synthetic prospective publication counts"],
+    ["Variante A", "Question"],
+    ["Variante B", "Observation"],
+    ["Start (UTC, einschließlich)", "2026-10-07T08:00"],
+    ["Ende (UTC, ausschließlich)", "2026-10-08T08:00"],
+    ["Maximale Stichprobe (2–32)", "2"],
+    ["Stop-Bedingung", "End of declared observation"],
+    [
+      "Tatsächlicher Kontext / Referenz",
+      "Human controlled prospective publication context",
+    ],
+    ["Tatsächliche Frequenz / Referenz", "Two existing approved appointments"],
+    [
+      "Eigener Beleg für Experiment-Nutzungsrechte",
+      "Explicit local synthetic experiment rights",
+    ],
+    [
+      "Erklärung und Umfang der Experiment-Nutzung",
+      "Compare exact prospective count definitions in this account",
+    ],
+    ["Ende der Experiment-Nutzungsrechte (UTC)", "2026-10-08T08:00"],
+  ])
+    await page.getByLabel(label, { exact: true }).fill(value);
+  await page
+    .getByLabel("Eine getestete Dimension", { exact: true })
+    .selectOption("hook");
+  await page
+    .getByLabel("Exakter Zählwert", { exact: true })
+    .selectOption("likes");
+  await page
+    .getByLabel("Messalter (Stunden)", { exact: true })
+    .selectOption("0.25");
+  await page.getByLabel(/^Termin schedule-one /).check();
+  await page.getByLabel(/^Termin schedule-two /).check();
+  await page
+    .getByLabel("Arm für Termin schedule-two", { exact: true })
+    .selectOption("B");
+  await declare.click();
+  const publicationCommand = await page.evaluate(() => window.commands[0].args);
+  expect(publicationCommand.action.kind).toBe("declarePublication");
+  expect(publicationCommand.action.units).toEqual([
+    { scheduleId: "schedule-one", arm: "A", planItemId: null },
+    { scheduleId: "schedule-two", arm: "B", planItemId: null },
+  ]);
+  expect(publicationCommand.action.spec.publication.windowHours).toBe(0.25);
+  expect(publicationCommand.action.spec.publication.policyFingerprint).toBe(
+    "synthetic-native-fingerprint",
+  );
+  await page.evaluate(() =>
+    window.commands[0].reject(Error("publication response unknown")),
+  );
+  await page
+    .getByRole("button", {
+      name: "Denselben Auftrag erneut senden",
+      exact: true,
+    })
+    .click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(
+    publicationCommand,
+  );
+  await page.evaluate(() => {
+    window.__publicationNow = Date.parse("2026-10-07T08:30:00Z");
+    const empty = {
+      assigned: 0,
+      confirmed: 0,
+      measured: 0,
+      partial: 0,
+      unknown: 0,
+      excluded: 0,
+      withdrawn: 0,
+      missing: 0,
+    };
+    const until = Date.now() + 600000;
+    window.catalog.experiments = [
+      { experimentId: "publication-one", revision: 2, state: "running" },
+    ];
+    window.detail = {
+      experimentId: "publication-one",
+      revision: 2,
+      state: "running",
+      spec: window.commands[0].args.action.spec,
+      sourceUntil: until,
+      endsAt: Date.now() + 3600000,
+      enrollmentCapped: true,
+      counts: {
+        enrolled: 2,
+        decided: 0,
+        accept: 0,
+        reject: 0,
+        conflict: 0,
+        noFeedback: 2,
+        withdrawn: 0,
+        edited: 0,
+        missingEdits: 0,
+      },
+      arms: {
+        A: {
+          enrolled: 1,
+          decided: 0,
+          accept: 0,
+          reject: 0,
+          conflict: 0,
+          noFeedback: 1,
+          withdrawn: 0,
+          edited: 0,
+          missingEdits: 0,
+        },
+        B: {
+          enrolled: 1,
+          decided: 0,
+          accept: 0,
+          reject: 0,
+          conflict: 0,
+          noFeedback: 1,
+          withdrawn: 0,
+          edited: 0,
+          missingEdits: 0,
+        },
+      },
+      units: [
+        {
+          assignmentId: "publication-assignment-one",
+          versionId: "version-one",
+          reviewerId: "reviewer-one",
+          arm: "A",
+          outcome: "no-feedback",
+          editCount: 0,
+          editExtent: null,
+          missingEdits: 0,
+          until,
+        },
+        {
+          assignmentId: "publication-assignment-two",
+          versionId: "version-two",
+          reviewerId: "reviewer-one",
+          arm: "B",
+          outcome: "no-feedback",
+          editCount: 0,
+          editExtent: null,
+          missingEdits: 0,
+          until,
+        },
+      ],
+      publication: {
+        counts: { ...empty, assigned: 2, confirmed: 2, measured: 2 },
+        arms: {
+          A: { ...empty, assigned: 1, confirmed: 1, measured: 1 },
+          B: { ...empty, assigned: 1, confirmed: 1, measured: 1 },
+        },
+        units: [
+          {
+            assignmentId: "publication-assignment-one",
+            scheduleId: "schedule-one",
+            arm: "A",
+            outcome: "measured",
+            reason: null,
+            value: 0,
+            firstSendAt: Date.now() - 1000000,
+            until,
+          },
+          {
+            assignmentId: "publication-assignment-two",
+            scheduleId: "schedule-two",
+            arm: "B",
+            outcome: "measured",
+            reason: null,
+            value: 3,
+            firstSendAt: Date.now() - 950000,
+            until,
+          },
+        ],
+        cohorts: [
+          {
+            key: "same-exact-thread-definition",
+            format: "thread",
+            media: "none",
+            metric: "likes",
+            rawField: "public_metrics.like_count",
+            definition: "Public like count",
+            definitionVersion: "publication-test-v1",
+            dialect: "post-fields-repost-v2",
+            windowHours: 0.25,
+            A: {
+              n: 1,
+              sum: 0,
+              mean: 0,
+              from: Date.now() - 1000000,
+              to: Date.now() - 1000000,
+            },
+            B: {
+              n: 1,
+              sum: 3,
+              mean: 3,
+              from: Date.now() - 950000,
+              to: Date.now() - 950000,
+            },
+            difference: 3,
+          },
+        ],
+      },
+    };
+    window.commands[1].resolve({
+      experimentId: "publication-one",
+      revision: 2,
+      receiptId: "publication-receipt",
+    });
+    window.render();
+  });
+  await expect(
+    page.getByText("Beobachtete Mittelwertdifferenz B − A: 3", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Arm A: n=1 · Summe 0", { exact: false }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({
+    path: `${output}/publication-desktop.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page
+    .getByText("Beobachtete Mittelwertdifferenz B − A: 3", { exact: true })
+    .scrollIntoViewIfNeeded();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `${output}/publication-mobile-results.png`,
+    fullPage: false,
+  });
+  await page.evaluate(() => {
+    window.detail.publication.counts = {
+      assigned: 2,
+      confirmed: 1,
+      measured: 0,
+      partial: 1,
+      unknown: 0,
+      excluded: 0,
+      withdrawn: 0,
+      missing: 0,
+    };
+    window.detail.publication.arms.A = {
+      assigned: 1,
+      confirmed: 1,
+      measured: 0,
+      partial: 0,
+      unknown: 0,
+      excluded: 0,
+      withdrawn: 0,
+      missing: 0,
+    };
+    window.detail.publication.arms.B = {
+      assigned: 1,
+      confirmed: 0,
+      measured: 0,
+      partial: 1,
+      unknown: 0,
+      excluded: 0,
+      withdrawn: 0,
+      missing: 0,
+    };
+    window.detail.publication.cohorts = [];
+    window.detail.publication.units[0] = {
+      ...window.detail.publication.units[0],
+      outcome: "confirmed",
+      reason: "missing",
+      value: null,
+    };
+    window.detail.publication.units[1] = {
+      ...window.detail.publication.units[1],
+      outcome: "partial",
+      reason: "incomplete-thread",
+      value: null,
+    };
+    window.render();
+  });
+  await expect(
+    page.getByText("Kein vollständiges vergleichbares Messpaar verfügbar.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Beobachtete Mittelwertdifferenz B − A: 3", { exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", {
+      name: "Experiment-Nutzungsrechte zurückziehen",
+      exact: true,
+    })
+    .click();
+  expect(await page.evaluate(() => window.commands[2].args.action.kind)).toBe(
+    "withdraw",
+  );
+  await page.evaluate(() => {
+    window.account = "publication-account-two";
+    window.detail = undefined;
+    window.catalog = {
+      experiments: [],
+      candidates: [],
+      reviewers: [],
+      schedules: [],
+      publicationConfiguration: null,
+    };
+    window.render();
+  });
+  await page.evaluate(() =>
+    window.commands[2].resolve({
+      experimentId: "late-publication-one",
+      revision: 3,
+      receiptId: "late-publication",
+    }),
+  );
+  await expect(page.getByLabel("Hypothese", { exact: true })).toHaveValue("");
+  await expect(
+    page.getByText("Auftrag bestätigt.", { exact: false }),
+  ).toHaveCount(0);
   await page.goto("http://127.0.0.1:5176/experiments-fixture?demo=1");
   await expect(
     page.getByText("Fragen, die ein Gespräch eröffnen", { exact: true }),
@@ -352,7 +721,7 @@ try {
   expect(await page.evaluate(() => window.commands.length)).toBe(0);
   expect(errors).toEqual([]);
   console.log(
-    `PASS actual styled Experiments desktop/390, finite human intent, no mount commands, exact retry/CAS, conflicts/missingness, role/account fences, horizon mask, loading and Demo isolation. Synthetic auth/transport mechanics only. Screenshots ${output}`,
+    `PASS actual styled editorial and publication Experiments desktop/390, finite human intent, no mount commands, exact retry/CAS, conflicts/missingness, role/account fences, horizon mask, loading and Demo isolation. Synthetic auth/transport mechanics only. Screenshots ${output}`,
   );
 } catch (error) {
   console.log("BROWSER FAILURE", error.message);

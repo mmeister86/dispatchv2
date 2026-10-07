@@ -1,5 +1,86 @@
 import { v } from "convex/values";
 import { stylePin } from "../planning/strategyFields";
+import { windowHours } from "./fields";
+export const publicationSpec = v.object({
+  metric: v.union(
+    ...(
+      [
+        "impressions",
+        "likes",
+        "replies",
+        "reposts",
+        "quotes",
+        "bookmarks",
+        "url_clicks",
+        "profile_clicks",
+      ] as const
+    ).map(v.literal),
+  ),
+  windowHours,
+  policyId: v.id("performancePolicies"),
+  policyFingerprint: v.string(),
+  rightsEvidence: v.string(),
+  explanation: v.string(),
+  expiresAt: v.number(),
+});
+const publicationPin = v.object({
+  scheduleId: v.id("schedules"),
+  approvalId: v.id("approvals"),
+  generation: v.number(),
+  connectionSequence: v.number(),
+  providerIdentity: v.string(),
+  admittedAt: v.number(),
+});
+export const publicationCounts = v.object({
+  assigned: v.number(),
+  confirmed: v.number(),
+  measured: v.number(),
+  partial: v.number(),
+  unknown: v.number(),
+  excluded: v.number(),
+  withdrawn: v.number(),
+  missing: v.number(),
+});
+const amount = v.union(v.number(), v.null());
+const armMetrics = v.object({
+  n: v.number(),
+  sum: amount,
+  mean: amount,
+  from: amount,
+  to: amount,
+});
+export const publicationView = v.object({
+  counts: publicationCounts,
+  arms: v.object({ A: publicationCounts, B: publicationCounts }),
+  units: v.array(
+    v.object({
+      assignmentId: v.id("editorialExperimentAssignments"),
+      scheduleId: v.union(v.id("schedules"), v.null()),
+      arm: v.union(v.literal("A"), v.literal("B"), v.null()),
+      outcome: v.string(),
+      reason: v.union(v.string(), v.null()),
+      value: amount,
+      firstSendAt: amount,
+      until: amount,
+    }),
+  ),
+  cohorts: v.array(
+    v.object({
+      key: v.string(),
+      format: v.string(),
+      media: v.string(),
+      metric: v.string(),
+      rawField: v.string(),
+      definition: v.string(),
+      definitionVersion: v.string(),
+      dialect: v.string(),
+      windowHours: v.number(),
+      A: armMetrics,
+      B: armMetrics,
+      difference: amount,
+    }),
+  ),
+});
 export const spec = v.object({
   hypothesis: v.string(),
   dimension: v.union(
@@ -9,7 +90,11 @@ export const spec = v.object({
   ),
   a: v.string(),
   b: v.string(),
-  outcome: v.literal("editorial-decision-v1"),
+  outcome: v.union(
+    v.literal("editorial-decision-v1"),
+    v.literal("publication-count-v1"),
+  ),
+  publication: v.optional(publicationSpec),
   startsAt: v.number(),
   endsAt: v.number(),
   sampleCap: v.number(),
@@ -59,6 +144,7 @@ export const commandFields = {
   createdAt: v.number(),
 };
 export const assignmentFields = {
+  publication: v.optional(v.union(publicationPin, v.null())),
   ...scope,
   experimentId: v.id("editorialExperiments"),
   draftId: v.id("drafts"),
@@ -75,6 +161,7 @@ export const assignmentFields = {
 };
 // IDs and original horizons only. Native feedback/vector rows remain the evidence.
 export const bindingFields = {
+  snapshotId: v.optional(v.union(v.id("performanceSnapshots"), v.null())),
   ...scope,
   assignmentId: v.id("editorialExperimentAssignments"),
   vectorId: v.union(v.id("contentEmbeddings"), v.null()),
@@ -90,6 +177,18 @@ export const result = v.object({
 });
 export const action = v.union(
   v.object({ kind: v.literal("declare"), spec, units: v.array(unit) }),
+  v.object({
+    kind: v.literal("declarePublication"),
+    spec,
+    units: v.array(
+      v.object({
+        scheduleId: v.id("schedules"),
+        arm: v.union(v.literal("A"), v.literal("B")),
+        planItemId: v.union(v.id("contentPlanItems"), v.null()),
+      }),
+    ),
+  }),
+  v.object({ kind: v.literal("withdraw") }),
   v.object({ kind: v.literal("start") }),
   v.object({ kind: v.literal("stop") }),
 );
@@ -106,6 +205,7 @@ export const counts = v.object({
   missingEdits: v.number(),
 });
 export const detail = v.object({
+  publication: v.union(publicationView, v.null()),
   experimentId: v.id("editorialExperiments"),
   revision: v.number(),
   state: v.string(),
@@ -130,6 +230,26 @@ export const detail = v.object({
   ),
 });
 export const catalog = v.object({
+  publicationConfiguration: v.union(
+    v.object({
+      policyId: v.id("performancePolicies"),
+      policyFingerprint: v.string(),
+      version: v.string(),
+      dialect: v.string(),
+      windows: v.array(v.number()),
+      fields: v.array(v.string()),
+      expiresAt: v.number(),
+    }),
+    v.null(),
+  ),
+  schedules: v.array(
+    v.object({
+      scheduleId: v.id("schedules"),
+      versionId: v.id("draftVersions"),
+      at: v.number(),
+      positions: v.number(),
+    }),
+  ),
   experiments: v.array(
     v.object({
       experimentId: v.id("editorialExperiments"),

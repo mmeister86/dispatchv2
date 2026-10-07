@@ -258,6 +258,10 @@ export default defineSchema({
     .index("by_experimentId", ["experimentId"]),
   editorialExperimentAssignments: defineTable(experimentAssignmentFields)
     .index("by_experimentId", ["experimentId"])
+    .index("by_publication_scheduleId_and_sourceUnavailable", [
+      "publication.scheduleId",
+      "sourceUnavailable",
+    ])
     .index("by_versionId_and_reviewerId", ["versionId", "reviewerId"])
     .index("by_versionId_and_sourceUnavailable", [
       "versionId",
@@ -278,6 +282,11 @@ export default defineSchema({
       "sourceUnavailable",
     ])
     .index("by_assignmentId", ["assignmentId"])
+    .index("by_assignmentId_and_snapshotId", ["assignmentId", "snapshotId"])
+    .index("by_snapshotId_and_sourceUnavailable", [
+      "snapshotId",
+      "sourceUnavailable",
+    ])
     .index("by_vectorId_and_fingerprint", ["vectorId", "fingerprint"]),
   planningSeries: defineTable(seriesControlFields).index(
     "by_workspaceId_and_accountId",

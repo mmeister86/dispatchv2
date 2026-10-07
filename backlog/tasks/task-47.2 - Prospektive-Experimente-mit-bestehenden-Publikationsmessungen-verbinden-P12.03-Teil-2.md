@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 15:23'
-updated_date: '2026-10-06 23:52'
+updated_date: '2026-10-07 00:43'
 labels: []
 dependencies:
   - TASK-47.1
@@ -25,9 +25,9 @@ Nach separat akzeptiertem47.1 exakte vorhandene freigegebeneSchedule/Version/Acc
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Arm-Zuordnung vor erstem möglichen Publishing-Effekt bindet exaktSchedule/Version/Account und verhindert rückwirkende/duplizierte Proben, ohne bestehende Termine zu verändern.
-- [ ] #2 Unabhängig erlaubte echte vergleichbare Messungen liefern genaue beobachtete Unterschiede und explizite Ausschlüsse; unbekannte/partielle/fehlende Ergebnisse bleiben unbekannt.
-- [ ] #3 Purpose/Metric/Source/Actorverlust maskiert und entfernt eingeführteDerivative physisch, während Publishing/Approval/Finanzfakten unverändert erhalten bleiben.
+- [x] #1 Arm-Zuordnung vor erstem möglichen Publishing-Effekt bindet exaktSchedule/Version/Account und verhindert rückwirkende/duplizierte Proben, ohne bestehende Termine zu verändern.
+- [x] #2 Unabhängig erlaubte echte vergleichbare Messungen liefern genaue beobachtete Unterschiede und explizite Ausschlüsse; unbekannte/partielle/fehlende Ergebnisse bleiben unbekannt.
+- [x] #3 Purpose/Metric/Source/Actorverlust maskiert und entfernt eingeführteDerivative physisch, während Publishing/Approval/Finanzfakten unverändert erhalten bleiben.
 - [ ] #4 Native echtePublishing/MetricLifecycle und styledUI sowie separate frische SPEC/QUALITY und exaktes bestehendes EUDev sind dokumentiert; empirical/live/manualDone bleiben offen.
 <!-- AC:END -->
 
@@ -55,4 +55,16 @@ Vorarbeit /tmp/dispatch-47-preflight.md nach final47.1 erneutabgleichen. firstSe
 Konkreter zukünftiger Brief /tmp/dispatch-47.2-writer-brief.md vorbereitet nach autoritativem Vertrag/readonlyPreflight; keine SourceFreigabe vor separater technischer47.1-Abnahme. Konservative actual scheduled/zero ALL-generation text+media possible-effects Admission, echter beforeSend/eachmedia.beforeRequest NativeRace, wholeThread n1, exact retained metric/ownedReceipt/provider-age/rawDefinition/localUsePurpose/current+originalHorizon; keine neuen Collect/Fund/Provider/Schedule-Aktionen. Finale47.1-Datenfamilien/SourceBindings/Cleanup vor Umsetzung erneut abgleichen.
 
 SoftwareVoraussetzung47.1 akzeptiert: Source08094a8,1026/51vollständigeTests/freshSPEC/distinctQUALITY/static/codegen/build/bundle/exaktesEUDev23:51:58UTC/381Entries/exakt11neueInterfaces/319unveränderteHashes. Root finaleFreigabe des vorhandenen /tmp/dispatch-47.2-writer-brief.md an genau einenSourceWriter folgt nach Verifikationsdocscommit; keineProvider/Collect/Fund/Posting-Aktivierung. Aktuelle vierExperimentfamilien/sharedSourceProofs und tatsächliche spät eintreffendeSnapshot-Bindings vor Umsetzung abgleichen; manualDone offen.
+
+SoleWriterSOURCE_READY STOP: full /tmp/dispatch-47.2-source-ready.md +receipts rootgelesen/sevenfile+sixrunloghashes verifiziert. Native112/3 incl72experiment38accepted+34new;72/3snapshotcollectmedia; TSC/7format/styledproductionCSS1280/390 PASS. Finalcodegen --typecheck enable Exit0; freeze319SHAf203420200bb38a567ba067d58efe306aab68448f1d7f416a17758a973d3273a HEAD385ecdd(rootfutureDocs only). Nativecount-only/eightcounts/nativewindows, exactenqueue->bindSnapshots undclear(remove)/expire->purgeSnapshot/indexedges, keineNeueTable/Transportänderung. Exactmixed32fixture948/1553/1160Queries/twoMeasured/30sharedRichAncestor qualifiers bewahrt. Rootstatic/build/bundle PASS. FreshSPEC bestätigt319Hashes und reproduziert P1 latebinding ignoriertaktuellkürzerenProofHorizon; Bericht/Repros nochinArbeit, sourceSTOP. OriginalfreezeZIP/receipts/logs unter /tmp/dispatch-continuation-47.2-before-review-fixes bewahrt; keinWholeGate/SourceCommit/Dev/AC/manualDone Claim.
+
+FreshSPEC finalNEEDS WORK1P1+1P2 voll gelesen/archiviert .docs/reviews/task-47.2-spec-rejected.md. AuthenticP1 genuinepublishingreceipt->enqueue->actualbindCallback ohneedgeDeletion: capturedaktuellerKurzhorizont wirdnichtgespeichert, spätereCredentialRenewal zeigtmeasured3nachOriginalexpiry (RED). P2 actualnativecollect.read/normalize/begin/finish exactID/author/protocol500msProviderClock innerhalb60sToleranz settled/retained, ExperimentrootwirddurchzusätzlicheCrossClockorderzurückgezogen(RED);120000msWrongAgebleibtunavailable(PASS). External8native6PASS2RED,2clock1PASS1RED,1authenticRED separat tatsächlich; currentunfiltered11arithmeticnichtausgeführt. Unchanged47.1external5/3PASS/threehashesOK. Alle319f203Hashesunchanged. VollständigeOriginalrepros/config/log/receipts/pixels/sourceZIP erhalten; fivefileguard /tmp/dispatch-47.2-repair-independent-before.sha256. GenauzweiSharedBoundaryFixes vomSoleWriter dannneuerFreeze/freshSPEC/distinctQUALITY/ganzeGates; noDev/manualDone.
+
+Root hat den korrigierten SOURCE_READY-Stand verifiziert: 24 Beleg-Dateihashes stimmen; ausschließlich experiments.ts und experiments.test.ts unterscheiden sich vom verworfenen Freeze, 317 weitere Quellen unverändert. Fünf neue Regressionen zeigen tatsächliches RED→GREEN. Tatsächliche fokussierte 117/3, Lifecycle 72/3, unveränderte unabhängige Publikations-Repros 11/3 und Editorial-Repros 5/3 PASS. Erneute finale Codegenerierung mit Typprüfung exit 0. Frische korrigierte SPEC, separate QUALITY, vollständiges natives Gate, Sourcecommit und tatsächlicher EU-Dev-Abgleich stehen noch aus. In Progress; manuelle DoD und Done bleiben offen.
+
+Frische korrigierte unabhängige SPEC PASS: vollständiger Bericht task-47.2-spec.md übernommen; tatsächliche unveränderte 11/3 Publikations- und 5/3 Editorial-Repros, 117/3 registrierte sowie 4/1 zusätzliche lokale Receipt-Reihenfolge-/Unknown-keine-Erasure-Prüfungen. Root hat alle Log- und Testfilehashes bestätigt. Corrected319FreezeSHA363e5ae62d4c0285ec3edd85611f4b9721ace867713dad9febe51f87eef65976 unverändert. Distinct CodeReviewer QUALITY und vollständiger nativer Root-Lauf auf diesem eingefrorenen Stand laufen; noch kein Ganzsuite-/Commit-/EUDev-/manualDone-Claim.
+
+Separate frische CodeReviewer QUALITY PASS: Root voll gelesen/adoptiert task-47.2-quality.md, tatsächliche117/3 registered,72/3Lifecycle,11/3+5/3+4/1unveränderte/zusätzlicheRepros und fresh productionCSSBrowser/Tastatur/clock-onlyEnd-PASS bestätigt. Alle319correctedFreezeHashes unverändert; Root bestätigt21direkteReport/Log/Pixelhashes. Erster zusätzlicher temporärer Browserselector war zu eng, nur/tmp korrigiert; Originalfehlerbeleg bewahrt, vollständigerRerunPASS, keineProduktänderung. Vollständiger offiziellerNativeLauf noch aktiv; Commit/exaktesEUDev/AC/DoD/manualDone noch offen.
+
+Offizielles vollständiges natives Root-Gate tatsächlich PASS:1065Tests/51Dateien, Exit0 in711.579Sekunden; corrected319FreezeSHA363e5ae6/all319Hashes unverändert. Receipt/FinalLogSHA rootvalidiert. FrischeSPEC/separateQUALITY sowie finaleCodegen/TSC/konfigurierteLint/Format/nativeBuild/OriginalBundleAssertions PASS. SoftwareAC1–3 verifiziert. Sourcecommit und tatsächlicher exakterEUDev/Metadatenabgleich folgen; AC4/DoD/manualDone weiterhin offen. Keine echten Provider/Grants/Pilotmessungen aktiviert.
 <!-- SECTION:NOTES:END -->

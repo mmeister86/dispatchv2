@@ -24,6 +24,16 @@ import {
   sourceLoss as seriesLoss,
 } from "../planning/strategy";
 import { vectorFingerprint } from "../content/similarity";
+import { preflight } from "../publishing";
+import {
+  policy as metricPolicy,
+  fingerprint as metricFingerprint,
+  grants as metricGrants,
+  credential as metricCredential,
+  admin as metricAdmin,
+} from "./capabilities";
+import { retainedSnapshotHorizon } from "./snapshots";
+import { normalize } from "./normalize";
 import { action, result, detail, catalog } from "./experimentFields";
 type Ctx = QueryCtx | MutationCtx;
 type Experiment = Doc<"editorialExperiments">;
@@ -38,8 +48,21 @@ const minimum = (...values: (number | null)[]) => {
 };
 function loss(error: unknown) {
   if (
-    error instanceof ConvexError &&
-    error.data === "EXPERIMENT_SOURCE_UNAVAILABLE"
+    (error instanceof Error &&
+      error.message === "OWN_METRICS_SOURCE_UNAVAILABLE") ||
+    (error instanceof ConvexError &&
+      [
+        "EXPERIMENT_SOURCE_UNAVAILABLE",
+        "OWN_METRICS_CONFIGURATION_REQUIRED",
+        "OWN_METRICS_BUDGET_CONFIGURATION_REQUIRED",
+        "APPROVAL_REQUIRED",
+        "APPROVER_AUTHORITY_CHANGED",
+        "SCHEDULER_AUTHORITY_CHANGED",
+        "ACCOUNT_CONNECTION_CHANGED",
+        "SCHEDULE_ABORT_REQUESTED",
+        "X_SCHEDULE_CHANGED",
+        "MEDIA_SNAPSHOT_CHANGED",
+      ].includes(String(error.data)))
   )
     return;
   if (
@@ -92,6 +115,11 @@ async function authority(ctx: Ctx, e: Experiment) {
     fail("EXPERIMENT_SOURCE_UNAVAILABLE");
 }
 const proofContext = () => ({
+  rights: new Map<string, number>(),
+  publications: new Map<
+    Id<"editorialExperimentAssignments">,
+    Awaited<ReturnType<typeof publicationObservation>>
+  >(),
   walk: materialWalk(),
   plans: new Map<string, number | null>(),
   series: new Map<
@@ -124,6 +152,42 @@ async function assignmentProof(ctx: Ctx, row: Assignment, p = proofContext()) {
     row.sourceUntil,
     await draftResearchProof(ctx, ver!, p.walk),
   ];
+  if (row.publication) {
+    const e = await ctx.db.get(row.experimentId);
+    if (!e?.spec?.publication) fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+    const s = await publicationSchedule(ctx, row);
+    for (const ref of ver!.content.media) {
+      const asset = await ctx.db.get(ref.assetId);
+      // Terminal local source removal differs from transient transport/readiness failures.
+      if (!asset || asset.state === "deleting" || asset.state === "deleted")
+        fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+    }
+    await preflight(ctx, s);
+    horizons.push(await publicationRights(ctx, e.spec, row, p));
+    const pins = await ctx.db
+      .query("editorialExperimentBindings")
+      .withIndex("by_assignmentId", (q) => q.eq("assignmentId", row._id))
+      .take(146);
+    if (pins.length > 145) fail("EXPERIMENT_RESOURCE_CEILING");
+    for (const b of pins.filter((b) => b.snapshotId)) {
+      const snap = await ctx.db.get(b.snapshotId!);
+      if (
+        b.sourceUnavailable ||
+        b.workspaceId !== row.workspaceId ||
+        b.accountId !== row.accountId ||
+        !snap ||
+        snap.workspaceId !== row.workspaceId ||
+        snap.accountId !== row.accountId ||
+        snap.scheduleId !== s._id ||
+        snap.versionId !== row.versionId ||
+        snap.windowHours !== e.spec.publication.windowHours ||
+        snap.state === "removed" ||
+        snap.expiresAt <= Date.now()
+      )
+        fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+      horizons.push(b.sourceUntil, snap.expiresAt);
+    }
+  }
   if (row.style)
     horizons.push(
       (await scopedStyleProof(ctx, row, row.style, false, p.walk)).sourceUntil,
@@ -164,9 +228,9 @@ async function assignmentProof(ctx: Ctx, row: Assignment, p = proofContext()) {
     const bindings = await ctx.db
       .query("editorialExperimentBindings")
       .withIndex("by_assignmentId", (q) => q.eq("assignmentId", row._id))
-      .take(136);
+      .take(146);
     if (
-      bindings.length > 135 ||
+      bindings.length > 145 ||
       bindings.filter((b) => b.vectorId !== null).length !==
         plan.semantic!.vectorCount ||
       bindings.filter((b) => b.draftVersionId !== null).length !==
@@ -176,7 +240,7 @@ async function assignmentProof(ctx: Ctx, row: Assignment, p = proofContext()) {
       )
     )
       fail("EXPERIMENT_RESOURCE_CEILING");
-    for (const b of bindings) {
+    for (const b of bindings.filter((b) => !b.snapshotId)) {
       if (
         b.sourceUnavailable ||
         b.workspaceId !== row.workspaceId ||
@@ -250,6 +314,8 @@ async function priorDecision(
       fail("EXPERIMENT_PREDECIDED_UNIT");
 }
 function validate(a: Extract<Action, { kind: "declare" }>) {
+  if ((a.spec.outcome === "editorial-decision-v1") !== !a.spec.publication)
+    fail("EXPERIMENT_INPUT_INVALID");
   const s = a.spec;
   if (
     [s.hypothesis, s.a, s.b, s.stopCondition, s.context, s.frequency].some(
@@ -268,8 +334,9 @@ function validate(a: Extract<Action, { kind: "declare" }>) {
     a.units.length > s.sampleCap ||
     !a.units.some((u) => u.arm === "A") ||
     !a.units.some((u) => u.arm === "B") ||
-    new Set(a.units.map((u) => `${u.versionId}:${u.reviewerId}`)).size !==
-      a.units.length
+    (s.outcome === "editorial-decision-v1" &&
+      new Set(a.units.map((u) => `${u.versionId}:${u.reviewerId}`)).size !==
+        a.units.length)
   )
     fail("EXPERIMENT_INPUT_INVALID");
 }
@@ -327,13 +394,15 @@ export const change = workspaceMutation({
     let rows: Assignment[] = [],
       until: number | null = null;
     if (e) {
-      await authority(ctx, e);
+      if (a.action.kind !== "withdraw") await authority(ctx, e);
       rows = await assignments(ctx, e._id);
-      for (const row of rows)
-        until = minimum(until, await assignmentProof(ctx, row, p));
+      if (a.action.kind !== "withdraw")
+        for (const row of rows)
+          until = minimum(until, await assignmentProof(ctx, row, p));
       until = minimum(until, e.sourceUntil);
     }
     if (old) {
+      if (a.action.kind === "withdraw") await authority(ctx, e!);
       if (old.sourceUnavailable || old.fingerprint !== fingerprint)
         fail("EXPERIMENT_COMMAND_CONFLICT");
       return {
@@ -342,13 +411,66 @@ export const change = workspaceMutation({
         receiptId: old._id,
       };
     }
-    if (a.action.kind === "declare") {
+    if (a.action.kind === "declare" || a.action.kind === "declarePublication") {
       if (e || a.experimentId || a.expectedRevision !== 0)
         fail("EXPERIMENT_REVISION_CONFLICT");
-      validate(a.action);
+      const declaration = a.action;
+      const nativeUnits = [];
+      if (declaration.kind === "declarePublication") {
+        if (
+          declaration.spec.outcome !== "publication-count-v1" ||
+          !declaration.spec.publication ||
+          new Set(declaration.units.map((u) => u.scheduleId)).size !==
+            declaration.units.length
+        )
+          fail("EXPERIMENT_INPUT_INVALID");
+        await publicationRights(
+          ctx,
+          declaration.spec,
+          { workspaceId: ctx.workspace._id, accountId: a.accountId },
+          p,
+        );
+        for (const u of declaration.units) {
+          const s = requireReference(
+            ctx.workspace._id,
+            await ctx.db.get(u.scheduleId),
+          ) as Doc<"schedules">;
+          if (
+            s.accountId !== a.accountId ||
+            s.purpose === "first_write_verification"
+          )
+            fail("REFERENCE_ACCESS_DENIED");
+          await publicationAdmission(ctx, s);
+          nativeUnits.push({
+            versionId: s.versionId,
+            reviewerId: ctx.user._id,
+            planItemId: u.planItemId,
+            arm: u.arm,
+            publication: {
+              scheduleId: s._id,
+              approvalId: s.approvalId,
+              generation: s.generation,
+              connectionSequence: s.accountConnectionSequence ?? 0,
+              providerIdentity: (await ctx.db.get(a.accountId))!
+                .providerIdentity,
+              admittedAt: Date.now(),
+            },
+          });
+        }
+      } else {
+        if (
+          declaration.spec.outcome !== "editorial-decision-v1" ||
+          declaration.spec.publication
+        )
+          fail("EXPERIMENT_INPUT_INVALID");
+        for (const u of declaration.units) {
+          await priorDecision(ctx, u);
+          nativeUnits.push({ ...u, publication: null });
+        }
+      }
+      validate({ kind: "declare", spec: declaration.spec, units: nativeUnits });
       const planned = [];
-      for (const u of a.action.units) {
-        await priorDecision(ctx, u);
+      for (const u of nativeUnits) {
         const ver = requireReference(
           ctx.workspace._id,
           await ctx.db.get(u.versionId),
@@ -384,6 +506,7 @@ export const change = workspaceMutation({
         const row = {
           workspaceId: ctx.workspace._id,
           accountId: a.accountId,
+          publication: u.publication,
           versionId: u.versionId,
           reviewerId: u.reviewerId,
           draftId: ver.draftId,
@@ -405,6 +528,11 @@ export const change = workspaceMutation({
         )
           fail("REFERENCE_ACCESS_DENIED");
         let horizon = await draftResearchProof(ctx, ver, p.walk);
+        if (u.publication)
+          horizon = minimum(
+            horizon,
+            await publicationRights(ctx, declaration.spec, row, p),
+          );
         if (row.style)
           horizon = minimum(
             horizon,
@@ -522,7 +650,14 @@ export const change = workspaceMutation({
         if (e.state !== "planned" || Date.now() >= e.endsAt)
           fail("EXPERIMENT_TERMINAL");
         if (Date.now() < e.spec!.startsAt) fail("EXPERIMENT_START_NOT_DUE");
-        for (const row of rows) await priorDecision(ctx, row);
+        for (const row of rows) {
+          if (row.publication)
+            await publicationAdmission(
+              ctx,
+              await publicationSchedule(ctx, row),
+            );
+          else await priorDecision(ctx, row);
+        }
         await ctx.db.patch(e._id, {
           state: "running",
           startSequence: sequence,
@@ -530,6 +665,11 @@ export const change = workspaceMutation({
           sourceUntil: until,
           revision: e.revision + 1,
         });
+      } else if (a.action.kind === "withdraw") {
+        if (e.spec?.outcome !== "publication-count-v1")
+          fail("EXPERIMENT_INPUT_INVALID");
+        for (const row of rows) await scrub(ctx, row);
+        await ctx.db.patch(e._id, { revision: e.revision + 1 });
       } else {
         if (e.state === "stopped") fail("EXPERIMENT_TERMINAL");
         await ctx.db.patch(e._id, {
@@ -562,6 +702,17 @@ async function observations(
   row: Assignment,
   p: ReturnType<typeof proofContext>,
 ) {
+  if (row.publication) {
+    const o = await publicationObservation(ctx, e, row, p);
+    p.publications.set(row._id, o);
+    return {
+      outcome: o.outcome === "withdrawn" ? "withdrawn" : "no-feedback",
+      editCount: 0,
+      editExtent: null,
+      missingEdits: 0,
+      until: o.until,
+    };
+  }
   const kinds = new Set<string>();
   let editCount = 0,
     editExtent: number | null = null,
@@ -730,6 +881,10 @@ export const get = workspaceQuery({
     }
     const readable = authorized && counts.withdrawn === 0;
     return {
+      publication:
+        e.spec?.outcome === "publication-count-v1" && readable
+          ? await publicationResults(ctx, e, rows, p)
+          : null,
       experimentId: e._id,
       revision: e.revision,
       state: !readable
@@ -801,7 +956,51 @@ export const list = workspaceQuery({
       )
       .take(101);
     if (members.length > 100) fail("EXPERIMENT_RESOURCE_CEILING");
+    let publicationConfiguration = null;
+    try {
+      const policy = await metricPolicy(ctx, {
+        workspaceId: ctx.workspace._id,
+        accountId: a.accountId,
+      });
+      await publicationMetricRights(ctx, {
+        workspaceId: ctx.workspace._id,
+        accountId: a.accountId,
+      });
+      publicationConfiguration = {
+        policyId: policy._id,
+        policyFingerprint: await metricFingerprint(policy),
+        version: policy.version,
+        dialect: policy.dialect,
+        windows: policy.windows ?? [24, 48],
+        fields: policy.fields,
+        expiresAt: policy.expiresAt,
+      };
+    } catch (error) {
+      loss(error);
+    }
+    const scheduleRows = await ctx.db
+      .query("schedules")
+      .withIndex("by_workspaceId_and_accountId_and_state", (q) =>
+        q
+          .eq("workspaceId", ctx.workspace._id)
+          .eq("accountId", a.accountId)
+          .eq("state", "scheduled"),
+      )
+      .take(33);
+    const schedules = [];
+    for (const s of scheduleRows.slice(0, 32)) {
+      const ver = await ctx.db.get(s.versionId);
+      if (s.purpose !== "first_write_verification" && ver)
+        schedules.push({
+          scheduleId: s._id,
+          versionId: s.versionId,
+          at: s.at,
+          positions: ver.content.text.length,
+        });
+    }
     return {
+      publicationConfiguration,
+      schedules,
       experiments: rows.map((e) => ({
         experimentId: e._id,
         revision: e.revision,
@@ -827,6 +1026,7 @@ async function scrub(ctx: MutationCtx, row: Assignment) {
       planItemId: null,
       seriesVersionId: null,
       reviewerFingerprint: "",
+      publication: null,
     });
   const e = await ctx.db.get(row.experimentId);
   if (e && !e.sourceUnavailable) {
@@ -844,10 +1044,14 @@ async function scrub(ctx: MutationCtx, row: Assignment) {
   const bindings = await ctx.db
     .query("editorialExperimentBindings")
     .withIndex("by_assignmentId", (q) => q.eq("assignmentId", row._id))
-    .take(136);
-  if (bindings.length > 135) fail("EXPERIMENT_RESOURCE_CEILING");
+    .take(146);
+  if (bindings.length > 145) fail("EXPERIMENT_RESOURCE_CEILING");
   for (const b of bindings)
-    await ctx.db.patch(b._id, { sourceUnavailable: true, fingerprint: null });
+    await ctx.db.patch(b._id, {
+      sourceUnavailable: true,
+      fingerprint: null,
+      snapshotId: null,
+    });
   await ctx.scheduler.runAfter(
     0,
     internal.performance.experiments.purgeCommands,
@@ -1073,6 +1277,717 @@ export const purgeExperiment = internalMutation({
         0,
         internal.performance.experiments.purgeExperiment,
         { ...a, cursor: page.continueCursor },
+      );
+    return null;
+  },
+});
+
+async function publicationMetricRights(
+  ctx: Ctx,
+  scope: { workspaceId: Id<"workspaces">; accountId: Id<"socialAccounts"> },
+) {
+  const p = await metricPolicy(ctx, scope),
+    ids = await metricGrants(ctx, p, false),
+    cred = await metricCredential(ctx, scope, p);
+  const control = await ctx.db
+    .query("performanceControls")
+    .withIndex("by_workspaceId_and_accountId", (q) =>
+      q.eq("workspaceId", scope.workspaceId).eq("accountId", scope.accountId),
+    )
+    .unique();
+  if (
+    !control ||
+    control.deleted ||
+    control.connectionSequence !== p.connectionSequence
+  )
+    fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  await metricAdmin(ctx, scope.workspaceId, control.actorId);
+  return {
+    p,
+    until: Math.min(
+      p.expiresAt,
+      cred.expiresAt - 15000,
+      ...(await Promise.all(ids.map((id) => ctx.db.get(id)))).map(
+        (b) => b!.expiresAt,
+      ),
+    ),
+  };
+}
+async function publicationRights(
+  ctx: Ctx,
+  spec: NonNullable<Experiment["spec"]>,
+  scope: { workspaceId: Id<"workspaces">; accountId: Id<"socialAccounts"> },
+  cache?: { rights: Map<string, number> },
+) {
+  const key = JSON.stringify([
+    scope.workspaceId,
+    scope.accountId,
+    spec.publication,
+  ]);
+  if (cache?.rights.has(key)) return cache.rights.get(key)!;
+  const local = spec.publication;
+  if (
+    !local ||
+    [local.rightsEvidence, local.explanation].some(
+      (s) => !s.trim() || s.length > 2000,
+    ) ||
+    !Number.isSafeInteger(local.expiresAt) ||
+    local.expiresAt <= Date.now()
+  )
+    fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  const { p, until } = await publicationMetricRights(ctx, scope),
+    original = await ctx.db.get(local.policyId);
+  if (
+    !original ||
+    original.workspaceId !== scope.workspaceId ||
+    original.accountId !== scope.accountId ||
+    (await metricFingerprint(original)) !== local.policyFingerprint ||
+    !original.fields.includes(local.metric) ||
+    !(original.windows ?? [24, 48]).includes(local.windowHours) ||
+    !p.fields.includes(local.metric) ||
+    !(p.windows ?? [24, 48]).includes(local.windowHours) ||
+    original.providerIdentity !== p.providerIdentity
+  )
+    fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  await metricAdmin(ctx, scope.workspaceId, original.approvedBy);
+  const horizon = Math.min(until, original.expiresAt, local.expiresAt);
+  cache?.rights.set(key, horizon);
+  return horizon;
+}
+async function publicationHistory(ctx: Ctx, scheduleId: Id<"schedules">) {
+  const posts = await ctx.db
+    .query("xPostAttempts")
+    .withIndex("by_scheduleId_and_generation_and_position", (q) =>
+      q.eq("scheduleId", scheduleId),
+    )
+    .take(101);
+  const media = await ctx.db
+    .query("xMediaCheckpoints")
+    .withIndex("by_scheduleId_and_generation_and_mediaPosition", (q) =>
+      q.eq("scheduleId", scheduleId),
+    )
+    .take(33);
+  if (posts.length > 100 || media.length > 32)
+    fail("EXPERIMENT_RESOURCE_CEILING");
+  return { posts, media };
+}
+async function publicationAdmission(ctx: Ctx, s: Doc<"schedules">) {
+  const ver = await preflight(ctx, s);
+  if (
+    s.state !== "scheduled" ||
+    s.publishedCount !== 0 ||
+    s.externalPosts?.length ||
+    s.purpose === "first_write_verification"
+  )
+    fail("EXPERIMENT_PUBLICATION_ALREADY_STARTED");
+  const { posts, media } = await publicationHistory(ctx, s._id);
+  // Conservative: no preparing checkpoint is admitted, even before its first provider request.
+  if (posts.length || media.length)
+    fail("EXPERIMENT_PUBLICATION_ALREADY_STARTED");
+  if (!ver.content.text.length || ver.content.text.length > 10)
+    fail("EXPERIMENT_RESOURCE_CEILING");
+}
+async function publicationSchedule(ctx: Ctx, row: Assignment) {
+  const pin = row.publication,
+    s = pin ? await ctx.db.get(pin.scheduleId) : null,
+    account = await ctx.db.get(row.accountId);
+  if (
+    !s ||
+    !pin ||
+    !account ||
+    s.workspaceId !== row.workspaceId ||
+    s.accountId !== row.accountId ||
+    s.versionId !== row.versionId ||
+    s.draftId !== row.draftId ||
+    s.approvalId !== pin.approvalId ||
+    s.generation !== pin.generation ||
+    (s.accountConnectionSequence ?? 0) !== pin.connectionSequence ||
+    (account.xEvidence?.connectionSequence ?? 0) !== pin.connectionSequence ||
+    account.providerIdentity !== pin.providerIdentity ||
+    account.provider !== "X" ||
+    account.connection !== "connected"
+  )
+    fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  return s!;
+}
+async function publicationSnapshot(
+  ctx: Ctx,
+  e: Experiment,
+  row: Assignment,
+  s: Doc<"schedules">,
+  post: Doc<"xPostAttempts">,
+  snap: Doc<"performanceSnapshots">,
+) {
+  const local = e.spec!.publication!,
+    original = await ctx.db.get(local.policyId),
+    t = snap.attemptId ? await ctx.db.get(snap.attemptId) : null;
+  const horizon = await retainedSnapshotHorizon(ctx, snap);
+  if (
+    !t ||
+    t.owner !== "own-metrics" ||
+    t.runId !== undefined ||
+    t.researchOrderId !== undefined ||
+    t.logicalIntent !== undefined ||
+    t.provider !== "x" ||
+    t.purpose !== "own-post-descriptive-editorial-v1" ||
+    t.state !== "settled" ||
+    t.settledAt === null ||
+    t.heldMicros !== 0 ||
+    t.policyId !== local.policyId ||
+    t.policyFingerprint !== local.policyFingerprint ||
+    t.policyVersion !== original?.version ||
+    snap.definitionVersion !== original?.version ||
+    snap.dialect !== original?.dialect ||
+    snap.confirmedAt !== post.confirmedAt ||
+    snap.position !== post.position ||
+    snap.scheduleId !== s._id ||
+    snap.versionId !== row.versionId ||
+    snap.windowHours !== local.windowHours ||
+    snap.requestedAt === null ||
+    snap.observedAt === null ||
+    snap.providerCreatedAt === null
+  )
+    fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  await metricAdmin(ctx, row.workspaceId, original!.approvedBy);
+  if (
+    t.budgetIds.length !== 3 ||
+    new Set(t.budgetIds).size !== 3 ||
+    t.unitMicros !== original!.unitMicros ||
+    t.unitMicros !== t.reservedMicros ||
+    t.estimatedMicros !== t.unitMicros ||
+    t.currency !== original!.currency ||
+    t.unit !== "single-post-request" ||
+    t.credentialGeneration === undefined
+  )
+    fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  for (const [i, id] of t.budgetIds.entries()) {
+    const b = await ctx.db.get(id);
+    if (
+      !b ||
+      b.key !==
+        [
+          "metrics:x",
+          `metrics:workspace:${row.workspaceId}`,
+          `metrics:account:${row.accountId}`,
+        ][i] ||
+      b.scope !== (["provider", "workspace", "account"] as const)[i] ||
+      b.currency !== t.currency ||
+      (i === 0 && (b.workspaceId !== undefined || b.accountId !== undefined)) ||
+      (i === 1 &&
+        (b.workspaceId !== row.workspaceId || b.accountId !== undefined)) ||
+      (i === 2 &&
+        (b.workspaceId !== row.workspaceId || b.accountId !== row.accountId))
+    )
+      fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  }
+  if (
+    t.receiptFingerprint !==
+    (await sha256(
+      JSON.stringify({
+        knownCharge: true,
+        fields: snap.fields,
+        providerCreatedAt: snap.providerCreatedAt,
+        reason: snap.reason,
+      }),
+    ))
+  )
+    fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  const dates = [
+    post.requestStartedAt,
+    post.confirmedAt,
+    snap.providerCreatedAt,
+    snap.requestedAt,
+    t.sentAt,
+    t.settledAt,
+    snap.observedAt,
+  ];
+  if (
+    dates.some(
+      (n) => n === undefined || !Number.isSafeInteger(n) || n! > Date.now(),
+    ) ||
+    post.requestStartedAt! > post.confirmedAt! ||
+    post.confirmedAt! > t.sentAt ||
+    t.sentAt > snap.requestedAt ||
+    snap.requestedAt > t.settledAt ||
+    t.settledAt > snap.observedAt
+  )
+    fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  const b = await ctx.db
+    .query("editorialExperimentBindings")
+    .withIndex("by_assignmentId_and_snapshotId", (q) =>
+      q.eq("assignmentId", row._id).eq("snapshotId", snap._id),
+    )
+    .unique();
+  if (!b)
+    return {
+      reason: "measurement-binding-pending",
+      value: null,
+      until: Math.min(horizon, row.sourceUntil ?? Infinity),
+      key: null,
+    };
+  if (
+    b.sourceUnavailable ||
+    b.workspaceId !== row.workspaceId ||
+    b.accountId !== row.accountId ||
+    b.vectorId !== null ||
+    b.draftVersionId !== null
+  )
+    fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  const until = Math.min(
+    horizon,
+    b.sourceUntil ?? Infinity,
+    snap.dueAt + original!.retentionMs,
+    row.sourceUntil ?? Infinity,
+  );
+  if (until <= Date.now()) fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  if (
+    snap.late ||
+    Math.abs(
+      snap.observedAt - snap.providerCreatedAt - local.windowHours * 3600000,
+    ) > 60000
+  )
+    return { reason: "outside-age-window", value: null, until, key: null };
+  const fields = snap.fields.filter((f) => f.name === local.metric),
+    descriptor = normalize(
+      { data: { id: post.externalId, author_id: post.providerIdentity } },
+      post.externalId!,
+      post.providerIdentity,
+      [local.metric],
+      original!.dialect,
+    ).fields[0];
+  if (
+    fields.length !== 1 ||
+    fields[0].rawField !== descriptor.rawField ||
+    fields[0].definition !== descriptor.definition
+  )
+    return {
+      reason: "incompatible-metric-definition",
+      value: null,
+      until,
+      key: null,
+    };
+  const f = fields[0];
+  if (
+    f.status !== "measured" ||
+    f.value === null ||
+    !Number.isSafeInteger(f.value) ||
+    f.value < 0
+  )
+    return {
+      reason: f.status === "measured" ? "missing" : f.status,
+      value: null,
+      until,
+      key: null,
+    };
+  const ver = (await ctx.db.get(row.versionId))!,
+    kinds = [];
+  for (const m of ver.content.media) {
+    const asset = await ctx.db.get(m.assetId);
+    if (!asset || asset.workspaceId !== row.workspaceId || !asset.type)
+      fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+    kinds.push(asset!.type);
+  }
+  kinds.sort();
+  const format = ver.content.text.length === 1 ? "post" : "thread",
+    media = kinds.length ? kinds.join("+") : "none";
+  const key = JSON.stringify([
+    row.accountId,
+    format,
+    media,
+    local.metric,
+    f.rawField,
+    f.definition,
+    original!.version,
+    original!.dialect,
+    local.windowHours,
+  ]);
+  return {
+    reason: null,
+    value: f.value,
+    until,
+    key,
+    format,
+    media,
+    rawField: f.rawField,
+    definition: f.definition,
+    definitionVersion: original!.version,
+    dialect: original!.dialect,
+    windowHours: local.windowHours,
+    metric: local.metric,
+  };
+}
+async function publicationObservation(
+  ctx: Ctx,
+  e: Experiment,
+  row: Assignment,
+  cache?: { rights: Map<string, number> },
+) {
+  const s = await publicationSchedule(ctx, row),
+    { posts, media } = await publicationHistory(ctx, s._id);
+  const until = minimum(
+    row.sourceUntil,
+    await publicationRights(ctx, e.spec!, row, cache),
+  );
+  const sent = posts.filter((p) => p.requestStartedAt !== undefined),
+    firstSendAt = sent.length
+      ? Math.min(...sent.map((p) => p.requestStartedAt!))
+      : null;
+  const base = {
+    assignmentId: row._id,
+    scheduleId: s._id,
+    arm: row.arm,
+    value: null as number | null,
+    firstSendAt,
+    until,
+    key: null as string | null,
+    reason: null as string | null,
+    outcome: "missing",
+    format: null as string | null,
+    media: null as string | null,
+    metric: null as string | null,
+    rawField: null as string | null,
+    definition: null as string | null,
+    definitionVersion: null as string | null,
+    dialect: null as string | null,
+    windowHours: null as number | null,
+  };
+  if (
+    posts.some(
+      (p) =>
+        p.workspaceId !== row.workspaceId ||
+        p.accountId !== row.accountId ||
+        p.versionId !== row.versionId ||
+        p.generation !== row.publication!.generation ||
+        p.providerIdentity !== row.publication!.providerIdentity ||
+        p.connectionSequence !== row.publication!.connectionSequence,
+    )
+  )
+    fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+  if (
+    firstSendAt !== null &&
+    (e.startedAt === null ||
+      firstSendAt <
+        Math.max(e.spec!.startsAt, e.startedAt, row.publication!.admittedAt) ||
+      firstSendAt >= Math.min(e.endsAt, e.stoppedAt ?? Infinity))
+  )
+    return {
+      ...base,
+      outcome: "excluded",
+      reason: "send-outside-observation-window",
+    };
+  if (firstSendAt === null)
+    return {
+      ...base,
+      outcome: media.length ? "unknown" : "missing",
+      reason: media.length ? "media-only-no-confirmed-publication" : "not-sent",
+    };
+  if (posts.some((p) => p.stage === "unknown" || p.stage === "sending"))
+    return {
+      ...base,
+      outcome: "unknown",
+      reason: "publication-outcome-unknown",
+    };
+  const ver = (await ctx.db.get(row.versionId))!,
+    total = ver.content.text.length,
+    confirmed = s.externalPosts ?? [];
+  if (
+    confirmed.length !== total ||
+    new Set(confirmed.map((p) => p.position)).size !== total ||
+    Array.from({ length: total }, (_, i) => i).some(
+      (i) => !confirmed.some((p) => p.position === i),
+    )
+  )
+    return {
+      ...base,
+      outcome: confirmed.length
+        ? "partial"
+        : posts.some((p) => p.stage === "rejected")
+          ? "excluded"
+          : "missing",
+      reason: confirmed.length
+        ? "incomplete-thread"
+        : posts.some((p) => p.stage === "rejected")
+          ? "publication-rejected"
+          : "not-confirmed",
+    };
+  const values = [];
+  for (const external of confirmed) {
+    const post = posts.find((p) => p._id === external.attemptId);
+    if (
+      !post ||
+      post.stage !== "confirmed" ||
+      post.externalId !== external.externalId ||
+      post.position !== external.position ||
+      post.confirmedAt !== external.confirmedAt ||
+      post.requestStartedAt === undefined
+    )
+      fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+    const snap = await ctx.db
+      .query("performanceSnapshots")
+      .withIndex("by_postAttemptId_and_windowHours", (q) =>
+        q
+          .eq("postAttemptId", post._id)
+          .eq("windowHours", e.spec!.publication!.windowHours),
+      )
+      .unique();
+    if (!snap || ["queued", "reading", "blocked"].includes(snap.state))
+      return {
+        ...base,
+        outcome: "confirmed",
+        reason: !snap
+          ? "no-measurement"
+          : (snap.reason ?? "measurement-pending"),
+      };
+    if (snap.state === "removed") fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+    values.push(await publicationSnapshot(ctx, e, row, s, post, snap));
+  }
+  if (values.some((v) => v.value === null))
+    return {
+      ...base,
+      outcome: "confirmed",
+      reason: values.find((v) => v.value === null)!.reason,
+      until: minimum(until, ...values.map((v) => v.until)),
+    };
+  if (new Set(values.map((v) => v.key)).size !== 1)
+    return {
+      ...base,
+      outcome: "confirmed",
+      reason: "incompatible-thread-definitions",
+    };
+  const value = values.reduce((sum, v) => sum + v.value!, 0);
+  if (!Number.isSafeInteger(value))
+    return { ...base, outcome: "confirmed", reason: "unsafe-count-sum" };
+  return {
+    ...base,
+    ...values[0],
+    value,
+    firstSendAt,
+    until: minimum(until, ...values.map((v) => v.until)),
+    outcome: "measured",
+  };
+}
+async function publicationResults(
+  ctx: Ctx,
+  e: Experiment,
+  rows: Assignment[],
+  p: ReturnType<typeof proofContext>,
+) {
+  const empty = () => ({
+    assigned: 0,
+    confirmed: 0,
+    measured: 0,
+    partial: 0,
+    unknown: 0,
+    excluded: 0,
+    withdrawn: 0,
+    missing: 0,
+  });
+  const counts = empty(),
+    arms = { A: empty(), B: empty() },
+    units = [];
+  const cohorts = new Map<
+    string,
+    {
+      key: string;
+      format: string;
+      media: string;
+      metric: string;
+      rawField: string;
+      definition: string;
+      definitionVersion: string;
+      dialect: string;
+      windowHours: number;
+      values: { A: number[]; B: number[] };
+      dates: { A: number[]; B: number[] };
+    }
+  >();
+  for (const row of rows) {
+    const o = p.publications.get(row._id)!;
+    counts.assigned++;
+    if (row.arm) arms[row.arm].assigned++;
+    const bucket = o.outcome as Exclude<keyof typeof counts, "assigned">;
+    counts[bucket]++;
+    if (row.arm) arms[row.arm][bucket]++;
+    if (o.outcome === "measured") {
+      counts.confirmed++;
+      if (row.arm) arms[row.arm].confirmed++;
+    }
+    units.push({
+      assignmentId: o.assignmentId,
+      scheduleId: o.scheduleId,
+      arm: o.arm,
+      outcome: o.outcome,
+      reason: o.reason,
+      value: o.value,
+      firstSendAt: o.firstSendAt,
+      until: o.until,
+    });
+    if (o.key && o.outcome === "measured" && row.arm) {
+      let c = cohorts.get(o.key);
+      if (!c) {
+        c = {
+          key: o.key,
+          format: o.format!,
+          media: o.media!,
+          metric: o.metric!,
+          rawField: o.rawField!,
+          definition: o.definition!,
+          definitionVersion: o.definitionVersion!,
+          dialect: o.dialect!,
+          windowHours: o.windowHours!,
+          values: { A: [], B: [] },
+          dates: { A: [], B: [] },
+        };
+        cohorts.set(o.key, c);
+      }
+      c.values[row.arm].push(o.value!);
+      c.dates[row.arm].push(o.firstSendAt!);
+    }
+  }
+  const measured = (values: number[], dates: number[]) => {
+    const total = values.reduce((s, n) => s + n, 0),
+      sum = values.length && Number.isSafeInteger(total) ? total : null;
+    return {
+      n: values.length,
+      sum,
+      mean: sum === null ? null : sum / values.length,
+      from: dates.length ? Math.min(...dates) : null,
+      to: dates.length ? Math.max(...dates) : null,
+    };
+  };
+  return {
+    counts,
+    arms,
+    units,
+    cohorts: [...cohorts.values()].map(({ values, dates, ...c }) => {
+      const A = measured(values.A, dates.A),
+        B = measured(values.B, dates.B);
+      return {
+        ...c,
+        A,
+        B,
+        difference: A.mean === null || B.mean === null ? null : B.mean - A.mean,
+      };
+    }),
+  };
+}
+
+export const bindSnapshots = internalMutation({
+  args: {
+    scheduleId: v.id("schedules"),
+    cursor: v.union(v.string(), v.null()),
+  },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const page = await ctx.db
+      .query("editorialExperimentAssignments")
+      .withIndex("by_publication_scheduleId_and_sourceUnavailable", (q) =>
+        q
+          .eq("publication.scheduleId", a.scheduleId)
+          .eq("sourceUnavailable", false),
+      )
+      .paginate({ cursor: a.cursor, numItems: 1 });
+    for (const row of page.page) {
+      try {
+        const e = await ctx.db.get(row.experimentId);
+        if (!e) fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+        await authority(ctx, e!);
+        const proof = proofContext(),
+          assignmentUntil = await assignmentProof(ctx, row, proof),
+          observed = await publicationObservation(ctx, e!, row, proof);
+        if (
+          ["excluded", "unknown", "partial", "missing"].includes(
+            observed.outcome,
+          )
+        )
+          continue;
+        const { posts } = await publicationHistory(ctx, a.scheduleId);
+        for (const post of posts.filter((p) => p.stage === "confirmed")) {
+          if (
+            post.generation !== row.publication!.generation ||
+            post.versionId !== row.versionId ||
+            post.accountId !== row.accountId ||
+            post.workspaceId !== row.workspaceId
+          )
+            fail("EXPERIMENT_SOURCE_UNAVAILABLE");
+          const snap = await ctx.db
+            .query("performanceSnapshots")
+            .withIndex("by_postAttemptId_and_windowHours", (q) =>
+              q
+                .eq("postAttemptId", post._id)
+                .eq("windowHours", e!.spec!.publication!.windowHours),
+            )
+            .unique();
+          if (!snap || snap.state === "removed" || snap.expiresAt <= Date.now())
+            continue;
+          const old = await ctx.db
+            .query("editorialExperimentBindings")
+            .withIndex("by_assignmentId_and_snapshotId", (q) =>
+              q.eq("assignmentId", row._id).eq("snapshotId", snap._id),
+            )
+            .unique();
+          const sourceUntil = minimum(
+            assignmentUntil,
+            observed.until,
+            row.sourceUntil,
+            e!.sourceUntil,
+            snap.expiresAt,
+            old?.sourceUntil ?? null,
+          );
+          if (!old)
+            await ctx.db.insert("editorialExperimentBindings", {
+              workspaceId: row.workspaceId,
+              accountId: row.accountId,
+              assignmentId: row._id,
+              vectorId: null,
+              draftVersionId: null,
+              fingerprint: null,
+              snapshotId: snap._id,
+              sourceUntil,
+              sourceUnavailable: false,
+            });
+          else if (sourceUntil !== old.sourceUntil)
+            await ctx.db.patch(old._id, { sourceUntil });
+        }
+      } catch (error) {
+        loss(error);
+        await scrub(ctx, row);
+      }
+    }
+    if (!page.isDone)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.performance.experiments.bindSnapshots,
+        { ...a, cursor: page.continueCursor },
+      );
+    return null;
+  },
+});
+export const purgeSnapshot = internalMutation({
+  args: { snapshotId: v.id("performanceSnapshots") },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const rows = await ctx.db
+      .query("editorialExperimentBindings")
+      .withIndex("by_snapshotId_and_sourceUnavailable", (q) =>
+        q.eq("snapshotId", a.snapshotId).eq("sourceUnavailable", false),
+      )
+      .take(1);
+    for (const b of rows) {
+      const row = await ctx.db.get(b.assignmentId);
+      if (row) await scrub(ctx, row);
+      else
+        await ctx.db.patch(b._id, {
+          snapshotId: null,
+          fingerprint: null,
+          sourceUnavailable: true,
+        });
+    }
+    if (rows.length)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.performance.experiments.purgeSnapshot,
+        a,
       );
     return null;
   },

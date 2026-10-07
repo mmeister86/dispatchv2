@@ -77,6 +77,11 @@ export async function enqueue(ctx: MutationCtx, c: Doc<"xPostAttempts">) {
       { snapshotId: id, generation: control.generation },
     );
     await ctx.db.patch(id, { jobId });
+    await ctx.scheduler.runAfter(
+      0,
+      internal.performance.experiments.bindSnapshots,
+      { scheduleId: c.scheduleId, cursor: null },
+    );
   }
 }
 export async function source(
@@ -376,7 +381,12 @@ export const clear = internalMutation({
         } catch {
           /* An in-flight job is fenced by generation. */
         }
-      if (a.remove)
+      if (a.remove) {
+        await ctx.scheduler.runAfter(
+          0,
+          internal.performance.experiments.purgeSnapshot,
+          { snapshotId: row._id },
+        );
         await ctx.db.patch(row._id, {
           state: "removed",
           fields: [],
@@ -386,7 +396,7 @@ export const clear = internalMutation({
           jobId: undefined,
           expiresAt: Number.MAX_SAFE_INTEGER,
         });
-      else if (["queued", "reading"].includes(row.state))
+      } else if (["queued", "reading"].includes(row.state))
         await ctx.db.patch(row._id, {
           state: "blocked",
           reason: "OWN_METRICS_PAUSED",
@@ -409,7 +419,12 @@ export const expire = internalMutation({
       .query("performanceSnapshots")
       .withIndex("by_expiresAt", (q) => q.lte("expiresAt", Date.now()))
       .take(25);
-    for (const row of rows)
+    for (const row of rows) {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.performance.experiments.purgeSnapshot,
+        { snapshotId: row._id },
+      );
       await ctx.db.patch(row._id, {
         state: "removed",
         fields: [],
@@ -418,6 +433,7 @@ export const expire = internalMutation({
         reason: "OWN_METRICS_RETENTION_EXPIRED",
         expiresAt: Number.MAX_SAFE_INTEGER,
       });
+    }
     if (rows.length === 25)
       await ctx.scheduler.runAfter(
         0,
