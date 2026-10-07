@@ -43,10 +43,10 @@ export async function mediaFixture() {
   });
   const signed = t.withIdentity(identity);
   const userId = await signed.mutation(api.users.bootstrap, {});
-  const { activeWorkspaceId: workspaceId } = await signed.query(
-    api.users.current,
-    {},
-  );
+  const workspaceSnapshot = await signed.query(api.users.current, {});
+  if (workspaceSnapshot.state !== "ready")
+    throw new Error("Fixture workspace must be ready");
+  const { activeWorkspaceId: workspaceId } = workspaceSnapshot;
   const reserve = () =>
     signed.mutation(internal.media.uploads.reserve, {
       workspaceId,

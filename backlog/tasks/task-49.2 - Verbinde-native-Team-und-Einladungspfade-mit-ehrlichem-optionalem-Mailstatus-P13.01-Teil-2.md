@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 16:13'
-updated_date: '2026-10-06 22:01'
+updated_date: '2026-10-07 01:31'
 labels: []
 dependencies:
   - TASK-49.1
@@ -41,4 +41,6 @@ Nach akzeptiertem49.1 reale Team/Demo-Split, auth-only Acceptance und notwendige
 
 <!-- SECTION:NOTES:BEGIN -->
 Read-onlySpezialisten-Vorarbeit .docs/reviews/task-49-team-preflight.md angenommen: nativeTeam/DemoSplit+auth-onlyverifiedInvitationReturnRoute+StoreRecovery auf separataccepted49.1, keine localGuest/Support/Review50Mockfreigabe. OptionalResend viaexistingdirectFetch: explicitSend/durableClaim/fixedunchangedbytes+key/originalboundedwindow/providerAccepted≠delivered, currentInviteAuthority, unknown/lateOriginalReceipt undPersonalCleanup vorConsumer. Keine tatsächlicheMail, keineSecretsgeprüft, aktuelleProviderdocs vorImplementation viactx7. Styles/desktop390/nativeRoute/dirtyretry/role-workspace-unmount-expiry; reineVorarbeitkeineImplementierung/Review/Done.
+
+Focusedreadonly final49source UI/auth preflight adopted task-49.2-final49-ui-preflight.md/-source.json; root18repositoryhashes inclcontract+brief verified against historicalb908freeze (49.1QUALITYcorrection/fullsuite/Dev stillpending). Explicit sharedverifiedAuthBoundary auth-only invitationRoute must bypass WorkspaceStoreProvider/AppShell; callback signup/reverification currently forces invitation via onboarding. Actual previewworkspaceId captured beside immutableaccept args then awaited nativeworkspaces.select; acceptresult hasnoworkspaceId and preview no recipientemail (own verifiedsessionemail onlyifdisplayneeded). CloudTeamallowlist/nativeDemo dispatcher beforemockbody; original50review/guests/support unavailable. ExistingdirectResend syntaxonly, noactualdurableinvite deliveryyet. No source/tests/providers/manual acceptancebyreadonlyreport.
 <!-- SECTION:NOTES:END -->

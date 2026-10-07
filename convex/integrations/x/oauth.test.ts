@@ -437,10 +437,10 @@ async function second(f: Awaited<ReturnType<typeof mediaFixture>>) {
   });
   const signed = f.t.withIdentity(ident);
   await signed.mutation(api.users.bootstrap, {});
-  const { activeWorkspaceId: workspaceId } = await signed.query(
-    api.users.current,
-    {},
-  );
+  const workspaceSnapshot = await signed.query(api.users.current, {});
+  if (workspaceSnapshot.state !== "ready")
+    throw new Error("Fixture workspace must be ready");
+  const { activeWorkspaceId: workspaceId } = workspaceSnapshot;
   return { ...f, signed, workspaceId };
 }
 test("concurrent global binding, reauth reservation, explicit transfer and pre-disconnect callback invalidation", async () => {

@@ -1,3 +1,4 @@
+import { teamResult } from "./teamFields";
 import {
   experimentFields,
   commandFields as experimentCommandFields,
@@ -956,6 +957,48 @@ export default defineSchema({
     "by_workspaceId_and_createdAt",
     ["workspaceId", "createdAt"],
   ),
+  teamInvitations: defineTable({
+    workspaceId: v.id("workspaces"),
+    createdBy: v.optional(v.id("users")),
+    email: v.optional(v.string()),
+    role: v.optional(role),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    status: v.union(
+      v.literal("pending"),
+      v.literal("accepted"),
+      v.literal("revoked"),
+      v.literal("expired"),
+      v.literal("unavailable"),
+    ),
+    acceptedUserId: v.optional(v.id("users")),
+    result: v.optional(teamResult),
+  })
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_workspaceId_and_status_and_expiresAt", [
+      "workspaceId",
+      "status",
+      "expiresAt",
+    ])
+    .index("by_createdBy_and_status", ["createdBy", "status"])
+    .index("by_status", ["status"]),
+  teamCommands: defineTable({
+    workspaceId: v.id("workspaces"),
+    actorId: v.id("users"),
+    commandKey: v.string(),
+    fingerprint: v.optional(v.string()),
+    ownerOperation: v.boolean(),
+    result: v.optional(teamResult),
+    sourceUnavailable: v.boolean(),
+    cleanAfter: v.union(v.number(), v.null()),
+  })
+    .index("by_workspaceId_and_actorId_and_commandKey", [
+      "workspaceId",
+      "actorId",
+      "commandKey",
+    ])
+    .index("by_actorId_and_sourceUnavailable", ["actorId", "sourceUnavailable"])
+    .index("by_cleanAfter", ["cleanAfter"]),
   users: defineTable({
     authId: v.string(),
     defaultWorkspaceId: v.id("workspaces"),
@@ -967,6 +1010,7 @@ export default defineSchema({
     lifecycle: v.optional(
       v.union(v.literal("active"), v.literal("deleting"), v.literal("deleted")),
     ),
+    teamRevision: v.optional(v.number()),
     feedbackSequence: v.optional(v.number()),
     mediaReservedBytes: v.optional(v.number()),
     mediaAssetCount: v.optional(v.number()),

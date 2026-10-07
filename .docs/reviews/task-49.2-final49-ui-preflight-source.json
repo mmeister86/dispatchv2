@@ -1,0 +1,32 @@
+{
+  "generatedAt": "2026-10-07T01:30:58.747069+00:00",
+  "head": "246063f15597486bff20ea7f404eb6f8b87bdfda",
+  "freezePath": "/tmp/dispatch-continuation-49.1-freeze.json",
+  "freezeFileSha256": "b908327aa55b9e14e0e837535c929a696ff8f626503ffb1d021b6a2802d9323a",
+  "frozenPathsMatched": 17,
+  "repositoryFiles": {
+    "src/App.tsx": "f5368c163e8cf3d358c727c88e8742eec47262d0b51716a90974853ecad80a70",
+    "src/main.tsx": "06a9c12d0465ca6628aae1a7e7cbbb90c03f05eda0c10ca64e081a8469022b6c",
+    "src/pages/Public.tsx": "5d77118c6ec986814a91b2e4f0db4a51e757cdba8aa5588a26e4d1854a8afdd5",
+    "src/pages/Team.tsx": "12ce3ce1d710d91c22f4a26eda4b2c6292faf8970cf00b700b2abf782bc5cf85",
+    "src/lib/store.tsx": "7e3efbf133f01ae0a22e5541c586ca55c8459f82143cd0a2f0ac165d92a98967",
+    "src/lib/navigation.ts": "f17214ad26a067e8bd235bb5cea341bf89497c63c7dadb837707e0716ce40e40",
+    "src/lib/auth-client.ts": "f30a7ffd3f34aec7bb1b8cbd963ba8025d16cf4d3c3c90e7f4b34b6caba6fca9",
+    "src/lib/github-source-proof.ts": "99eb84d734dd6afc65f3772b7a1f31c04e593a7b3cefc613e1543a4ea2423141",
+    "src/features/experiments/experiments.tsx": "16f889913ac60c6b3113cb651c77b6ce089d3c3e3bd9686bd692fd9a06e62041",
+    "convex/auth.ts": "a384aa19e46f5e41cd1b94af37aa4d16faecae4566498211bce24f32e2db2525",
+    "convex/users.ts": "6d31f25d66096ebf7b403c2cb42c2e15c8c41a83787dc34db15cc9e343346ab7",
+    "convex/workspaces.ts": "400f95c110f78e31ae737880a0bac94d21f25cf483ea4f1c29de5a5c0a095a1e",
+    "convex/team.ts": "f0c9a03ebc53f5bc22151bfc55818463af4d838b9b66cb300de566dfb7744cbe",
+    "convex/teamFields.ts": "3ff2c399dbff10cbe170a16df1e4d9ffab88756fe68ba9523778d5b7391cc0c6",
+    "convex/publishing.ts": "02b0b24f9779c42471d8dcc0d534f77291a3393c355b29eb81d26f2c61c939f6",
+    "tests/auth.real-browser.ts": "b782ca79cc7b08f14eaa93ffbe5c78098728f6cb74290559322300e55bc02ed4",
+    "tests/workspace-recovery.browser.mjs": "451e82a0f6272a3e7ae1c47a81d847d8ef2b2cb596c5b14008040ef5c527799c",
+    ".docs/team-review-continuation-contract.md": "dfa0db52413e856106d4c72099677d310f90b3c5ae63ff0f3f8cfe69386182a8"
+  },
+  "brief": {
+    "path": "/tmp/dispatch-49.2-writer-brief.md",
+    "sha256": "b15e4296cd76c2e722d17435c08984b7be9a773cb50cc68c6d964882f98ea524"
+  },
+  "scope": "Read-only focused final49.1 UI/auth/mail seam inspection; no secrets/provider/test/codegen/deployment or repository modifications; no49.1 acceptance implied."
+}

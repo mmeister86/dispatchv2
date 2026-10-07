@@ -24,9 +24,10 @@ import {
   scheduleDraft,
 } from "./model";
 import { api } from "../../convex/_generated/api";
+import type { FunctionReturnType } from "convex/server";
 import { useGithubSourceProofClock } from "./github-source-proof";
 import type { Id } from "../../convex/_generated/dataModel";
-import { demoMode } from "./auth-client";
+import { authClient, demoMode } from "./auth-client";
 import { toast } from "sonner";
 import {
   createSeed,
@@ -439,6 +440,128 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 }
 // Mounted only inside the authenticated route boundary, so public routes never wait for workspace data.
 export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
+  const { data: session, isPending: sessionPending } = authClient.useSession();
+  const authId = session?.user.id;
+  const sessionId = session?.session?.id;
+  const bootstrap = useMutation(api.users.bootstrap);
+  const select = useMutation(api.workspaces.select);
+  const create = useMutation(api.workspaces.create);
+  const [readyActor, setReadyActor] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [attempt, setAttempt] = useState(0);
+  const [pending, setPending] = useState(false);
+  const recoveryOperation = useRef<object | null>(null);
+  useEffect(() => {
+    let active = true;
+    recoveryOperation.current = null;
+    setError("");
+    setPending(false);
+    setReadyActor(null);
+    if (!authId || sessionPending) return;
+    bootstrap({})
+      .then(() => {
+        if (active) setReadyActor(authId);
+      })
+      .catch((e) => {
+        if (active)
+          setError(
+            e instanceof Error
+              ? e.message
+              : "Workspace konnte nicht geladen werden.",
+          );
+      });
+    return () => {
+      active = false;
+      recoveryOperation.current = null;
+    };
+  }, [bootstrap, attempt, authId, sessionId, sessionPending]);
+  const current = useQuery(
+    api.users.current,
+    authId && !sessionPending && readyActor === authId ? {} : "skip",
+  );
+  const snapshot =
+    !sessionPending && current?.authId === authId ? current : undefined;
+  const recover = async (operation: () => Promise<unknown>) => {
+    if (recoveryOperation.current) return;
+    const owner = {};
+    recoveryOperation.current = owner;
+    setPending(true);
+    setError("");
+    try {
+      await operation();
+    } catch (e) {
+      if (recoveryOperation.current === owner)
+        setError(editorialActionError(e));
+    } finally {
+      if (recoveryOperation.current === owner) {
+        recoveryOperation.current = null;
+        setPending(false);
+      }
+    }
+  };
+  if (!snapshot)
+    return (
+      <div className="p-12 stack" role={error ? "alert" : "status"}>
+        <p>{error || "Workspace wird geladen …"}</p>
+        {error && (
+          <button onClick={() => setAttempt((a) => a + 1)}>
+            Erneut versuchen
+          </button>
+        )}
+      </div>
+    );
+  if (snapshot.state !== "ready")
+    return (
+      <div className="p-12 stack" role="status">
+        <p>Workspace-Zugriff wiederherstellen</p>
+        <p className="muted">
+          Bitte einen verfügbaren Workspace auswählen oder einen neuen
+          erstellen.
+        </p>
+        {error && <p role="alert">{error}</p>}
+        {snapshot.workspaces.map((w) => (
+          <button
+            key={w.id}
+            disabled={pending}
+            onClick={() => void recover(() => select({ workspaceId: w.id }))}
+          >
+            {w.name}
+          </button>
+        ))}
+        <button
+          disabled={pending}
+          onClick={() =>
+            void recover(() =>
+              create({ name: "Mein Workspace", description: "" }),
+            )
+          }
+        >
+          Neuen Workspace erstellen
+        </button>
+      </div>
+    );
+  const role = snapshot.workspaces.find(
+    (w) => w.id === snapshot.activeWorkspaceId,
+  )!.role;
+  return (
+    <WorkspaceDataStore
+      key={`${snapshot.userId}:${snapshot.activeWorkspaceId}:${role}`}
+      snapshot={snapshot}
+    >
+      {children}
+    </WorkspaceDataStore>
+  );
+}
+function WorkspaceDataStore({
+  children,
+  snapshot,
+}: {
+  children: ReactNode;
+  snapshot: Extract<
+    FunctionReturnType<typeof api.users.current>,
+    { state: "ready" }
+  >;
+}) {
   const location = useLocation();
   const [selectedAccount, setSelectedAccount] = useState("");
   const commentContent = useMutation(api.editorial.addComment);
@@ -453,34 +576,10 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
   const scheduleContent = useMutation(api.editorial.schedule);
   const moveContent = useMutation(api.editorial.reschedule);
   const cancelContent = useMutation(api.editorial.cancel);
-  const bootstrap = useMutation(api.users.bootstrap);
   const save = useMutation(api.preferences.save);
   const select = useMutation(api.workspaces.select);
   const create = useMutation(api.workspaces.create);
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState("");
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let active = true;
-    setError("");
-    bootstrap({})
-      .then(() => {
-        if (active) setReady(true);
-      })
-      .catch((e) => {
-        if (active)
-          setError(
-            e instanceof Error
-              ? e.message
-              : "Workspace konnte nicht geladen werden.",
-          );
-      });
-    return () => {
-      active = false;
-    };
-  }, [bootstrap, attempt]);
-  const snapshot = useQuery(api.users.current, ready ? {} : "skip");
-  const workspaceId = snapshot?.activeWorkspaceId;
+  const workspaceId = snapshot.activeWorkspaceId;
   const list = usePaginatedQuery(
     api.editorial.list,
     workspaceId ? { workspaceId } : "skip",
@@ -567,22 +666,6 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
         ].sort((a, b) => a.number - b.number),
       }
     : null;
-  if (error)
-    return (
-      <div className="p-12 stack" role="alert">
-        <p>Workspace konnte nicht geladen werden.</p>
-        <p className="muted text-sm">{error}</p>
-        <button onClick={() => setAttempt((a) => a + 1)}>
-          Erneut versuchen
-        </button>
-      </div>
-    );
-  if (!snapshot)
-    return (
-      <div className="p-12 muted" role="status">
-        Workspace wird geladen …
-      </div>
-    );
   const workspace = snapshot.workspaces.find(
     (w) => w.id === snapshot.activeWorkspaceId,
   );

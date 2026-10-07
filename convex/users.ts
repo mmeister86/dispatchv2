@@ -1,10 +1,6 @@
-import { v } from "convex/values";
-import { mutation, type MutationCtx } from "./_generated/server";
-import {
-  requireIdentity,
-  requireWorkspace,
-  userQuery,
-} from "./lib/authorization";
+import { ConvexError, v } from "convex/values";
+import { mutation, query, type MutationCtx } from "./_generated/server";
+import { requireIdentity } from "./lib/authorization";
 import { profile, role } from "./schema";
 
 export const defaultProfile = (name: string) => ({
@@ -52,54 +48,103 @@ export const bootstrap = mutation({
     return await provisionUser(ctx, identity._id, identity.name);
   },
 });
-export const current = userQuery({
+const workspaceChoice = v.object({
+  id: v.id("workspaces"),
+  name: v.string(),
+  description: v.string(),
+  role,
+});
+export const current = query({
   args: {},
-  returns: v.object({
-    userId: v.id("users"),
-    activeWorkspaceId: v.id("workspaces"),
-    workspaces: v.array(
-      v.object({
-        id: v.id("workspaces"),
-        name: v.string(),
-        description: v.string(),
-        role,
-      }),
-    ),
-    preferences: profile,
-  }),
+  returns: v.union(
+    v.object({
+      state: v.literal("ready"),
+      authId: v.string(),
+      userId: v.id("users"),
+      activeWorkspaceId: v.id("workspaces"),
+      workspaces: v.array(workspaceChoice),
+      preferences: profile,
+      repairWorkspaceId: v.null(),
+    }),
+    v.object({
+      state: v.union(
+        v.literal("recovery"),
+        v.literal("no-workspaces"),
+        v.literal("uninitialized"),
+      ),
+      authId: v.string(),
+      userId: v.union(v.id("users"), v.null()),
+      activeWorkspaceId: v.null(),
+      workspaces: v.array(workspaceChoice),
+      preferences: v.null(),
+      repairWorkspaceId: v.union(v.id("workspaces"), v.null()),
+    }),
+  ),
   handler: async (ctx) => {
-    await requireWorkspace(ctx, ctx.user.activeWorkspaceId, ctx.user);
-    // ponytail: at most 100 workspaces per user; paginate if the product raises this limit.
+    const identity = await requireIdentity(ctx);
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_authId", (q) => q.eq("authId", identity._id))
+      .unique();
+    if (!user)
+      return {
+        state: "uninitialized" as const,
+        authId: identity._id,
+        userId: null,
+        activeWorkspaceId: null,
+        workspaces: [],
+        preferences: null,
+        repairWorkspaceId: null,
+      };
     const memberships = await ctx.db
       .query("memberships")
-      .withIndex("by_userId", (q) => q.eq("userId", ctx.user._id))
-      .take(100);
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .take(101);
+    if (memberships.length > 100)
+      throw new ConvexError("WORKSPACE_LIMIT_REQUIRES_PAGINATION");
     const workspaces = [];
-    for (const membership of memberships) {
-      const w = await ctx.db.get(membership.workspaceId);
-      if (w)
+    for (const m of memberships) {
+      const w = await ctx.db.get(m.workspaceId);
+      if (w && (!w.lifecycle || w.lifecycle === "active"))
         workspaces.push({
           id: w._id,
           name: w.name,
           description: w.description,
-          role: membership.role,
+          role: m.role,
         });
     }
-    const preferences = await ctx.db
-      .query("preferences")
-      .withIndex("by_userId_and_workspaceId", (q) =>
-        q
-          .eq("userId", ctx.user._id)
-          .eq("workspaceId", ctx.user.activeWorkspaceId),
-      )
-      .unique();
-    if (!preferences) throw new Error("Workspace profile is missing");
-    const { _id, _creationTime, userId, workspaceId, ...fields } = preferences;
+    const target =
+      workspaces.find((w) => w.id === user.activeWorkspaceId) ??
+      workspaces.find((w) => w.id === user.defaultWorkspaceId) ??
+      workspaces[0];
+    if (target?.id === user.activeWorkspaceId) {
+      const p = await ctx.db
+        .query("preferences")
+        .withIndex("by_userId_and_workspaceId", (q) =>
+          q.eq("userId", user._id).eq("workspaceId", target.id),
+        )
+        .unique();
+      if (p) {
+        const { _id, _creationTime, userId, workspaceId, ...preferences } = p;
+        return {
+          state: "ready" as const,
+          authId: identity._id,
+          userId: user._id,
+          activeWorkspaceId: target.id,
+          workspaces,
+          preferences,
+          repairWorkspaceId: null,
+        };
+      }
+    }
     return {
-      userId: ctx.user._id,
-      activeWorkspaceId: ctx.user.activeWorkspaceId,
+      state: target ? ("recovery" as const) : ("no-workspaces" as const),
+      authId: identity._id,
+      userId: user._id,
+      activeWorkspaceId: null,
       workspaces,
-      preferences: fields,
+      preferences: null,
+      repairWorkspaceId: target?.id ?? null,
     };
   },
 });

@@ -11,7 +11,22 @@ const responses = vi.hoisted(() => ({
   calls: [] as { name: string; args: unknown }[],
   loadMore: vi.fn(),
 }));
-vi.mock("../src/lib/auth-client", () => ({ demoMode: false }));
+vi.mock("../src/lib/auth-client", () => ({
+  demoMode: false,
+  authClient: {
+    useSession: () => ({
+      data: {
+        user: {
+          id: (
+            responses.queries["users:current"] as
+              { authId?: string } | undefined
+          )?.authId,
+        },
+      },
+      isPending: false,
+    }),
+  },
+}));
 vi.mock("convex/react", async () => {
   const { getFunctionName: name } = await import("convex/server");
   return {

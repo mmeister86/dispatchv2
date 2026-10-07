@@ -139,6 +139,8 @@ import type * as research_schedules from "../research/schedules.js";
 import type * as research_time from "../research/time.js";
 import type * as research_transport from "../research/transport.js";
 import type * as research_webSearch from "../research/webSearch.js";
+import type * as team from "../team.js";
+import type * as teamFields from "../teamFields.js";
 import type * as users from "../users.js";
 import type * as workspaces from "../workspaces.js";
 
@@ -280,6 +282,8 @@ declare const fullApi: ApiFromModules<{
   "research/time": typeof research_time;
   "research/transport": typeof research_transport;
   "research/webSearch": typeof research_webSearch;
+  team: typeof team;
+  teamFields: typeof teamFields;
   users: typeof users;
   workspaces: typeof workspaces;
 }>;

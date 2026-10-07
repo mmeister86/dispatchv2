@@ -57,10 +57,10 @@ async function fixture(proof = false, claim = true) {
   });
   const signed = t.withIdentity(identity),
     actorId = await signed.mutation(api.users.bootstrap, {});
-  const { activeWorkspaceId: workspaceId } = await signed.query(
-    api.users.current,
-    {},
-  );
+  const workspaceSnapshot = await signed.query(api.users.current, {});
+  if (workspaceSnapshot.state !== "ready")
+    throw new Error("Fixture workspace must be ready");
+  const { activeWorkspaceId: workspaceId } = workspaceSnapshot;
   const accountId = await t.run((ctx) =>
     ctx.db.insert("socialAccounts", {
       workspaceId,

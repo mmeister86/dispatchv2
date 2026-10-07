@@ -91,4 +91,10 @@ crons.interval(
   internal.performance.experiments.sweep,
   { cursor: null },
 );
+crons.interval(
+  "Native team invitation cleanup",
+  { minutes: 15 },
+  internal.team.sweep,
+  { cursor: null, phase: "invitations" },
+);
 export default crons;

@@ -57,6 +57,8 @@ describe("foundation authorization and persistence", () => {
     const userId = await signed.mutation(api.users.bootstrap, {});
     expect(await signed.mutation(api.users.bootstrap, {})).toBe(userId);
     const snapshot = await signed.query(api.users.current, {});
+    if (snapshot.state !== "ready")
+      throw new Error("Fixture workspace must be ready");
     expect(snapshot.workspaces).toHaveLength(1);
     expect(snapshot.workspaces[0].role).toBe("Owner");
     expect(snapshot.preferences.onboardingDone).toBe(false);
@@ -104,7 +106,11 @@ describe("foundation authorization and persistence", () => {
     await first.mutation(api.users.bootstrap, {});
     const secondId = await second.mutation(api.users.bootstrap, {});
     const foreign = await first.query(api.users.current, {});
+    if (foreign.state !== "ready")
+      throw new Error("Fixture workspace must be ready");
     const own = await second.query(api.users.current, {});
+    if (own.state !== "ready")
+      throw new Error("Fixture workspace must be ready");
     expect(own.activeWorkspaceId).not.toBe(foreign.activeWorkspaceId);
     for (const ref of [api.workspaces.get, api.workspaces.select]) {
       await expect(
@@ -163,9 +169,23 @@ describe("foundation authorization and persistence", () => {
         .unique();
       await ctx.db.delete(membership!._id);
     });
-    await expect(second.query(api.users.current, {})).rejects.toThrow(
-      "WORKSPACE_ACCESS_DENIED",
-    );
+    const recovery = await second.query(api.users.current, {});
+    expect(recovery).toMatchObject({
+      state: "recovery",
+      activeWorkspaceId: null,
+      preferences: null,
+    });
+    expect(
+      recovery.workspaces.some((w) => w.id === own.activeWorkspaceId),
+    ).toBe(false);
+    await expect(
+      second.query(api.workspaces.get, { workspaceId: own.activeWorkspaceId }),
+    ).rejects.toThrow("WORKSPACE_ACCESS_DENIED");
+    await expect(
+      second.mutation(api.workspaces.select, {
+        workspaceId: own.activeWorkspaceId,
+      }),
+    ).rejects.toThrow("WORKSPACE_ACCESS_DENIED");
   });
 
   test("anonymous, unverified, and expired sessions cannot provision data", async () => {
