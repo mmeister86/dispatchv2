@@ -1,4 +1,5 @@
-import { materialWalk } from "../research/pipelineAccess";
+import { routingProof } from "./jev/routing";
+import { materialWalk, type MaterialWalk } from "../research/pipelineAccess";
 import { captureStyle, runStyleProof } from "./styleProfiles";
 import { preferences as stylePreferences } from "./styleFields";
 import { captureRunInputs } from "./contentCopies";
@@ -101,6 +102,7 @@ async function authority(
     | "accountConnectionSequence"
     | "styleContext"
   > & { research?: Doc<"agentRuns">["research"]; _id?: Id<"agentRuns"> },
+  w: MaterialWalk = materialWalk(),
 ) {
   requireActiveWorkspace(await ctx.db.get(r.workspaceId));
   const actor = await ctx.db.get(r.actorId);
@@ -140,7 +142,6 @@ async function authority(
     if (!o.config.cap || money.total > o.config.cap.limitMicros)
       throw new ConvexError("RESEARCH_ORDER_BUDGET_EXHAUSTED");
   }
-  const w = materialWalk();
   if (r._id) {
     await runStyleProof(ctx, r as Doc<"agentRuns">, true, w);
     await retainedRunProof(ctx, r as Doc<"agentRuns">, w);
@@ -162,7 +163,8 @@ export async function active(
     (executionKey !== undefined && r.executionKey !== executionKey)
   )
     throw new ConvexError("MODEL_RUN_INACTIVE");
-  await authority(ctx, r);
+  const walk = materialWalk();
+  await authority(ctx, r, walk);
   if (r.conversationId) await conversationAuthority(ctx, r);
   const contentRequest = await ctx.db
     .query("contentRequests")
@@ -183,7 +185,16 @@ export async function active(
       throw new ConvexError("IDEA_SOURCE_CHANGED");
     const input = await ctx.db.get(contentRequest.inputVersionId);
     if (!input) throw new ConvexError("IDEA_SOURCE_CHANGED");
-    await ideaProofUntil(ctx, input, undefined, r.accountId);
+    await ideaProofUntil(ctx, input, walk, r.accountId);
+    if (contentRequest.routingOperationId)
+      await routingProof(
+        ctx,
+        contentRequest.routingOperationId,
+        contentRequest,
+        true,
+        walk,
+        r,
+      );
   }
   const p = await policy(ctx);
   if (

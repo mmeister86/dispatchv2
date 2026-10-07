@@ -233,6 +233,21 @@ export async function retainedRunProof(
         request.actorId !== r.actorId
       )
         throw new ConvexError("IDEA_SOURCE_CHANGED");
+      if (request.routingOperationId) {
+        const { routingProof } = await import("./jev/routing");
+        horizons.push(
+          (
+            await routingProof(
+              ctx,
+              request.routingOperationId,
+              request,
+              false,
+              walk,
+              r,
+            )
+          ).sourceUntil,
+        );
+      }
       ids.add(request.inputVersionId);
     }
     for (const row of inputs)

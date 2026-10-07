@@ -1746,3 +1746,206 @@ test("nonfinite native grant horizon cannot become an unbounded paid authority",
   expect((await inspect(f)).attempts).toHaveLength(0);
   expect(r.transport).not.toHaveBeenCalled();
 });
+
+test("public routing money projection distinguishes original no-attempt deadline from unknown funded fallback", async () => {
+  const f = await fixture(false);
+  const id = await f.signed.mutation(prepare, f.command);
+  const o = await f.t.run((ctx) => ctx.db.get(id));
+  expect(
+    await f.signed.query(get, { workspaceId: f.workspaceId, operationId: id }),
+  ).toMatchObject({ deadline: o!.deadline, usage: null });
+  const paid = await fixture();
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async () => new Response("x".repeat(64001))),
+  );
+  const operationId = await paid.signed.mutation(prepare, paid.command);
+  await paid.signed.action(api.ai.jev.routing.classify, {
+    workspaceId: paid.workspaceId,
+    operationId,
+  });
+  expect(
+    await paid.signed.query(get, {
+      workspaceId: paid.workspaceId,
+      operationId,
+    }),
+  ).toMatchObject({
+    result: { status: "fallback" },
+    usage: {
+      state: "unknown",
+      heldMicros: 17000,
+      estimatedMicros: null,
+      currency: "USD",
+    },
+  });
+});
+
+test("public funded router result joins exact native generation SDK once and commits an unapproved perspective Idea", async () => {
+  vi.useFakeTimers();
+  const f = await fixture();
+  const { modelFixture } = await import("../../../tests/model-fixture");
+  const generation = await modelFixture(f);
+  await f.t.run(async (ctx) => {
+    const budget = await ctx.db
+      .query("aiBudgets")
+      .withIndex("by_key", (q) =>
+        q.eq("key", `account:${generation.accountId}`),
+      )
+      .unique();
+    await ctx.db.patch(budget!._id, {
+      accountId: f.accountId,
+      key: `account:${f.accountId}`,
+    });
+  });
+  const routed = await route(f);
+  expect(routed.transport).toHaveBeenCalledTimes(1);
+  await vi.advanceTimersByTimeAsync(5001);
+  const args = {
+    ...scope(f),
+    ideaId: f.ideaId,
+    expectedRevision: 1,
+    intent: f.command.intent.intent,
+    operationKey: "funded-routed-generation",
+    routingOperationId: routed.id,
+  };
+  const runId = await f.signed.mutation(api.content.ideas.generate, args);
+  expect(await f.signed.mutation(api.content.ideas.generate, args)).toBe(runId);
+  vi.stubEnv("REQUESTY_API_KEY", "synthetic-only-no-live-key");
+  let physical = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url, init) => {
+      physical++;
+      expect(String(url)).toBe(
+        "https://router.eu.requesty.ai/v1/chat/completions",
+      );
+      expect(init!.body).toContain("requestedIntent");
+      expect(init!.body).toContain("educational");
+      return Response.json({
+        id: "synthetic-generation",
+        object: "chat.completion",
+        created: 1791210000,
+        model: "synthetic/model",
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: JSON.stringify({
+                text: JSON.stringify({
+                  title: "Unverified perspective",
+                  perspective: "An interpretation",
+                  rationale: "Unverified",
+                  questions: ["What is known?"],
+                }),
+              }),
+            },
+            finish_reason: "stop",
+          },
+        ],
+        usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+      });
+    }),
+  );
+  await f.t.action(internal.ai.provider.execute, { runId });
+  expect(physical).toBe(1);
+  const request = await f.t.run((ctx) =>
+    ctx.db
+      .query("contentRequests")
+      .withIndex("by_runId", (q) => q.eq("runId", runId))
+      .unique(),
+  );
+  expect(request).toMatchObject({ routingOperationId: routed.id });
+  expect(request!.resultIdeaId).not.toBeNull();
+  const idea = await f.signed.query(api.content.ideas.get, {
+    workspaceId: f.workspaceId,
+    ideaId: request!.resultIdeaId!,
+  });
+  expect(idea).toMatchObject({
+    version: {
+      title: "Unverified perspective",
+      runId,
+      questions: ["What is known?"],
+    },
+  });
+  const attempts = await f.t.run((ctx) => ctx.db.query("aiAttempts").collect());
+  expect(attempts).toHaveLength(2);
+  expect(attempts.find((a) => a.owner === "jev-intent-router")).toMatchObject({
+    routingOperationId: routed.id,
+    estimatedMicros: 30,
+    state: "settled",
+  });
+  expect(attempts.find((a) => "runId" in a && a.runId === runId)).toMatchObject(
+    { estimatedMicros: 30, state: "settled" },
+  );
+  await f.signed.action(api.ai.jev.routing.classify, {
+    workspaceId: f.workspaceId,
+    operationId: routed.id,
+  });
+  expect(physical).toBe(1);
+  expect(await f.t.run((ctx) => ctx.db.query("approvals").collect())).toEqual(
+    [],
+  );
+  expect(await f.t.run((ctx) => ctx.db.query("schedules").collect())).toEqual(
+    [],
+  );
+});
+
+test.each(["get", "finish"])(
+  "operation-owned %s rejects a deliberately misbound genuine different receipt without money or result changes",
+  async (caller) => {
+    const f = await fixture(),
+      paid = await route(f),
+      paidOperation = (await f.t.run((ctx) => ctx.db.get(paid.id)))!;
+    const ownId = await f.signed.mutation(prepare, {
+      ...f.command,
+      operationKey: `wrong-pointer-${caller}`,
+      intent: {
+        ...f.command.intent,
+        strategy: caller === "get" ? "generic" : null,
+        tone: "Different immutable intent",
+      },
+    });
+    expect(ownId).not.toBe(paid.id);
+    expect(paidOperation.attemptId).not.toBeNull();
+    expect((await inspect(f)).attempts).toHaveLength(1);
+    expect(
+      await f.signed.query(get, {
+        workspaceId: f.workspaceId,
+        operationId: ownId,
+      }),
+    ).toMatchObject({ usage: null });
+    if (caller === "finish")
+      expect((await f.t.run((ctx) => ctx.db.get(ownId)))!.result).toBeNull();
+    // Stored pointer corruption in one actual DB; this is not a public forgery endpoint.
+    await f.t.run((ctx) =>
+      ctx.db.patch(ownId, { attemptId: paidOperation.attemptId }),
+    );
+    const before = await inspect(f);
+    if (caller === "get")
+      await expect(
+        f.signed.query(get, {
+          workspaceId: f.workspaceId,
+          operationId: ownId,
+        }),
+      ).rejects.toThrow("ROUTING_RECEIPT_INVALID");
+    else
+      await expect(
+        f.t.mutation(internal.ai.jev.routing.finish, {
+          operationId: ownId,
+          outcome: "success",
+          answers: {
+            intent: { type: "choice", value: "launch", confidence: 0.95 },
+          },
+        }),
+      ).rejects.toThrow("ROUTING_RECEIPT_INVALID");
+    expect(await inspect(f)).toEqual(before);
+    expect(paid.transport).toHaveBeenCalledTimes(1);
+    expect(await f.t.run((ctx) => ctx.db.query("approvals").collect())).toEqual(
+      [],
+    );
+    expect(await f.t.run((ctx) => ctx.db.query("schedules").collect())).toEqual(
+      [],
+    );
+  },
+);

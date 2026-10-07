@@ -81,6 +81,7 @@ export const feedbackFields = {
   resultingVersionId: v.optional(v.id("ideaVersions")),
 };
 export const requestFields = {
+  routingOperationId: v.optional(v.id("jevRoutingOperations")),
   workspaceId: v.id("workspaces"),
   actorId: v.id("users"),
   ideaId: v.id("ideas"),

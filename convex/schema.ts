@@ -693,6 +693,7 @@ export default defineSchema({
 
     .index("by_ideaId", ["ideaId"]),
   contentRequests: defineTable(requestFields)
+    .index("by_routingOperationId", ["routingOperationId"])
     .index("by_inputVersionId", ["inputVersionId"])
     .index("by_runId", ["runId"])
     .index("by_workspaceId_and_actorId_and_operationKey", [

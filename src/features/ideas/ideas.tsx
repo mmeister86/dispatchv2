@@ -1,6 +1,8 @@
 import { PerformanceContext } from "@/features/signals/performance";
 import { useEffect, useRef, useState } from "react";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useAction, useConvex } from "convex/react";
+import type { FunctionArgs, FunctionReturnType } from "convex/server";
+import { useNativeCommand } from "@/features/drafts/review";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
@@ -54,8 +56,9 @@ export function RealIdeas() {
   );
 }
 function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
-  const { state } = useStore(),
-    nav = useNavigate();
+  const { state, nativeScope } = useStore(),
+    nav = useNavigate(),
+    convex = useConvex();
   const [params] = useSearchParams();
   const linkedId = params.get("idea");
   const linked = useQuery(
@@ -73,6 +76,27 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
       version: Doc<"ideaVersions">;
     } | null>(null),
     [mode, setMode] = useState<"edit" | "handoff" | "generate">("edit");
+  const [humanStrategy, setHumanStrategy] = useState(""),
+    [objective, setObjective] = useState(""),
+    [tone, setTone] = useState(""),
+    [cta, setCta] = useState("");
+  const [routingId, setRoutingId] = useState<Id<"jevRoutingOperations"> | null>(
+    null,
+  );
+  const flow = useRef<{
+    prepare: FunctionArgs<typeof api.ai.jev.routing.prepare>;
+    generate: FunctionArgs<typeof api.content.ideas.generate>;
+    id: Id<"jevRoutingOperations"> | null;
+    scope: string;
+    epoch: number;
+    until: number | null;
+  } | null>(null);
+  const prepareRouting = useMutation(api.ai.jev.routing.prepare),
+    classifyRouting = useAction(api.ai.jev.routing.classify);
+  const routing = useQuery(
+    api.ai.jev.routing.get,
+    routingId ? { workspaceId, operationId: routingId } : "skip",
+  );
   const [title, setTitle] = useState(""),
     [note, setNote] = useState(""),
     [perspective, setPerspective] = useState(""),
@@ -83,6 +107,22 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
+  const style = useQuery(
+    api.ai.styleProfiles.get,
+    account && mode === "generate" && selected
+      ? { workspaceId, accountId: account as Id<"socialAccounts"> }
+      : "skip",
+  );
+  const selectedStyle = useQuery(
+    api.ai.styleProfiles.version,
+    style?.control?.selectedVersionId
+      ? {
+          workspaceId,
+          accountId: account as Id<"socialAccounts">,
+          versionId: style.control.selectedVersionId,
+        }
+      : "skip",
+  );
   const contextSnapshot = `${state.role}:${state.activeAccountId}`;
   const latestContext = useRef(contextSnapshot);
   latestContext.current = contextSnapshot;
@@ -139,11 +179,31 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
   const proofClock = useGithubSourceProofClock(
     [
       ...protectedVersions,
+      ...(selectedStyle?.sourceUntil !== null &&
+      selectedStyle?.sourceUntil !== undefined
+        ? [
+            {
+              sourceProofUntil: selectedStyle.sourceUntil,
+              sourceUnavailable: !style?.usable,
+            },
+          ]
+        : []),
+      ...(routing?.sourceUntil !== null && routing?.sourceUntil !== undefined
+        ? [
+            {
+              sourceProofUntil: routing.sourceUntil,
+              sourceUnavailable: false,
+            },
+          ]
+        : []),
+      ...(routing && !routing.result && !routing.usage
+        ? [{ sourceProofUntil: routing.deadline, sourceUnavailable: false }]
+        : []),
       ...(runs ?? [])
         .filter((r) => r.sourceUntil !== null && r.sourceUntil !== undefined)
         .map((r) => ({
           sourceProofUntil: r.sourceUntil!,
-          sourceUnavailable: r.styleUnavailable,
+          sourceUnavailable: r.styleUnavailable || r.sourceUnavailable,
         })),
     ]
       .filter((v) => v.sourceProofUntil !== undefined)
@@ -171,13 +231,157 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
       setPerspective("");
       setDraftText("");
       setIntent("");
+      setObjective("");
+      setTone("");
+      setCta("");
+      flow.current = null;
+      setRoutingId(null);
       setOpen(false);
       setMessage(
         "Die Quellenfreigabe ist abgelaufen oder geändert. Geschützte Inhalte wurden ausgeblendet.",
       );
     }
   }, [selected, selectedLive?.version.sourceUnavailable, proofClock]);
+  const min = Math.min(
+    selected?.version.sourceProofUntil ?? Infinity,
+    selectedStyle?.sourceUntil ?? Infinity,
+    routing?.sourceUntil ?? Infinity,
+  );
+  const generationUntil = Number.isFinite(min) ? min : null;
+  const generationScope = JSON.stringify([
+    nativeScope,
+    account,
+    selected?.idea._id,
+    selected?.version._id,
+    selectedLive?.idea.revision ?? selected?.idea.revision,
+    selectedLive?.idea.currentVersionId ?? selected?.version._id,
+    style?.control?.selectedVersionId ?? null,
+    style?.control?.selectionReceiptId ?? null,
+    style?.control?.selectedBy ?? null,
+    style?.usable,
+    mode,
+    !!selected,
+  ]);
+  const context = useRef({ scope: generationScope, epoch: 0 });
+  if (context.current.scope !== generationScope)
+    context.current = {
+      scope: generationScope,
+      epoch: context.current.epoch + 1,
+    };
+  const untilRef = useRef(generationUntil);
+  untilRef.current = generationUntil;
+  const generation = useNativeCommand(generationScope, generationUntil);
+  const generationLocked =
+    mode === "generate" && (generation.locked || !!flow.current);
+  useEffect(() => {
+    flow.current = null;
+    setRoutingId(null);
+  }, [generationScope]);
+  useEffect(() => {
+    if (
+      routing?.applicability === "unavailable" ||
+      (generationUntil !== null && generationUntil <= proofClock)
+    ) {
+      flow.current = null;
+      setIntent("");
+      setObjective("");
+      setTone("");
+      setCta("");
+    }
+  }, [routing?.applicability, generationUntil, proofClock]);
   const write = state.role !== "Viewer";
+  async function requestPerspective() {
+    if (
+      !selected ||
+      !account ||
+      !style ||
+      (style.control?.selectedVersionId && (!style.usable || !selectedStyle))
+    )
+      return;
+    if (!flow.current) {
+      const key = operation.current;
+      flow.current = {
+        prepare: {
+          workspaceId,
+          ideaId: selected.idea._id,
+          expectedRevision: selected.idea.revision,
+          accountId: account as Id<"socialAccounts">,
+          operationKey: key,
+          intent: {
+            intent,
+            strategy: humanStrategy || null,
+            outputKind: "perspective",
+            network: "x",
+            objective: objective || null,
+            tone: tone || null,
+            cta: cta || null,
+          },
+        },
+        generate: {
+          workspaceId,
+          ideaId: selected.idea._id,
+          expectedRevision: selected.idea.revision,
+          accountId: account as Id<"socialAccounts">,
+          intent,
+          operationKey: key,
+        },
+        id: null,
+        scope: generationScope,
+        epoch: context.current.epoch,
+        until: generationUntil,
+      };
+    }
+    const original = flow.current;
+    const valid = () =>
+      mounted.current &&
+      context.current.scope === original.scope &&
+      context.current.epoch === original.epoch &&
+      (original.until === null || original.until > Date.now()) &&
+      (untilRef.current === null || untilRef.current > Date.now());
+    const call = async () => {
+      setError("");
+      try {
+        if (!valid()) throw new Error("IDEA_CONTEXT_CHANGED");
+        if (!original.id) original.id = await prepareRouting(original.prepare);
+        if (!valid()) throw new Error("IDEA_CONTEXT_CHANGED");
+        setRoutingId(original.id);
+        const args = { workspaceId, operationId: original.id };
+        let view = await convex.query(api.ai.jev.routing.get, args);
+        if (
+          !valid() ||
+          view.applicability !== "current" ||
+          (view.sourceUntil !== null && view.sourceUntil <= Date.now())
+        )
+          throw new Error("ROUTING_SOURCE_UNAVAILABLE");
+        if (!view.result) {
+          if (view.usage || view.deadline <= Date.now())
+            throw new Error("ROUTING_USAGE_UNRESOLVED");
+          await classifyRouting(args);
+          view = await convex.query(api.ai.jev.routing.get, args);
+        }
+        if (
+          !valid() ||
+          view.applicability !== "current" ||
+          !view.result ||
+          (view.sourceUntil !== null && view.sourceUntil <= Date.now())
+        )
+          throw new Error("ROUTING_USAGE_UNRESOLVED");
+        original.generate = {
+          ...original.generate,
+          routingOperationId: original.id,
+        };
+        await generate(original.generate);
+      } catch (e) {
+        if (valid()) setError(ideaError(e));
+        throw e;
+      }
+    };
+    if (await generation.execute(call))
+      setMessage(
+        "Lauf gespeichert. Eine Ausgabe gilt erst nach erfolgreicher Persistenz als Idee.",
+      );
+  }
+
   async function command(fn: () => Promise<unknown>, success: () => void) {
     if (pending.current) return;
     pending.current = true;
@@ -205,6 +409,12 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     setPerspective(row.version.perspective);
     setPriority(row.version.priority);
     setIntent("");
+    setHumanStrategy("");
+    setObjective("");
+    setTone("");
+    setCta("");
+    flow.current = null;
+    setRoutingId(null);
     setClarified(false);
     setDraftText(
       row.version.originals.length
@@ -274,8 +484,8 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
         />
       </div>
       <p className="text-xs muted">
-        Jev ist deaktiviert. Manuelle Notizen und Entwürfe benötigen keinen
-        Modellzugang.{" "}
+        Manuelle Notizen und Entwürfe benötigen keinen Modellzugang.
+        Intent-Routing und Generation prüfen getrennte Freigaben.{" "}
         {availability?.processingApproved && availability.pricingApproved
           ? "Generation prüft bei jeder Anfrage die konkreten Freigaben und Budgets."
           : "Generation wartet auf EU-Verarbeitung, Preise und gültige Budgets."}
@@ -427,14 +637,14 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
       <Dialog
         open={open || !!selected}
         onOpenChange={(v) => {
-          if (!busy && !v) {
+          if (!busy && !generation.busy && !v) {
             setOpen(false);
             setSelected(null);
             setError("");
           }
         }}
       >
-        <DialogContent>
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {!selected
@@ -527,7 +737,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
               <select
                 className="native-select"
                 value={account}
-                disabled={busy}
+                disabled={busy || generation.busy || generationLocked}
                 onChange={(e) => setAccount(e.target.value)}
               >
                 <option value="">Ohne Account (manueller Entwurf)</option>
@@ -549,7 +759,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                   : "Konkrete Absicht / geklärte Angaben"}
               </span>
               <Textarea
-                disabled={busy}
+                disabled={busy || generation.busy || generationLocked}
                 value={intent}
                 onChange={(e) => setIntent(e.target.value)}
                 maxLength={1000}
@@ -558,6 +768,91 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
           )}
           {selected && mode === "generate" && (
             <>
+              <label>
+                <span className="field-label">Ausdrückliche Strategie</span>
+                <select
+                  className="native-select"
+                  value={humanStrategy}
+                  disabled={busy || generationLocked}
+                  onChange={(e) => setHumanStrategy(e.target.value)}
+                >
+                  <option value="">Keine ausdrückliche Auswahl</option>
+                  {routingStrategies.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="grid gap-3 sm:grid-cols-3">
+                {(
+                  [
+                    ["Ziel (optional)", objective, setObjective],
+                    ["Ton (optional)", tone, setTone],
+                    ["Handlungsaufforderung (optional)", cta, setCta],
+                  ] as const
+                ).map(([label, value, change]) => (
+                  <label key={label}>
+                    <span className="field-label">{label}</span>
+                    <Input
+                      maxLength={1000}
+                      disabled={busy || generationLocked}
+                      value={value}
+                      onChange={(e) => change(e.target.value)}
+                    />
+                  </label>
+                ))}
+              </div>
+              {style ? (
+                <p className="text-xs muted">
+                  {style.control?.selectedVersionId
+                    ? `Account-Stil ausgewählt${!style.usable || (selectedStyle?.sourceUntil !== null && selectedStyle?.sourceUntil !== undefined && selectedStyle.sourceUntil <= proofClock) ? " · nicht verfügbar" : ""}`
+                    : "Kein Account-Stil ausgewählt"}
+                </p>
+              ) : (
+                <p role="status">Account-Stil wird geprüft …</p>
+              )}
+              {routing && <RoutingView view={routing} />}
+              {generation.retry && (
+                <Button
+                  variant="outline"
+                  disabled={
+                    generation.busy || (!!routing?.usage && !routing.result)
+                  }
+                  onClick={() =>
+                    void generation.execute(generation.retry!).then((ok) => {
+                      if (ok)
+                        setMessage(
+                          "Lauf gespeichert. Eine Ausgabe gilt erst nach erfolgreicher Persistenz als Idee.",
+                        );
+                    })
+                  }
+                >
+                  Denselben Auftrag wiederholen
+                </Button>
+              )}
+              {(generation.conflict ||
+                (!generation.retry &&
+                  !generation.busy &&
+                  !!flow.current &&
+                  !!routing?.result)) && (
+                <Button
+                  variant="outline"
+                  disabled={
+                    !!routing?.usage && routing.usage.state !== "settled"
+                  }
+                  onClick={() => {
+                    generation.reviewCurrent();
+                    flow.current = null;
+                    setRoutingId(null);
+                    operation.current = crypto.randomUUID();
+                    setError("");
+                  }}
+                >
+                  Aktuellen Stand prüfen · neue Anfrage
+                </Button>
+              )}
+
               <p className="text-xs muted">
                 Eine neue Idee enthält Originalbelege, ungeprüfte Nutzerangaben,
                 eine getrennte Interpretation und offene Fragen. Ein
@@ -565,6 +860,17 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
               </p>
               {runs?.map((r) => (
                 <div key={r.runId}>
+                  {r.routingOperationId ? (
+                    <RoutingHistory
+                      workspaceId={workspaceId}
+                      operationId={r.routingOperationId}
+                    />
+                  ) : (
+                    <p className="text-xs muted">
+                      Historischer Lauf ohne Intent-Routing · generische
+                      Perspektive
+                    </p>
+                  )}
                   <p role="status">
                     Lauf {r.state}
                     {r.resultIdeaId
@@ -672,6 +978,15 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
               disabled={
                 !write ||
                 busy ||
+                generation.busy ||
+                (mode === "generate" &&
+                  !!selected &&
+                  (generationLocked ||
+                    !style ||
+                    (style.control?.selectedVersionId &&
+                      (!style.usable || !selectedStyle)) ||
+                    state.accounts.find((a) => a.id === account)?.channel !==
+                      "X")) ||
                 (!selected && !title.trim()) ||
                 (!!selected &&
                   (mode === "edit"
@@ -683,72 +998,75 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                         : !account)))
               }
               onClick={() =>
-                void command(
-                  async () => {
-                    if (!selected)
-                      await create({
-                        workspaceId,
-                        title,
-                        note,
-                        perspective,
-                        priority,
-                        source: { kind: "note" },
-                        operationKey: operation.current,
-                      });
-                    else if (mode === "edit")
-                      await edit({
-                        workspaceId,
-                        ideaId: selected.idea._id,
-                        expectedRevision: selected.idea.revision,
-                        title,
-                        note,
-                        perspective,
-                        priority,
-                        feedback: intent,
-                      });
-                    else if (mode === "handoff") {
-                      const r = await handoff({
-                        workspaceId,
-                        ideaId: selected.idea._id,
-                        expectedRevision: selected.idea.revision,
-                        accountId: (account as Id<"socialAccounts">) || null,
-                        intent,
-                        draftText,
-                        clarificationConfirmed: clarified,
-                      });
-                      if (
-                        mounted.current &&
-                        latestContext.current === contextSnapshot
-                      )
-                        nav(`/drafts/${r.draftId}`);
-                    } else
-                      await generate({
-                        workspaceId,
-                        ideaId: selected.idea._id,
-                        expectedRevision: selected.idea.revision,
-                        accountId: account as Id<"socialAccounts">,
-                        intent,
-                        operationKey: operation.current,
-                      });
-                  },
-                  () => {
-                    if (selected && mode === "generate")
-                      setMessage(
-                        "Lauf gespeichert. Eine Ausgabe gilt erst nach erfolgreicher Persistenz als Idee.",
-                      );
-                    else {
-                      setOpen(false);
-                      setSelected(null);
-                      setTitle("");
-                      setNote("");
-                      setPerspective("");
-                      setMessage("Gespeichert.");
-                    }
-                  },
-                )
+                selected && mode === "generate"
+                  ? void requestPerspective()
+                  : void command(
+                      async () => {
+                        if (!selected)
+                          await create({
+                            workspaceId,
+                            title,
+                            note,
+                            perspective,
+                            priority,
+                            source: { kind: "note" },
+                            operationKey: operation.current,
+                          });
+                        else if (mode === "edit")
+                          await edit({
+                            workspaceId,
+                            ideaId: selected.idea._id,
+                            expectedRevision: selected.idea.revision,
+                            title,
+                            note,
+                            perspective,
+                            priority,
+                            feedback: intent,
+                          });
+                        else if (mode === "handoff") {
+                          const r = await handoff({
+                            workspaceId,
+                            ideaId: selected.idea._id,
+                            expectedRevision: selected.idea.revision,
+                            accountId:
+                              (account as Id<"socialAccounts">) || null,
+                            intent,
+                            draftText,
+                            clarificationConfirmed: clarified,
+                          });
+                          if (
+                            mounted.current &&
+                            latestContext.current === contextSnapshot
+                          )
+                            nav(`/drafts/${r.draftId}`);
+                        } else
+                          await generate({
+                            workspaceId,
+                            ideaId: selected.idea._id,
+                            expectedRevision: selected.idea.revision,
+                            accountId: account as Id<"socialAccounts">,
+                            intent,
+                            operationKey: operation.current,
+                          });
+                      },
+                      () => {
+                        if (selected && mode === "generate")
+                          setMessage(
+                            "Lauf gespeichert. Eine Ausgabe gilt erst nach erfolgreicher Persistenz als Idee.",
+                          );
+                        else {
+                          setOpen(false);
+                          setSelected(null);
+                          setTitle("");
+                          setNote("");
+                          setPerspective("");
+                          setMessage("Gespeichert.");
+                        }
+                      },
+                    )
               }
             >
-              {busy
+              {busy || generation.busy
                 ? "Wird gespeichert …"
                 : selected && mode === "handoff"
                   ? "Text geprüft · Entwurf erstellen"
@@ -760,5 +1078,101 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+const routingStrategies = [
+  ["announcement", "Ankündigung"],
+  ["milestone", "Meilenstein"],
+  ["launch", "Produktstart"],
+  ["educational", "Wissen vermitteln"],
+  ["thought-leadership", "Standpunkt"],
+  ["conversation", "Gespräch"],
+  ["story", "Geschichte"],
+  ["promotional", "Promotion"],
+  ["generic", "Allgemein"],
+] as const;
+type RoutingViewValue = FunctionReturnType<typeof api.ai.jev.routing.get>;
+function RoutingView({ view }: { view: RoutingViewValue }) {
+  const clock = useGithubSourceProofClock(
+    view.sourceUntil !== null
+      ? [{ authorized: true, proofExpiresAt: view.sourceUntil }]
+      : [],
+  );
+  const visible =
+      view.applicability !== "unavailable" &&
+      (view.sourceUntil === null || view.sourceUntil > clock),
+    r = visible ? view.result : null;
+  return (
+    <div className="stack text-sm" role="status">
+      <p>
+        {visible
+          ? view.applicability === "historical"
+            ? "Historisches Intent-Routing · keine neue Freigabe"
+            : "Aktuelles Intent-Routing"
+          : "Intent-Routing nicht mehr verfügbar"}
+      </p>
+      {r ? (
+        <>
+          <p>
+            {r.status === "human_choice"
+              ? "Ausdrückliche menschliche Auswahl"
+              : r.status === "configuration_required"
+                ? "Intent-Routing benötigt Konfiguration · generischer Fallback"
+                : r.status === "fallback"
+                  ? "Generischer Fallback"
+                  : r.status === "suggestion"
+                    ? "Unverbindlicher Strategievorschlag"
+                    : "Strategie zugeordnet"}
+          </p>
+          <p>
+            Kategorie: {r.category ?? "nicht bestimmt"} · Vorschlag:{" "}
+            {r.suggestion ?? "keiner"}
+          </p>
+          <p>
+            {r.choiceConfidence !== null && (
+              <>
+                Hypothese zur Auswahl: {Math.round(r.choiceConfidence * 100)} %
+                ·{" "}
+              </>
+            )}
+            Wirksame Strategie: {r.effectiveStrategy} · Verfügbarer Generator:
+            generische Perspektive
+          </p>
+        </>
+      ) : (
+        visible && (
+          <p>
+            Kein abgeschlossenes Routing-Ergebnis
+            {view.deadline <= clock ? " · Klassifikationsfrist abgelaufen" : ""}
+          </p>
+        )
+      )}
+      {view.usage ? (
+        <p>
+          {view.usage.state === "settled"
+            ? view.usage.estimatedMicros === null
+              ? "Klassifikationsbetrag nicht verfügbar; keine Reservierung"
+              : `Klassifikation: ${(view.usage.estimatedMicros / 1e6).toFixed(6)} ${view.usage.currency} geschätzt; keine Reservierung`
+            : `${view.usage.state === "unknown" ? "Klassifikationskosten unbekannt" : "Klassifikationsbeleg noch offen"}; ${(view.usage.heldMicros / 1e6).toFixed(6)} ${view.usage.currency} bleiben reserviert`}
+        </p>
+      ) : (
+        <p>Kein Klassifikationsversuch finanziert.</p>
+      )}
+    </div>
+  );
+}
+function RoutingHistory({
+  workspaceId,
+  operationId,
+}: {
+  workspaceId: Id<"workspaces">;
+  operationId: Id<"jevRoutingOperations">;
+}) {
+  const view = useQuery(api.ai.jev.routing.get, { workspaceId, operationId });
+  return view ? (
+    <RoutingView view={view} />
+  ) : (
+    <p role="status">Routing-Beleg wird geladen …</p>
   );
 }

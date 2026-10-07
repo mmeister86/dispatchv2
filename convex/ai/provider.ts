@@ -11,6 +11,10 @@ import type { Id } from "../_generated/dataModel";
 import { v } from "convex/values";
 
 type Model = Parameters<typeof wrapLanguageModel>[0]["model"];
+// One scope per funded model step, shared only with this concrete physical Requesty fetch.
+type FetchScope = {
+  current: { entered: boolean; proofError?: unknown } | null;
+};
 const safeError = () => new Error("MODEL_PROVIDER_UNAVAILABLE");
 const generationOutput = z
   .object({ text: z.string().trim().min(1).max(12000) })
@@ -112,6 +116,7 @@ async function beforeDeadline<T>(
 export async function requestyFetch(
   input: RequestInfo | URL,
   init: RequestInit | undefined,
+  entered?: () => void,
 ) {
   if (
     String(input) !== "https://router.eu.requesty.ai/v1/chat/completions" ||
@@ -120,6 +125,7 @@ export async function requestyFetch(
     new TextEncoder().encode(init.body).length > 256 * 1024
   )
     throw safeError();
+  entered?.();
   const response = await fetch(input, { ...init, redirect: "error" });
   if (!response.body) return response;
   const reader = response.body.getReader();
@@ -158,6 +164,7 @@ async function boundedAgent(
   runId: Id<"agentRuns">,
   executionKey: string,
   baseModel: Model,
+  fetchScope?: FetchScope,
 ) {
   const initial = await ctx.runQuery(internal.ai.runs.context, {
     runId,
@@ -204,15 +211,23 @@ async function boundedAgent(
             ? `research:${run._id}:semantic-v1`
             : crypto.randomUUID(),
         });
+        const physical = fetchScope
+          ? { entered: false, proofError: undefined as unknown }
+          : null;
+        if (fetchScope) fetchScope.current = physical;
         try {
-          const result = await beforeDeadline(doGenerate(), run.deadline);
-          await ctx.runMutation(internal.ai.runs.settle, {
-            attemptId,
-            inputTokens: result.usage.inputTokens.total ?? null,
-            outputTokens: result.usage.outputTokens.total ?? null,
-            ...metadataCost(result.providerMetadata),
-            errorCode: null,
+          // This original receipt also settles if known usage arrives after the local timeout.
+          const generated = doGenerate().then(async (result) => {
+            await ctx.runMutation(internal.ai.runs.settle, {
+              attemptId,
+              inputTokens: result.usage.inputTokens.total ?? null,
+              outputTokens: result.usage.outputTokens.total ?? null,
+              ...metadataCost(result.providerMetadata),
+              errorCode: null,
+            });
+            return result;
           });
+          const result = await beforeDeadline(generated, run.deadline);
           await authorize();
           if (
             new TextEncoder().encode(JSON.stringify(result.content)).length >
@@ -249,10 +264,11 @@ async function boundedAgent(
         } catch {
           await ctx.runMutation(internal.ai.runs.settle, {
             attemptId,
-            inputTokens: null,
-            outputTokens: null,
+            inputTokens: physical && !physical.entered ? 0 : null,
+            outputTokens: physical && !physical.entered ? 0 : null,
             errorCode: "MODEL_PROVIDER_UNAVAILABLE",
           });
+          if (physical?.proofError) throw physical.proofError;
           throw safeError();
         }
       },
@@ -263,6 +279,10 @@ async function boundedAgent(
             ? `research:${run._id}:semantic-v1`
             : crypto.randomUUID(),
         });
+        const physical = fetchScope
+          ? { entered: false, proofError: undefined as unknown }
+          : null;
+        if (fetchScope) fetchScope.current = physical;
         try {
           const result = await beforeDeadline(doStream(), run.deadline),
             reader = result.stream.getReader();
@@ -358,10 +378,11 @@ async function boundedAgent(
         } catch {
           await ctx.runMutation(internal.ai.runs.settle, {
             attemptId,
-            inputTokens: null,
-            outputTokens: null,
+            inputTokens: physical && !physical.entered ? 0 : null,
+            outputTokens: physical && !physical.entered ? 0 : null,
             errorCode: "MODEL_PROVIDER_UNAVAILABLE",
           });
+          if (physical?.proofError) throw physical.proofError;
           throw safeError();
         }
       },
@@ -417,13 +438,14 @@ export async function generateForRun(
   executionKey: string,
   model: Model,
   streaming = false,
+  fetchScope?: FetchScope,
 ) {
   const { run } = await ctx.runQuery(internal.ai.runs.context, {
     runId,
     generation: 1,
     executionKey,
   });
-  const agent = await boundedAgent(ctx, runId, executionKey, model);
+  const agent = await boundedAgent(ctx, runId, executionKey, model, fetchScope);
   const args = {
     promptMessageId: run.promptMessageId,
     abortSignal: AbortSignal.timeout(Math.max(1, run.deadline - Date.now())),
@@ -469,11 +491,30 @@ export const execute = internalAction({
       researchRun = !!run.research;
       const apiKey = process.env.REQUESTY_API_KEY;
       if (!apiKey) throw new Error("MODEL_PROVIDER_CONFIGURATION_REQUIRED");
+      const fetchScope: FetchScope = { current: null };
       const provider = createOpenAICompatible({
         name: "requesty",
         apiKey,
         baseURL: policy.baseURL,
-        fetch: requestyFetch,
+        fetch: async (input, init) => {
+          const scope = fetchScope.current;
+          if (!scope) throw safeError();
+          try {
+            await ctx.runQuery(internal.ai.runs.context, {
+              runId,
+              generation: run.generation,
+              executionKey,
+            });
+            if (Date.now() >= run.deadline || init?.signal?.aborted)
+              throw new Error("MODEL_RUN_INACTIVE");
+          } catch (error) {
+            scope.proofError = error;
+            throw error;
+          }
+          return requestyFetch(input, init, () => {
+            scope.entered = true;
+          });
+        },
         includeUsage: true,
         metadataExtractor: requestyMetadata,
         supportsStructuredOutputs: true,
@@ -484,6 +525,7 @@ export const execute = internalAction({
         executionKey,
         provider.chatModel(policy.model),
         !!run.conversationId,
+        fetchScope,
       );
       const research = run.research
         ? await ctx.runMutation(internal.ai.researchTools.commitModel, {

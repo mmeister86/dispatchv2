@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useStore } from "@/lib/store";
+import { useNativeCommand } from "@/features/drafts/review";
 import { Section } from "@/components/shared";
 
 export function ModelConfiguration() {
@@ -56,6 +57,9 @@ export function ModelConfiguration() {
       </Section>
       <JevConfiguration
         key={`${state.activeWorkspaceId}:${state.activeAccountId}`}
+      />
+      <RoutingConfiguration
+        key={`routing:${state.activeWorkspaceId}:${state.activeAccountId}`}
       />
       <ModelRuns key={state.activeWorkspaceId} />
     </>
@@ -211,6 +215,92 @@ function ModelRuns() {
         ))
       )}
       {error && <p role="alert">{error}</p>}
+    </Section>
+  );
+}
+
+function RoutingConfiguration() {
+  const { state, nativeScope } = useStore();
+  const account = state.accounts.find(
+    (a) =>
+      a.id === state.activeAccountId &&
+      a.workspaceId === state.activeWorkspaceId,
+  );
+  const availability = useQuery(
+    api.ai.jev.routing.availability,
+    account
+      ? {
+          workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+          accountId: account.id as Id<"socialAccounts">,
+        }
+      : "skip",
+  );
+  const disable = useMutation(api.ai.jev.routing.disable);
+  const command = useNativeCommand(`${nativeScope}:${account?.id}`);
+  const admin = ["Owner", "Admin"].includes(state.role);
+  const [message, setMessage] = useState("");
+  useEffect(() => setMessage(""), [nativeScope, account?.id]);
+  async function withdraw(call?: () => Promise<unknown>) {
+    if (!account || !admin) return;
+    const args = {
+      workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+      accountId: account.id as Id<"socialAccounts">,
+    };
+    if (await command.execute(call ?? (() => disable(args))))
+      setMessage("Routing-Zugang für diesen Account ausdrücklich entzogen.");
+  }
+  return (
+    <Section
+      title="Intent-Routing"
+      description="Strategiezuordnung und Generation benötigen getrennte Freigaben."
+    >
+      {!account ? (
+        <p>Account auswählen, um Intent-Routing zu prüfen.</p>
+      ) : !availability ? (
+        <p role="status">Routing-Konfiguration wird geladen …</p>
+      ) : (
+        <div className="stack text-sm">
+          <p role="status">
+            {availability.status === "ready"
+              ? "Intent-Routing ist konfiguriert. Jede Anfrage prüft ihre aktuellen Freigaben."
+              : "Intent-Routing benötigt Konfiguration."}
+          </p>
+          <p className="muted">
+            Der neue Verarbeitungszweck ist standardmäßig aus. Fehlende oder
+            unvollständige Freigaben erlauben keinen Klassifikationsaufruf. Eine
+            ausdrückliche menschliche Auswahl bleibt möglich; alle neun
+            Strategien verwenden den vorhandenen generischen
+            Perspektivengenerator.
+          </p>
+          {admin && (
+            <Button
+              variant="outline"
+              disabled={command.locked}
+              onClick={() => void withdraw()}
+            >
+              {command.busy
+                ? "Routing-Zugang wird entzogen …"
+                : "Routing-Zugang für Account entziehen"}
+            </Button>
+          )}
+        </div>
+      )}
+      {command.error && <p role="alert">{command.error}</p>}
+      {command.retry && admin && (
+        <Button
+          variant="outline"
+          disabled={command.busy}
+          onClick={() => void withdraw(command.retry!)}
+        >
+          Denselben Routing-Entzug wiederholen
+        </Button>
+      )}
+      {command.conflict && (
+        <Button variant="outline" onClick={command.reviewCurrent}>
+          Aktuellen Routing-Zugang prüfen
+        </Button>
+      )}
+      {message && <p role="status">{message}</p>}
     </Section>
   );
 }

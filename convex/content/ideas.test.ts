@@ -1383,3 +1383,536 @@ test.each(["styled", "edited", "manual-parent", "inherited-run"])(
     ).rejects.toThrow("RESEARCH_CONTENT_ACCOUNT_CHANGED");
   },
 );
+
+test("routed explicit generic binds native operation before generation and remains usable after classifier deadline", async () => {
+  const f = await modelFixture();
+  const ideaId = await f.signed.mutation(api.content.ideas.create, {
+    workspaceId: f.workspaceId,
+    ...input,
+    operationKey: "router-consumer-idea",
+  });
+  const operationId = await f.signed.mutation(api.ai.jev.routing.prepare, {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    operationKey: "router-consumer-choice",
+    intent: {
+      intent: "Explore only",
+      strategy: "generic",
+      outputKind: "perspective",
+      network: "x",
+      objective: null,
+      tone: "Clear",
+      cta: null,
+    },
+  });
+  await vi.advanceTimersByTimeAsync(5001);
+  const args = {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    intent: "Explore only",
+    operationKey: "router-consumer-generate",
+    routingOperationId: operationId,
+  };
+  const runId = await f.signed.mutation(api.content.ideas.generate, args);
+  expect(await f.signed.mutation(api.content.ideas.generate, args)).toBe(runId);
+  const request = await f.t.run((ctx) =>
+    ctx.db
+      .query("contentRequests")
+      .withIndex("by_runId", (q) => q.eq("runId", runId))
+      .unique(),
+  );
+  expect(request).toMatchObject({
+    routingOperationId: operationId,
+    actorId: f.userId,
+  });
+  const op = await f.t.run((ctx) => ctx.db.get(operationId));
+  expect(op!.result).toMatchObject({
+    status: "human_choice",
+    effectiveStrategy: "generic",
+    generatorKind: "generic",
+  });
+  expect(await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())).toEqual(
+    [],
+  );
+  expect(await f.t.run((ctx) => ctx.db.query("approvals").collect())).toEqual(
+    [],
+  );
+  expect(await f.t.run((ctx) => ctx.db.query("schedules").collect())).toEqual(
+    [],
+  );
+});
+
+async function routedConsumer(strategy: string | null = "generic") {
+  const f = await modelFixture();
+  const ideaId = await f.signed.mutation(api.content.ideas.create, {
+    workspaceId: f.workspaceId,
+    ...input,
+    operationKey: "routed-original",
+  });
+  const command = {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    operationKey: "routed-choice",
+    intent: {
+      intent: "Explore only",
+      strategy,
+      outputKind: "perspective" as const,
+      network: "x" as const,
+      objective: "Explain",
+      tone: "Clear",
+      cta: null,
+    },
+  };
+  const operationId = await f.signed.mutation(
+    api.ai.jev.routing.prepare,
+    command,
+  );
+  const args = {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    intent: command.intent.intent,
+    operationKey: "routed-generation",
+    routingOperationId: operationId,
+  };
+  const runId = await f.signed.mutation(api.content.ideas.generate, args);
+  return { ...f, ideaId, operationId, command, args, runId };
+}
+function routedProviderResponse(tool = false) {
+  return Response.json({
+    id: "routed-synthetic",
+    object: "chat.completion",
+    created: 1791210000,
+    model: "synthetic/model",
+    choices: [
+      {
+        index: 0,
+        message: tool
+          ? {
+              role: "assistant",
+              content: null,
+              tool_calls: [
+                {
+                  id: "native-read-context",
+                  type: "function",
+                  function: { name: "read_context", arguments: "{}" },
+                },
+              ],
+            }
+          : {
+              role: "assistant",
+              content: JSON.stringify({ text: JSON.stringify(proposal) }),
+            },
+        finish_reason: tool ? "tool_calls" : "stop",
+      },
+    ],
+    usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+  });
+}
+
+test.each([
+  "announcement",
+  "milestone",
+  "launch",
+  "educational",
+  "thought-leadership",
+  "conversation",
+  "story",
+  "promotional",
+  "generic",
+  null,
+])(
+  "native %s routing consumer keeps actual generic perspective and exact prompt intent, rejects changed edge before copies",
+  async (strategy) => {
+    const f = await routedConsumer(strategy);
+    const op = await f.t.run((ctx) => ctx.db.get(f.operationId));
+    expect(op!.result).toMatchObject({
+      generatorKind: "generic",
+      status: strategy === null ? "configuration_required" : "human_choice",
+    });
+    const run = await f.t.run((ctx) => ctx.db.get(f.runId));
+    const messages = await f.t.query(
+      components.agent.messages.listMessagesByThreadId,
+      {
+        threadId: run!.threadId,
+        order: "asc",
+        paginationOpts: { numItems: 10, cursor: null },
+      },
+    );
+    expect(JSON.stringify(messages.page)).toContain("Explain");
+    expect(JSON.stringify(messages.page)).toContain("perspective");
+    await expect(
+      f.signed.mutation(api.content.ideas.generate, {
+        ...f.args,
+        routingOperationId: undefined,
+      }),
+    ).rejects.toThrow("OPERATION_CONFLICT");
+    await expect(
+      f.signed.mutation(api.content.ideas.generate, {
+        ...f.args,
+        intent: "Changed",
+      }),
+    ).rejects.toThrow("OPERATION_CONFLICT");
+    const before = await f.t.run((ctx) => ctx.db.query("agentRuns").collect());
+    await f.signed.mutation(api.content.ideas.edit, {
+      workspaceId: f.workspaceId,
+      ideaId: f.ideaId,
+      expectedRevision: 1,
+      title: input.title,
+      note: input.note,
+      perspective: "Changed current",
+      priority: "normal",
+      feedback: "Human revision",
+    });
+    await expect(
+      f.signed.mutation(api.content.ideas.generate, f.args),
+    ).rejects.toThrow("ROUTING_SUPERSEDED");
+    expect(await f.t.run((ctx) => ctx.db.query("agentRuns").collect())).toEqual(
+      before,
+    );
+    expect(
+      await f.signed.query(api.ai.jev.routing.get, {
+        workspaceId: f.workspaceId,
+        operationId: f.operationId,
+      }),
+    ).toMatchObject({ applicability: "historical" });
+    expect(
+      await f.t.run((ctx) => ctx.db.query("aiAttempts").collect()),
+    ).toEqual([]);
+  },
+);
+
+test.each(["withdraw", "unknown-proof", "second-step"])(
+  "actual routed SDK %s after durable fund denies physical HTTP with known zero charge for that exact step",
+  async (kind) => {
+    const f = await routedConsumer();
+    vi.stubEnv("REQUESTY_API_KEY", "synthetic-no-live-key");
+    const { getFunctionName } = await import("convex/server");
+    const { execute } = await import("../ai/provider");
+    let revoked = false,
+      calls = 0,
+      funds = 0,
+      unknownProof = false;
+    const observed: string[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      calls++;
+      return routedProviderResponse(kind === "second-step" && calls === 1);
+    });
+    // Run the actual registered action with a transport boundary after the native fund commits.
+    await f.t.action(async (ctx) => {
+      const nameOf = (ref: Parameters<typeof getFunctionName>[0]) => {
+        try {
+          return getFunctionName(ref);
+        } catch {
+          return "component-reference";
+        }
+      };
+      const runMutation: typeof ctx.runMutation = async (ref, args) => {
+        observed.push(nameOf(ref));
+        const result = await ctx.runMutation(ref, args);
+        if (
+          nameOf(ref) === "ai/runs:fund" &&
+          ++funds === (kind === "second-step" ? 2 : 1)
+        ) {
+          const attempt = await f.t.run((dbCtx) =>
+            dbCtx.db.get(
+              result as import("../_generated/dataModel").Id<"aiAttempts">,
+            ),
+          );
+          expect(attempt).toMatchObject({
+            state: "sent",
+            runId: f.runId,
+            workspaceId: f.workspaceId,
+            generation: 1,
+          });
+          const ownedRun = (await f.t.run((dbCtx) => dbCtx.db.get(f.runId)))!;
+          expect(ownedRun).toMatchObject({
+            actorId: f.userId,
+            accountId: f.accountId,
+            budgetIds: attempt!.budgetIds,
+          });
+          expect(new Set(attempt!.budgetIds).size).toBe(3);
+          for (const id of attempt!.budgetIds)
+            expect(await f.t.run((dbCtx) => dbCtx.db.get(id))).toMatchObject({
+              heldMicros: attempt!.reservedMicros,
+            });
+          revoked = true;
+          if (kind === "unknown-proof") unknownProof = true;
+          else
+            await f.signed.mutation(api.ai.jev.routing.disable, {
+              workspaceId: f.workspaceId,
+              accountId: f.accountId,
+            });
+        }
+        return result;
+      };
+      const runQuery: typeof ctx.runQuery = async (ref, args) => {
+        if (unknownProof && nameOf(ref) === "ai/runs:context")
+          throw new ConvexError("SYNTHETIC_NATIVE_RESOURCE_FAULT");
+        observed.push(nameOf(ref));
+        return ctx.runQuery(ref, args);
+      };
+      await (
+        execute as unknown as {
+          _handler: (
+            ctx: import("../_generated/server").ActionCtx,
+            args: { runId: typeof f.runId },
+          ) => Promise<null>;
+        }
+      )._handler({ ...ctx, runMutation, runQuery }, { runId: f.runId });
+    });
+    expect(
+      revoked,
+      JSON.stringify({
+        observed,
+        run: await f.t.run((ctx) => ctx.db.get(f.runId)),
+      }),
+    ).toBe(true);
+    expect(calls).toBe(kind === "second-step" ? 1 : 0);
+    const attempts = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(attempts).toHaveLength(kind === "second-step" ? 2 : 1);
+    expect(attempts.at(-1)).toMatchObject({
+      state: "settled",
+      inputTokens: 0,
+      outputTokens: 0,
+      estimatedMicros: 0,
+      heldMicros: 0,
+    });
+    if (kind === "second-step")
+      expect(attempts[0]).toMatchObject({
+        state: "settled",
+        estimatedMicros: 30,
+        heldMicros: 0,
+      });
+    for (const id of attempts.at(-1)!.budgetIds)
+      expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({
+        heldMicros: 0,
+        spentMicros: kind === "second-step" ? 30 : 0,
+      });
+    expect(
+      (await f.t.run((ctx) => ctx.db.query("contentRequests").first()))!
+        .resultIdeaId,
+    ).toBeNull();
+    if (kind === "unknown-proof")
+      expect(await f.t.run((ctx) => ctx.db.get(f.operationId))).toMatchObject({
+        sourceUnavailable: false,
+        intent: f.command.intent,
+      });
+  },
+);
+
+test("routed source withdrawal cleans >page requests and their actual Agent copies, terminal router replay cannot restore them", async () => {
+  const f = await routedConsumer();
+  const ids = [f.runId];
+  for (let i = 0; i < 25; i++)
+    ids.push(
+      await f.signed.mutation(api.content.ideas.generate, {
+        ...f.args,
+        operationKey: `routed-page-${i}`,
+      }),
+    );
+  const threads = await f.t.run(async (ctx) =>
+    Promise.all(ids.map(async (id) => (await ctx.db.get(id))!.threadId)),
+  );
+  expect(threads).toHaveLength(26);
+  await f.signed.mutation(api.ai.jev.routing.disable, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+  });
+  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+  const requests = await f.t.run((ctx) =>
+    ctx.db.query("contentRequests").collect(),
+  );
+  expect(requests).toHaveLength(26);
+  expect(requests.every((r) => r.intent === "")).toBe(true);
+  for (const id of ids)
+    expect((await f.t.run((ctx) => ctx.db.get(id)))!.sourceCleanupState).toBe(
+      "complete",
+    );
+  for (const threadId of threads)
+    expect(
+      (
+        await f.t.query(components.agent.messages.listMessagesByThreadId, {
+          threadId,
+          order: "desc",
+          paginationOpts: { numItems: 10, cursor: null },
+        })
+      ).page,
+    ).toEqual([]);
+  await f.t.mutation(internal.ai.jev.routing.scrub, {
+    operationId: f.operationId,
+  });
+  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+  await expect(
+    f.signed.mutation(api.content.ideas.generate, f.args),
+  ).rejects.toThrow();
+  expect(await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())).toEqual(
+    [],
+  );
+  expect(await f.t.run((ctx) => ctx.db.query("schedules").collect())).toEqual(
+    [],
+  );
+});
+
+test.each(["missing", "complete"])(
+  "router cleanup independently scrubs request and generated Idea when run root is %s",
+  async (kind) => {
+    const f = await routedConsumer();
+    const executionKey = "routed-output";
+    await f.t.mutation(internal.ai.runs.claim, {
+      runId: f.runId,
+      executionKey,
+    });
+    const resultId = await f.t.mutation(internal.content.ideas.commitProposal, {
+      runId: f.runId,
+      executionKey,
+      output: JSON.stringify(proposal),
+    });
+    const versionId = (await f.t.run((ctx) => ctx.db.get(resultId!)))!
+      .currentVersionId!;
+    await f.t.run(async (ctx) => {
+      if (kind === "missing") await ctx.db.delete(f.runId);
+      else await ctx.db.patch(f.runId, { sourceCleanupState: "complete" });
+      await ctx.db.delete(f.operationId);
+    });
+    await f.t.mutation(internal.ai.jev.routing.scrub, {
+      operationId: f.operationId,
+    });
+    await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+    expect(
+      (await f.t.run((ctx) => ctx.db.query("contentRequests").first()))!.intent,
+    ).toBe("");
+    expect(await f.t.run((ctx) => ctx.db.get(versionId))).toMatchObject({
+      title: "",
+      perspective: "",
+      rationale: "",
+      questions: [],
+      originals: [],
+      note: "",
+      sourceUnavailable: true,
+    });
+  },
+);
+
+test("routed actual entered HTTP keeps unknown hold then settles genuine late original once", async () => {
+  const f = await routedConsumer();
+  vi.stubEnv("REQUESTY_API_KEY", "synthetic-no-live-key");
+  let entered!: () => void, answer!: (response: Response) => void;
+  const physical = new Promise<void>((resolve) => {
+    entered = resolve;
+  });
+  const response = new Promise<Response>((resolve) => {
+    answer = resolve;
+  });
+  const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+    entered();
+    return response;
+  });
+  const executing = f.t.action(internal.ai.provider.execute, {
+    runId: f.runId,
+  });
+  await physical;
+  const original = (
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())
+  )[0];
+  expect(original).toMatchObject({
+    state: "sent",
+    runId: f.runId,
+    workspaceId: f.workspaceId,
+    generation: 1,
+  });
+  expect(original.budgetIds).toHaveLength(3);
+  expect(await f.t.run((ctx) => ctx.db.get(f.runId))).toMatchObject({
+    actorId: f.userId,
+    accountId: f.accountId,
+    budgetIds: original.budgetIds,
+  });
+  await vi.advanceTimersByTimeAsync(60001);
+  await executing;
+  expect(await f.t.run((ctx) => ctx.db.get(original._id))).toMatchObject({
+    state: "unknown",
+    heldMicros: original.reservedMicros,
+    estimatedMicros: null,
+  });
+  await f.signed.mutation(api.ai.jev.routing.disable, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+  });
+  answer(routedProviderResponse());
+  await vi.waitFor(async () =>
+    expect(await f.t.run((ctx) => ctx.db.get(original._id))).toMatchObject({
+      state: "settled",
+      estimatedMicros: 30,
+      heldMicros: 0,
+    }),
+  );
+  await f.t.action(internal.ai.provider.execute, { runId: f.runId });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect()),
+  ).toHaveLength(1);
+  for (const id of original.budgetIds)
+    expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({
+      heldMicros: 0,
+      spentMicros: 30,
+    });
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("contentRequests").first()))!
+      .resultIdeaId,
+  ).toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.query("schedules").collect())).toEqual(
+    [],
+  );
+});
+
+test("routed run shares original aggregate32 proof budget and rejects next ancestor atomically", async () => {
+  const f = await routedConsumer();
+  await f.t.run(async (ctx) => {
+    const idea = (await ctx.db.get(f.ideaId))!,
+      version = (await ctx.db.get(idea.currentVersionId!))!;
+    const { _id, _creationTime, ...base } = version;
+    let parent = _id;
+    for (let n = 0; n < 31; n++)
+      parent = await ctx.db.insert("ideaVersions", {
+        ...base,
+        inputVersionId: parent,
+        number: n + 2,
+      });
+    await ctx.db.patch(idea._id, { currentVersionId: parent });
+  });
+  const operationId = await f.signed.mutation(api.ai.jev.routing.prepare, {
+    ...f.command,
+    operationKey: "aggregate-original",
+  });
+  const before = await f.t.run(async (ctx) => ({
+    runs: await ctx.db.query("agentRuns").collect(),
+    requests: await ctx.db.query("contentRequests").collect(),
+    operations: await ctx.db.query("jevRoutingOperations").collect(),
+  }));
+  await expect(
+    f.signed.mutation(api.content.ideas.generate, {
+      ...f.args,
+      operationKey: "aggregate-denied",
+      routingOperationId: operationId,
+    }),
+  ).rejects.toThrow("STYLE_ANCESTRY_LIMIT");
+  expect(
+    await f.t.run(async (ctx) => ({
+      runs: await ctx.db.query("agentRuns").collect(),
+      requests: await ctx.db.query("contentRequests").collect(),
+      operations: await ctx.db.query("jevRoutingOperations").collect(),
+    })),
+  ).toEqual(before);
+  expect(await f.t.run((ctx) => ctx.db.query("aiAttempts").collect())).toEqual(
+    [],
+  );
+});

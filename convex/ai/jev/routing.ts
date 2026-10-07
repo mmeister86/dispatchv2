@@ -20,7 +20,11 @@ import {
 import { rethrowUnexpectedSourceError } from "../../lib/sourceProof";
 import { sha256 } from "../../lib/crypto";
 import { ideaProofUntil } from "../../research/contentProof";
-import { materialWalk } from "../../research/pipelineAccess";
+import {
+  materialWalk,
+  enterMaterial,
+  type MaterialWalk,
+} from "../../research/pipelineAccess";
 import { currentContext } from "../../integrations/github/contextAccess";
 import { excerpt } from "../../integrations/github/contextFields";
 import { captureStyle, scopedStyleProof } from "../styleProfiles";
@@ -271,7 +275,12 @@ export const contextContract = v.object({
   budgetIds: v.array(v.id("aiBudgets")),
 });
 type Context = Infer<typeof contextContract>;
-async function source(ctx: Ctx, o: SourcePin, current = false) {
+async function source(
+  ctx: Ctx,
+  o: SourcePin,
+  current = false,
+  walk: MaterialWalk = materialWalk(),
+) {
   for (const key of ["routing:global", `routing:account:${o.accountId}`]) {
     const c = await ctx.db
       .query("jevControls")
@@ -310,7 +319,6 @@ async function source(ctx: Ctx, o: SourcePin, current = false) {
     idea.status === "archived"
   )
     fail("ROUTING_SOURCE_UNAVAILABLE");
-  const walk = materialWalk();
   const until = await ideaProofUntil(ctx, ver, walk, o.accountId);
   const style = o.style
     ? await scopedStyleProof(ctx, o, o.style, current, walk)
@@ -400,8 +408,12 @@ async function semantic(
     }),
   );
 }
-async function retained(ctx: Ctx, o: Operation) {
-  const x = await source(ctx, o);
+async function retained(
+  ctx: Ctx,
+  o: Operation,
+  walk: MaterialWalk = materialWalk(),
+) {
+  const x = await source(ctx, o, false, walk);
   if (o.policyId) {
     const p = await ctx.db.get(o.policyId);
     if (
@@ -451,8 +463,9 @@ async function current(
   ctx: Ctx,
   o: Operation,
   execution = true,
+  walk: MaterialWalk = materialWalk(),
 ): Promise<Context> {
-  const x = await source(ctx, o, true);
+  const x = await source(ctx, o, true, walk);
   if (execution && o.deadline <= Date.now()) fail("ROUTING_EXPIRED");
   const c = await configuration(ctx, o.workspaceId, o.accountId, o.attemptId);
   if (
@@ -503,6 +516,69 @@ function fallback(
     thresholdVersion: "jev-routing-hypotheses-v1",
   };
 }
+// The existing generation consumer rejoins this operation, not its physical classifier deadline.
+export async function routingProof(
+  ctx: Ctx,
+  id: Id<"jevRoutingOperations">,
+  pin: Pick<
+    Doc<"contentRequests">,
+    | "workspaceId"
+    | "actorId"
+    | "accountId"
+    | "ideaId"
+    | "inputVersionId"
+    | "inputRevision"
+    | "intent"
+  >,
+  fresh = true,
+  walk: MaterialWalk = materialWalk(),
+  run?: Doc<"agentRuns">,
+) {
+  const o = await operation(ctx, id),
+    key = `routing:${id}`;
+  enterMaterial(walk, key, "STYLE_ANCESTRY_LIMIT");
+  try {
+    if (
+      o.workspaceId !== pin.workspaceId ||
+      o.actorId !== pin.actorId ||
+      o.accountId !== pin.accountId ||
+      o.ideaId !== pin.ideaId ||
+      o.inputVersionId !== pin.inputVersionId ||
+      o.inputRevision !== pin.inputRevision
+    )
+      fail("ROUTING_RECEIPT_INVALID");
+    const kept = await retained(ctx, o, walk);
+    if (!o.intent || o.intent.intent !== pin.intent)
+      fail("ROUTING_RECEIPT_INVALID");
+    if (!o.result) fail("ROUTING_PENDING");
+    if (run) {
+      const a = o.style,
+        b = run.styleContext;
+      if (
+        a
+          ? !b ||
+            a.versionId !== b.versionId ||
+            a.fingerprint !== b.fingerprint ||
+            a.selectedBy !== b.selectedBy ||
+            a.selectionReceiptId !== b.selectionReceiptId
+          : !!b
+      )
+        fail("ROUTING_RECEIPT_INVALID");
+    }
+    const now = fresh
+      ? o.policyId
+        ? await current(ctx, o, false, walk)
+        : await source(ctx, o, true, walk)
+      : kept;
+    return {
+      operation: o,
+      sourceUntil: minimum(o.sourceUntil, kept.sourceUntil, now.sourceUntil),
+    };
+  } finally {
+    walk.active.delete(key);
+  }
+}
+
 export const prepare = workspaceMutation({
   args: {
     ideaId: v.id("ideas"),
@@ -672,16 +748,43 @@ export const get = workspaceQuery({
     ),
     result: v.union(routingResult, v.null()),
     sourceUntil: v.union(v.number(), v.null()),
+    deadline: v.number(),
+    usage: v.union(
+      v.null(),
+      v.object({
+        state: v.union(
+          v.literal("sent"),
+          v.literal("unknown"),
+          v.literal("settled"),
+        ),
+        heldMicros: v.number(),
+        estimatedMicros: v.union(v.number(), v.null()),
+        currency: v.string(),
+      }),
+    ),
   }),
   handler: async (ctx, a) => {
     const o = await operation(ctx, a.operationId);
     requireReference(ctx.workspace._id, o);
+    const t = o.attemptId ? await receipt(ctx, o.attemptId, o._id) : null;
+    const money = {
+      deadline: o.deadline,
+      usage: t
+        ? {
+            state: t.state,
+            heldMicros: t.heldMicros,
+            estimatedMicros: t.estimatedMicros,
+            currency: t.currency,
+          }
+        : null,
+    };
     try {
       const x = await retained(ctx, o);
       try {
         await source(ctx, o, true);
         if (o.policyId) await current(ctx, o, false);
         return {
+          ...money,
           applicability: "current" as const,
           result: o.result,
           sourceUntil: x.sourceUntil,
@@ -689,6 +792,7 @@ export const get = workspaceQuery({
       } catch (error) {
         routingLoss(error);
         return {
+          ...money,
           applicability: "historical" as const,
           result: o.result,
           sourceUntil: x.sourceUntil,
@@ -697,6 +801,7 @@ export const get = workspaceQuery({
     } catch (error) {
       routingLoss(error);
       return {
+        ...money,
         applicability: "unavailable" as const,
         result: null,
         sourceUntil: null,
@@ -808,11 +913,17 @@ export const authorizeFetch = internalQuery({
     return null;
   },
 });
-async function receipt(ctx: Ctx, id: Id<"aiAttempts">) {
+async function receipt(
+  ctx: Ctx,
+  id: Id<"aiAttempts">,
+  expectedOperationId?: Id<"jevRoutingOperations">,
+) {
   const t = await ctx.db.get(id);
   if (
     !t ||
     t.owner !== "jev-intent-router" ||
+    (expectedOperationId !== undefined &&
+      t.routingOperationId !== expectedOperationId) ||
     t.runId !== undefined ||
     t.researchOrderId !== undefined ||
     t.logicalIntent !== undefined ||
@@ -1032,7 +1143,7 @@ export const finish = internalMutation({
       };
     }
     if (o.attemptId) {
-      const t = await receipt(ctx, o.attemptId);
+      const t = await receipt(ctx, o.attemptId, o._id);
       if (t.outcome !== a.outcome) fail("ROUTING_RECEIPT_INVALID");
     } else if (a.outcome !== "unavailable") fail("ROUTING_RECEIPT_INVALID");
     await ctx.db.patch(o._id, { result });
@@ -1062,6 +1173,10 @@ export const status = internalQuery({
   },
 });
 async function erase(ctx: MutationCtx, o: Operation) {
+  await ctx.scheduler.runAfter(0, internal.content.ideas.purgeRouting, {
+    operationId: o._id,
+    cursor: null,
+  });
   if (!o.sourceUnavailable)
     await ctx.db.patch(o._id, {
       sourceUnavailable: true,
@@ -1083,7 +1198,18 @@ export const scrub = internalMutation({
   returns: v.null(),
   handler: async (ctx, a) => {
     const o = await ctx.db.get(a.operationId);
-    if (o) await cleanup(ctx, o);
+    if (o) {
+      if (o.sourceUnavailable)
+        await ctx.scheduler.runAfter(0, internal.content.ideas.purgeRouting, {
+          operationId: a.operationId,
+          cursor: null,
+        });
+      await cleanup(ctx, o);
+    } else
+      await ctx.scheduler.runAfter(0, internal.content.ideas.purgeRouting, {
+        operationId: a.operationId,
+        cursor: null,
+      });
     return null;
   },
 });
