@@ -1,3 +1,4 @@
+import { NativeProfileExport } from "@/features/settings/data-export";
 import { ContentStrategy } from "@/features/settings/content-strategy";
 import { IntelligenceProfiles } from "@/features/intelligence/profiles";
 import { GithubSources } from "@/features/settings/github";
@@ -113,7 +114,7 @@ const navigation = [
 ];
 export function SettingsPage() {
   const { tab = "profile" } = useParams();
-  const { state } = useStore();
+  const { state, nativeScope } = useStore();
   const admin = state.role === "Owner" || state.role === "Admin";
   const content: Record<string, ReactNode> = {
     profile: <ProfileSettings />,
@@ -162,6 +163,8 @@ export function SettingsPage() {
             <ContentStrategy />
           ) : !demoMode && tab === "notifications" ? (
             <CloudNotificationSettings />
+          ) : !demoMode && tab === "data" ? (
+            <NativeProfileExport key={nativeScope} />
           ) : !demoMode && !["profile", "workspaces"].includes(tab) ? (
             <EmptyState
               title="Dieser Bereich wird noch angebunden"

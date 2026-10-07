@@ -1,6 +1,6 @@
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const evidence =
   process.env.DISPATCH_HEALTH_EVIDENCE_DIR ??
@@ -11,7 +11,7 @@ const mocks = {
   "convex/react": `import React from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
 const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';throw new Error('No domain writes in health fixture');});return funcs.get(name)};
-export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:async()=>{throw new Error('No direct remote read expected')}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
+export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(name!=='operations/export:self')throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
 export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
 export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
@@ -73,6 +73,13 @@ try {
       for (const fn of window.listeners) fn();
     };
     window.commands = [];
+    window.exportRequests = [];
+    window.urlRevocations = [];
+    const revoke = URL.revokeObjectURL.bind(URL);
+    URL.revokeObjectURL = (url) => {
+      window.urlRevocations.push(url);
+      revoke(url);
+    };
     window.storageWrites = [];
     const setItem = Storage.prototype.setItem;
     Storage.prototype.setItem = function (key, value) {
@@ -521,6 +528,248 @@ try {
   await expect(
     page.getByRole("button", { name: "Nachweis aktualisieren", exact: true }),
   ).toBeVisible();
+  // TASK-33.1.1: actual mounted Cloud self-profile consumer.
+  await page.goto("http://127.0.0.1:5189/settings/data");
+  await expect(
+    page.getByRole("button", {
+      name: "Eigenes Profil als JSON herunterladen",
+      exact: true,
+    }),
+  ).toBeVisible();
+  const exportButton = page.getByRole("button", {
+    name: "Eigenes Profil als JSON herunterladen",
+    exact: true,
+  });
+  const resolveExport = (patch = {}, index = -1) =>
+    page.evaluate(
+      ({ patch, index }) => {
+        const r = window.exportRequests.at(index);
+        const data = {
+          format: "dispatch-self-profile",
+          version: 1,
+          observedAt: 1800000000000,
+          user: { id: "user-owner", createdAt: 1 },
+          workspace: { id: r.args.workspaceId, name: "Native workspace" },
+          membership: { role: window.snapshot.workspaces[0].role },
+          profile: {
+            ...window.snapshot.preferences,
+            audience: "Eigenes Publikum 🧭",
+          },
+          coverage: {
+            kind: "selected_workspace_self_profile",
+            complete: true,
+            included: [
+              "app_user_context",
+              "selected_workspace_context",
+              "own_membership",
+              "own_profile",
+            ],
+            unsupported: ["private_content_and_components"],
+          },
+        };
+        r.resolve({
+          requestKey: r.args.requestKey,
+          authId: r.args.expectedAuthId,
+          sessionId: window.session.session.id,
+          data,
+          ...patch,
+        });
+      },
+      { patch, index },
+    );
+  expect(await page.evaluate(() => window.exportRequests.length)).toBe(0);
+  await expect(page.getByText(/Dies ist ein Teil-Export/)).toBeVisible();
+  const beforeEntropy = await page.evaluate(() => window.exportRequests.length);
+  await page.evaluate(() => {
+    window.realUUID = crypto.randomUUID.bind(crypto);
+    crypto.randomUUID = () => {
+      throw Error("PRIVATE_ENTROPY_ERROR");
+    };
+  });
+  await exportButton.click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Profil-Export konnte nicht erstellt werden",
+  );
+  await expect(exportButton).toBeEnabled();
+  expect(await page.evaluate(() => window.exportRequests.length)).toBe(
+    beforeEntropy,
+  );
+  await page.evaluate(() => {
+    crypto.randomUUID = window.realUUID;
+  });
+  const exportedFiles = [];
+  for (const role of ["Owner", "Admin", "Editor", "Viewer"]) {
+    await page.evaluate(
+      (role) =>
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role }],
+          },
+        }),
+      role,
+    );
+    await exportButton.click();
+    await expect(exportButton).toBeDisabled();
+    const delivered = page.waitForEvent("download");
+    await resolveExport();
+    const download = await delivered;
+    expect(download.suggestedFilename()).toBe("dispatch-self-profile.json");
+    const data = JSON.parse(readFileSync(await download.path(), "utf8"));
+    exportedFiles.push(data);
+    expect(data.membership.role).toBe(role);
+    expect(data.profile.audience).toBe("Eigenes Publikum 🧭");
+    expect(Object.keys(data.workspace).sort()).toEqual(["id", "name"]);
+    expect(JSON.stringify(data)).not.toMatch(
+      /authId|sessionId|requestKey|token|ownerId|localStorage/,
+    );
+    expect(data.coverage.kind).toBe("selected_workspace_self_profile");
+    await expect(exportButton).toBeEnabled();
+    await page.clock.runFor(1001);
+  }
+  const keys = await page.evaluate(() =>
+    window.exportRequests.map((r) => r.args.requestKey),
+  );
+  expect(new Set(keys).size).toBe(4);
+  expect(keys.every((key) => key.length > 0 && key.length <= 64)).toBe(true);
+  expect(await page.evaluate(() => window.urlRevocations.length)).toBe(4);
+  expect(await page.evaluate(() => window.storageWrites)).toEqual([]);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({
+    path: `${evidence}/profile-export-1280.png`,
+    fullPage: false,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${evidence}/profile-export-390.png`,
+    fullPage: false,
+  });
+  const downloadEvents = [];
+  page.on("download", (d) => downloadEvents.push(d.suggestedFilename()));
+  for (const mismatch of [
+    { sessionId: "foreign-native-session" },
+    { authId: "foreign-native-user" },
+    { requestKey: "wrong-response-key" },
+  ]) {
+    await exportButton.click();
+    await resolveExport(mismatch);
+    await expect(page.getByRole("alert")).toContainText(
+      "Anmeldung oder Auswahl hat sich geändert",
+    );
+  }
+  const revocationsBeforeFailure = await page.evaluate(
+    () => window.urlRevocations.length,
+  );
+  await page.evaluate(() => {
+    window.realAnchorClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = () => {
+      throw Error("PRIVATE_HANDOFF_FAILURE");
+    };
+  });
+  await exportButton.click();
+  await resolveExport();
+  await expect(page.getByRole("alert")).toContainText(
+    "Profil-Export konnte nicht erstellt werden",
+  );
+  expect(await page.evaluate(() => window.urlRevocations.length)).toBe(
+    revocationsBeforeFailure + 1,
+  );
+  await expect(exportButton).toBeEnabled();
+  await page.evaluate(() => {
+    HTMLAnchorElement.prototype.click = window.realAnchorClick;
+  });
+  await exportButton.click();
+  await page.evaluate(() =>
+    window.exportRequests.at(-1).reject(Error("PRIVATE_EXPORT_FAILURE")),
+  );
+  await expect(page.getByRole("alert")).toContainText(
+    "Profil-Export konnte nicht erstellt werden",
+  );
+  expect(await page.locator("main").innerText()).not.toContain(
+    "PRIVATE_EXPORT_FAILURE",
+  );
+  await exportButton.click();
+  const oldRole = await page.evaluate(() => window.exportRequests.length - 1);
+  await page.evaluate(() =>
+    window.update({
+      snapshot: {
+        ...window.snapshot,
+        workspaces: [{ ...window.snapshot.workspaces[0], role: "Admin" }],
+      },
+    }),
+  );
+  await expect(exportButton).toBeEnabled();
+  await resolveExport({}, oldRole);
+  // Actual observed session A→B→A and workspace A→B→A remounts reject outstanding old results/errors.
+  await exportButton.click();
+  const oldSession = await page.evaluate(
+    () => window.exportRequests.length - 1,
+  );
+  await page.evaluate(() =>
+    window.update({
+      session: { ...window.session, session: { id: "session-other" } },
+    }),
+  );
+  await expect(exportButton).toBeEnabled();
+  await page.evaluate(() =>
+    window.update({
+      session: { ...window.session, session: { id: "session-owner" } },
+    }),
+  );
+  await expect(exportButton).toBeEnabled();
+  await resolveExport({}, oldSession);
+  await exportButton.click();
+  const oldWorkspace = await page.evaluate(
+    () => window.exportRequests.length - 1,
+  );
+  await page.evaluate(() =>
+    window.update({
+      snapshot: {
+        ...window.snapshot,
+        activeWorkspaceId: "workspace-other",
+        workspaces: [
+          { ...window.snapshot.workspaces[0], id: "workspace-other" },
+        ],
+      },
+      roster: { ...window.roster, workspaceId: "workspace-other" },
+    }),
+  );
+  await expect(exportButton).toBeEnabled();
+  await page.evaluate(() =>
+    window.update({
+      snapshot: {
+        ...window.snapshot,
+        activeWorkspaceId: "workspace-native",
+        workspaces: [
+          { ...window.snapshot.workspaces[0], id: "workspace-native" },
+        ],
+      },
+      roster: { ...window.roster, workspaceId: "workspace-native" },
+    }),
+  );
+  await expect(exportButton).toBeEnabled();
+  await page.evaluate(
+    (index) =>
+      window.exportRequests[index].reject(Error("PRIVATE_LATE_EXPORT_FAILURE")),
+    oldWorkspace,
+  );
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await exportButton.click();
+  const unmounted = await page.evaluate(() => window.exportRequests.length - 1);
+  await page.getByRole("link", { name: "Mein Profil", exact: true }).click();
+  await resolveExport({}, unmounted);
+  expect(downloadEvents).toEqual([]);
+  const allExportKeys = await page.evaluate(() =>
+    window.exportRequests.map((r) => r.args.requestKey),
+  );
+  expect(new Set(allExportKeys).size).toBe(allExportKeys.length);
+  expect(
+    await page.evaluate(() =>
+      window.commands.filter((c) => c.name !== "users:bootstrap"),
+    ),
+  ).toEqual([]);
+  expect(await page.evaluate(() => window.storageWrites)).toEqual([]);
+
   // TASK-32.1: actual mounted Cloud settings are unavailable/off for every role.
   await page.goto("http://127.0.0.1:5189/settings/notifications");
   const options = [
@@ -698,6 +947,30 @@ try {
       window.queries.filter((q) => q.name === "operations/health:get"),
     ),
   ).toEqual([]);
+  await page.goto("http://127.0.0.1:5189/settings/data?demo=1");
+  await expect(
+    page.getByRole("button", { name: "Export vorbereiten", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: "Eigenes Profil als JSON herunterladen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Export vorbereiten", exact: true })
+    .click();
+  await page.clock.runFor(501);
+  const demoDownloadEvent = page.waitForEvent("download");
+  await page
+    .getByRole("button", { name: "JSON herunterladen", exact: true })
+    .click();
+  const demoDownload = await demoDownloadEvent;
+  expect(demoDownload.suggestedFilename()).toBe("dispatch-workspace.json");
+  const demoData = JSON.parse(readFileSync(await demoDownload.path(), "utf8"));
+  expect(demoData).toHaveProperty("drafts");
+  expect(demoData).toHaveProperty("settings");
+  expect(await page.evaluate(() => window.exportRequests.length)).toBe(0);
   await page.goto("http://127.0.0.1:5189/settings/notifications?demo=1");
   for (const [name, checked] of [
     ["In-App-Zusammenfassungen", true],
@@ -788,6 +1061,16 @@ try {
         existingRecipientInbox: true,
         unresolvedTransportCopy: true,
         demoPreferencePersistenceAndViewer: true,
+        nativeSelfProfileDownload: true,
+        exportRoles: ["Owner", "Admin", "Editor", "Viewer"],
+        exportFreshKeys: true,
+        exportNativeCorrelationExcludedFromFiles: true,
+        exportSessionWorkspaceABAAndLateUnmount: true,
+        exportNoAppPersistence: true,
+        exportEntropyFailureAndRetry: true,
+        exportLocalHandoffFailureRevokesUrl: true,
+        exportRoleLateResultRejected: true,
+        exportFileCount: exportedFiles.length,
         provider,
         errors,
         manualAccessibility: false,
