@@ -1,0 +1,9 @@
+# TASK-31.2 — recovery runbook verification
+
+Runbook final2 SHA256 `6362a643a87a79016e3210b154a83b91a9c7a3908059f8c69704e450731910d3`; accepted immutable source basis `4a22190c7014bc2f2facbd214f28dc0db1a8b533`. Root read all49 lines, then the corrected entry and both independent review reports. Distinct first review found the menu-label mismatch; only line7 was corrected to actual Betriebsübersicht navigation and Betrieb & Qualität page title. Inverse reconstruction gives exact first SHA5351609735ab3307744f3160e5634bb0b64c29dee0a08c147b3c0230b90dd7b2, so remaining48lines are unchanged.
+
+[Initial qualified critical review](task-31.2-runbook-quality-needs-work.md) checked actual X read/continue/unknown late effects, GitHub shared3-attempt/15-minute admission/202, Research journal/financial holds/source purge, Media original session/R2-delete receipt/quota/24h/tombstones and optional mail fence. [Fresh final2 review](task-31.2-runbook-quality-final2.md) PASS verifies corrected navigation, unchanged claims/source identities and351-file/HEAD/human guard. Those targeted reads are not whole-module or live-provider certification.
+
+Final2 readiness receipt `/tmp/dispatch-31.2-runbook-source-ready-final2.json` SHA256 `3aa241e6f9cf95b375df824c3c675b6bbf2e4c180e40ce875809e6f2b2f9f6ff`; final2 review SHA256 `61653e746e3a535012015570443fb8730cfe821de269eef3cd6a7988c838b9e2`; review receipt SHA256 `ba89d5241d533826e58ec62d9d6897ef9e6014c799389ed3c660675f113d3f56`. No tests, browser, SDK/network/provider calls, configuration changes or runtime deployment were needed for this documentation unit.
+
+The original failed report/receipt remains preserved. Alerts, live drills, full restore and parent TASK31 remain open. The TASK-32.3 fixed-HEAD gates have passed; this documentation is ready for its separate commit. Manual Done requires explicit user review and confirmation.
