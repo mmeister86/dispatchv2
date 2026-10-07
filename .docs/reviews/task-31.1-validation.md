@@ -1,0 +1,21 @@
+# TASK-31.1 — native operations health validation
+
+Technical source and existing EU development integration accepted on 2026-10-07. Source commit `cd3244a6b0537f3c8be80d0f85f9c2c83ba72f6b`. Backlog remains In Progress pending explicit manual confirmation. Parent TASK-31 alerts, runbooks and live recovery remain open.
+
+Cloud Operations now displays bounded authorized metadata from existing Publishing, GitHub, Media, public Research and Generation receipts. Verified active Owner/Admin authority precedes domain reads. Selective indices exclude private conversations and targeted research before selection, caps or financial projection. Current original source proofs govern recovery links; historical unresolved publishing effects survive cancellation without restoring send authority. Original currency and held/estimated/settled values remain distinct. Empty, omitted and unproven coverage is explicitly unknown or not evaluated.
+
+The transaction ceiling includes authentication and the nested query: 128 logical database queries, 512 documents, 512 KiB scanned native bytes and 64 KiB DTO. Three authorized accounts, six parents per family and six displayed financial children bound the sample. Validated seventh children establish truncation. UI session/account/workspace/source-clock fences discard stale data; explicit refresh, safe errors and existing Demo/profile/calibration views are retained.
+
+## Exact evidence
+
+Freeze `/tmp/dispatch-31.1-final2-freeze.json`, SHA256 `1f4367261da40d9b975e030cc02b298a4d61804fe04de69d0dfb5ce2e5472204`: 343 source/config files, 338 non-generated, five generated. Eight owned source paths; 330 protected originals and all 85 existing test/browser artifacts unchanged. Human `.zcodeignore` unchanged. Only generated API declaration changed. Source commit contains exactly nine files.
+
+- Fresh [SPEC](task-31.1-spec-review.md) PASS: 22 Health controls, two byte-identical independent regression controls and actual styled browser at 1280/390. Prior [failed SPEC](task-31.1-spec-initial-review.md) retained. Report SHA256 `2ec39a41ea86932971b85dd75b754e27a12a1c0a27e0c00513f7f2fdad3994ca`.
+- Subsequent distinct [QUALITY](task-31.1-quality-review.md) scoped PASS: 140 native tests/three files, independent lifecycle-before-domain-read control and styled mounted App/Store browser at 1280/390. No provider requests or console errors. Report SHA256 `39f5dd8a0212fb58f0a985bed039aaa66d7508af81a80577b2866c05934a9375`.
+- Root complete native suite: **1459 tests/57 files PASS**, no failures/skips; 20:47:29–21:01:23 UTC, 833.73 seconds. `/tmp/dispatch-31.1-final2-native-receipt.json` and `-wholeNative.log` bind the exact freeze; source unchanged.
+- All seven static gates PASS: typecheck-enabled codegen, app/backend TypeScript, configured lint, owned format, Vite build plus existing bundle/security assertions and diff check. `/tmp/dispatch-31.1-final2-static-receipt.json`. Final codegen produced zero additional generated delta.
+- Existing EUDev `dev:accurate-lion-749`, `https://accurate-lion-749.eu-west-1.convex.cloud`: target preflight, synchronization and post-sync metadata exit zero; sync 21:02:10–21:02:20 UTC. `/tmp/dispatch-31.1-continuation-dev-receipt.json` and `-metadata.json` prove 456 entries, exactly public `operations/health.js:get` and internal `operations/health.js:sample` added, all previous kinds/visibility and five HTTP entries unchanged. Source unchanged after synchronization.
+
+Initial review exposed cancellation hiding original-generation unresolved sends, false completeness after source omissions and an unvalidated seventh financial header. Shared bounded projection now preserves original effect identity, reports unknown eligibility when exhausted selection is unproven, and validates the seventh receipt before truncation. Exact failed cancellation/window fixtures now pass unchanged. Newly owned Health lifecycle assertions explicitly distinguish unresolved effects from settled rejected effects; protected old tests were never changed.
+
+Evidence covers native installed-SDK mechanics and synthetic transport/browser checks. Real providers, production distributed OCC, screenreader/manual accessibility and user manual acceptance are not certified. No provider, pricing, optional notification or new social-channel activation. Technical AC1–4/DoD1 verified; DoD2 remains open.
