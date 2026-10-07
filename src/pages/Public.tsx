@@ -333,7 +333,10 @@ function AuthForm({ mode }: { mode: AuthMode }) {
       return;
     }
     setBusy(true);
-    const callbackURL = `${import.meta.env.VITE_SITE_URL}${authPath("/onboarding", destination)}`;
+    const invitationReturn = /^\/team\/invitations\/[^/?#]+(?:[?#]|$)/.test(
+      destination,
+    );
+    const callbackURL = `${import.meta.env.VITE_SITE_URL}${invitationReturn ? destination : authPath("/onboarding", destination)}`;
     try {
       const result =
         mode === "signup"
@@ -843,6 +846,19 @@ export function OnboardingPage() {
     demoMode ? "Deine Quellen" : "Deine Quellen (optional)",
     demoMode ? "Dein erster Kanal" : "Dein erster Kanal (optional)",
   ];
+  if (!demoMode && state.role === "Viewer")
+    return (
+      <main className="mx-auto max-w-xl p-6 sm:p-12 stack">
+        <Brand />
+        <h1>Dein Workspace ist bereit</h1>
+        <p className="muted">
+          Als Viewer kannst du die Inhalte deines Workspaces ansehen.
+        </p>
+        <Button asChild>
+          <Link to={returnPath(params.get("returnTo"))}>Zum Workspace</Link>
+        </Button>
+      </main>
+    );
   return (
     <div className="min-h-screen max-w-4xl mx-auto px-5 sm:px-10 py-8">
       <header className="flex gap-4 justify-between items-center mb-12">

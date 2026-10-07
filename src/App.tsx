@@ -139,6 +139,9 @@ const OperationsPage = lazy(() =>
 const AuthPage = lazy(() =>
   import("@/pages/Public").then((m) => ({ default: m.AuthPage })),
 );
+const InvitationPage = lazy(() =>
+  import("@/features/team/team").then((m) => ({ default: m.InvitationPage })),
+);
 const OnboardingPage = lazy(() =>
   import("@/pages/Public").then((m) => ({ default: m.OnboardingPage })),
 );
@@ -542,7 +545,7 @@ export function AppShell() {
             >
               <div key={state.activeWorkspaceId}>
                 {demoMode ||
-                /^\/(overview|settings|calendar|drafts|ideas|signals|plans|research|agent|analytics|media|operations|experiments)(\/|$)/.test(
+                /^\/(overview|settings|calendar|drafts|ideas|signals|plans|research|agent|analytics|media|operations|experiments|team)(\/|$)/.test(
                   location.pathname,
                 ) ? (
                   <Outlet />
@@ -748,7 +751,13 @@ function MediaRoute() {
   const { state } = useStore();
   return <MediaPage key={state.activeWorkspaceId} />;
 }
-function ProtectedRoute({ children }: { children: ReactNode }) {
+function ProtectedRoute({
+  children,
+  authOnly = false,
+}: {
+  children: ReactNode;
+  authOnly?: boolean;
+}) {
   if (demoMode) return <>{children}</>;
   if (!backendConfigured)
     return (
@@ -764,13 +773,21 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
         />
       </div>
     );
-  return <AuthenticatedRoute>{children}</AuthenticatedRoute>;
+  return (
+    <AuthenticatedRoute authOnly={authOnly}>{children}</AuthenticatedRoute>
+  );
 }
-function AuthenticatedRoute({ children }: { children: ReactNode }) {
+function AuthenticatedRoute({
+  children,
+  authOnly,
+}: {
+  children: ReactNode;
+  authOnly?: boolean;
+}) {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const location = useLocation();
   const nav = useNavigate();
-  const login = `/login?returnTo=${encodeURIComponent(location.pathname + location.search)}`;
+  const login = `/login?returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`;
   if (isLoading)
     return (
       <div className="p-12 muted" role="status">
@@ -793,7 +810,11 @@ function AuthenticatedRoute({ children }: { children: ReactNode }) {
         </div>
       )}
     >
-      <WorkspaceStoreProvider>{children}</WorkspaceStoreProvider>
+      {authOnly ? (
+        children
+      ) : (
+        <WorkspaceStoreProvider>{children}</WorkspaceStoreProvider>
+      )}
     </AuthBoundary>
   );
 }
@@ -824,6 +845,14 @@ export function App() {
         <Route path="/signup" element={<AuthPage mode="signup" />} />
         <Route path="/reset-password" element={<AuthPage mode="reset" />} />
         <Route path="/verify" element={<AuthPage mode="verify" />} />
+        <Route
+          path="/team/invitations/:id"
+          element={
+            <ProtectedRoute authOnly>
+              <InvitationPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/onboarding"
           element={

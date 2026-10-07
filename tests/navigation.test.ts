@@ -29,3 +29,17 @@ test("auth transitions retain internal destinations and reject external redirect
   ])
     expect(returnPath(unsafe)).toBe("/overview");
 });
+
+test("verified invitation destination retains query and fragment through auth transitions", () => {
+  const destination = "/team/invitations/opaque-native-id?from=email#join";
+  for (const route of ["/login", "/signup", "/verify"] as const) {
+    const link = new URL(
+      authPath(route, destination),
+      "https://dispatch.invalid",
+    );
+    expect(returnPath(link.searchParams.get("returnTo"))).toBe(destination);
+  }
+  expect(returnPath("//external.example/team/invitations/opaque-id")).toBe(
+    "/overview",
+  );
+});

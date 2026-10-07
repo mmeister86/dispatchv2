@@ -30,6 +30,8 @@ import {
 } from "@/lib/model";
 import { Field } from "./Settings";
 import { toast } from "sonner";
+import { demoMode } from "@/lib/auth-client";
+import { NativeTeam } from "@/features/team/team";
 
 type Member = { id: string; name: string; email: string; role: Role };
 type Invite = {
@@ -48,6 +50,9 @@ type ReviewLink = {
 };
 const roles: Role[] = ["Owner", "Admin", "Editor", "Viewer"];
 export function TeamPage() {
+  return demoMode ? <DemoTeamPage /> : <NativeTeam />;
+}
+function DemoTeamPage() {
   const { state, setState, mutate } = useStore();
   const admin = state.role === "Owner" || state.role === "Admin";
   const owner = state.role === "Owner";

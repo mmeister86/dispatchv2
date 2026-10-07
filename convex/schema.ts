@@ -1,4 +1,4 @@
-import { teamResult } from "./teamFields";
+import { teamResult, deliveryFields } from "./teamFields";
 import {
   experimentFields,
   commandFields as experimentCommandFields,
@@ -973,6 +973,7 @@ export default defineSchema({
     ),
     acceptedUserId: v.optional(v.id("users")),
     result: v.optional(teamResult),
+    delivery: v.optional(deliveryFields),
   })
     .index("by_workspaceId", ["workspaceId"])
     .index("by_workspaceId_and_status_and_expiresAt", [
@@ -981,7 +982,8 @@ export default defineSchema({
       "expiresAt",
     ])
     .index("by_createdBy_and_status", ["createdBy", "status"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_delivery_cleanAfter", ["delivery.cleanAfter"]),
   teamCommands: defineTable({
     workspaceId: v.id("workspaces"),
     actorId: v.id("users"),

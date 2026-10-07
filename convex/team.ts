@@ -3,6 +3,7 @@ import {
   query,
   mutation,
   internalMutation,
+  action,
   type QueryCtx,
   type MutationCtx,
 } from "./_generated/server";
@@ -16,7 +17,8 @@ import {
 } from "./lib/authorization";
 import { sha256 } from "./lib/crypto";
 import { defaultProfile, provisionUser } from "./users";
-import { teamResult } from "./teamFields";
+import { teamResult, deliveryStatus, deliveryResult } from "./teamFields";
+import type { Infer } from "convex/values";
 import { role } from "./schema";
 const teamAction = v.union(
   v.object({
@@ -142,7 +144,18 @@ async function close(
     email: undefined,
     createdBy: undefined,
     role: undefined,
+    delivery: i.delivery ? scrubDelivery(i.delivery) : undefined,
   });
+}
+function scrubDelivery(d: NonNullable<Doc<"teamInvitations">["delivery"]>) {
+  return {
+    ...d,
+    body: undefined,
+    configFingerprint: undefined,
+    actorId: undefined,
+    sourceUnavailable: true,
+    cleanAfter: null,
+  };
 }
 async function receipt(
   ctx: MutationCtx,
@@ -198,6 +211,10 @@ export const list = workspaceQuery({
   args: {},
   returns: v.object({
     revision: v.number(),
+    authId: v.string(),
+    sessionId: v.string(),
+    workspaceId: v.id("workspaces"),
+    actorRole: v.string(),
     members: v.array(
       v.object({
         membershipId: v.id("memberships"),
@@ -213,6 +230,11 @@ export const list = workspaceQuery({
         role: v.union(v.string(), v.null()),
         status: v.string(),
         expiresAt: v.number(),
+        delivery: deliveryResult,
+        canSend: v.boolean(),
+        deliveryCommandKey: v.union(v.string(), v.null()),
+        deliveryRetryUntil: v.union(v.number(), v.null()),
+        deliveryPendingUntil: v.union(v.number(), v.null()),
       }),
     ),
     invitationsLimited: v.boolean(),
@@ -227,8 +249,14 @@ export const list = workspaceQuery({
       .order("desc")
       .take(101);
     const admin = ["Owner", "Admin"].includes(ctx.membership.role);
+    const sessionId = (await ctx.auth.getUserIdentity())?.sessionId;
+    if (typeof sessionId !== "string") throw new ConvexError("Unauthenticated");
     return {
       revision: ctx.workspace.teamRevision ?? 0,
+      authId: ctx.user.authId,
+      sessionId,
+      workspaceId: ctx.workspace._id,
+      actorRole: ctx.membership.role,
       members: await Promise.all(
         roster.map(async (m) => {
           const p = await ctx.db
@@ -260,6 +288,35 @@ export const list = workspaceQuery({
                       : "unavailable"
                     : i.status,
                 expiresAt: i.expiresAt,
+                delivery: {
+                  status:
+                    i.delivery?.status === "sending" &&
+                    (i.delivery.claimUntil ?? 0) <= Date.now()
+                      ? "unknown"
+                      : (i.delivery?.status ?? "notRequested"),
+                  providerId: i.delivery?.providerId ?? null,
+                },
+                canSend:
+                  available &&
+                  i.createdBy === ctx.user._id &&
+                  !["providerAccepted", "failed"].includes(
+                    i.delivery?.status ?? "notRequested",
+                  ) &&
+                  (i.delivery?.status !== "sending" ||
+                    (i.delivery.claimUntil ?? 0) <= Date.now()) &&
+                  (i.delivery?.firstSendAt === undefined ||
+                    (!i.delivery.sourceUnavailable &&
+                      (i.delivery.retryUntil ?? 0) > Date.now())),
+                deliveryCommandKey:
+                  available && i.createdBy === ctx.user._id
+                    ? (i.delivery?.commandKey ?? null)
+                    : null,
+                deliveryRetryUntil: available
+                  ? (i.delivery?.retryUntil ?? null)
+                  : null,
+                deliveryPendingUntil: available
+                  ? (i.delivery?.claimUntil ?? null)
+                  : null,
               };
             }),
           )
@@ -455,6 +512,8 @@ export const preview = query({
       expiresAt: v.number(),
       revision: v.number(),
       status: v.string(),
+      authId: v.string(),
+      sessionId: v.string(),
     }),
   ),
   handler: async (ctx, a) => {
@@ -462,6 +521,8 @@ export const preview = query({
       i = await ctx.db.get(a.invitationId);
     if (!i) return null;
     const proof = await recipient(ctx, i, identity);
+    const sessionId = (await ctx.auth.getUserIdentity())?.sessionId;
+    if (typeof sessionId !== "string") return null;
     return proof
       ? {
           invitationId: i._id,
@@ -471,6 +532,8 @@ export const preview = query({
           expiresAt: i.expiresAt,
           revision: proof.workspace.teamRevision ?? 0,
           status: i.status,
+          authId: identity._id,
+          sessionId,
         }
       : null;
   },
@@ -629,7 +692,11 @@ export const purgeActor = internalMutation({
 export const sweep = internalMutation({
   args: {
     cursor,
-    phase: v.union(v.literal("invitations"), v.literal("commands")),
+    phase: v.union(
+      v.literal("invitations"),
+      v.literal("commands"),
+      v.literal("delivery"),
+    ),
   },
   returns: v.null(),
   handler: async (ctx, a) => {
@@ -652,19 +719,311 @@ export const sweep = internalMutation({
           ? { cursor: null, phase: "commands" }
           : { cursor: page.continueCursor, phase: "invitations" },
       );
-    } else {
+    } else if (a.phase === "commands") {
       const page = await ctx.db
         .query("teamCommands")
         .withIndex("by_cleanAfter", (q) => q.gt("cleanAfter", null))
         .paginate({ cursor: a.cursor, numItems: 50 });
       for (const c of page.page)
         if (!(await currentCommand(ctx, c))) await clearCommand(ctx, c);
+      await ctx.scheduler.runAfter(0, internal.team.sweep, {
+        cursor: page.isDone ? null : page.continueCursor,
+        phase: page.isDone ? "delivery" : "commands",
+      });
+    } else {
+      const page = await ctx.db
+        .query("teamInvitations")
+        .withIndex("by_delivery_cleanAfter", (q) =>
+          q.gt("delivery.cleanAfter", null),
+        )
+        .paginate({ cursor: a.cursor, numItems: 50 });
+      for (const i of page.page)
+        if (
+          i.delivery &&
+          (!(await currentInviter(ctx, i)) ||
+            (i.delivery.cleanAfter ?? 0) <= Date.now())
+        )
+          await ctx.db.patch(i._id, { delivery: scrubDelivery(i.delivery) });
       if (!page.isDone)
         await ctx.scheduler.runAfter(0, internal.team.sweep, {
           cursor: page.continueCursor,
-          phase: "commands",
+          phase: "delivery",
         });
     }
     return null;
+  },
+});
+
+// One original provider key and request survive uncertain responses. No automatic resend.
+const MAIL_WINDOW = 15 * 60000;
+const MAIL_TIMEOUT = 10000;
+type MailOutcome = Infer<typeof deliveryResult>;
+export const claimDelivery = internalMutation({
+  args: {
+    invitationId: v.id("teamInvitations"),
+    commandKey: v.string(),
+    configuration: v.union(
+      v.null(),
+      v.object({ from: v.string(), site: v.string(), fingerprint: v.string() }),
+    ),
+  },
+  returns: v.object({
+    status: deliveryStatus,
+    providerId: v.union(v.string(), v.null()),
+    body: v.union(v.string(), v.null()),
+    key: v.union(v.string(), v.null()),
+    claim: v.union(v.string(), v.null()),
+    sequence: v.number(),
+  }),
+  handler: async (ctx, a) => {
+    command(a.commandKey, 0);
+    const identity = await requireIdentity(ctx),
+      i = await ctx.db.get(a.invitationId);
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_authId", (q) => q.eq("authId", identity._id))
+      .unique();
+    if (
+      !i ||
+      !user ||
+      i.createdBy !== user._id ||
+      !(await currentInviter(ctx, i))
+    )
+      throw new ConvexError("INVITATION_UNAVAILABLE");
+    const old = i.delivery;
+    const empty = (
+      status: MailOutcome["status"],
+      providerId: string | null = null,
+    ) => ({
+      status,
+      providerId,
+      body: null,
+      key: null,
+      claim: null,
+      sequence: old?.sequence ?? 0,
+    });
+    if (
+      old?.firstSendAt !== undefined &&
+      (old.commandKey !== a.commandKey || old.actorId !== user._id)
+    )
+      throw new ConvexError("TEAM_COMMAND_CONFLICT");
+    if (old?.status === "providerAccepted")
+      return empty(old.status, old.providerId ?? null);
+    if (!a.configuration) {
+      if (old?.firstSendAt === undefined)
+        await ctx.db.patch(i._id, {
+          delivery: {
+            status: "configurationRequired",
+            sequence: 0,
+            sourceUnavailable: false,
+            cleanAfter: i.expiresAt,
+          },
+        });
+      return empty("configurationRequired");
+    }
+    if (
+      old?.firstSendAt !== undefined &&
+      (old.sourceUnavailable || !old.retryUntil || old.retryUntil <= Date.now())
+    )
+      throw new ConvexError("MAIL_RETRY_EXPIRED");
+    if (
+      old?.configFingerprint &&
+      old.configFingerprint !== a.configuration.fingerprint
+    )
+      throw new ConvexError("MAIL_CONFIGURATION_CHANGED");
+    if (old?.status === "failed") return empty("failed");
+    if (old?.status === "sending" && (old.claimUntil ?? 0) > Date.now())
+      return empty("sending");
+    const body =
+      old?.body ??
+      JSON.stringify({
+        from: a.configuration.from,
+        to: [i.email!],
+        subject: "Deine Dispatch-Einladung",
+        html: `<p>Du wurdest zu Dispatch eingeladen.</p><p><a href="${a.configuration.site}/team/invitations/${encodeURIComponent(i._id)}">Einladung ansehen</a></p><p>Melde dich mit deiner bestätigten E-Mail-Adresse an. Die Einladung gilt nur bis zu ihrem ursprünglichen Ablauf.</p>`,
+      });
+    const firstSendAt = old?.firstSendAt ?? Date.now(),
+      retryUntil =
+        old?.retryUntil ?? Math.min(i.expiresAt, firstSendAt + MAIL_WINDOW);
+    const sequence = (old?.sequence ?? 0) + 1,
+      claim = `${i._id}/${sequence}`;
+    await ctx.db.patch(i._id, {
+      delivery: {
+        status: "sending",
+        commandKey: a.commandKey,
+        actorId: user._id,
+        body,
+        configFingerprint: a.configuration.fingerprint,
+        firstSendAt,
+        retryUntil,
+        sequence,
+        claim,
+        claimUntil: Date.now() + MAIL_TIMEOUT + 1000,
+        sourceUnavailable: false,
+        cleanAfter: retryUntil,
+      },
+    });
+    return {
+      status: "sending" as const,
+      providerId: null,
+      body,
+      key: `team-invitation/${i._id}/${a.commandKey}`,
+      claim,
+      sequence,
+    };
+  },
+});
+export const settleDelivery = internalMutation({
+  args: {
+    invitationId: v.id("teamInvitations"),
+    claim: v.string(),
+    sequence: v.number(),
+    status: v.union(
+      v.literal("providerAccepted"),
+      v.literal("failed"),
+      v.literal("unknown"),
+    ),
+    providerId: v.union(v.string(), v.null()),
+  },
+  returns: deliveryResult,
+  handler: async (ctx, a): Promise<MailOutcome> => {
+    const i = await ctx.db.get(a.invitationId),
+      d = i?.delivery;
+    if (!i || !d || d.claim !== a.claim || d.sequence !== a.sequence)
+      throw new ConvexError("MAIL_CLAIM_UNAVAILABLE");
+    const updated = {
+      ...d,
+      status: a.status,
+      providerId: a.providerId ?? undefined,
+      claim: undefined,
+      claimUntil: undefined,
+    };
+    const available = await currentInviter(ctx, i);
+    await ctx.db.patch(i._id, {
+      delivery:
+        available && (d.retryUntil ?? 0) > Date.now()
+          ? updated
+          : scrubDelivery(updated),
+    });
+    return { status: a.status, providerId: a.providerId };
+  },
+});
+export const sendInvitation = action({
+  args: { invitationId: v.id("teamInvitations"), commandKey: v.string() },
+  returns: deliveryResult,
+  handler: async (ctx, a): Promise<MailOutcome> => {
+    const key = process.env.RESEND_API_KEY,
+      from = process.env.AUTH_EMAIL_FROM,
+      site = process.env.SITE_URL;
+    let configuration: null | {
+      from: string;
+      site: string;
+      fingerprint: string;
+    } = null;
+    if (key && from && site) {
+      try {
+        const url = new URL(site);
+        if (
+          (url.protocol === "https:" ||
+            (url.protocol === "http:" &&
+              ["localhost", "127.0.0.1"].includes(url.hostname))) &&
+          !url.username &&
+          !url.password &&
+          !url.search &&
+          !url.hash &&
+          url.pathname === "/"
+        )
+          configuration = {
+            from,
+            site: url.origin,
+            fingerprint: await sha256(JSON.stringify([key, from, url.origin])),
+          };
+      } catch {
+        /* Invalid configuration never reaches the provider. */
+      }
+    }
+    const claim = await ctx.runMutation(internal.team.claimDelivery, {
+      ...a,
+      configuration,
+    });
+    if (!claim.body || !claim.key || !claim.claim)
+      return { status: claim.status, providerId: claim.providerId };
+    let status: "providerAccepted" | "failed" | "unknown" = "unknown",
+      providerId: string | null = null;
+    const controller = new AbortController(),
+      timeout = setTimeout(() => controller.abort(), MAIL_TIMEOUT);
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        redirect: "error",
+        signal: controller.signal,
+        headers: {
+          Authorization: `Bearer ${key}`,
+          "Content-Type": "application/json",
+          "Idempotency-Key": claim.key,
+        },
+        body: claim.body,
+      });
+      // Bound the response stream as well as the request. Malformed/oversized success is uncertain.
+      const reader = response.body?.getReader();
+      let bytes = 0,
+        text = "";
+      if (reader) {
+        const decoder = new TextDecoder();
+        while (true) {
+          const chunk = await reader.read();
+          if (chunk.done) break;
+          bytes += chunk.value.byteLength;
+          if (bytes > 16384) {
+            await reader.cancel();
+            throw new Error("MAIL_RESPONSE_TOO_LARGE");
+          }
+          text += decoder.decode(chunk.value, { stream: true });
+        }
+        text += decoder.decode();
+      }
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = null;
+      }
+      if (
+        response.ok &&
+        data &&
+        typeof data === "object" &&
+        "id" in data &&
+        typeof data.id === "string" &&
+        /^[a-zA-Z0-9_-]{1,100}$/.test(data.id)
+      ) {
+        status = "providerAccepted";
+        providerId = data.id;
+      } else if (
+        !response.ok &&
+        response.status >= 400 &&
+        response.status < 500 &&
+        ![408, 409, 429].includes(response.status)
+      )
+        status = "failed";
+      else if (
+        response.status === 409 &&
+        data &&
+        typeof data === "object" &&
+        "name" in data &&
+        data.name === "invalid_idempotent_request"
+      )
+        status = "failed";
+    } catch {
+      status = "unknown";
+    } finally {
+      clearTimeout(timeout);
+    }
+    return await ctx.runMutation(internal.team.settleDelivery, {
+      invitationId: a.invitationId,
+      claim: claim.claim,
+      sequence: claim.sequence,
+      status,
+      providerId,
+    });
   },
 });

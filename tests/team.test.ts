@@ -1607,3 +1607,516 @@ test("periodic operation proof retains eligible Viewer acceptance and scrubs los
     result: j.accepted,
   });
 });
+
+function mailConfiguration() {
+  vi.stubEnv("RESEND_API_KEY", "fixture-only-key");
+  vi.stubEnv("AUTH_EMAIL_FROM", "Dispatch <sender@example.test>");
+  vi.stubEnv("SITE_URL", "https://dispatch.example.test");
+}
+test("explicit invitation mail requires configuration and performs zero HTTP without it", async () => {
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  vi.stubEnv("RESEND_API_KEY", "");
+  vi.stubEnv("AUTH_EMAIL_FROM", "");
+  vi.stubEnv("SITE_URL", "");
+  const io = vi.spyOn(globalThis, "fetch");
+  const outcome = await f.owner
+    .action(team.sendInvitation, {
+      invitationId: issued.invitationId,
+      commandKey: crypto.randomUUID(),
+    })
+    .catch((error) => ({ status: String(error) }));
+  expect(outcome).toMatchObject({ status: "configurationRequired" });
+  expect(io).not.toHaveBeenCalled();
+});
+test("uncertain invitation mail retries identical bytes and key, bounds transport, and reports provider acceptance only", async () => {
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  const io = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValueOnce(new Error("lost response"))
+    .mockResolvedValueOnce(
+      new Response(
+        JSON.stringify({ id: "49a3999c-0ce1-4ea6-ab68-afcd6dc2e794" }),
+        { status: 200 },
+      ),
+    );
+  const args = {
+    invitationId: issued.invitationId,
+    commandKey: crypto.randomUUID(),
+  };
+  expect(await f.owner.action(team.sendInvitation, args)).toMatchObject({
+    status: "unknown",
+  });
+  expect(await f.owner.action(team.sendInvitation, args)).toMatchObject({
+    status: "providerAccepted",
+  });
+  const [url, request] = io.mock.calls[0];
+  expect(url).toBe("https://api.resend.com/emails");
+  expect(request).toMatchObject({ method: "POST", redirect: "error" });
+  expect(request?.signal).toBeInstanceOf(AbortSignal);
+  expect(request?.body).toBe(io.mock.calls[1][1]?.body);
+  expect(request?.headers).toEqual(io.mock.calls[1][1]?.headers);
+  expect(JSON.parse(String(request?.body))).toMatchObject({
+    to: ["recipient@example.test"],
+    subject: "Deine Dispatch-Einladung",
+  });
+  expect(String(request?.body)).not.toContain("owner@example.test");
+  expect(await f.owner.action(team.sendInvitation, args)).toMatchObject({
+    status: "providerAccepted",
+  });
+  expect(io).toHaveBeenCalledTimes(2);
+});
+
+test("authorized invitation preview echoes only its own verified native actor and validated session", async () => {
+  const f = await fixture(),
+    issued = await invite(f, "verified@example.test"),
+    recipient = await person(f.t, "verified@example.test");
+  const identity = await recipient.run((ctx) => ctx.auth.getUserIdentity());
+  const actual = await recipient.query(api.auth.session, {});
+  const preview = await recipient.query(team.preview, {
+    invitationId: issued.invitationId,
+  });
+  expect(preview).toMatchObject({
+    authId: actual.id,
+    sessionId: identity?.sessionId,
+  });
+  expect(preview).not.toHaveProperty("email");
+});
+
+test.each([
+  [200, "{}", "unknown"],
+  [200, '{"id":""}', "unknown"],
+  [200, "not json", "unknown"],
+  [200, JSON.stringify({ id: "a".repeat(17000) }), "unknown"],
+  [409, '{"name":"concurrent_idempotent_requests"}', "unknown"],
+  [409, '{"name":"invalid_idempotent_request"}', "failed"],
+  [429, "{}", "unknown"],
+  [503, "{}", "unknown"],
+  [403, "{}", "failed"],
+] as const)(
+  "mail response %s/%s yields %s without automatic retry",
+  async (status, body, expected) => {
+    const f = await fixture(),
+      issued = await invite(f, "recipient@example.test");
+    mailConfiguration();
+    const io = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response(body, { status }));
+    expect(
+      await f.owner.action(team.sendInvitation, {
+        invitationId: issued.invitationId,
+        commandKey: crypto.randomUUID(),
+      }),
+    ).toMatchObject({ status: expected, providerId: null });
+    expect(io).toHaveBeenCalledTimes(1);
+  },
+);
+test("delivery refuses changed command, changed configuration, and elapsed original retry window without IO", async () => {
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  const io = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("response lost")),
+    args = {
+      invitationId: issued.invitationId,
+      commandKey: crypto.randomUUID(),
+    };
+  expect(await f.owner.action(team.sendInvitation, args)).toMatchObject({
+    status: "unknown",
+  });
+  await expect(
+    f.owner.action(team.sendInvitation, {
+      ...args,
+      commandKey: crypto.randomUUID(),
+    }),
+  ).rejects.toThrow("TEAM_COMMAND_CONFLICT");
+  vi.stubEnv("AUTH_EMAIL_FROM", "Other <other@example.test>");
+  await expect(f.owner.action(team.sendInvitation, args)).rejects.toThrow(
+    "MAIL_CONFIGURATION_CHANGED",
+  );
+  vi.stubEnv("AUTH_EMAIL_FROM", "Dispatch <sender@example.test>");
+  const first = await f.t.run((ctx) => ctx.db.get(issued.invitationId));
+  vi.spyOn(Date, "now").mockReturnValue(first!.delivery!.retryUntil!);
+  await expect(f.owner.action(team.sendInvitation, args)).rejects.toThrow(
+    "MAIL_RETRY_EXPIRED",
+  );
+  expect(io).toHaveBeenCalledTimes(1);
+  const roster = await f.owner.query(team.list, { workspaceId: f.workspaceId });
+  expect(
+    roster.invitations.find((i) => i.id === issued.invitationId)?.canSend,
+  ).toBe(false);
+});
+test("revoke before mail claim sends zero and never exposes retained request bytes", async () => {
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  await change(f, { kind: "revoke", invitationId: issued.invitationId });
+  const io = vi.spyOn(globalThis, "fetch");
+  await expect(
+    f.owner.action(team.sendInvitation, {
+      invitationId: issued.invitationId,
+      commandKey: crypto.randomUUID(),
+    }),
+  ).rejects.toThrow("INVITATION_UNAVAILABLE");
+  expect(io).not.toHaveBeenCalled();
+});
+test("one concurrent mail claim wins and genuine late success after revoke settles without restoring invitation authority", async () => {
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  let resolve!: (value: Response) => void;
+  const arrived = new Promise<void>((done) => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+      done();
+      return new Promise<Response>((yes) => {
+        resolve = yes;
+      });
+    });
+  });
+  const args = {
+      invitationId: issued.invitationId,
+      commandKey: crypto.randomUUID(),
+    },
+    first = f.owner.action(team.sendInvitation, args);
+  await arrived;
+  expect(await f.owner.action(team.sendInvitation, args)).toMatchObject({
+    status: "sending",
+  });
+  await change(f, { kind: "revoke", invitationId: issued.invitationId });
+  const closed = await f.t.run((ctx) => ctx.db.get(issued.invitationId));
+  expect(closed?.delivery?.body).toBeUndefined();
+  expect(closed?.delivery?.claim).toBeTruthy();
+  resolve(new Response('{"id":"provider-original"}', { status: 200 }));
+  expect(await first).toMatchObject({
+    status: "providerAccepted",
+    providerId: "provider-original",
+  });
+  const late = await f.t.run((ctx) => ctx.db.get(issued.invitationId));
+  expect(late).toMatchObject({
+    status: "revoked",
+    delivery: {
+      sourceUnavailable: true,
+      cleanAfter: null,
+      status: "providerAccepted",
+    },
+  });
+  expect(late?.delivery?.body).toBeUndefined();
+  expect(late?.delivery?.claim).toBeUndefined();
+  const recipient = await person(f.t, "recipient@example.test");
+  expect(
+    await recipient.query(team.preview, { invitationId: issued.invitationId }),
+  ).toBeNull();
+});
+test("mail started before recipient acceptance can settle but cannot send again or regrant Viewer", async () => {
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  let resolve!: (value: Response) => void;
+  const arrived = new Promise<void>((done) => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => {
+      done();
+      return new Promise<Response>((yes) => {
+        resolve = yes;
+      });
+    });
+  });
+  const sending = f.owner.action(team.sendInvitation, {
+    invitationId: issued.invitationId,
+    commandKey: crypto.randomUUID(),
+  });
+  await arrived;
+  const recipient = await person(f.t, "recipient@example.test"),
+    preview = await recipient.query(team.preview, {
+      invitationId: issued.invitationId,
+    });
+  if (!preview) throw new Error("Actual recipient preview required");
+  const result = await recipient.mutation(team.accept, {
+    invitationId: issued.invitationId,
+    expectedRevision: preview.revision,
+    commandKey: crypto.randomUUID(),
+  });
+  await recipient.mutation(api.workspaces.select, {
+    workspaceId: preview.workspaceId,
+  });
+  resolve(new Response('{"id":"provider-late"}', { status: 200 }));
+  expect(await sending).toMatchObject({ status: "providerAccepted" });
+  await expect(
+    f.owner.action(team.sendInvitation, {
+      invitationId: issued.invitationId,
+      commandKey: crypto.randomUUID(),
+    }),
+  ).rejects.toThrow("INVITATION_UNAVAILABLE");
+  expect((await f.t.run((ctx) => ctx.db.get(result.membershipId!)))?.role).toBe(
+    "Viewer",
+  );
+  await expect(
+    recipient.mutation(api.preferences.save, {
+      workspaceId: preview.workspaceId,
+      profile: { ...defaultViewerPreferences },
+    }),
+  ).rejects.toThrow("ROLE_ACCESS_DENIED");
+});
+const defaultViewerPreferences = {
+  name: "Viewer",
+  timezone: "UTC",
+  language: "Deutsch",
+  audience: "",
+  tone: "",
+  topics: "",
+  onboardingDone: true,
+  onboardingStep: 3,
+} as const;
+test("bounded delivery sweep traverses valid first page and scrubs later lost roots and elapsed request bytes", async () => {
+  vi.useFakeTimers();
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("unknown"));
+  await f.owner.action(team.sendInvitation, {
+    invitationId: issued.invitationId,
+    commandKey: crypto.randomUUID(),
+  });
+  const original = await f.t.run((ctx) => ctx.db.get(issued.invitationId));
+  if (!original?.delivery)
+    throw new Error("Durable actual public mail required");
+  const ids = await f.t.run(async (ctx) => {
+    const valid = [],
+      lost = [];
+    const { _id: unused, _creationTime: unusedTime, ...fields } = original;
+    void unused;
+    void unusedTime;
+    for (let n = 0; n < 55; n++)
+      valid.push(await ctx.db.insert("teamInvitations", fields));
+    const gone = await ctx.db.insert("workspaces", {
+      name: "Gone",
+      description: "",
+    });
+    await ctx.db.delete(gone);
+    for (let n = 0; n < 55; n++)
+      lost.push(
+        await ctx.db.insert("teamInvitations", {
+          ...fields,
+          workspaceId: gone,
+        }),
+      );
+    return { valid, lost };
+  });
+  await f.t.mutation(internal.team.sweep, { phase: "delivery", cursor: null });
+  await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+  const rows = await f.t.run(async (ctx) => ({
+    valid: await Promise.all(ids.valid.map((id) => ctx.db.get(id))),
+    lost: await Promise.all(ids.lost.map((id) => ctx.db.get(id))),
+  }));
+  expect(
+    rows.valid.every((i) => i?.delivery?.body === original.delivery!.body),
+  ).toBe(true);
+  expect(
+    rows.lost.every(
+      (i) =>
+        i?.delivery?.sourceUnavailable &&
+        !i.delivery.body &&
+        !i.delivery.configFingerprint,
+    ),
+  ).toBe(true);
+  vi.setSystemTime(original.delivery.retryUntil!);
+  await f.t.mutation(internal.team.sweep, { phase: "delivery", cursor: null });
+  await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(issued.invitationId)))?.delivery,
+  ).toMatchObject({ cleanAfter: null, sourceUnavailable: true });
+});
+
+test.each(["RESEND_API_KEY", "AUTH_EMAIL_FROM", "SITE_URL"] as const)(
+  "mail configuration requires actual %s with zero HTTP",
+  async (field) => {
+    const f = await fixture(),
+      issued = await invite(f, "recipient@example.test");
+    mailConfiguration();
+    vi.stubEnv(field, "");
+    const io = vi.spyOn(globalThis, "fetch");
+    expect(
+      await f.owner.action(team.sendInvitation, {
+        invitationId: issued.invitationId,
+        commandKey: crypto.randomUUID(),
+      }),
+    ).toMatchObject({ status: "configurationRequired" });
+    expect(io).not.toHaveBeenCalled();
+  },
+);
+test("mail rejects a cross-origin site path or URL credentials without HTTP", async () => {
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  const io = vi.spyOn(globalThis, "fetch");
+  for (const site of [
+    "https://user:password@dispatch.example.test",
+    "https://dispatch.example.test/private",
+    "https://dispatch.example.test?target=evil",
+    "javascript:alert(1)",
+  ]) {
+    vi.stubEnv("SITE_URL", site);
+    expect(
+      await f.owner.action(team.sendInvitation, {
+        invitationId: issued.invitationId,
+        commandKey: crypto.randomUUID(),
+      }),
+    ).toMatchObject({ status: "configurationRequired" });
+  }
+  expect(io).not.toHaveBeenCalled();
+});
+test("current inviter demotion before claim blocks delivery and purges introduced request fields", async () => {
+  const f = await fixture(),
+    nextOwner = await join(f, "next-owner@example.test", "Owner"),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  const io = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("unknown")),
+    args = {
+      invitationId: issued.invitationId,
+      commandKey: crypto.randomUUID(),
+    };
+  await f.owner.action(team.sendInvitation, args);
+  const roster = await nextOwner.signed.query(team.list, {
+      workspaceId: f.workspaceId,
+    }),
+    oldOwner = roster.members.find((m) => m.userId === f.ownerId);
+  if (!oldOwner) throw new Error("Actual original Owner required");
+  await change(
+    f,
+    { kind: "role", membershipId: oldOwner.membershipId, role: "Viewer" },
+    nextOwner.signed,
+  );
+  await expect(f.owner.action(team.sendInvitation, args)).rejects.toThrow(
+    "INVITATION_UNAVAILABLE",
+  );
+  expect(io).toHaveBeenCalledTimes(1);
+  await f.t.mutation(internal.team.purgeActor, { actorId: f.ownerId });
+  const closed = await f.t.run((ctx) => ctx.db.get(issued.invitationId));
+  expect(closed?.status).toBe("unavailable");
+  expect(closed?.delivery?.body).toBeUndefined();
+  expect(closed?.delivery?.actorId).toBeUndefined();
+});
+test("original invitation expiry and a deleting root prevent send without renewing either horizon", async () => {
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  const io = vi.spyOn(globalThis, "fetch");
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.workspaceId, { lifecycle: "deleting" }),
+  );
+  await expect(
+    f.owner.action(team.sendInvitation, {
+      invitationId: issued.invitationId,
+      commandKey: crypto.randomUUID(),
+    }),
+  ).rejects.toThrow("INVITATION_UNAVAILABLE");
+  await f.t.run((ctx) => ctx.db.patch(f.workspaceId, { lifecycle: "active" }));
+  const i = await f.t.run((ctx) => ctx.db.get(issued.invitationId));
+  vi.spyOn(Date, "now").mockReturnValue(i!.expiresAt);
+  await expect(
+    f.owner.action(team.sendInvitation, {
+      invitationId: issued.invitationId,
+      commandKey: crypto.randomUUID(),
+    }),
+  ).rejects.toThrow("INVITATION_UNAVAILABLE");
+  expect(io).not.toHaveBeenCalled();
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(issued.invitationId)))?.expiresAt,
+  ).toBe(i!.expiresAt);
+});
+test("bounded physical mail timeout becomes unknown with exactly one intercepted request", async () => {
+  vi.useFakeTimers();
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  let notifyReady!: () => void;
+  const arrived = new Promise<void>((resolve) => {
+    notifyReady = resolve;
+  });
+  const io = vi.spyOn(globalThis, "fetch").mockImplementation(
+    (_url, options) =>
+      new Promise((_resolve, reject) => {
+        notifyReady();
+        options!.signal!.addEventListener(
+          "abort",
+          () => reject(new Error("timeout")),
+          { once: true },
+        );
+      }),
+  );
+  const sending = f.owner.action(team.sendInvitation, {
+    invitationId: issued.invitationId,
+    commandKey: crypto.randomUUID(),
+  });
+  await arrived;
+  await vi.advanceTimersByTimeAsync(10001);
+  expect(await sending).toMatchObject({ status: "unknown" });
+  expect(io).toHaveBeenCalledTimes(1);
+});
+
+test("an interrupted sending claim becomes visibly retryable after its original claim deadline", async () => {
+  vi.useFakeTimers();
+  const f = await fixture(),
+    issued = await invite(f, "recipient@example.test");
+  mailConfiguration();
+  const claim = await f.owner.mutation(internal.team.claimDelivery, {
+    invitationId: issued.invitationId,
+    commandKey: crypto.randomUUID(),
+    configuration: {
+      from: "Dispatch <sender@example.test>",
+      site: "https://dispatch.example.test",
+      fingerprint: "fixture-configuration-hash",
+    },
+  });
+  expect(claim.status).toBe("sending");
+  const active = await f.owner.query(team.list, { workspaceId: f.workspaceId });
+  expect(active.invitations[0].canSend).toBe(false);
+  const stored = await f.t.run((ctx) => ctx.db.get(issued.invitationId));
+  vi.setSystemTime(stored!.delivery!.claimUntil!);
+  const elapsed = await f.owner.query(team.list, {
+    workspaceId: f.workspaceId,
+  });
+  expect(elapsed.invitations[0].delivery.status).toBe("unknown");
+  expect(elapsed.invitations[0].canSend).toBe(true);
+});
+
+test("Team list echoes its own validated actor session and actual membership role for cached scope checks", async () => {
+  const f = await fixture(),
+    identity = await f.owner.run((ctx) => ctx.auth.getUserIdentity()),
+    actual = await f.owner.query(api.auth.session, {});
+  expect(
+    await f.owner.query(team.list, { workspaceId: f.workspaceId }),
+  ).toMatchObject({
+    authId: actual.id,
+    sessionId: identity?.sessionId,
+    workspaceId: f.workspaceId,
+    actorRole: "Owner",
+  });
+});
+
+test("provider accepted and definitive failed mail expose no send capability", async () => {
+  const f = await fixture();
+  mailConfiguration();
+  for (const [status, body] of [
+    [200, '{"id":"provider-confirmed"}'],
+    [403, "{}"],
+  ] as const) {
+    const issued = await invite(f, `recipient-${status}@example.test`);
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(body, { status }),
+    );
+    await f.owner.action(team.sendInvitation, {
+      invitationId: issued.invitationId,
+      commandKey: crypto.randomUUID(),
+    });
+    expect(
+      (
+        await f.owner.query(team.list, { workspaceId: f.workspaceId })
+      ).invitations.find((i) => i.id === issued.invitationId)?.canSend,
+    ).toBe(false);
+  }
+});
