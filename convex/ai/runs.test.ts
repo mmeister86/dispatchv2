@@ -247,6 +247,7 @@ describe("funded model runs through official Agent", () => {
     expect(receipt.state).toBe("unknown");
     if (
       receipt.owner === "jev-analyzer" ||
+      receipt.owner === "jev-intent-router" ||
       receipt.owner === "own-content-embedding"
     )
       throw new Error("Unexpected Jev receipt");

@@ -109,4 +109,10 @@ crons.interval(
   internal.editorial.notices.sweep,
   { cursor: null },
 );
+crons.interval(
+  "Protected native routing cleanup",
+  { minutes: 15 },
+  internal.ai.jev.routing.purge,
+  { cursor: null, force: false },
+);
 export default crons;

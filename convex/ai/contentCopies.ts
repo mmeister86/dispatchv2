@@ -82,6 +82,12 @@ export const sweep = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    if (a.ideaVersionId && !a.phase && a.cursor === null)
+      await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
+        inputVersionId: a.ideaVersionId,
+        cursor: null,
+        force: false,
+      });
     const id = a.runId ?? a.ideaVersionId ?? a.draftVersionId;
     if (!id || a.path.includes(id) || a.path.length >= 32) return null;
     const path = [...a.path, id];

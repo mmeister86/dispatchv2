@@ -653,6 +653,13 @@ export const change = workspaceMutation({
         accountId: a.accountId,
         ...patch,
       });
+    if (selecting || clearing)
+      await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
+        workspaceId: ctx.workspace._id,
+        accountId: a.accountId,
+        cursor: null,
+        force: false,
+      });
     return { revision, versionId, proposalId, receiptId };
   },
 });
@@ -957,6 +964,12 @@ async function eraseVersion(
   ctx: MutationCtx,
   row: Doc<"styleProfileVersions">,
 ) {
+  if (!row.sourceUnavailable)
+    await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
+      styleVersionId: row._id,
+      cursor: null,
+      force: true,
+    });
   if (!row.sourceUnavailable)
     await ctx.scheduler.runAfter(0, internal.planning.recurring.purgeStyle, {
       versionId: row._id,
@@ -1269,6 +1282,12 @@ export const purgeRuns = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    if (a.cursor === null)
+      await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
+        styleVersionId: a.versionId,
+        cursor: null,
+        force: false,
+      });
     const page = await ctx.db
       .query("agentRuns")
       .withIndex("by_styleContext_versionId", (q) =>
@@ -1295,6 +1314,12 @@ export const sweepRuns = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    if (a.cursor === null)
+      await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
+        styleVersionId: a.versionId,
+        cursor: null,
+        force: false,
+      });
     const page = await ctx.db
       .query("agentRuns")
       .withIndex("by_styleContext_versionId", (q) =>

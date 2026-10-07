@@ -64,6 +64,10 @@ import {
   policyFields as jevPolicyFields,
   controlFields as jevControlFields,
   attemptFields as jevAttemptFields,
+  routingPolicyFields,
+  routingControlFields,
+  routingOperationFields,
+  routingAttemptFields,
 } from "./ai/jev/types";
 import {
   sourceUpdateFields,
@@ -697,11 +701,20 @@ export default defineSchema({
       "operationKey",
     ])
     .index("by_ideaId_and_createdAt", ["ideaId", "createdAt"]),
-  jevPolicies: defineTable(jevPolicyFields).index("by_scope", [
-    "workspaceId",
-    "accountId",
-  ]),
-  jevControls: defineTable(jevControlFields).index("by_key", ["key"]),
+  jevRoutingOperations: defineTable(routingOperationFields)
+    .index("by_command", ["workspaceId", "actorId", "operationKey"])
+    .index("by_input", ["inputVersionId", "sourceUnavailable"])
+    .index("by_idea", ["ideaId", "sourceUnavailable"])
+    .index("by_style", ["style.versionId", "sourceUnavailable"])
+    .index("by_actor", ["actorId", "sourceUnavailable"])
+    .index("by_scope", ["workspaceId", "accountId", "sourceUnavailable"])
+    .index("by_source", ["sourceUnavailable", "sourceUntil"]),
+  jevPolicies: defineTable(
+    v.union(v.object(jevPolicyFields), v.object(routingPolicyFields)),
+  ).index("by_scope", ["workspaceId", "accountId"]),
+  jevControls: defineTable(
+    v.union(v.object(jevControlFields), v.object(routingControlFields)),
+  ).index("by_key", ["key"]),
   aiPolicies: defineTable(policyFields).index("by_key", ["key"]),
   aiBudgets: defineTable(budgetFields).index("by_key", ["key"]),
   agentRuns: defineTable(runFields)
@@ -712,11 +725,20 @@ export default defineSchema({
       v.object(aiAttemptFields),
       v.object(nativeAttemptFields),
       v.object(jevAttemptFields),
+      v.object(routingAttemptFields),
       v.object(metricsAttemptFields),
       v.object(historyAttemptFields),
       v.object(embeddingAttemptFields),
     ),
   )
+    .index("by_routing_operation", ["owner", "routingOperationId"])
+    .index("by_routing_pending", [
+      "owner",
+      "workspaceId",
+      "accountId",
+      "inputVersionId",
+      "state",
+    ])
     .index("by_embedding_command", [
       "owner",
       "workspaceId",

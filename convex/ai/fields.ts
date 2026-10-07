@@ -48,6 +48,7 @@ export const budgetFields = {
       generationPurpose,
       v.literal("native-search"),
       v.literal("analyzer"),
+      v.literal("intent-routing"),
       v.literal("own-metrics"),
       v.literal("own-history"),
       v.literal("own-content-embedding"),

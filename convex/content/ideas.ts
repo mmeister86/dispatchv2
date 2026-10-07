@@ -383,6 +383,11 @@ export const edit = workspaceMutation({
       text: a.feedback.trim(),
       createdAt: Date.now(),
     });
+    await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
+      ideaId: idea._id,
+      cursor: null,
+      force: false,
+    });
     return resultingVersionId;
   },
 });
@@ -419,6 +424,11 @@ export const archive = workspaceMutation({
       kind: a.archived ? "reject" : "restore",
       text: a.feedback.trim(),
       createdAt: Date.now(),
+    });
+    await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
+      ideaId: idea._id,
+      cursor: null,
+      force: a.archived,
     });
     return null;
   },

@@ -75,6 +75,12 @@ export const version = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    if (!a.family)
+      await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
+        inputVersionId: a.versionId,
+        cursor: null,
+        force: false,
+      });
     const ver = await ctx.db.get(a.versionId);
     if (!a.family)
       await ctx.scheduler.runAfter(

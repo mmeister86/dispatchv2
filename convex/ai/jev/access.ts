@@ -65,11 +65,13 @@ async function controls(
     .unique();
   if (
     !global ||
+    "purpose" in global ||
     global.workspaceId !== undefined ||
     global.accountId !== undefined ||
     !global.enabled ||
     !global.analyzer ||
     !local ||
+    "purpose" in local ||
     local.workspaceId !== ws ||
     local.accountId !== accountId ||
     !local.enabled ||
@@ -93,6 +95,7 @@ async function policy(ctx: Ctx, c: Doc<"jevControls">) {
   const p = c.policyId ? await ctx.db.get(c.policyId) : null;
   if (
     !p ||
+    "purpose" in p ||
     p.workspaceId !== c.workspaceId ||
     p.accountId !== c.accountId ||
     !/^[A-Za-z0-9_-]{1,100}$/.test(p.version) ||
@@ -416,6 +419,7 @@ async function receipt(ctx: Ctx, id: Id<"aiAttempts">) {
   const p = await ctx.db.get(t!.policyId);
   if (
     !p ||
+    "purpose" in p ||
     (await fingerprint(p)) !== t!.policyFingerprint ||
     p.workspaceId !== t!.workspaceId ||
     p.accountId !== t!.accountId ||
