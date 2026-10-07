@@ -1,0 +1,136 @@
+{
+  "generatedAt": "2026-10-07T02:04:34.043390+00:00",
+  "head": "5713806e76f99505e13e052631e5cf97f1461e2e",
+  "acceptedSourceReference": "849466641a2128a9b7ab32a05dfe1e1e2729d77d",
+  "repositoryReads": [
+    {
+      "path": "convex/editorial.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "88a477da03b6f392d203a020d00cdee742d88af10759f72aa531e3a73f338bc7",
+      "accepted49_1CommitSha256": "88a477da03b6f392d203a020d00cdee742d88af10759f72aa531e3a73f338bc7",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/publishing.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "02b0b24f9779c42471d8dcc0d534f77291a3393c355b29eb81d26f2c61c939f6",
+      "accepted49_1CommitSha256": "02b0b24f9779c42471d8dcc0d534f77291a3393c355b29eb81d26f2c61c939f6",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/publishing/reconcile.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "a56ad26c9bf352f828d1e9c1a46e9a92e4d5160cbc91cd8eb582d0d1e198f851",
+      "accepted49_1CommitSha256": "a56ad26c9bf352f828d1e9c1a46e9a92e4d5160cbc91cd8eb582d0d1e198f851",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/planning/accept.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "faf1adcbdcd82678617ca8d28649af1f5501cc876e6ba55ac3692e2f2ac4660d",
+      "accepted49_1CommitSha256": "faf1adcbdcd82678617ca8d28649af1f5501cc876e6ba55ac3692e2f2ac4660d",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/planning/plans.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "36d3de68229d0416c9c1376ae4d0293bfd93476882f58fe68e013902bf2a8b5d",
+      "accepted49_1CommitSha256": "36d3de68229d0416c9c1376ae4d0293bfd93476882f58fe68e013902bf2a8b5d",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/performance/experiments.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "ab8db87e1fe435a4083b11c82ddc810fa259df79f96c2553c57fc64362a84e29",
+      "accepted49_1CommitSha256": "ab8db87e1fe435a4083b11c82ddc810fa259df79f96c2553c57fc64362a84e29",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/research/contentProof.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "cb9556683d2a2f60cdc29c6a2dc313d43881ee1b14ac9b4862cd24edd5dfbdbd",
+      "accepted49_1CommitSha256": "cb9556683d2a2f60cdc29c6a2dc313d43881ee1b14ac9b4862cd24edd5dfbdbd",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/research/contentCleanup.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "85ec0b25789902628d52f70f44a945f8f0fc64209c3229c15185a539026fd3e9",
+      "accepted49_1CommitSha256": "85ec0b25789902628d52f70f44a945f8f0fc64209c3229c15185a539026fd3e9",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/lib/sourceProof.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "9a1732ca214e60caa5cfa739e33bf711eccc5702d1accfe67d135cec98440b26",
+      "accepted49_1CommitSha256": "9a1732ca214e60caa5cfa739e33bf711eccc5702d1accfe67d135cec98440b26",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/content/feedback.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "2d560d957c9f9dead4977e9bafb58067e7c1778e8d1fcc66417d1139530a4c38",
+      "accepted49_1CommitSha256": "2d560d957c9f9dead4977e9bafb58067e7c1778e8d1fcc66417d1139530a4c38",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/ai/styleProfiles.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "76c92bcb83e5734987e76b3e8b31ca4a6d576179fabf01e8563f8f6af3f3becc",
+      "accepted49_1CommitSha256": "76c92bcb83e5734987e76b3e8b31ca4a6d576179fabf01e8563f8f6af3f3becc",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/planning/recurring.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "c08e13dd538437166dad5d0f0e1dfb466aafbb9ecb72ce79d50f77c5c1265ee9",
+      "accepted49_1CommitSha256": "c08e13dd538437166dad5d0f0e1dfb466aafbb9ecb72ce79d50f77c5c1265ee9",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/performance/snapshots.ts",
+      "readSource": "working-tree, non49.2-owned",
+      "sha256": "5852338500f9d6fedb8d6de9a4ed3812e645709d36ee80983f6b2ce7edb19869",
+      "accepted49_1CommitSha256": "5852338500f9d6fedb8d6de9a4ed3812e645709d36ee80983f6b2ce7edb19869",
+      "matchesAccepted49_1": true
+    },
+    {
+      "path": "convex/team.ts",
+      "readSource": "git show 8494666:convex/team.ts; current moving team/schema not inspected",
+      "sha256": "f0c9a03ebc53f5bc22151bfc55818463af4d838b9b66cb300de566dfb7744cbe"
+    },
+    {
+      "path": "convex/teamFields.ts",
+      "readSource": "git show 8494666:convex/teamFields.ts; current moving team/schema not inspected",
+      "sha256": "3ff2c399dbff10cbe170a16df1e4d9ffab88756fe68ba9523778d5b7391cc0c6"
+    },
+    {
+      "path": "convex/lib/authorization.ts",
+      "readSource": "git show 8494666:convex/lib/authorization.ts; current moving team/schema not inspected",
+      "sha256": "79b67f03ac30349b8f6fa667b289bdfbea5bee3e4e65c92733dd7bc2fe61b3a4"
+    },
+    {
+      "path": ".docs/team-review-continuation-contract.md",
+      "readSource": "working-tree root-owned documentation, may move",
+      "sha256": "dfa0db52413e856106d4c72099677d310f90b3c5ae63ff0f3f8cfe69386182a8"
+    },
+    {
+      "path": ".docs/reviews/task-50-review-preflight.md",
+      "readSource": "working-tree root-owned documentation, may move",
+      "sha256": "67324eaa6547077f7dfab51142750bffebdfff4a66a4947e936dc19fdefd49c9"
+    },
+    {
+      "path": "src/features/experiments/experiments.tsx",
+      "readSource": "working-tree non49.2-owned existing clock/display; unchanged from accepted49.1",
+      "sha256": "16f889913ac60c6b3113cb651c77b6ce089d3c3e3bd9686bd692fd9a06e62041",
+      "accepted49_1CommitSha256": "16f889913ac60c6b3113cb651c77b6ce089d3c3e3bd9686bd692fd9a06e62041",
+      "matchesAccepted49_1": true
+    }
+  ],
+  "preparedBrief": {
+    "path": "/tmp/dispatch-50.1-writer-brief.md",
+    "sha256": "b4d4bef5d9f45e4a647d8b45b2bc9037e68611331ef4e9c0f3cfe9293d9089f9"
+  },
+  "scope": "Read-only deltas after accepted47/49.1; final49.2 is moving/unaccepted and must reconcile at release. No source/docs/Backlog mutations, tests, secrets/network/provider/codegen/deploy/subagents.",
+  "headAtFinalRead": "5713806e76f99505e13e052631e5cf97f1461e2e"
+}

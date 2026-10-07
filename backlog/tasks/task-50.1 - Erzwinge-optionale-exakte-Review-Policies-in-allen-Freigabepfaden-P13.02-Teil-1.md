@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 16:13'
-updated_date: '2026-10-06 23:14'
+updated_date: '2026-10-07 02:06'
 labels: []
 dependencies:
   - TASK-49.2
@@ -51,4 +51,8 @@ Kohäsive minimale gemeinsame native Review-Grenze nach49 und final45-47. Besteh
 
 <!-- SECTION:NOTES:BEGIN -->
 Read-only TASK50-preflight vollständig von Root gelesen und als .docs/reviews/task-50-review-preflight.md mit 14 stabilen Source-Hashes archiviert. Drei echte Approval-Inserts, zwei Schedule-Inserts, FirstWrite approve+confirm, direkte reconcile-Continuation und pureMove-vs-replacement sind verbindliche spätere Writer-Seams. resolveComment recheckt derzeit keine exakte Source; Assignment noch ohne CAS/key; bestehender Drawer/Mail-State ist kein recipient-nativer Readstate. Noch keine Source-/Test-/Review-/Dev-Abnahme; final47/49 zuerst technisch akzeptieren und dann erneut abgleichen.
+
+Read-only final47/49 reconciliation started by separate seams specialist after actual49.1source8494666/all1091/52nativePASS/exactEUDev389. Historical task-50-review-preflight.md at1ec predates accepted47experiments/current49identity cleanup; narrow actualdelta report will reconcile3approval/2schedule/sharedcheckApproval/planning/resolveComment/source hooks. Current49.2 sole source writer remains independent; no50 source release/tests/provider/Dev/Done implied.
+
+Final47/accepted49.1 readonly delta adopted task-50-final47-49-seams.md/-source.json; rootfullread and19source/docs+oldbrief hashes verified. Concretefutureownership adds experiments sharedfrozenreviewloss/minhorizon at originaldeclaration/currentassignment/cachedobservation/binder/get/sweep and exactversion contentCleanup reviewhook. P2selectionalone preservesP1; nativegeneration/approvalchanges alreadywithdraw47cohort, norebind. TeamCommands closedrole/result/30day semantics unsuitableforEditorreviews/assignments.3approval/2schedule writers unchanged; puremove retains actualscheduleractor, acceptedhistoricalreplay source-readability not currentrunnable/freshadmission. No source/tests/provider/newservice/50release; actualfinal49.2stillmustreconcile.
 <!-- SECTION:NOTES:END -->
