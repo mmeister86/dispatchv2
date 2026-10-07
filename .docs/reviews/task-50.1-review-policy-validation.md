@@ -1,6 +1,6 @@
 # TASK-50.1 — exact review policies and shared publication proof
 
-Status: the first complete native gate failed with three confirmed historical recurring-replay regressions. The narrow correction is SOURCE_READY/STOP and passes377 registered tests plus the repeated seven root static gates. Fresh final SPEC, distinct final QUALITY, seven root static gates and all1207 native tests/53files pass on the final freeze. Earlier scoped review/static receipts remain evidence of their stated pre-correction scopes. No source commit or exact Dev synchronization is accepted yet. Manual acceptance and Backlog Done remain open.
+Status: the first complete native gate failed with three confirmed historical recurring-replay regressions. The narrow correction is SOURCE_READY/STOP and passes377 registered tests plus the repeated seven root static gates. Fresh final SPEC, distinct final QUALITY, seven root static gates and all1207 native tests/53files pass on the final freeze. Earlier scoped review/static receipts remain evidence of their stated pre-correction scopes. Sourcebbe582e is committed and exact existing EUDev synchronization and metadata verification pass. Manual acceptance and Backlog Done remain open.
 
 ## Implemented behavior
 
@@ -57,6 +57,14 @@ Both reviewers stopped before the fresh complete native gate started on unchange
 ## Current complete native release gate
 
 Actual full installed-native command `node node_modules/vitest/vitest.mjs run --testTimeout 15000` exited0: **1207 tests/53 files PASS**, parsed from the actual final summary. UTC 2026-10-07T04:56:37.957551+00:00→2026-10-07T05:08:32.618035+00:00, 714.66seconds; log SHA256 `d9155681941d35d603e7898a777998b6dd494cde1ea4c439baadffd8ec35002e`. All328 source/config hashes remain unchanged on71043 freeze. The original900000ms resource limits and15000ms default limits remain. This run follows final independent SPEC and distinct QUALITY PASS; it supersedes the failed pre-correction run for current release, without altering its archived evidence. Source commit and exact Dev verification remain pending at this source-gate record; manual acceptance/Done/full33/36 remain open.
+
+## Accepted source and exact existing EU Dev
+
+Source commit `bbe582ec058e7acee5c42f22d4e55433ef33f816` contains the17 owned source paths, generatedAPI and root records. Actual installedCLI `dev --once` exited0 at 2026-10-07T05:09:35.158636+00:00→2026-10-07T05:09:45.290852+00:00; exact existing target `https://accurate-lion-749.eu-west-1.convex.cloud`. Log SHA256 `bab8e1248b003f60156a8e335fdb5936722afc7fb1b181084742aeb0b6ec053d`; the actual functions-ready line was read and matched the receipt. No new deployment/provider configuration or AI-file installation was performed.
+
+Read-only function-spec exited0 at2026-10-07T05:10:14.818065→05:10:16.372000UTC. Actual400metadata entries compared to predecessor392: exactly eight new review interfaces (policy/get public queries, configure/decide/withdraw public mutations, purgeVersion/purgeReviewer/sweep internal mutations);57 interfaces across seven reviewed modules have exact kinds/visibility, no old registered interface is missing, and all fiveHTTPentries remain unchanged. All32871043 source/config hashes remain unchanged after sync and metadata inspection. Raw spec SHA256 `c7e31ca7703c77d8173475e01644d81c56d1197525addd385f3be03e4d6a2e66`. Root verifier status PASS.
+
+TASK50.1 software acceptance is now verified; the separate TASK50.2 queue/assignment/notice/actual UI work may begin from this source. Full33/36, actual providers, empirical behavior and manualDone remain independent open gates. No optional review policy was activated by this release.
 
 ## Limits and data duties
 

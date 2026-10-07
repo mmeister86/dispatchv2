@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 16:13'
-updated_date: '2026-10-07 05:09'
+updated_date: '2026-10-07 05:11'
 labels: []
 dependencies:
   - TASK-49.2
@@ -25,15 +25,15 @@ Kohäsive minimale gemeinsame native Review-Grenze nach49 und final45-47. Besteh
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Default-OFF Policy erhält Single-User-Finalfreigabe; enabled stages binden aktuelle echte Rollen, immutable Version/Account/Policy und terminale Withdrawal/CAS/Replay.
-- [ ] #2 Shared approve/checkApproval, Planning beideModes, Scheduler/send, FirstWrite und reconcile continuation erzwingen denselben aktuellen Admission-/Frozen-Pin-Vertrag.
-- [ ] #3 P1-Approval kann unter P2 keinen neuen Termin autorisieren; existierender Frozen-P1 und pureMove bleiben mit currentSource/Reviewer gültig, ohne Auto-Cancel/Rewrite/Reactivation.
-- [ ] #4 Neue Reviews werden bei Quellen-/Autoritätsverlust sofort maskiert und indexiert physisch bereinigt; Publishing-/Finanz-Eltern bleiben, fresh SPEC/QUALITY nach Freeze dokumentiert.
+- [x] #1 Default-OFF Policy erhält Single-User-Finalfreigabe; enabled stages binden aktuelle echte Rollen, immutable Version/Account/Policy und terminale Withdrawal/CAS/Replay.
+- [x] #2 Shared approve/checkApproval, Planning beideModes, Scheduler/send, FirstWrite und reconcile continuation erzwingen denselben aktuellen Admission-/Frozen-Pin-Vertrag.
+- [x] #3 P1-Approval kann unter P2 keinen neuen Termin autorisieren; existierender Frozen-P1 und pureMove bleiben mit currentSource/Reviewer gültig, ohne Auto-Cancel/Rewrite/Reactivation.
+- [x] #4 Neue Reviews werden bei Quellen-/Autoritätsverlust sofort maskiert und indexiert physisch bereinigt; Publishing-/Finanz-Eltern bleiben, fresh SPEC/QUALITY nach Freeze dokumentiert.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind dokumentiert.
+- [x] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind dokumentiert.
 - [ ] #2 Der Nutzer bestätigt nach manueller Prüfung ausdrücklich die Freigabe zum Done-Status.
 <!-- DOD:END -->
 
@@ -103,4 +103,6 @@ Fresh FINAL SPEC PASSSTOP actualoriginal6/2+affected377/8+newindependent10/1 all
 Freshdistinct FINALQUALITY PASSSTOP: report1a77b5a24eff80f3640098ca9b23f734741b3a992b932b7b6799215e2348a1cc/receipt a99db7d148aa1604edb0d584e97fd25325dc48257c3ac35d200f5f190bb64820 rootfullread/hashverified328source+17owned+19artifacts+721archives+1312resolvedrefs(overlapqualified). Actualaffected377/8,originalSPEC6/2,freshSPEC10/1,own12/1allEXIT0. Root COMPLETE native rerun nowrunning onunchanged71043/328freeze/default15000/resource900000,oldfullFAIL exact379archive retained. Future50.2READONLYpreparation only; no writerrelease until actualFULL/sourcecommit/exactEUDev. No wholePASS/ACcheck/Dev/Done yet.
 
 ROOT COMPLETE native final actualPASS1207tests/53files, parsed actualsummary notscoped-count arithmetic: UTC04:56:37.957551→05:08:32.618035/714.66s/default15000/resource900000 preserved. Logd9155681941d35d603e7898a777998b6dd494cde1ea4c439baadffd8ec35002e;all32871043sourcehashesunchanged. FreshFINAL SPEC+distinctQUALITY+all7rootstatic PASS/currentfreeze; original1155/3FAIL remains exact379archive. Sourcecommit/exactEUDev gates nowauthorized next; AC4/DoD1/manualDone notclaimed beforeDev. Future50.2readonly44-source plan fullyread/hashesverified, no blockingproductdecision/no sourcewrite.
+
+SoftwareAC1-4/DoD1 technicallyverified:sourcebbe582ec058e7acee5c42f22d4e55433ef33f816/root1207tests53filesPASS714.66s/finalfreshSPEC/distinctQUALITY/all7static/current32871043freeze. ActualexistingEUDevdev--once05:09:35.158636→05:09:45.290852UTC0/logbab8e1248b003f60156a8e335fdb5936722afc7fb1b181084742aeb0b6ec053d; readonlymetadata05:10:16.372000UTC actual400entries/exact8reviews/57interfaces7modules/5HTTPunchanged/nooldmissing/328unchanged rootverified. No newprovider/policyactivation/full33-36/live/manualcertificate. ManualDoD2/explicituserDone remainopen; statusInProgress. Next50.2sourceplan44inputs rootfullread/hashverified/predecessor technicallyaccepted.
 <!-- SECTION:NOTES:END -->
