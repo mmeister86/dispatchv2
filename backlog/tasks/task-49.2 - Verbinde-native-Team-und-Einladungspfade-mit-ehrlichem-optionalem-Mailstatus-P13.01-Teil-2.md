@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 16:13'
-updated_date: '2026-10-07 03:07'
+updated_date: '2026-10-07 03:09'
 labels: []
 dependencies:
   - TASK-49.1
@@ -28,12 +28,12 @@ Nach akzeptiertem49.1 reale Team/Demo-Split, auth-only Acceptance und notwendige
 - [x] #1 Cloud-Team zeigt tatsächliche Mitglieder/Invite-Resultate; verified Acceptance-Route außerhalb aktiver Workspace-Bootstrap-Abhängigkeit erhält sicheren Login-/Verify-Returnpath und Viewer-Entry.
 - [x] #2 Awaited exakte Commands behalten Dirty/Retry-Intent und Account-/Workspace-/Rollen-Epochs; styled echte Routen Desktop/390px/Demo sind geprüft.
 - [x] #3 Optionaler bestehender Resend-Pfad hat durable Claim, unveränderte bounded Idempotenz, accepted-vs-unknown Wahrheit und currentInvite-Proof; fehlende Konfiguration gibt null Calls, keine Live-Mail-Abnahme.
-- [ ] #4 Eingeführte Delivery-/Recipient-Daten und Cleanup sind inventarisiert; Source-Freeze, frisches SPEC, distinct QUALITY und root EU dokumentiert.
+- [x] #4 Eingeführte Delivery-/Recipient-Daten und Cleanup sind inventarisiert; Source-Freeze, frisches SPEC, distinct QUALITY und root EU dokumentiert.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind dokumentiert.
+- [x] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind dokumentiert.
 - [ ] #2 Der Nutzer bestätigt nach manueller Prüfung ausdrücklich die Freigabe zum Done-Status.
 <!-- DOD:END -->
 
@@ -63,4 +63,6 @@ Sole writer SOURCE_READY STOP adopted for review: exact10 ownedsourcepaths (8 ch
 Fresh independent SPEC PASS/STOP adopted: reportcbeba22b9fc2d1ccaaa15687776a1b90bd3c51a43d6fdf5f135fbdf90abcff35 receipt a9104b991a414a4ce41a14c8ced4d6600d999ef4c089001d7e8908794a8f8c47;60/3native+4/1independentnegcontrols+actualAppbrowser/reactivity controls. Distinct fresh QUALITY PASS/STOP adopted: report468bcb854ec491d0a509b0f221572b1b2fe2fe29ccd73c38d0f79b475907e53a receipt297821eb0a8b95587ff8fcc727db20c08ee29b90ffef1f1d823a06ce50c15f8a;60/3+unchangedSPEC4/1+actualApp/browsernegativecontrols/eightfreshpixels. Rootfullread/19SPEC+22QUALITYartifacts/325sourcehashes verified, all7staticchecksPASS; original49.1 controls unchanged. No productionfinding/sourcecorrection. RootFULLnative started AFTERQUALITYPASS on same325freeze; result/sourcecommit/exactEUDev stillpending, no manualDone.
 
 RootFULLnative actualPASS1119tests/52files EXIT0 in708.539s, 2026-10-07T02:55:38.626911→03:07:27.166134UTC after distinctQUALITYPASS; original900000resource/default15000timeout preserved. All325sourcehashesunchanged; logSHA6701e8abaf7985014af47a106503657564b39a9b7d4f7330efaa2be7f2bd8578 receipt dispatch-continuation-49.2-all-final-receipt.json. All7static/codegen/nativebuild/originalbundlechecksPASS. AC1–3 verified; AC4sourcecommit/exactEUDev remains pending. Introduced optionalmail/ownmarkers/request+retainedheader inventory registered, actual98tables/no newtable/dependency. ManualDone open.
+
+Sourcecce8d98ebaf1ee956117fbf48cd50486a9b969e9 technicallyaccepted; actualexistingEUDev dev--once EXIT0 2026-10-07T03:08:30.753111→03:08:40.506151UTC. Stricttarget/HEAD/full1119-52receipt/325hashguard passed. Readonlyfunction-spec EXIT0 and rootverificationPASS392metadata/exact3newteam mailinterfaces/publicAction+2internalMutations/14sourcekindvisibility records/nooldremoved/5HTTPunchanged/325unchangedhashes. Actual98source tables/no addedtable/dependency; validation task-49.2-team-invitations-validation.md/incrementalinventory updated. Initialgit .git/index.lock sandboxdenial resolved by same scoped command-specific escalation, no autoapprovalrejection/push/PR/newenvironment. AllsoftwareAC1–4 and documentedchecksDoD1 checked; manualconfirmationDoD2 open, statusInProgress. Wholebackendcontinues50.1.
 <!-- SECTION:NOTES:END -->

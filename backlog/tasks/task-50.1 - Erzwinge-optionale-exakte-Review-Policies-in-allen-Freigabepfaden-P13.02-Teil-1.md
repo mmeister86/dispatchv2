@@ -3,10 +3,10 @@ id: TASK-50.1
 title: >-
   Erzwinge optionale exakte Review-Policies in allen Freigabepfaden (P13.02,
   Teil 1)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-06 16:13'
-updated_date: '2026-10-07 02:53'
+updated_date: '2026-10-07 03:09'
 labels: []
 dependencies:
   - TASK-49.2
@@ -57,4 +57,6 @@ Read-only final47/49 reconciliation started by separate seams specialist after a
 Final47/accepted49.1 readonly delta adopted task-50-final47-49-seams.md/-source.json; rootfullread and19source/docs+oldbrief hashes verified. Concretefutureownership adds experiments sharedfrozenreviewloss/minhorizon at originaldeclaration/currentassignment/cachedobservation/binder/get/sweep and exactversion contentCleanup reviewhook. P2selectionalone preservesP1; nativegeneration/approvalchanges alreadywithdraw47cohort, norebind. TeamCommands closedrole/result/30day semantics unsuitableforEditorreviews/assignments.3approval/2schedule writers unchanged; puremove retains actualscheduleractor, acceptedhistoricalreplay source-readability not currentrunnable/freshadmission. No source/tests/provider/newservice/50release; actualfinal49.2stillmustreconcile.
 
 Stopped49.2 writer readonly preparation adopted .docs/reviews/task-50.1-final49-writer-preparation.md; rootfullread/31input-sourcehashes verified. Concrete3approval/2schedule/current-vs-frozen sharedproof/planning readablehistoricalreplay and currentusablebadge/exactresolveComment/47experimentoriginal-currentminima/indexedrootgone-nullhorizon cleanup traced. Current49.2ownactor/session and creator-scoped mailretrykey reconciled; no missinghumanproductdecision identified. No50 source/tests/providers/implementationrelease:49.2 freshSPEC PASS but distinctQUALITY/fullrootgates/sourcecommit/exactEUDev stillpending. Solewriter remains SOURCE_READY STOP.
+
+Predecessor49.2 technicallyaccepted sourcecce8d98ebaf1ee956117fbf48cd50486a9b969e9:1119/52whole-nativePASS708.539s/freshSPEC/distinctQUALITY/static/codegen/build/bundle; exactexistingEUDev03:08:40.506151UTC/392actualmetadata/exact3mailinterfaces/14modulechecks/5HTTPunchanged/325sourcehashesverified. Final47/49seams and31hash writerreadonlypreparation fullyadopted; nativeownactor/session and creator-scoped operationalmailkey are currentbutnotreviewauthority. No missinghumanproductdecision; sourceimplementation release after rootverificationdocscommit through preparedminimumsolewriterbrief. Full50.1 current-vs-frozen sharedguard/threeapproval-twoschedule/planningbothmodes/exactcomment/47minima/indexedcleanup scope;50.2UI/notices remainsseparate. ManualDone open.
 <!-- SECTION:NOTES:END -->
