@@ -13,7 +13,11 @@ import { v } from "convex/values";
 type Model = Parameters<typeof wrapLanguageModel>[0]["model"];
 // One scope per funded model step, shared only with this concrete physical Requesty fetch.
 type FetchScope = {
-  current: { entered: boolean; proofError?: unknown } | null;
+  current: {
+    entered: boolean;
+    attemptId: Id<"aiAttempts">;
+    proofError?: unknown;
+  } | null;
 };
 const safeError = () => new Error("MODEL_PROVIDER_UNAVAILABLE");
 const generationOutput = z
@@ -177,6 +181,7 @@ async function boundedAgent(
   const canCreateIdea =
     !!initial.chat?.allowIdeaCreation && !initial.chat.resultIdeaId;
   const authorize = () => ctx.runQuery(internal.ai.runs.context, control);
+  let modelSteps = 0;
   const model = wrapLanguageModel({
     model: baseModel,
     middleware: {
@@ -207,12 +212,15 @@ async function boundedAgent(
       wrapGenerate: async ({ doGenerate }) => {
         const attemptId = await ctx.runMutation(internal.ai.runs.fund, {
           ...control,
-          key: run.research
-            ? `research:${run._id}:semantic-v1`
-            : crypto.randomUUID(),
+          key:
+            run.compositeStage === "repair" && modelSteps++ === 0
+              ? "composite:repair:initial"
+              : run.research
+                ? `research:${run._id}:semantic-v1`
+                : crypto.randomUUID(),
         });
         const physical = fetchScope
-          ? { entered: false, proofError: undefined as unknown }
+          ? { entered: false, attemptId, proofError: undefined as unknown }
           : null;
         if (fetchScope) fetchScope.current = physical;
         try {
@@ -275,12 +283,15 @@ async function boundedAgent(
       wrapStream: async ({ doStream }) => {
         const attemptId = await ctx.runMutation(internal.ai.runs.fund, {
           ...control,
-          key: run.research
-            ? `research:${run._id}:semantic-v1`
-            : crypto.randomUUID(),
+          key:
+            run.compositeStage === "repair" && modelSteps++ === 0
+              ? "composite:repair:initial"
+              : run.research
+                ? `research:${run._id}:semantic-v1`
+                : crypto.randomUUID(),
         });
         const physical = fetchScope
-          ? { entered: false, proofError: undefined as unknown }
+          ? { entered: false, attemptId, proofError: undefined as unknown }
           : null;
         if (fetchScope) fetchScope.current = physical;
         try {
@@ -498,12 +509,13 @@ export const execute = internalAction({
         baseURL: policy.baseURL,
         fetch: async (input, init) => {
           const scope = fetchScope.current;
-          if (!scope) throw safeError();
+          if (!scope || scope.entered) throw safeError();
           try {
             await ctx.runQuery(internal.ai.runs.context, {
               runId,
               generation: run.generation,
               executionKey,
+              attemptId: scope.attemptId,
             });
             if (Date.now() >= run.deadline || init?.signal?.aborted)
               throw new Error("MODEL_RUN_INACTIVE");

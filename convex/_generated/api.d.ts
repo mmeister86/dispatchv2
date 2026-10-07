@@ -17,6 +17,7 @@ import type * as ai_fields from "../ai/fields.js";
 import type * as ai_jev_access from "../ai/jev/access.js";
 import type * as ai_jev_analyzePost from "../ai/jev/analyzePost.js";
 import type * as ai_jev_client from "../ai/jev/client.js";
+import type * as ai_jev_composite from "../ai/jev/composite.js";
 import type * as ai_jev_normalize from "../ai/jev/normalize.js";
 import type * as ai_jev_questions from "../ai/jev/questions.js";
 import type * as ai_jev_questions_intentRouting from "../ai/jev/questions/intentRouting.js";
@@ -167,6 +168,7 @@ declare const fullApi: ApiFromModules<{
   "ai/jev/access": typeof ai_jev_access;
   "ai/jev/analyzePost": typeof ai_jev_analyzePost;
   "ai/jev/client": typeof ai_jev_client;
+  "ai/jev/composite": typeof ai_jev_composite;
   "ai/jev/normalize": typeof ai_jev_normalize;
   "ai/jev/questions": typeof ai_jev_questions;
   "ai/jev/questions/intentRouting": typeof ai_jev_questions_intentRouting;

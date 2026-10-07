@@ -94,6 +94,11 @@ export const version = internalMutation({
         cursor: null,
         force: false,
       });
+    if (!a.family)
+      await ctx.scheduler.runAfter(0, internal.ai.jev.composite.purgeInput, {
+        versionId: a.versionId,
+        cursor: null,
+      });
     const ver = await ctx.db.get(a.versionId);
     if (!a.family)
       await ctx.scheduler.runAfter(

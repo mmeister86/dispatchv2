@@ -346,6 +346,9 @@ export const routingAttemptFields = {
 };
 
 export const verificationRef = v.object({
+  compositeStage: v.optional(
+    v.union(v.literal("first-verification"), v.literal("final-verification")),
+  ),
   contentRequestId: v.id("contentRequests"),
   candidateVersionId: v.id("ideaVersions"),
   contentHash: v.string(),
@@ -446,6 +449,11 @@ export const verificationSlot = v.object({
   stickyRisk: v.union(verificationRisk, v.null()),
 });
 export const verificationAttemptFields = {
+  compositeParentId: v.optional(v.id("contentRequests")),
+  compositeStage: v.optional(
+    v.union(v.literal("first-verification"), v.literal("final-verification")),
+  ),
+  compositeRootRunId: v.optional(v.id("agentRuns")),
   ...routingAttemptFields,
   owner: v.literal("jev-output-verifier"),
   purpose: v.literal("output-verification"),
@@ -495,4 +503,81 @@ export const verificationView = v.object({
       currency: v.string(),
     }),
   ),
+});
+
+export const compositeVerificationSlot = v.object({
+  ...verificationSlot.fields,
+  kind: v.literal("composite-verification-v1"),
+});
+export const compositeEnvelope = v.object({
+  kind: v.literal("composite-generation-v1"),
+  actorId: v.id("users"),
+  startedAt: v.number(),
+  deadline: v.number(),
+  sourceUntil: v.union(v.number(), v.null()),
+  sourceUnavailable: v.boolean(),
+  state: v.union(
+    v.literal("initial"),
+    v.literal("verified"),
+    v.literal("repair"),
+    v.literal("finished"),
+    v.literal("stopped"),
+  ),
+  currency: v.string(),
+  maxCostMicros: v.number(),
+  maxCalls: v.number(),
+  maxToolSteps: v.number(),
+  policyId: v.id("jevPolicies"),
+  policyFingerprint: v.string(),
+  controlId: v.id("jevControls"),
+  first: v.union(compositeVerificationSlot, v.null()),
+  final: v.union(compositeVerificationSlot, v.null()),
+  repairRequestId: v.union(v.id("contentRequests"), v.null()),
+  repairRunId: v.union(v.id("agentRuns"), v.null()),
+  repairedCandidateVersionId: v.union(v.id("ideaVersions"), v.null()),
+  reservationId: v.union(v.id("aiAttempts"), v.null()),
+  repairCommandFingerprint: v.union(v.string(), v.null()),
+  stickyRisk: v.union(verificationRisk, v.null()),
+});
+const { requestFingerprint: futurePacketFingerprint, ...reservationHeader } =
+  routingAttemptFields;
+export const finalReservationFields = {
+  ...reservationHeader,
+  reservationFingerprint: v.string(),
+  deadline: v.number(),
+  owner: v.literal("jev-output-verifier-reservation"),
+  purpose: v.literal("output-verification"),
+  routingOperationId: v.optional(v.id("jevRoutingOperations")),
+  compositeParentId: v.id("contentRequests"),
+  compositeStage: v.literal("final-verification"),
+  compositeRootRunId: v.id("agentRuns"),
+  contentRequestId: v.id("contentRequests"),
+  producerRunId: v.id("agentRuns"),
+  commandFingerprint: v.string(),
+  questionVersion: verificationPolicyFields.questionVersion,
+  normalizationVersion: verificationPolicyFields.normalizationVersion,
+  thresholdVersion: verificationPolicyFields.thresholdVersion,
+  state: v.union(v.literal("reserved"), v.literal("cancelled")),
+  sentAt: v.null(),
+  reservedAt: v.number(),
+};
+export const compositeView = v.object({
+  contentRequestId: v.id("contentRequests"),
+  startedAt: v.number(),
+  deadline: v.number(),
+  currency: v.string(),
+  state: compositeEnvelope.fields.state,
+  sourceUnavailable: v.boolean(),
+  repairedCandidateVersionId: v.union(v.id("ideaVersions"), v.null()),
+  reservedFinal: v.boolean(),
+  bookedMicros: v.number(),
+  heldMicros: v.number(),
+  observedMicros: v.number(),
+  usagePending: v.boolean(),
+  calls: v.number(),
+  toolSteps: v.number(),
+  maxCostMicros: v.number(),
+  maxCalls: v.number(),
+  maxToolSteps: v.number(),
+  stickyRisk: v.union(verificationRisk, v.null()),
 });

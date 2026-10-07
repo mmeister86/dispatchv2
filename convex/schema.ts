@@ -1,3 +1,5 @@
+import { generationReservationFields } from "./ai/fields";
+import { finalReservationFields } from "./ai/jev/types";
 import { teamResult, deliveryFields } from "./teamFields";
 import {
   noticeFields,
@@ -697,6 +699,22 @@ export default defineSchema({
 
     .index("by_ideaId", ["ideaId"]),
   contentRequests: defineTable(requestFields)
+    .index("by_compositeParentId", ["compositeParentId"])
+    .index("by_composite_actor", [
+      "composite.actorId",
+      "composite.sourceUnavailable",
+    ])
+    .index("by_composite_scope", [
+      "workspaceId",
+      "accountId",
+      "composite.sourceUnavailable",
+    ])
+    .index("by_composite_source", [
+      "composite.sourceUnavailable",
+      "composite.sourceUntil",
+    ])
+    .index("by_composite_first", ["composite.first.candidateVersionId"])
+    .index("by_composite_final", ["composite.final.candidateVersionId"])
     .index("by_verification_candidate", ["verification.candidateVersionId"])
     .index("by_verification_actor", [
       "verification.actorId",
@@ -745,11 +763,15 @@ export default defineSchema({
   aiPolicies: defineTable(policyFields).index("by_key", ["key"]),
   aiBudgets: defineTable(budgetFields).index("by_key", ["key"]),
   agentRuns: defineTable(runFields)
+    .index("by_compositeParentId", ["compositeParentId"])
+    .index("by_compositeRootRunId", ["compositeRootRunId"])
     .index("by_styleContext_versionId", ["styleContext.versionId"])
     .index("by_workspaceId_and_createdAt", ["workspaceId", "createdAt"]),
   aiAttempts: defineTable(
     v.union(
       v.object(aiAttemptFields),
+      v.object(generationReservationFields),
+      v.object(finalReservationFields),
       v.object(nativeAttemptFields),
       v.object(jevAttemptFields),
       v.object(routingAttemptFields),
@@ -759,6 +781,11 @@ export default defineSchema({
       v.object(embeddingAttemptFields),
     ),
   )
+    .index("by_compositeParentId_and_stage", [
+      "compositeParentId",
+      "compositeStage",
+    ])
+    .index("by_compositeRootRunId", ["compositeRootRunId"])
     .index("by_verification_pending", [
       "owner",
       "workspaceId",

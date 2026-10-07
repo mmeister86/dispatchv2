@@ -33,6 +33,7 @@ import {
   outcome,
   answer,
   checkedVerification,
+  compositeVerificationSlot,
 } from "./types";
 import {
   resolveVerificationQuestions,
@@ -47,7 +48,9 @@ import {
 } from "./thresholds";
 type Ctx = QueryCtx | MutationCtx;
 type Ref = Infer<typeof verificationRef>;
-type Slot = NonNullable<Doc<"contentRequests">["verification"]>;
+type Slot =
+  | NonNullable<Doc<"contentRequests">["verification"]>
+  | NonNullable<NonNullable<Doc<"contentRequests">["composite"]>["first"]>;
 type Policy = Extract<Doc<"jevPolicies">, { purpose: "output-verification" }>;
 type Control = Extract<Doc<"jevControls">, { purpose: "output-verification" }>;
 const request = { reference: verificationRef };
@@ -93,7 +96,7 @@ async function admin(
     "Admin",
   ]);
 }
-async function configuration(
+export async function configuration(
   ctx: Ctx,
   workspaceId: Id<"workspaces">,
   accountId: Id<"socialAccounts">,
@@ -223,9 +226,17 @@ async function configuration(
   }
   return { p, c, budgetIds, authorityUntil };
 }
-function reference(r: Doc<"contentRequests">, s: Slot): Ref {
+export function reference(r: Doc<"contentRequests">, s: Slot): Ref {
   return {
     contentRequestId: r._id,
+    ...(s.kind === "composite-verification-v1"
+      ? {
+          compositeStage:
+            s.producerRunId === r.runId
+              ? ("first-verification" as const)
+              : ("final-verification" as const),
+        }
+      : {}),
     candidateVersionId: s.candidateVersionId,
     contentHash: s.contentHash,
     commandFingerprint: s.commandFingerprint,
@@ -233,24 +244,63 @@ function reference(r: Doc<"contentRequests">, s: Slot): Ref {
 }
 async function slot(ctx: Ctx, ref: Ref) {
   const r = await ctx.db.get(ref.contentRequestId),
-    s = r?.verification;
+    s = ref.compositeStage
+      ? ref.compositeStage === "first-verification"
+        ? r?.composite?.first
+        : r?.composite?.final
+      : r?.verification;
   if (
     !r ||
     !s ||
     s.candidateVersionId !== ref.candidateVersionId ||
     s.contentHash !== ref.contentHash ||
     s.commandFingerprint !== ref.commandFingerprint ||
-    s.producerRunId !== r.runId ||
+    s.producerRunId !==
+      (ref.compositeStage === "final-verification"
+        ? r.composite?.repairRunId
+        : r.runId) ||
     s.inputVersionId !== r.inputVersionId
   )
     fail("VERIFICATION_RECEIPT_INVALID");
   return { r, s };
+}
+export async function saveSlot(
+  ctx: MutationCtx,
+  r: Doc<"contentRequests">,
+  s: Slot,
+) {
+  if (s.kind === "standalone-verification-v1")
+    await ctx.db.patch(r._id, { verification: s });
+  else {
+    const c = r.composite;
+    if (!c) fail("VERIFICATION_RECEIPT_INVALID");
+    const final = s.producerRunId !== r.runId;
+    await ctx.db.patch(r._id, {
+      composite: {
+        ...c,
+        [final ? "final" : "first"]: s,
+        stickyRisk: c.stickyRisk ?? s.stickyRisk,
+        state: s.sourceUnavailable
+          ? "stopped"
+          : s.state === "finished"
+            ? final
+              ? "finished"
+              : "verified"
+            : c.state,
+      },
+    });
+  }
 }
 async function actor(
   ctx: Ctx,
   r: Doc<"contentRequests">,
   s: Pick<Slot, "actorId">,
 ) {
+  if (
+    r.composite &&
+    (s.actorId !== r.actorId || r.composite.actorId !== r.actorId)
+  )
+    fail("VERIFICATION_AUTHORITY_UNAVAILABLE");
   const u = await ctx.db.get(s.actorId);
   if (!u) fail("VERIFICATION_AUTHORITY_UNAVAILABLE");
   requireRole((await requireWorkspace(ctx, r.workspaceId, u)).membership, [
@@ -277,10 +327,12 @@ async function purpose(ctx: Ctx, r: Doc<"contentRequests">) {
       fail("VERIFICATION_PURPOSE_WITHDRAWN");
   }
 }
-async function packet(
+export async function packet(
   ctx: Ctx,
   r: Doc<"contentRequests">,
-  s: Pick<Slot, "candidateVersionId" | "contentHash" | "actorId">,
+  s: Pick<Slot, "candidateVersionId" | "contentHash" | "actorId"> & {
+    producerRunId?: Id<"agentRuns">;
+  },
   fresh: boolean,
   walk: MaterialWalk = materialWalk(),
 ) {
@@ -290,7 +342,7 @@ async function packet(
   if (
     !ver ||
     ver.workspaceId !== r.workspaceId ||
-    ver.runId !== r.runId ||
+    ver.runId !== (s.producerRunId ?? r.runId) ||
     ver.candidate?.contentHash !== s.contentHash
   )
     fail("VERIFICATION_SOURCE_UNAVAILABLE");
@@ -334,6 +386,12 @@ async function packet(
 async function current(ctx: Ctx, ref: Ref, execution = true) {
   const { r, s } = await slot(ctx, ref);
   if (s.sourceUnavailable) fail("VERIFICATION_SOURCE_UNAVAILABLE");
+  if (ref.compositeStage)
+    await (await import("./composite")).parent(ctx, r._id, true);
+  if (ref.compositeStage && !execution)
+    await (
+      await import("./composite")
+    ).capacity(ctx, r._id, 0, 0, 0, s.attemptId ?? undefined, false);
   const x = await packet(ctx, r, s, true),
     c = await configuration(
       ctx,
@@ -415,8 +473,11 @@ export const prepare = workspaceMutation({
       },
       true,
     );
-    if (r.verification) {
-      const s = r.verification;
+    if (r.compositeParentId) fail("VERIFICATION_ALREADY_BOUND");
+    if (r.composite) await (await import("./composite")).parent(ctx, r._id);
+    const existing = r.composite?.first ?? r.verification;
+    if (existing) {
+      const s = existing;
       if (
         s.actorId !== ctx.user._id ||
         s.commandFingerprint !== commandFingerprint ||
@@ -447,10 +508,12 @@ export const prepare = workspaceMutation({
     if (new TextEncoder().encode(body).length > c.p.maxInputTokens)
       fail("VERIFICATION_INPUT_LIMIT");
     const policyFingerprint = await fingerprint(c.p),
-      startedAt = Date.now(),
+      startedAt = r.composite?.startedAt ?? Date.now(),
       sourceUntil = minimum(x.sourceUntil, c.authorityUntil);
     const s: Slot = {
-      kind: "standalone-verification-v1",
+      kind: r.composite
+        ? "composite-verification-v1"
+        : "standalone-verification-v1",
       candidateVersionId: ver._id,
       contentHash: a.contentHash,
       provenanceHash: x.provenanceHash,
@@ -471,8 +534,9 @@ export const prepare = workspaceMutation({
       inputVersionId: r.inputVersionId,
       startedAt,
       deadline: Math.min(
-        startedAt + c.c.backgroundTimeoutMs,
+        r.composite?.deadline ?? startedAt + c.c.backgroundTimeoutMs,
         sourceUntil ?? Infinity,
+        r.composite?.deadline ?? Infinity,
       ),
       sourceUntil,
       policyId: c.p._id,
@@ -488,7 +552,7 @@ export const prepare = workspaceMutation({
       resultFingerprint: null,
       stickyRisk: null,
     };
-    await ctx.db.patch(r._id, { verification: s });
+    await saveSlot(ctx, r, s);
     if (sourceUntil !== null)
       await ctx.scheduler.runAt(
         sourceUntil,
@@ -552,6 +616,33 @@ export const status = internalQuery({
     );
   },
 });
+// Sent receipts and never-entered final reservations share one immutable verifier command identity.
+export async function assertOperationAvailable(
+  ctx: Ctx,
+  workspaceId: Id<"workspaces">,
+  accountId: Id<"socialAccounts">,
+  actorId: Id<"users">,
+  operationKey: string,
+  own?: Id<"aiAttempts">,
+) {
+  for (const owner of [
+    "jev-output-verifier",
+    "jev-output-verifier-reservation",
+  ] as const) {
+    const rows = await ctx.db
+      .query("aiAttempts")
+      .withIndex("by_jev_operation", (q) =>
+        q
+          .eq("owner", owner)
+          .eq("workspaceId", workspaceId)
+          .eq("accountId", accountId)
+          .eq("actorId", actorId)
+          .eq("operationKey", operationKey),
+      )
+      .take(2);
+    if (rows.some((t) => t._id !== own)) fail("VERIFICATION_ALREADY_ADMITTED");
+  }
+}
 export const fund = internalMutation({
   args: { ...request, expectedFingerprint: v.string() },
   returns: v.id("aiAttempts"),
@@ -565,6 +656,55 @@ export const fund = internalMutation({
       x.requestFingerprint !== a.expectedFingerprint
     )
       fail("VERIFICATION_ALREADY_ADMITTED");
+    if (a.reference.compositeStage === "final-verification") {
+      const c = r.composite!,
+        t = c.reservationId ? await ctx.db.get(c.reservationId) : null;
+      if (
+        !t ||
+        t.owner !== "jev-output-verifier-reservation" ||
+        t.state !== "reserved" ||
+        t.producerRunId !== s.producerRunId ||
+        t.policyFingerprint !== s.policyFingerprint ||
+        t.commandFingerprint !== s.commandFingerprint ||
+        t.deadline !== c.deadline ||
+        t.operationKey !== s.operationKey ||
+        t.actorId !== s.actorId
+      )
+        fail("VERIFICATION_RECEIPT_INVALID");
+      const { reservation, capacity } = await import("./composite");
+      await reservation(ctx, t);
+      await assertOperationAvailable(
+        ctx,
+        r.workspaceId,
+        r.accountId,
+        s.actorId,
+        s.operationKey,
+        t._id,
+      );
+      await capacity(ctx, r._id);
+      const {
+        _id,
+        _creationTime,
+        reservedAt,
+        reservationFingerprint,
+        deadline,
+        ...header
+      } = t;
+      await ctx.db.replace(t._id, {
+        ...header,
+        owner: "jev-output-verifier",
+        state: "sent",
+        sentAt: Date.now(),
+        candidateVersionId: s.candidateVersionId,
+        contentHash: s.contentHash,
+        provenanceHash: s.provenanceHash,
+        requestFingerprint: s.requestFingerprint,
+      });
+      await saveSlot(ctx, r, { ...s, attemptId: t._id, state: "admitted" });
+      if (x.c.failures >= CIRCUIT_FAILURES)
+        await ctx.db.patch(x.c._id, { probeAttemptId: t._id });
+      return t._id;
+    }
     for (const state of ["sent", "unknown"] as const)
       if (
         await ctx.db
@@ -580,27 +720,31 @@ export const fund = internalMutation({
           .first()
       )
         fail("VERIFICATION_USAGE_UNRESOLVED");
-    if (
-      await ctx.db
-        .query("aiAttempts")
-        .withIndex("by_jev_operation", (q) =>
-          q
-            .eq("owner", "jev-output-verifier")
-            .eq("workspaceId", r.workspaceId)
-            .eq("accountId", r.accountId)
-            .eq("actorId", s.actorId)
-            .eq("operationKey", s.operationKey),
-        )
-        .first()
-    )
-      fail("VERIFICATION_ALREADY_ADMITTED");
+    await assertOperationAvailable(
+      ctx,
+      r.workspaceId,
+      r.accountId,
+      s.actorId,
+      s.operationKey,
+    );
     const reservedMicros =
       estimate(x.p.maxInputTokens, x.p.inputMicrosPerMillion) +
       estimate(x.p.maxOutputTokens, x.p.outputMicrosPerMillion);
     if (!Number.isSafeInteger(reservedMicros))
       fail("VERIFICATION_RECEIPT_INVALID");
+    if (a.reference.compositeStage)
+      await (
+        await import("./composite")
+      ).capacity(ctx, r._id, reservedMicros, 1);
     await changeLiability(ctx, x.budgetIds, reservedMicros, 0, true);
     const id = await ctx.db.insert("aiAttempts", {
+      ...(a.reference.compositeStage
+        ? {
+            compositeParentId: r._id,
+            compositeStage: a.reference.compositeStage,
+            compositeRootRunId: r.runId,
+          }
+        : {}),
       owner: "jev-output-verifier",
       provider: "typesafe",
       purpose: "output-verification",
@@ -645,15 +789,13 @@ export const fund = internalMutation({
       outcome: null,
       fallback: "none",
     });
-    await ctx.db.patch(r._id, {
-      verification: { ...s, attemptId: id, state: "admitted" },
-    });
+    await saveSlot(ctx, r, { ...s, attemptId: id, state: "admitted" });
     if (x.c.failures >= CIRCUIT_FAILURES)
       await ctx.db.patch(x.c._id, { probeAttemptId: id });
     return id;
   },
 });
-async function receipt(ctx: Ctx, id: Id<"aiAttempts">, ref: Ref) {
+export async function receipt(ctx: Ctx, id: Id<"aiAttempts">, ref: Ref) {
   const t = await ctx.db.get(id);
   if (
     !t ||
@@ -665,6 +807,8 @@ async function receipt(ctx: Ctx, id: Id<"aiAttempts">, ref: Ref) {
     t.candidateVersionId !== ref.candidateVersionId ||
     t.contentHash !== ref.contentHash ||
     t.commandFingerprint !== ref.commandFingerprint ||
+    t.compositeStage !== ref.compositeStage ||
+    (ref.compositeStage && t.compositeParentId !== ref.contentRequestId) ||
     t.runId !== undefined ||
     t.routingOperationId !== undefined ||
     t.researchOrderId !== undefined ||
@@ -686,7 +830,11 @@ async function receipt(ctx: Ctx, id: Id<"aiAttempts">, ref: Ref) {
     .unique();
   if (own?._id !== id) fail("VERIFICATION_RECEIPT_INVALID");
   const r = await ctx.db.get(t.contentRequestId),
-    s = r?.verification,
+    s = ref.compositeStage
+      ? ref.compositeStage === "first-verification"
+        ? r?.composite?.first
+        : r?.composite?.final
+      : r?.verification,
     p = await ctx.db.get(t.policyId);
   if (
     r &&
@@ -769,6 +917,10 @@ export const authorizeFetch = internalQuery({
       x.requestFingerprint !== a.expectedFingerprint
     )
       fail("VERIFICATION_RECEIPT_INVALID");
+    if (a.reference.compositeStage)
+      await (
+        await import("./composite")
+      ).capacity(ctx, a.reference.contentRequestId, 0, 0, 0, t._id);
     return null;
   },
 });
@@ -891,7 +1043,21 @@ export const finish = internalMutation({
       x = await current(ctx, a.reference, false);
     } catch (error) {
       verificationLoss(error);
-      await erase(ctx, r);
+      if (
+        a.reference.compositeStage &&
+        error instanceof ConvexError &&
+        (error.data === "VERIFICATION_USAGE_UNRESOLVED" ||
+          error.data === "VERIFICATION_EXPIRED")
+      ) {
+        await saveSlot(ctx, r, {
+          ...s,
+          state: "finished",
+          result: null,
+          resultFingerprint: await sha256(
+            JSON.stringify([a.attemptId, a.outcome, a.answers]),
+          ),
+        });
+      } else await erase(ctx, r);
       return null;
     }
     const resultFingerprint = await sha256(
@@ -941,14 +1107,12 @@ export const finish = internalMutation({
         resultFingerprint: await sha256(JSON.stringify([a.reference, base])),
       };
     }
-    await ctx.db.patch(r._id, {
-      verification: {
-        ...s,
-        state: "finished",
-        result,
-        resultFingerprint,
-        stickyRisk,
-      },
+    await saveSlot(ctx, r, {
+      ...s,
+      state: "finished",
+      result,
+      resultFingerprint,
+      stickyRisk,
     });
     return null;
   },
@@ -1010,10 +1174,15 @@ export async function candidateVerification(
     .query("contentRequests")
     .withIndex("by_runId", (q) => q.eq("runId", ver.runId!))
     .unique();
-  if (!r?.verification) return undefined;
-  if (r.verification.candidateVersionId !== ver._id)
+  if (!r) return undefined;
+  const root = r.compositeParentId ? await ctx.db.get(r.compositeParentId) : r;
+  const selected = r.compositeParentId
+    ? root?.composite?.final
+    : (root?.composite?.first ?? root?.verification);
+  if (!root || !selected) return undefined;
+  if (selected.candidateVersionId !== ver._id)
     fail("VERIFICATION_RECEIPT_INVALID");
-  return verificationProjection(ctx, reference(r, r.verification));
+  return verificationProjection(ctx, reference(root, selected));
 }
 export async function checkedApplication(
   ctx: Ctx,
@@ -1106,16 +1275,18 @@ export const availability = workspaceQuery({
   },
 });
 async function erase(ctx: MutationCtx, r: Doc<"contentRequests">) {
-  if (!r.verification || r.verification.sourceUnavailable) return;
-  await ctx.db.patch(r._id, {
-    verification: {
-      ...r.verification,
+  const slots = [r.verification, r.composite?.first, r.composite?.final].filter(
+    (s): s is Slot => !!s,
+  );
+  for (const s of slots)
+    await saveSlot(ctx, (await ctx.db.get(r._id))!, {
+      ...s,
       sourceUnavailable: true,
       state: "stopped",
       result: null,
       stickyRisk: null,
-    },
-  });
+    });
+  if (r.composite) await (await import("./composite")).stopParent(ctx, r._id);
   const idea = r.resultIdeaId ? await ctx.db.get(r.resultIdeaId) : null;
   if (
     idea?.handoff?.candidateCommand?.verification?.reference
@@ -1136,29 +1307,55 @@ async function cleanup(
   r: Doc<"contentRequests">,
   force = false,
 ) {
-  if (!r.verification || r.verification.sourceUnavailable) return;
+  if (
+    (!r.verification || r.verification.sourceUnavailable) &&
+    (!r.composite || r.composite.sourceUnavailable)
+  )
+    return;
   if (force) {
     await erase(ctx, r);
     return;
   }
   try {
-    const s = r.verification;
-    await packet(ctx, r, s, false);
-    if (s.sourceUntil !== null && s.sourceUntil <= Date.now())
-      fail("VERIFICATION_SOURCE_UNAVAILABLE");
+    if (r.composite)
+      await (await import("./composite")).parent(ctx, r._id, false);
+    const slots = [
+      r.verification,
+      r.composite?.first,
+      r.composite?.final,
+    ].filter((s): s is Slot => !!s);
+    for (const s of slots) {
+      await packet(ctx, r, s, false);
+      if (s.sourceUntil !== null && s.sourceUntil <= Date.now())
+        fail("VERIFICATION_SOURCE_UNAVAILABLE");
+    }
   } catch (error) {
     verificationLoss(error);
     await erase(ctx, r);
   }
 }
 export const purgeCandidate = internalMutation({
-  args: { versionId: v.id("ideaVersions"), cursor },
+  args: {
+    versionId: v.id("ideaVersions"),
+    cursor,
+    compositeStage: v.optional(v.union(v.literal("first"), v.literal("final"))),
+  },
   returns: v.null(),
   handler: async (ctx, a) => {
     const page = await ctx.db
       .query("contentRequests")
-      .withIndex("by_verification_candidate", (q) =>
-        q.eq("verification.candidateVersionId", a.versionId),
+      .withIndex(
+        a.compositeStage === "first"
+          ? "by_composite_first"
+          : a.compositeStage === "final"
+            ? "by_composite_final"
+            : "by_verification_candidate",
+        (q) =>
+          a.compositeStage === "first"
+            ? q.eq("composite.first.candidateVersionId", a.versionId)
+            : a.compositeStage === "final"
+              ? q.eq("composite.final.candidateVersionId", a.versionId)
+              : q.eq("verification.candidateVersionId", a.versionId),
       )
       .paginate({ cursor: a.cursor, numItems: 25 });
     for (const r of page.page) await cleanup(ctx, r);
@@ -1166,6 +1363,12 @@ export const purgeCandidate = internalMutation({
       await ctx.scheduler.runAfter(0, internal.ai.jev.verify.purgeCandidate, {
         ...a,
         cursor: page.continueCursor,
+      });
+    else if (a.compositeStage !== "final")
+      await ctx.scheduler.runAfter(0, internal.ai.jev.verify.purgeCandidate, {
+        versionId: a.versionId,
+        cursor: null,
+        compositeStage: a.compositeStage === "first" ? "final" : "first",
       });
     return null;
   },
@@ -1178,7 +1381,13 @@ export const purgeProducer = internalMutation({
       .query("contentRequests")
       .withIndex("by_runId", (q) => q.eq("runId", a.runId))
       .unique();
-    if (r) await cleanup(ctx, r);
+    if (r) {
+      const root = r.compositeParentId
+        ? await ctx.db.get(r.compositeParentId)
+        : r;
+      if (root) await cleanup(ctx, root);
+    }
+    await (await import("./composite")).cleanupRoot(ctx, a);
     return null;
   },
 });
@@ -1192,6 +1401,8 @@ export const purge = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    if (a.cursor === null)
+      await ctx.scheduler.runAfter(0, internal.ai.jev.composite.purge, a);
     const query = ctx.db.query("contentRequests");
     const rows = a.actorId
       ? query.withIndex("by_verification_actor", (q) =>

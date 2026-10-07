@@ -82,7 +82,7 @@ export async function policy(ctx: QueryCtx | MutationCtx) {
     throw new ConvexError("MODEL_PROCESSING_CONFIGURATION_REQUIRED");
   return p!;
 }
-function policyFingerprint(p: Doc<"aiPolicies">) {
+export function policyFingerprint(p: Doc<"aiPolicies">) {
   return sha256(
     JSON.stringify(
       Object.fromEntries(
@@ -198,6 +198,28 @@ export async function active(
         r,
       );
   }
+  if (r.compositeParentId) {
+    const { parent, exposure } = await import("./jev/composite");
+    const root = await parent(ctx, r.compositeParentId, true, walk),
+      money = await exposure(ctx, root.r._id, root.c.currency);
+    if (
+      r.deadline > root.c.deadline ||
+      JSON.stringify(r.styleContext ?? null) !==
+        JSON.stringify(root.run.styleContext ?? null) ||
+      money.bookedMicros + money.heldMicros > root.c.maxCostMicros ||
+      money.calls > root.c.maxCalls ||
+      money.toolSteps > root.c.maxToolSteps
+    )
+      throw new ConvexError("VERIFICATION_EXPIRED");
+    if (
+      r.compositeStage === "repair" &&
+      contentRequest &&
+      (contentRequest.compositeParentId !== root.r._id ||
+        contentRequest.inputVersionId !== root.r.inputVersionId ||
+        root.c.repairRunId !== r._id)
+    )
+      throw new ConvexError("VERIFICATION_RECEIPT_INVALID");
+  }
   const p = await policy(ctx);
   if (
     p.version !== r.policyVersion ||
@@ -251,11 +273,19 @@ export async function createRun(
     existingPrompt?: { threadId: string; messageId: string };
     research?: Doc<"agentRuns">["research"];
     inputVersionIds?: Id<"ideaVersions">[];
+    inherited?: {
+      parentId: Id<"contentRequests">;
+      rootRunId: Id<"agentRuns">;
+      deadline: number;
+      sourceUntil: number | null;
+      styleContext: Doc<"agentRuns">["styleContext"];
+    };
   },
 ) {
   const p = await policy(ctx);
-  const styleContext =
-    a.purpose === "draft"
+  const styleContext = a.inherited
+    ? a.inherited.styleContext
+    : a.purpose === "draft"
       ? await captureStyle(ctx, a.workspaceId, a.accountId)
       : undefined;
   const declared = styleContext
@@ -349,9 +379,16 @@ export async function createRun(
         userId: a.actorId,
         message: { role: "user", content: promptText },
       });
-  const { prompt, existingPrompt, inputVersionIds, ...rest } = a;
+  const { prompt, existingPrompt, inputVersionIds, inherited, ...rest } = a;
   const runId = await ctx.db.insert("agentRuns", {
     ...rest,
+    ...(inherited
+      ? {
+          compositeParentId: inherited.parentId,
+          compositeStage: "repair" as const,
+          compositeRootRunId: inherited.rootRunId,
+        }
+      : {}),
     ...(styleContext ? { styleContext } : {}),
     sources,
     accountConnectionSequence,
@@ -362,7 +399,11 @@ export async function createRun(
     generation: 1,
     state: "ready",
     executionKey: null,
-    deadline: Math.min(Date.now() + p.maxDurationMs, ...deadlines),
+    deadline: Math.min(
+      Date.now() + p.maxDurationMs,
+      inherited?.deadline ?? Infinity,
+      ...deadlines,
+    ),
     attempts: 0,
     toolSteps: 0,
     budgetIds,
@@ -374,6 +415,7 @@ export async function createRun(
     ...sources.flatMap((s) => (s.ideaVersionId ? [s.ideaVersionId] : [])),
   ]);
   const sourceUntilValue = Math.min(
+    inherited?.sourceUntil ?? Infinity,
     styleContext?.sourceUntil ?? Infinity,
     inheritedUntil ?? Infinity,
     ...deadlines,
@@ -383,7 +425,11 @@ export async function createRun(
     : null;
   await ctx.db.patch(runId, {
     sourceUntil,
-    deadline: Math.min(Date.now() + p.maxDurationMs, sourceUntil ?? Infinity),
+    deadline: Math.min(
+      Date.now() + p.maxDurationMs,
+      inherited?.deadline ?? Infinity,
+      sourceUntil ?? Infinity,
+    ),
   });
   if (sourceUntil !== null)
     await ctx.scheduler.runAt(sourceUntil, internal.ai.runs.purgeSource, {
@@ -443,6 +489,7 @@ export const claim = internalMutation({
 });
 export const context = internalQuery({
   args: {
+    attemptId: v.optional(v.id("aiAttempts")),
     runId: v.id("agentRuns"),
     generation: v.number(),
     executionKey: v.string(),
@@ -463,6 +510,16 @@ export const context = internalQuery({
   }),
   handler: async (ctx, a) => {
     const { r, p } = await active(ctx, a.runId, a.generation, a.executionKey);
+    if (a.attemptId) {
+      const t = await ctx.db.get(a.attemptId);
+      if (!t || t.state !== "sent")
+        throw new ConvexError("MODEL_ATTEMPT_OWNER_INVALID");
+      await generationAttempt(ctx, t, r);
+      if (r.compositeParentId)
+        await (
+          await import("./jev/composite")
+        ).capacity(ctx, r.compositeParentId, 0, 0, 0, t._id);
+    }
     const { _creationTime, ...run } = r;
     const op = r.chatOperationId ? await ctx.db.get(r.chatOperationId) : null;
     return {
@@ -479,6 +536,155 @@ export const context = internalQuery({
     };
   },
 });
+export async function fundGeneration(
+  ctx: MutationCtx,
+  a: {
+    runId: Id<"agentRuns">;
+    generation: number;
+    executionKey: string;
+    key: string;
+  },
+  reserve = false,
+) {
+  const { r, p } = await active(
+    ctx,
+    a.runId,
+    a.generation,
+    reserve ? undefined : a.executionKey,
+  );
+  if (
+    r.state !== (reserve ? "ready" : "running") ||
+    !a.key ||
+    a.key.length > 100
+  )
+    throw new ConvexError("MODEL_RUN_INACTIVE");
+  const old = await ctx.db
+    .query("aiAttempts")
+    .withIndex("by_runId_and_key", (q) => q.eq("runId", r._id).eq("key", a.key))
+    .unique();
+  if (old) {
+    if (
+      !reserve &&
+      old.owner === "generation-reservation" &&
+      old.state === "reserved" &&
+      r.compositeParentId &&
+      r.compositeStage === "repair" &&
+      a.key === "composite:repair:initial"
+    ) {
+      const { reservation, capacity } = await import("./jev/composite");
+      await reservation(ctx, old);
+      await capacity(ctx, r.compositeParentId);
+      const {
+        _id,
+        _creationTime,
+        reservedAt,
+        compositeRootRunId,
+        actorId,
+        accountId,
+        maxInputTokens,
+        maxOutputTokens,
+        ...header
+      } = old;
+      await ctx.db.replace(old._id, {
+        ...header,
+        owner: "generation",
+        state: "sent",
+        sentAt: Date.now(),
+      });
+      await ctx.db.patch(r._id, { attempts: r.attempts + 1 });
+      return old._id;
+    }
+    await generationAttempt(ctx, old, r);
+    throw new ConvexError("MODEL_ATTEMPT_ALREADY_ADMITTED");
+  }
+  for (const state of ["sent", "unknown"] as const) {
+    const previous = await ctx.db
+      .query("aiAttempts")
+      .withIndex("by_runId_and_state", (q) =>
+        q.eq("runId", r._id).eq("state", state),
+      )
+      .first();
+    if (previous) {
+      await generationAttempt(ctx, previous, r);
+      throw new ConvexError("MODEL_PREVIOUS_ATTEMPT_UNRESOLVED");
+    }
+  }
+  if (r.attempts >= p.maxAttempts) throw new ConvexError("MODEL_ATTEMPT_LIMIT");
+  const reservedMicros = tokenEstimate(
+    p.maxInputTokens,
+    p.maxOutputTokens,
+    p.inputMicrosPerMillion,
+    p.outputMicrosPerMillion,
+  );
+  if (r.research) {
+    const o = await orderAuthority(
+        ctx,
+        r.research.orderId,
+        r.research.generation,
+      ),
+      money = await orderLiability(ctx, o);
+    if (
+      !o.config.cap ||
+      p.currency !== o.config.cap.currency ||
+      money.total + reservedMicros > o.config.cap.limitMicros
+    )
+      throw new ConvexError("RESEARCH_ORDER_BUDGET_EXHAUSTED");
+  }
+  if (r.compositeParentId)
+    await (
+      await import("./jev/composite")
+    ).capacity(ctx, r.compositeParentId, reservedMicros, 1);
+  await changeLiability(ctx, r.budgetIds, reservedMicros, 0, true);
+  if (!reserve) await ctx.db.patch(r._id, { attempts: r.attempts + 1 });
+  const receipt = {
+    ...(r.compositeParentId
+      ? {
+          compositeParentId: r.compositeParentId,
+          compositeStage: r.compositeStage,
+        }
+      : {}),
+    runId: r._id,
+    workspaceId: r.workspaceId,
+    key: a.key,
+    generation: r.generation,
+    budgetIds: r.budgetIds,
+    reservedMicros,
+    heldMicros: reservedMicros,
+    currency: p.currency,
+    policyVersion: p.version,
+    model: p.model,
+    provider: "requesty" as const,
+    inputMicrosPerMillion: p.inputMicrosPerMillion,
+    outputMicrosPerMillion: p.outputMicrosPerMillion,
+    state: "sent" as const,
+    sentAt: Date.now(),
+    settledAt: null,
+    inputTokens: null,
+    outputTokens: null,
+    estimatedMicros: null,
+    billedMicros: null,
+    reportedCost: null,
+    reportedCurrency: null,
+    reportedCostInvalid: false,
+    errorCode: null,
+  };
+  if (reserve)
+    return ctx.db.insert("aiAttempts", {
+      ...receipt,
+      owner: "generation-reservation",
+      accountId: r.accountId,
+      actorId: r.actorId,
+      maxInputTokens: p.maxInputTokens,
+      maxOutputTokens: p.maxOutputTokens,
+      compositeParentId: r.compositeParentId!,
+      compositeStage: "repair",
+      compositeRootRunId: r.compositeRootRunId!,
+      state: "reserved",
+      sentAt: null,
+      reservedAt: Date.now(),
+    });
+  return ctx.db.insert("aiAttempts", receipt);
+}
 export const fund = internalMutation({
   args: {
     runId: v.id("agentRuns"),
@@ -487,83 +693,7 @@ export const fund = internalMutation({
     key: v.string(),
   },
   returns: v.id("aiAttempts"),
-  handler: async (ctx, a) => {
-    const { r, p } = await active(ctx, a.runId, a.generation, a.executionKey);
-    if (r.state !== "running" || !a.key || a.key.length > 100)
-      throw new ConvexError("MODEL_RUN_INACTIVE");
-    const old = await ctx.db
-      .query("aiAttempts")
-      .withIndex("by_runId_and_key", (q) =>
-        q.eq("runId", r._id).eq("key", a.key),
-      )
-      .unique();
-    if (old) {
-      await generationAttempt(ctx, old, r);
-      throw new ConvexError("MODEL_ATTEMPT_ALREADY_ADMITTED");
-    }
-    for (const state of ["sent", "unknown"] as const) {
-      const previous = await ctx.db
-        .query("aiAttempts")
-        .withIndex("by_runId_and_state", (q) =>
-          q.eq("runId", r._id).eq("state", state),
-        )
-        .first();
-      if (previous) {
-        await generationAttempt(ctx, previous, r);
-        throw new ConvexError("MODEL_PREVIOUS_ATTEMPT_UNRESOLVED");
-      }
-    }
-    if (r.attempts >= p.maxAttempts)
-      throw new ConvexError("MODEL_ATTEMPT_LIMIT");
-    const reservedMicros = tokenEstimate(
-      p.maxInputTokens,
-      p.maxOutputTokens,
-      p.inputMicrosPerMillion,
-      p.outputMicrosPerMillion,
-    );
-    if (r.research) {
-      const o = await orderAuthority(
-          ctx,
-          r.research.orderId,
-          r.research.generation,
-        ),
-        money = await orderLiability(ctx, o);
-      if (
-        !o.config.cap ||
-        p.currency !== o.config.cap.currency ||
-        money.total + reservedMicros > o.config.cap.limitMicros
-      )
-        throw new ConvexError("RESEARCH_ORDER_BUDGET_EXHAUSTED");
-    }
-    await changeLiability(ctx, r.budgetIds, reservedMicros, 0, true);
-    await ctx.db.patch(r._id, { attempts: r.attempts + 1 });
-    return ctx.db.insert("aiAttempts", {
-      runId: r._id,
-      workspaceId: r.workspaceId,
-      key: a.key,
-      generation: r.generation,
-      budgetIds: r.budgetIds,
-      reservedMicros,
-      heldMicros: reservedMicros,
-      currency: p.currency,
-      policyVersion: p.version,
-      model: p.model,
-      provider: "requesty",
-      inputMicrosPerMillion: p.inputMicrosPerMillion,
-      outputMicrosPerMillion: p.outputMicrosPerMillion,
-      state: "sent",
-      sentAt: Date.now(),
-      settledAt: null,
-      inputTokens: null,
-      outputTokens: null,
-      estimatedMicros: null,
-      billedMicros: null,
-      reportedCost: null,
-      reportedCurrency: null,
-      reportedCostInvalid: false,
-      errorCode: null,
-    });
-  },
+  handler: async (ctx, a) => fundGeneration(ctx, a),
 });
 export const settle = internalMutation({
   args: {
@@ -736,6 +866,10 @@ export const toolContext = internalMutation({
   }),
   handler: async (ctx, a) => {
     const { r, p } = await active(ctx, a.runId, a.generation, a.executionKey);
+    if (r.compositeParentId)
+      await (
+        await import("./jev/composite")
+      ).capacity(ctx, r.compositeParentId, 0, 0, 1);
     if (r.toolSteps >= p.maxToolSteps)
       throw new ConvexError("MODEL_TOOL_LIMIT");
     await ctx.db.patch(r._id, { toolSteps: r.toolSteps + 1 });
@@ -801,6 +935,8 @@ export const finish = internalMutation({
       state: failed ? "failed" : "completed",
       errorCode: failed ? "MODEL_RUN_FAILED" : null,
     });
+    if (failed && r.compositeStage === "repair")
+      await (await import("./jev/composite")).failRepair(ctx, r);
     return null;
   },
 });
@@ -825,6 +961,10 @@ export const stop = mutation({
       if (c.actorId !== r!.actorId || c.threadId !== r!.threadId)
         throw new ConvexError("CHAT_RUN_CHANGED");
     }
+    if (r!.compositeParentId)
+      await (
+        await import("./jev/composite")
+      ).stopParent(ctx, r!.compositeParentId);
     if (r!.state === "ready" || r!.state === "running")
       await ctx.db.patch(r!._id, {
         state: "stopped",
@@ -894,7 +1034,11 @@ export const recent = query({
           .withIndex("by_runId_and_key", (q) => q.eq("runId", r._id))
           .take(10);
         const attempts = await Promise.all(
-          receipts.map((a) => generationAttempt(ctx, a, r)),
+          receipts.map(async (a) =>
+            a.owner === "generation-reservation"
+              ? (await import("./jev/composite")).reservation(ctx, a)
+              : generationAttempt(ctx, a, r),
+          ),
         );
         const observed = attempts.filter(
           (attempt) => attempt.estimatedMicros !== null,
@@ -942,6 +1086,9 @@ export const purgeSource = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    await (
+      await import("./jev/composite")
+    ).cleanupRoot(ctx, { runId: a.runId });
     await ctx.scheduler.runAfter(
       0,
       internal.research.contentCleanup.candidateRun,

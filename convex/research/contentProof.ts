@@ -301,6 +301,10 @@ export async function candidateProof(
     run.accountId !== c.content.accountId
   )
     throw new ConvexError("IDEA_SOURCE_CHANGED");
+  if (request.compositeParentId || request.composite)
+    await (
+      await import("../ai/jev/composite")
+    ).parent(ctx, request.compositeParentId ?? request._id, fresh, walk);
   const { routingProof } = await import("../ai/jev/routing");
   const proof = await routingProof(
     ctx,

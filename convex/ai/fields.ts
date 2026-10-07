@@ -14,7 +14,16 @@ export const source = v.union(
     generation: v.number(),
   }),
 );
+export const compositeCaps = v.object({
+  enabled: v.boolean(),
+  approvedBy: v.id("users"),
+  maxDurationMs: v.number(),
+  maxCostMicros: v.number(),
+  maxCalls: v.number(),
+  maxToolSteps: v.number(),
+});
 export const policyFields = {
+  composite: v.optional(compositeCaps),
   key: v.literal("requesty-generation"),
   version: v.string(),
   enabled: v.boolean(),
@@ -61,7 +70,19 @@ export const budgetFields = {
   heldMicros: v.number(),
   spentMicros: v.number(),
 };
+export const compositeStage = v.union(
+  v.literal("initial"),
+  v.literal("repair"),
+  v.literal("first-verification"),
+  v.literal("final-verification"),
+);
+export const compositeEdge = {
+  compositeParentId: v.optional(v.id("contentRequests")),
+  compositeStage: v.optional(compositeStage),
+};
 export const runFields = {
+  ...compositeEdge,
+  compositeRootRunId: v.optional(v.id("agentRuns")),
   styleContext: v.optional(
     v.object({
       versionId: v.id("styleProfileVersions"),
@@ -118,6 +139,7 @@ export const runFields = {
   errorCode: v.union(v.string(), v.null()),
 };
 export const attemptFields = {
+  ...compositeEdge,
   owner: v.optional(v.literal("generation")),
   researchOrderId: v.optional(v.id("researchOrders")),
   logicalIntent: v.optional(v.string()),
@@ -145,4 +167,19 @@ export const attemptFields = {
   reportedCurrency: v.null(),
   reportedCostInvalid: v.boolean(),
   errorCode: v.union(v.string(), v.null()),
+};
+
+export const generationReservationFields = {
+  ...attemptFields,
+  owner: v.literal("generation-reservation"),
+  accountId: v.id("socialAccounts"),
+  actorId: v.id("users"),
+  maxInputTokens: v.number(),
+  maxOutputTokens: v.number(),
+  compositeParentId: v.id("contentRequests"),
+  compositeStage: v.literal("repair"),
+  compositeRootRunId: v.id("agentRuns"),
+  state: v.union(v.literal("reserved"), v.literal("cancelled")),
+  sentAt: v.null(),
+  reservedAt: v.number(),
 };

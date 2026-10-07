@@ -80,6 +80,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
   const [outputKind, setOutputKind] = useState<
     "perspective" | "social-post-candidate"
   >("perspective");
+  const [compositeOptIn, setCompositeOptIn] = useState(false);
   const [candidateMedia, setCandidateMedia] = useState<
     { assetId: Id<"mediaAssets">; alt: string }[]
   >([]);
@@ -97,6 +98,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     scope: string;
     epoch: number;
     until: number | null;
+    compositeOptIn: boolean;
   } | null>(null);
   const prepareRouting = useMutation(api.ai.jev.routing.prepare),
     classifyRouting = useAction(api.ai.jev.routing.classify);
@@ -152,6 +154,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     archive = useMutation(api.content.ideas.archive),
     handoff = useMutation(api.content.ideas.handoff),
     generate = useMutation(api.content.ideas.generate),
+    generateComposite = useMutation(api.content.ideas.generateComposite),
     stopRun = useMutation(api.ai.runs.stop);
   const runs = useQuery(
     api.content.ideas.generationStatus,
@@ -268,6 +271,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     style?.usable,
     mode,
     outputKind,
+    compositeOptIn,
     !!selected,
   ]);
   const context = useRef({ scope: generationScope, epoch: 0 });
@@ -341,6 +345,8 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
         scope: generationScope,
         epoch: context.current.epoch,
         until: generationUntil,
+        compositeOptIn:
+          outputKind === "social-post-candidate" && compositeOptIn,
       };
     }
     const original = flow.current;
@@ -350,6 +356,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
       context.current.epoch === original.epoch &&
       (original.until === null || original.until > Date.now()) &&
       (untilRef.current === null || untilRef.current > Date.now());
+    let configurationRequired = false;
     const call = async () => {
       setError("");
       try {
@@ -382,7 +389,14 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
           ...original.generate,
           routingOperationId: original.id,
         };
-        await generate(original.generate);
+        if (original.compositeOptIn) {
+          const result = await generateComposite({
+            ...original.generate,
+            outputKind: "social-post-candidate",
+            routingOperationId: original.id,
+          });
+          configurationRequired = result.status === "configuration_required";
+        } else await generate(original.generate);
       } catch (e) {
         if (valid()) setError(ideaError(e));
         throw e;
@@ -390,7 +404,9 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     };
     if (await generation.execute(call))
       setMessage(
-        "Lauf gespeichert. Eine Ausgabe gilt erst nach erfolgreicher Persistenz als Idee.",
+        configurationRequired
+          ? "Gemeinsamer Rahmen benötigt Konfiguration · kein Generierungslauf gestartet."
+          : "Lauf gespeichert. Eine Ausgabe gilt erst nach erfolgreicher Persistenz als Idee.",
       );
   }
 
@@ -423,6 +439,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     setIntent("");
     setHumanStrategy("");
     setOutputKind("perspective");
+    setCompositeOptIn(false);
     setCandidateMedia([]);
     setObjective("");
     setTone("");
@@ -817,6 +834,27 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                   </option>
                 </select>
               </label>
+              {outputKind === "social-post-candidate" && (
+                <div className="stack text-sm rounded-lg border p-3">
+                  <label className="flex gap-2">
+                    <input
+                      type="checkbox"
+                      checked={compositeOptIn}
+                      disabled={busy || generationLocked}
+                      onChange={(e) => setCompositeOptIn(e.target.checked)}
+                    />
+                    Eine risikoarme Nachbesserung im gemeinsamen Rahmen erlauben
+                  </label>
+                  <p className="muted">
+                    Standardmäßig aus. Erste Generierung, Prüfung, höchstens
+                    eine Nachbesserung und Schlussprüfung teilen die
+                    ursprüngliche Uhr und einen konfigurierten Kostenrahmen in
+                    einer Währung. Die vorausgehende Strategieprüfung läuft
+                    separat. Ohne bestätigte Konfiguration startet keine
+                    Generierung.
+                  </p>
+                </div>
+              )}
               {outputKind === "social-post-candidate" && (
                 <fieldset className="stack">
                   <legend className="field-label">
@@ -1318,6 +1356,10 @@ export function CandidateApplication({
     versionId,
   });
   const apply = useMutation(api.content.ideas.applyCandidate);
+  const repairCandidate = useMutation(api.ai.jev.composite.repair);
+  const [chosenRepair, setChosenRepair] = useState<Id<"ideaVersions"> | null>(
+    null,
+  );
   const prepareVerification = useMutation(api.ai.jev.verify.prepare);
   const checkVerification = useAction(api.ai.jev.verify.check);
   const convex = useConvex();
@@ -1353,6 +1395,15 @@ export function CandidateApplication({
     ),
     until = Number.isFinite(n) ? n : null;
   const clock = useGithubSourceProofClock([
+    ...(view?.composite &&
+    ["initial", "verified", "repair"].includes(view.composite.state)
+      ? [
+          {
+            authorized: !view.composite.sourceUnavailable,
+            proofExpiresAt: view.composite.deadline,
+          },
+        ]
+      : []),
     ...(verification?.state === "ready"
       ? [{ authorized: true, proofExpiresAt: verification.deadline }]
       : []),
@@ -1399,6 +1450,17 @@ export function CandidateApplication({
     verificationScope,
     view?.sourceUntil ?? null,
   );
+  const repairUntil = Math.min(
+    view?.sourceUntil ?? Infinity,
+    view?.composite?.deadline ?? Infinity,
+  );
+  const repairCommand = useNativeCommand(
+    verificationScope,
+    Number.isFinite(repairUntil) ? repairUntil : null,
+  );
+  useEffect(() => {
+    setChosenRepair(null);
+  }, [verificationScope]);
   const verificationUsable =
     verification?.applicability === "current" &&
     (verification.sourceUntil === null || verification.sourceUntil > clock);
@@ -1470,6 +1532,32 @@ export function CandidateApplication({
           : "Social-Post-Kandidat nicht verfügbar"}
       </p>
     );
+  if (
+    chosenRepair &&
+    view.composite?.repairedCandidateVersionId === chosenRepair
+  )
+    return (
+      <div className="stack text-sm">
+        <p role="status">
+          Ausgewählt: nachgebesserter Kandidat · weiterhin unfreigegeben.
+        </p>
+        <Button
+          variant="outline"
+          disabled={disabled}
+          onClick={() => setChosenRepair(null)}
+        >
+          Ursprünglichen Kandidaten auswählen
+        </Button>
+        <CandidateApplication
+          versionId={chosenRepair}
+          target={target}
+          disabled={disabled}
+          bufferScope={bufferScope}
+          targetUntil={targetUntil}
+          onApplied={onApplied}
+        />
+      </div>
+    );
   return (
     <div className="stack text-sm">
       <Status>
@@ -1480,6 +1568,119 @@ export function CandidateApplication({
         Prüfe Angaben, Reihenfolge und Medien. Die Übernahme erzeugt eine
         Arbeitsversion; Freigabe und Veröffentlichung bleiben separate Schritte.
       </p>
+      {view.composite && (
+        <div
+          className="stack rounded-lg border p-3"
+          aria-label="Gemeinsamer Nachbesserungsrahmen"
+        >
+          <p>
+            Gemeinsamer Rahmen ·{" "}
+            {
+              {
+                initial: "Erste Generierung",
+                verified: "Erste Prüfung beendet",
+                repair: "Nachbesserung läuft",
+                finished: "Ablauf beendet",
+                stopped: "Beendet / Quelle nicht verfügbar",
+              }[view.composite.state]
+            }{" "}
+            · ursprünglicher Start{" "}
+            {new Date(view.composite.startedAt).toLocaleTimeString("de-DE")} ·
+            Ende {new Date(view.composite.deadline).toLocaleTimeString("de-DE")}
+          </p>
+          <p>
+            {(view.composite.bookedMicros / 1e6).toFixed(6)}{" "}
+            {view.composite.currency} gebucht ·{" "}
+            {(view.composite.heldMicros / 1e6).toFixed(6)} reserviert · Rahmen{" "}
+            {(view.composite.maxCostMicros / 1e6).toFixed(6)}{" "}
+            {view.composite.currency}. Kosten{" "}
+            {view.composite.usagePending
+              ? "ungewiss oder noch offen"
+              : "abgerechnet"}
+            ; keine Währungsumrechnung.
+          </p>
+          <p>
+            Aufrufe {view.composite.calls}/{view.composite.maxCalls} ·
+            Werkzeugschritte {view.composite.toolSteps}/
+            {view.composite.maxToolSteps} · Schlussprüfung{" "}
+            {view.composite.reservedFinal
+              ? "reserviert, noch nicht gesendet"
+              : "keine ungesendete Reservierung"}
+            .
+          </p>
+          {view.composite.stickyRisk && (
+            <p role="alert">
+              Ursprüngliches Claim-/Bedeutungs-/Intentrisiko bleibt sichtbar.
+              Manuelle Prüfung erforderlich.
+            </p>
+          )}
+          {view.composite.deadline <= clock && (
+            <p role="status">
+              Gemeinsame Uhr abgelaufen · keine weitere bezahlte Fortsetzung.
+            </p>
+          )}
+          {verificationResult?.decision === "repairable" &&
+            verification?.reference.compositeStage === "first-verification" &&
+            !view.composite.stickyRisk &&
+            !view.composite.repairedCandidateVersionId &&
+            view.composite.state === "verified" &&
+            verificationResult.reasonKeys.every((key) =>
+              ["toneFits", "ctaFits", "networkFits"].includes(key),
+            ) && (
+              <Button
+                variant="outline"
+                disabled={
+                  disabled ||
+                  state.role === "Viewer" ||
+                  repairCommand.locked ||
+                  view.composite.usagePending ||
+                  view.composite.deadline <= clock
+                }
+                onClick={() => {
+                  const args = {
+                    workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+                    reference: verification.reference,
+                    resultFingerprint: verificationResult.resultFingerprint,
+                    operationKey: crypto.randomUUID(),
+                  };
+                  void repairCommand.execute(() => repairCandidate(args));
+                }}
+              >
+                Einmal risikoarm nachbessern
+              </Button>
+            )}
+          {repairCommand.retry && (
+            <Button
+              variant="outline"
+              disabled={disabled || repairCommand.busy}
+              onClick={() => void repairCommand.execute(repairCommand.retry!)}
+            >
+              Ursprüngliche Nachbesserung erneut bestätigen
+            </Button>
+          )}
+          {repairCommand.error && (
+            <p role="alert">{ideaError(repairCommand.error)}</p>
+          )}
+          {view.composite.repairedCandidateVersionId &&
+            view.composite.repairedCandidateVersionId !== versionId &&
+            !chosenRepair && (
+              <Button
+                variant="outline"
+                disabled={disabled || op.locked || verificationCommand.busy}
+                onClick={() =>
+                  setChosenRepair(view.composite!.repairedCandidateVersionId)
+                }
+              >
+                Nachgebesserten Kandidaten auswählen
+              </Button>
+            )}
+          <p className="muted">
+            Eine Nachbesserung bleibt bis zur ausdrücklichen Schlussprüfung
+            ungeprüft. Die Auswahl ändert keinen Entwurf; die Übernahme erzeugt
+            eine unfreigegebene Arbeitsversion.
+          </p>
+        </div>
+      )}
       <ol className="list-decimal space-y-2 pl-5">
         {view.candidate.content.text.map((post, i) => (
           <li key={i} className="whitespace-pre-wrap break-words">

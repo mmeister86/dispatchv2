@@ -1,4 +1,8 @@
-import { verificationSlot, checkedVerification } from "../ai/jev/types";
+import {
+  verificationSlot,
+  checkedVerification,
+  compositeEnvelope,
+} from "../ai/jev/types";
 import { source as agentSource } from "../ai/fields";
 import { v } from "convex/values";
 import { content, mediaChecksums } from "../lib/editorialFields";
@@ -108,6 +112,9 @@ export const feedbackFields = {
   resultingVersionId: v.optional(v.id("ideaVersions")),
 };
 export const requestFields = {
+  composite: v.optional(compositeEnvelope),
+  compositeParentId: v.optional(v.id("contentRequests")),
+  compositeStage: v.optional(v.literal("repair")),
   verification: v.optional(verificationSlot),
   routingOperationId: v.optional(v.id("jevRoutingOperations")),
   outputKind: v.optional(v.literal("social-post-candidate")),

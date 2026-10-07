@@ -47,6 +47,8 @@ export async function generationAttempt(
     attempt.logicalIntent !== undefined ||
     !run ||
     attempt.runId !== run._id ||
+    attempt.compositeParentId !== run.compositeParentId ||
+    attempt.compositeStage !== run.compositeStage ||
     attempt.workspaceId !== run.workspaceId ||
     attempt.budgetIds.length !== 3 ||
     new Set(attempt.budgetIds).size !== 3 ||

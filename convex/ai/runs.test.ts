@@ -249,6 +249,7 @@ describe("funded model runs through official Agent", () => {
       receipt.owner === "jev-analyzer" ||
       receipt.owner === "jev-intent-router" ||
       receipt.owner === "jev-output-verifier" ||
+      receipt.owner === "jev-output-verifier-reservation" ||
       receipt.owner === "own-content-embedding"
     )
       throw new Error("Unexpected Jev receipt");

@@ -1518,6 +1518,365 @@ try {
       automaticApprovalOrPublishing: false,
     }),
   );
+  // TASK68.3 initial opt-in is a distinct native command; missing configuration never downgrades.
+  await freshRouting();
+  await dialog
+    .getByLabel("Ausgabe", { exact: true })
+    .selectOption("social-post-candidate");
+  const compositeOpt = dialog.getByRole("checkbox", {
+    name: "Eine risikoarme Nachbesserung im gemeinsamen Rahmen erlauben",
+    exact: true,
+  });
+  await expect(compositeOpt).not.toBeChecked();
+  await compositeOpt.check();
+  await dialog.getByLabel("Ausdrückliche Strategie").selectOption("generic");
+  await dialog.getByRole("button", { name: "Vorschlag anfordern" }).click();
+  await expect.poll(() => page.evaluate(() => window.commands.length)).toBe(1);
+  expect(await page.evaluate(() => window.commands[0].name)).toBe(
+    "content/ideas:generateComposite",
+  );
+  await page.evaluate(() =>
+    window.commands[0].resolve({
+      status: "configuration_required",
+      runId: null,
+    }),
+  );
+  await expect(
+    page.getByText(
+      "Gemeinsamer Rahmen benötigt Konfiguration · kein Generierungslauf gestartet.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.commands.map((c) => c.name))).toEqual(
+    ["content/ideas:generateComposite"],
+  );
+  await picture("composite-off-configuration-required-390", compositeOpt);
+  // Explicit repair selection never applies a candidate or automatically starts its final check.
+  await page.goto("http://127.0.0.1:5174/idea-fixture");
+  await page.evaluate(() => {
+    window.account = "account-one";
+    const candidate = {
+      kind: "social-post-candidate-v1",
+      content: {
+        title: "Composite original",
+        text: ["Original qualified post"],
+        media: [],
+        accountId: "account-one",
+        pillar: "Building in public",
+        strategy: "generic",
+      },
+      contentHash: "original-native-hash",
+      provenanceHash: "original-provenance",
+      routingOperationId: "routing-1",
+      commandFingerprint: "native-whole-command",
+    };
+    const reference = {
+      contentRequestId: "composite-request",
+      candidateVersionId: "native-candidate",
+      contentHash: candidate.contentHash,
+      commandFingerprint: "first-composite-command",
+      compositeStage: "first-verification",
+    };
+    const result = {
+      candidateVersionId: "native-candidate",
+      contentHash: candidate.contentHash,
+      provenanceHash: candidate.provenanceHash,
+      questionVersion: "jev-output-verification-v1",
+      normalizationVersion: "jev-verification-normalization-v1",
+      thresholdVersion: "jev-verification-hypotheses-v1",
+      model: "synthetic-verifier-1",
+      decision: "repairable",
+      reasonKeys: ["unwantedPromotion"],
+      resultFingerprint: "first-composite-result",
+      criteria: Object.fromEntries(
+        [
+          "meaningPreserved",
+          "intentPreserved",
+          "newStrongClaim",
+          "unwantedPromotion",
+          "toneFits",
+          "ctaFits",
+          "networkFits",
+        ].map((k) => [
+          k,
+          {
+            probability: k === "newStrongClaim" ? 0.05 : 0.95,
+            applicability: "specified",
+          },
+        ]),
+      ),
+    };
+    const verification = {
+      reference,
+      applicability: "current",
+      sourceUntil: null,
+      deadline: Date.now() + 60000,
+      state: "finished",
+      result,
+      stickyRisk: null,
+      usage: {
+        attemptId: "composite-first",
+        state: "settled",
+        heldMicros: 0,
+        estimatedMicros: 110,
+        currency: "USD",
+      },
+    };
+    const composite = {
+      contentRequestId: "composite-request",
+      startedAt: Date.now(),
+      deadline: Date.now() + 60000,
+      currency: "USD",
+      state: "verified",
+      sourceUnavailable: false,
+      repairedCandidateVersionId: null,
+      reservedFinal: false,
+      bookedMicros: 140,
+      heldMicros: 0,
+      observedMicros: 140,
+      usagePending: false,
+      calls: 2,
+      toolSteps: 0,
+      maxCostMicros: 100000,
+      maxCalls: 6,
+      maxToolSteps: 2,
+      stickyRisk: null,
+    };
+    window.candidateViews = {
+      "native-candidate": {
+        versionId: "native-candidate",
+        ideaId: "candidate-idea",
+        runId: "native-run",
+        applicability: "current",
+        sourceUntil: null,
+        candidate,
+        intent: {
+          intent: "Original qualified intent",
+          network: "x",
+          outputKind: "social-post-candidate",
+          strategy: "generic",
+          tone: null,
+          cta: null,
+          objective: null,
+          media: [],
+        },
+        verification,
+        composite,
+      },
+    };
+    window.list = {
+      page: [
+        {
+          idea: {
+            _id: "candidate-idea",
+            workspaceId: window.workspace,
+            revision: 1,
+            status: "new",
+            currentVersionId: "native-candidate",
+          },
+          version: {
+            _id: "native-candidate",
+            number: 1,
+            title: "Composite original",
+            note: "",
+            perspective: "",
+            priority: "normal",
+            source: { kind: "note" },
+            originals: [],
+            questions: [],
+            rationale: "",
+            candidate,
+          },
+        },
+      ],
+      isDone: true,
+      continueCursor: "",
+    };
+    window.commands = [];
+    window.verificationActions = [];
+    window.verificationViews = {};
+    window.render();
+  });
+  const repairButton = page.getByRole("button", {
+    name: "Einmal risikoarm nachbessern",
+    exact: true,
+  });
+  await expect(repairButton).toHaveCount(0);
+  await page.evaluate(() => {
+    window.candidateViews["native-candidate"].verification.result.reasonKeys = [
+      "networkFits",
+    ];
+    window.render();
+  });
+  await expect(repairButton).toBeEnabled();
+  await page.evaluate(() => {
+    window.candidateViews["native-candidate"].composite.deadline =
+      Date.now() + 1000;
+    window.render();
+  });
+  await page.clock.fastForward(1100);
+  await expect(repairButton).toBeDisabled();
+  await expect(
+    page.getByText(
+      "Gemeinsame Uhr abgelaufen · keine weitere bezahlte Fortsetzung.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.commands.length)).toBe(0);
+  await page.evaluate(() => {
+    window.candidateViews["native-candidate"].composite.deadline =
+      Date.now() + 60000;
+    window.render();
+  });
+  await expect(repairButton).toBeEnabled();
+  await repairButton.click();
+  const repairArgs = await page.evaluate(() => window.commands[0].args);
+  expect(await page.evaluate(() => window.commands[0].name)).toBe(
+    "ai/jev/composite:repair",
+  );
+  expect(repairArgs.reference.compositeStage).toBe("first-verification");
+  expect(repairArgs.resultFingerprint).toBe("first-composite-result");
+  await page.evaluate(() =>
+    window.commands[0].reject(new Error("repair ACK uncertain")),
+  );
+  await page
+    .getByRole("button", {
+      name: "Ursprüngliche Nachbesserung erneut bestätigen",
+      exact: true,
+    })
+    .click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(
+    repairArgs,
+  );
+  await page.evaluate(() => {
+    const original = window.candidateViews["native-candidate"];
+    original.composite = {
+      ...original.composite,
+      state: "repair",
+      reservedFinal: true,
+      heldMicros: 25100,
+      calls: 4,
+    };
+    window.commands[1].resolve({
+      runId: "actual-child",
+      contentRequestId: "child-request",
+    });
+    window.render();
+  });
+  await expect(repairButton).toHaveCount(0);
+  await expect(
+    page.getByText("Schlussprüfung reserviert, noch nicht gesendet.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    const original = window.candidateViews["native-candidate"];
+    original.composite.repairedCandidateVersionId = "repaired-candidate";
+    const candidate = {
+      ...original.candidate,
+      content: {
+        ...original.candidate.content,
+        title: "Repaired unapproved",
+        text: ["Repaired qualified post"],
+      },
+      contentHash: "exact-child-hash",
+      provenanceHash: "exact-child-proof",
+    };
+    const reference = {
+      contentRequestId: "composite-request",
+      candidateVersionId: "repaired-candidate",
+      contentHash: candidate.contentHash,
+      commandFingerprint: "exact-final-command",
+      compositeStage: "final-verification",
+    };
+    window.candidateViews["repaired-candidate"] = {
+      ...original,
+      versionId: "repaired-candidate",
+      candidate,
+      verification: {
+        ...original.verification,
+        reference,
+        state: "ready",
+        result: null,
+        usage: null,
+      },
+    };
+    window.render();
+  });
+  const chooseRepair = page.getByRole("button", {
+    name: "Nachgebesserten Kandidaten auswählen",
+    exact: true,
+  });
+  await expect(chooseRepair).toBeEnabled();
+  await expect(
+    page.getByText("Repaired qualified post", { exact: true }),
+  ).toHaveCount(0);
+  await chooseRepair.click();
+  await expect(
+    page.getByText("Repaired qualified post", { exact: true }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.commands.length)).toBe(2);
+  expect(await page.evaluate(() => window.verificationActions.length)).toBe(0);
+  const finalStart = page.getByRole("button", {
+    name: "Gespeicherte Prüfung einmalig starten",
+    exact: true,
+  });
+  await finalStart.click();
+  expect(
+    (await page.evaluate(() => window.verificationActions[0].args)).reference,
+  ).toMatchObject({
+    candidateVersionId: "repaired-candidate",
+    contentHash: "exact-child-hash",
+    compositeStage: "final-verification",
+  });
+  await page.evaluate(() => {
+    const child = window.candidateViews["repaired-candidate"];
+    child.verification = {
+      ...child.verification,
+      state: "finished",
+      result: null,
+      usage: {
+        attemptId: "final-original",
+        state: "unknown",
+        heldMicros: 17000,
+        estimatedMicros: null,
+        currency: "USD",
+      },
+    };
+    child.composite = {
+      ...child.composite,
+      reservedFinal: false,
+      usagePending: true,
+    };
+    window.verificationActions[0].resolve(null);
+    window.render();
+  });
+  await expect(finalStart).toHaveCount(0);
+  await expect(
+    page.getByText("Prüfung: Kosten ungewiss", { exact: false }),
+  ).toBeVisible();
+  await picture(
+    "composite-explicit-child-final-unknown-390",
+    page.getByText("Repaired qualified post", { exact: true }),
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await picture(
+    "composite-explicit-child-final-unknown-1280",
+    page.getByText("Repaired qualified post", { exact: true }),
+  );
+  expect(
+    await page.evaluate(() =>
+      window.commands.filter((c) => c.name === "content/ideas:applyCandidate"),
+    ),
+  ).toEqual([]);
+  await page.evaluate(() => {
+    window.session = "session-two";
+    window.render();
+  });
+  await expect(
+    page.getByText("Repaired qualified post", { exact: true }),
+  ).toHaveCount(0);
+  await expect(chooseRepair).toBeVisible();
   writeFileSync(
     `${evidence}/facts.json`,
     JSON.stringify(
