@@ -10,9 +10,9 @@ const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import React from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
-const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';throw new Error('No domain writes in health fixture');});return funcs.get(name)};
+const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';if(name==='preferences:saveNotifications')return new Promise((resolve,reject)=>window.preferenceSaves.push({args,sessionId:window.session.session.id,resolve,reject}));throw new Error('No domain writes in health fixture');});return funcs.get(name)};
 export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(name!=='operations/export:self')throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
-export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
+export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='preferences:notifications'){if(window.preferenceError)throw Error('PRIVATE_PROVIDER_ERROR');return window.preferenceByKey[args.requestKey];}if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
 export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
 };
@@ -74,6 +74,32 @@ try {
     };
     window.commands = [];
     window.exportRequests = [];
+    window.preferenceSaves = [];
+    window.preferenceStored = {
+      revision: 0,
+      email: false,
+      inAppSummaries: false,
+      weekly: false,
+      research: false,
+      timezone: "UTC",
+      quiet: null,
+    };
+    window.preferenceByKey = {};
+    window.publishPreferences = (patch = {}) => {
+      const a = window.queries
+        .filter((q) => q.name === "preferences:notifications")
+        .at(-1)?.args;
+      if (!a) throw Error("No mounted preference query");
+      window.preferenceByKey[a.requestKey] = {
+        authId: window.session.user.id,
+        sessionId: window.session.session.id,
+        workspaceId: a.workspaceId,
+        requestKey: a.requestKey,
+        settings: structuredClone(window.preferenceStored),
+        ...patch,
+      };
+      window.update({});
+    };
     window.urlRevocations = [];
     const revoke = URL.revokeObjectURL.bind(URL);
     URL.revokeObjectURL = (url) => {
@@ -808,7 +834,7 @@ try {
   ).toEqual([]);
   expect(await page.evaluate(() => window.storageWrites)).toEqual([]);
 
-  // TASK-32.1: actual mounted Cloud settings are unavailable/off for every role.
+  // TASK-32.3 supersedes only Cloud-all-disabled/no-own-setter controls.
   await page.goto("http://127.0.0.1:5189/settings/notifications");
   const options = [
     "In-App-Zusammenfassungen",
@@ -817,6 +843,51 @@ try {
     "Research-Zusammenfassungen",
     "Ruhezeiten",
   ];
+  const reloadPreferences = page.getByRole("button", {
+    name: "Änderungen verwerfen und neu laden",
+    exact: true,
+  });
+  const savePreferences = page.getByRole("button", {
+    name: "Benachrichtigungswünsche speichern",
+    exact: true,
+  });
+  const resolvePreference = (patch = {}, index = -1) =>
+    page.evaluate(
+      ({ patch, index }) => {
+        const r = window.preferenceSaves.at(index);
+        window.preferenceStored = {
+          ...r.args.settings,
+          revision: r.args.expectedRevision + 1,
+        };
+        r.resolve({
+          authId: r.args.expectedAuthId,
+          sessionId: r.sessionId,
+          workspaceId: r.args.workspaceId,
+          requestKey: r.args.requestKey,
+          settings: structuredClone(window.preferenceStored),
+          ...patch,
+        });
+      },
+      { patch, index },
+    );
+  await expect(
+    page.getByText("Benachrichtigungswünsche werden geladen …", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await expect(savePreferences).toHaveCount(0);
+  await page.evaluate(() => window.publishPreferences());
+  for (const name of options) {
+    await expect(
+      page.getByRole("switch", { name, exact: true }),
+    ).toHaveAttribute("aria-checked", "false");
+    await expect(page.getByRole("switch", { name, exact: true })).toBeEnabled();
+  }
+  await expect(
+    page.getByText(
+      "E-Mail und In-App-/Wochen-/Research-Zusammenfassungen sowie die Ausführung von Ruhezeiten sind noch nicht verfügbar. Speichern aktiviert keine Zustellung.",
+    ),
+  ).toBeVisible();
   for (const role of ["Owner", "Admin", "Editor", "Viewer"]) {
     await page.evaluate(
       (role) =>
@@ -828,20 +899,289 @@ try {
         }),
       role,
     );
-    for (const name of options) {
-      await expect(
-        page.getByRole("switch", { name, exact: true }),
-      ).toHaveAttribute("aria-checked", "false");
-      await expect(
-        page.getByRole("switch", { name, exact: true }),
-      ).toBeDisabled();
-    }
+    await reloadPreferences.click();
+    await expect(
+      page.getByTestId("native-notification-preferences"),
+    ).toHaveCount(0);
+    await page.evaluate(() => window.publishPreferences());
+    const email = page.getByRole("switch", {
+      name: "E-Mail-Zusammenfassungen",
+      exact: true,
+    });
+    const prior = await email.getAttribute("aria-checked");
+    await email.click();
+    await expect(savePreferences).toBeEnabled();
+    await savePreferences.click();
+    await expect(savePreferences).toBeDisabled();
+    await resolvePreference();
     await expect(
       page.getByText(
-        "Optionale Zusammenfassungen und Ruhezeiten sind im Cloud-Workspace noch nicht verfügbar. Es wird keine Präferenz gespeichert.",
+        "Benachrichtigungswünsche gespeichert. Keine Zustellung aktiviert.",
+        { exact: true },
       ),
     ).toBeVisible();
+    // An old subscription must not roll back the just-acknowledged local revision.
+    await expect(email).toHaveAttribute(
+      "aria-checked",
+      prior === "true" ? "false" : "true",
+    );
+    await reloadPreferences.click();
+    await expect(
+      page.getByTestId("native-notification-preferences"),
+    ).toHaveCount(0);
+    await page.evaluate(() => window.publishPreferences());
+    await expect(email).toHaveAttribute(
+      "aria-checked",
+      prior === "true" ? "false" : "true",
+    );
   }
+  await page.getByRole("switch", { name: "Ruhezeiten", exact: true }).click();
+  await page
+    .getByRole("textbox", {
+      name: "Zeitzone für Benachrichtigungswünsche",
+      exact: true,
+    })
+    .fill("Europe/Berlin");
+  await page.getByLabel("Ruhezeit ab", { exact: true }).fill("21:00");
+  await page.getByLabel("Ruhezeit bis", { exact: true }).fill("07:30");
+  await page.evaluate(() => {
+    window.preferenceStored = {
+      ...window.preferenceStored,
+      revision: window.preferenceStored.revision + 1,
+      timezone: "UTC",
+    };
+    window.publishPreferences();
+  });
+  await expect(
+    page.getByRole("textbox", {
+      name: "Zeitzone für Benachrichtigungswünsche",
+      exact: true,
+    }),
+  ).toHaveValue("Europe/Berlin");
+  await expect(
+    page.getByText(
+      "Gespeicherter Stand wurde zwischenzeitlich geändert. Deine Eingaben bleiben erhalten.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await savePreferences.click();
+  await page.evaluate(() =>
+    window.preferenceSaves.at(-1).reject(
+      Object.assign(Error("PRIVATE_CONFLICT"), {
+        data: "NOTIFICATION_REVISION_CONFLICT",
+      }),
+    ),
+  );
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "Gespeicherter Stand wurde geändert" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("textbox", {
+      name: "Zeitzone für Benachrichtigungswünsche",
+      exact: true,
+    }),
+  ).toHaveValue("Europe/Berlin");
+  await reloadPreferences.click();
+  await page.evaluate(() => window.publishPreferences());
+  await expect(
+    page.getByRole("textbox", {
+      name: "Zeitzone für Benachrichtigungswünsche",
+      exact: true,
+    }),
+  ).toHaveValue("UTC");
+  // Strict awaited native wire correlation for every field; no saved claim on mismatch.
+  for (const patch of [
+    { authId: "foreign" },
+    { sessionId: "foreign" },
+    { workspaceId: "foreign" },
+    { requestKey: "foreign" },
+  ]) {
+    await page
+      .getByRole("switch", { name: "E-Mail-Zusammenfassungen", exact: true })
+      .click();
+    await savePreferences.click();
+    await resolvePreference(patch);
+    await expect(
+      page
+        .getByRole("alert")
+        .filter({ hasText: "Anmeldung oder Auswahl hat sich geändert" }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Benachrichtigungswünsche gespeichert. Keine Zustellung aktiviert.",
+        { exact: true },
+      ),
+    ).toHaveCount(0);
+    await reloadPreferences.click();
+    await page.evaluate(() => window.publishPreferences());
+  }
+  await page
+    .getByRole("switch", { name: "E-Mail-Zusammenfassungen", exact: true })
+    .click();
+  const beforePreferenceEntropy = await page.evaluate(
+    () => window.preferenceSaves.length,
+  );
+  await page.evaluate(() => {
+    window.preferenceEntropy = crypto.randomUUID.bind(crypto);
+    crypto.randomUUID = () => {
+      throw Error("Synthetic entropy");
+    };
+  });
+  await savePreferences.click();
+  await expect(
+    page.getByRole("alert").filter({
+      hasText: "Benachrichtigungswünsche konnten nicht gespeichert werden",
+    }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.preferenceSaves.length)).toBe(
+    beforePreferenceEntropy,
+  );
+  await page.evaluate(() => {
+    crypto.randomUUID = window.preferenceEntropy;
+  });
+  await savePreferences.click();
+  await resolvePreference();
+  await expect(
+    page.getByText(
+      "Benachrichtigungswünsche gespeichert. Keine Zustellung aktiviert.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  for (const patch of [
+    { authId: "foreign" },
+    { sessionId: "foreign" },
+    { workspaceId: "foreign" },
+    { requestKey: "foreign" },
+  ]) {
+    await page.evaluate((patch) => window.publishPreferences(patch), patch);
+    await expect(
+      page.getByText(
+        "Die Einstellungen gehören nicht mehr zur aktuellen Anmeldung oder Auswahl. Bitte neu laden.",
+        { exact: true },
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId("native-notification-preferences"),
+    ).toHaveCount(0);
+    await page.evaluate(() => window.publishPreferences());
+  }
+  // Real Store observed scope changes discard old asynchronous completions.
+  for (const field of ["session", "role", "account", "workspace"]) {
+    await page
+      .getByRole("switch", { name: "E-Mail-Zusammenfassungen", exact: true })
+      .click();
+    await savePreferences.click();
+    const old = await page.evaluate(() => window.preferenceSaves.length - 1);
+    await page.evaluate((field) => {
+      if (field === "session")
+        window.update({
+          session: { ...window.session, session: { id: "session-other" } },
+        });
+      if (field === "role")
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role: "Owner" }],
+          },
+        });
+      if (field === "workspace")
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            activeWorkspaceId: "workspace-other",
+            workspaces: [
+              ...window.snapshot.workspaces,
+              {
+                id: "workspace-other",
+                name: "Other",
+                description: "",
+                role: "Owner",
+              },
+            ],
+          },
+        });
+    }, field);
+    if (field === "account")
+      await page
+        .getByRole("combobox", { name: "Aktiver Account", exact: true })
+        .selectOption("account-native");
+    await expect(
+      page.getByTestId("native-notification-preferences"),
+    ).toHaveCount(0);
+    await page.evaluate((field) => {
+      if (field === "session")
+        window.update({
+          session: { ...window.session, session: { id: "session-owner" } },
+        });
+      if (field === "role")
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role: "Viewer" }],
+          },
+        });
+      if (field === "workspace")
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            activeWorkspaceId: "workspace-native",
+            workspaces: window.snapshot.workspaces.filter(
+              (w) => w.id === "workspace-native",
+            ),
+          },
+        });
+    }, field);
+    if (field === "account")
+      await page
+        .getByRole("combobox", { name: "Aktiver Account", exact: true })
+        .selectOption("");
+    await expect(
+      page.getByTestId("native-notification-preferences"),
+    ).toHaveCount(0);
+    await resolvePreference({}, old);
+    await expect(
+      page.getByText(
+        "Benachrichtigungswünsche gespeichert. Keine Zustellung aktiviert.",
+        { exact: true },
+      ),
+    ).toHaveCount(0);
+    await page.evaluate(() => window.publishPreferences());
+  }
+  await page
+    .getByRole("switch", { name: "E-Mail-Zusammenfassungen", exact: true })
+    .click();
+  await savePreferences.click();
+  const latePreference = await page.evaluate(
+    () => window.preferenceSaves.length - 1,
+  );
+  await reloadPreferences.click();
+  await page.evaluate(
+    (latePreference) =>
+      window.preferenceSaves[latePreference].reject(
+        Error("PRIVATE_LATE_FAILURE"),
+      ),
+    latePreference,
+  );
+  await page.evaluate(() => window.publishPreferences());
+  await expect(page.getByRole("alert")).toHaveCount(0);
+  await page.evaluate(() => window.update({ preferenceError: true }));
+  await expect(
+    page.getByRole("alert").filter({
+      hasText: "Benachrichtigungswünsche konnten nicht geladen werden",
+    }),
+  ).toBeVisible();
+  expect(await page.locator("main").innerText()).not.toContain(
+    "PRIVATE_PROVIDER_ERROR",
+  );
+  await page.evaluate(() => window.update({ preferenceError: false }));
+  await reloadPreferences.click();
+  await page.evaluate(() => window.publishPreferences());
+  const saveKeys = await page.evaluate(() =>
+    window.preferenceSaves.map((r) => r.args.requestKey),
+  );
+  expect(new Set(saveKeys).size).toBe(saveKeys.length);
   expect(
     await page.evaluate(() =>
       window.storageWrites.filter((key) => key.endsWith("-notifications")),
@@ -849,17 +1189,13 @@ try {
   ).toEqual([]);
   expect(
     await page.evaluate(() =>
-      window.commands.filter((c) => c.name !== "users:bootstrap"),
+      window.commands.filter(
+        (c) =>
+          c.name !== "users:bootstrap" &&
+          c.name !== "preferences:saveNotifications",
+      ),
     ),
   ).toEqual([]);
-  await page.evaluate(() =>
-    window.update({
-      snapshot: {
-        ...window.snapshot,
-        workspaces: [{ ...window.snapshot.workspaces[0], role: "Owner" }],
-      },
-    }),
-  );
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.screenshot({
     path: `${evidence}/notifications-cloud-1280.png`,
@@ -1331,9 +1667,13 @@ try {
         partialCoverage: true,
         existingTabs: true,
         isolatedDemoTimer: true,
-        cloudNotificationsOffUnavailable: true,
+        cloudNotificationDefaultOff: true,
+        cloudNativePreferencesPersisted: true,
+        cloudNotificationDirtyCASCorrelationABA: true,
+        cloudNotificationDeliveryUnavailable: true,
         cloudNotificationRoles: ["Owner", "Admin", "Editor", "Viewer"],
-        cloudNoPreferenceStorageOrMutation: true,
+        cloudNoAppLocalPreferenceStorage: true,
+        cloudOnlyOwnPreferenceSetter: true,
         existingRecipientInbox: true,
         unresolvedTransportCopy: true,
         demoPreferencePersistenceAndViewer: true,

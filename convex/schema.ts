@@ -153,6 +153,19 @@ export const profileFields = {
   onboardingStep: v.number(),
 };
 export const profile = v.object(profileFields);
+export const notificationPreferenceFields = {
+  email: v.boolean(),
+  inAppSummaries: v.boolean(),
+  weekly: v.boolean(),
+  research: v.boolean(),
+  timezone: v.string(),
+  quiet: v.union(v.null(), v.object({ start: v.string(), end: v.string() })),
+};
+export const notificationPreference = v.object(notificationPreferenceFields);
+export const personalNotificationSettings = v.object({
+  revision: v.number(),
+  ...notificationPreferenceFields,
+});
 export default defineSchema({
   embeddingPolicies: defineTable(embeddingPolicyFields)
     .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
@@ -1200,5 +1213,6 @@ export default defineSchema({
     userId: v.id("users"),
     workspaceId: v.id("workspaces"),
     ...profileFields,
+    notifications: v.optional(personalNotificationSettings),
   }).index("by_userId_and_workspaceId", ["userId", "workspaceId"]),
 });

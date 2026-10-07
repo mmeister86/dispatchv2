@@ -125,7 +125,16 @@ export const current = query({
         )
         .unique();
       if (p) {
-        const { _id, _creationTime, userId, workspaceId, ...preferences } = p;
+        const preferences = {
+          timezone: p.timezone,
+          language: p.language,
+          audience: p.audience,
+          tone: p.tone,
+          topics: p.topics,
+          name: p.name,
+          onboardingDone: p.onboardingDone,
+          onboardingStep: p.onboardingStep,
+        };
         return {
           state: "ready" as const,
           authId: identity._id,

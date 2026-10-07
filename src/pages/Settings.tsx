@@ -1,3 +1,4 @@
+import { NativeNotificationSettings } from "@/features/settings/notifications";
 import { NativeProfileExport } from "@/features/settings/data-export";
 import { ContentStrategy } from "@/features/settings/content-strategy";
 import { IntelligenceProfiles } from "@/features/intelligence/profiles";
@@ -1178,33 +1179,7 @@ function StrategySettings({ admin }: { admin: boolean }) {
   );
 }
 function CloudNotificationSettings() {
-  return (
-    <Section
-      title="Benachrichtigungen"
-      description="Vorhandene Pflichtmeldungen bleiben im persönlichen Posteingang der App verfügbar."
-    >
-      <p className="muted text-sm">
-        Optionale Zusammenfassungen und Ruhezeiten sind im Cloud-Workspace noch
-        nicht verfügbar. Es wird keine Präferenz gespeichert.
-      </p>
-      {[
-        "In-App-Zusammenfassungen",
-        "E-Mail-Zusammenfassungen",
-        "Wöchentlicher Überblick",
-        "Research-Zusammenfassungen",
-        "Ruhezeiten",
-      ].map((label) => (
-        <Toggle
-          key={label}
-          label={label}
-          description="Nicht verfügbar · Aus"
-          checked={false}
-          disabled
-          onChange={() => {}}
-        />
-      ))}
-    </Section>
-  );
+  return <NativeNotificationSettings />;
 }
 function NotificationSettings() {
   const { state } = useStore();
