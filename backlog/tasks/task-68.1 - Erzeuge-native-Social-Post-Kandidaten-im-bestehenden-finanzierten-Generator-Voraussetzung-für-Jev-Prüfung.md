@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 23:11'
-updated_date: '2026-10-07 15:08'
+updated_date: '2026-10-07 15:23'
 labels: []
 dependencies:
   - TASK-67.2
@@ -25,15 +25,15 @@ Nach technisch akzeptiertem 67.2 den tatsächlich vorhandenen purpose=draft Pers
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Expliziter Kandidatenmodus verwendet den bestehenden finanzierten purpose=draft Pfad mit unveränderlichem vollständigem Intent und nativer Candidate-ID/Hash/Run; Perspektiven-Modus bleibt unverändert und Providerantworten schaffen keine Autorität.
-- [ ] #2 Ganze geordnete Post-/Thread-Kandidaten werden mit bestehenden Capability-/Content-/Media-Grenzen validiert; Rollen, Account, Source, Style, Zweck, Preis und bestehende Finanzbelege gelten vor Funding/Tool/HTTP/Commit.
-- [ ] #3 Menschliche Anwendung erzeugt eine neue ungeprüfte Version mit aktuellem Buffer-/Revisions-Fence; superseded/revoked/expired Antworten und gespeicherte Agent-Kopien werden maskiert sowie indexed physisch bereinigt, ohne Finanz-/Publishing-Eltern zu löschen.
-- [ ] #4 Registered native Action mit abgefangenem SDK, tatsächliche styled Ideas/Composer, frische separate SPEC/QUALITY, unveränderte native Gesamtprüfungen/static und exaktes bestehendes EUDev sind dokumentiert; reale Modellqualität und manuelle Done-Abnahme bleiben offen.
+- [x] #1 Expliziter Kandidatenmodus verwendet den bestehenden finanzierten purpose=draft Pfad mit unveränderlichem vollständigem Intent und nativer Candidate-ID/Hash/Run; Perspektiven-Modus bleibt unverändert und Providerantworten schaffen keine Autorität.
+- [x] #2 Ganze geordnete Post-/Thread-Kandidaten werden mit bestehenden Capability-/Content-/Media-Grenzen validiert; Rollen, Account, Source, Style, Zweck, Preis und bestehende Finanzbelege gelten vor Funding/Tool/HTTP/Commit.
+- [x] #3 Menschliche Anwendung erzeugt eine neue ungeprüfte Version mit aktuellem Buffer-/Revisions-Fence; superseded/revoked/expired Antworten und gespeicherte Agent-Kopien werden maskiert sowie indexed physisch bereinigt, ohne Finanz-/Publishing-Eltern zu löschen.
+- [x] #4 Registered native Action mit abgefangenem SDK, tatsächliche styled Ideas/Composer, frische separate SPEC/QUALITY, unveränderte native Gesamtprüfungen/static und exaktes bestehendes EUDev sind dokumentiert; reale Modellqualität und manuelle Done-Abnahme bleiben offen.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Automatisierte Prüfungen und offene manuelle Abnahme sind konkret dokumentiert.
+- [x] #1 Automatisierte Prüfungen und offene manuelle Abnahme sind konkret dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
@@ -67,4 +67,6 @@ Intermediate source STOP verified by Root:334 source/20 owned/314 protected,13 c
 Final writer SOURCE_READY_STOP_ALL_EDITS at2026-10-07T14:17UTC; Root read actual report/semantic receipt and production/new native+browser deltas, verified334source/20owned/314protected/17changed owned/original20 copies/native4 prefixes/protected editorial bodies/humanignore,300 immutable artifacts,39 timed checks,35 final pixels plus21 private probe hashes. Final scoped native202PASS/4files/0skip; bothTS/current20format0; stronger Ideas-final2 and Composer-final3 browser0. Initial final browser ABA timing was invalid evidence, failures preserved; stronger observed-session/late-settlement assertions replace it. Demo fullpage tiling qualified as capture anomaly by unchanged private DOM+viewport probe; Root direct current5images, not all hashes as views. Root final installed codegen --typecheck enable0 at14:19:41.035091–14:19:49.942134UTC,321 nongen and all334handoff exact. New final334freeze bcd1bcf4afe823700394e375b3a11a710b1caee2664bd6e8173b327bce660e2b at14:20:00.971968UTC; fresh independent SPEC released. Distinct QUALITY/root whole-native+sevenstatic/commit/exactEUDev acceptance pending. No paid/provider/model/manual/full33–36 claim; allAC/DoD remain open, status In Progress.
 
 Fresh distinct QUALITY PASS on final334 freeze bcd1bcf4, report .docs/reviews/task-68.1-candidate-quality-review.md SHA c4cf1c83df7f35b46296db30f144859474be2ccb739f460ce6cd4195c37178f3, receipt b4971278da93d6edfaf49cb29d245519e58b6048571801e55eca331270bd4337. Root accepted actual report/semantic receipt/both private native bodies/logs and independently verified334source20owned314protected,30 initial +16 later-window inputs,27artifacts/six timed checks,20HEAD originals/four native prefixes/two editorial/two browser main bodies; windows/read scopes qualified. Own6 distinct controls =first4PASS1preserved public-save fixtureFAIL +second2PASS4SKIP; registered42PASS160SKIP. Actual postfund expiry/media loss knownzero versus physically entered stop/oldUSD late41 once;26 actual native committed/applied/Agent rootless cleanup families preserve independent same-asset sibling, not26paid modelcalls. Root seven static gates EXIT0: finalcodegen,AppTS,ConvexTS,configuredformat,owned20format,originalbundle-secretassertions,diffcheck. Actual logs read, static receipt e3b7b0ec33922b2dbdec6e72a383f6607f84203014230ae1ff9746abf775d128; current334exact. Root source proofs /tmp/dispatch-continuation-68.1-spec-root-verification.json and quality-root-verification.json; .docs/reviews/task-68.1-candidate-validation.md updated. Whole native suite now running; exact sourcecommit/existingEUDev pending, AC and manualDone remain open. Nine direct root current pixels, resizedComposer and Demo fullpage tiling anomaly qualified; no deployed termination/OCC/provider/model/screenreader/full33-36 claim.
+
+Technical acceptance complete: source42616e119a964965d586e56e1053c17f56d3fa66 onmaster22exact paths; freshSPEC+distinctQUALITY PASS,1375whole native54files0fail0skip,seven static EXIT0, exact existingEUDev sync+431metadata4new native interfaces/68reviewed module interfaces/all422prior registered identifiers+5HTTP unchanged/original validator branches retained. Actual four new contracts/eight deduplicated delta groups across11changed contracts read; publicIdea get/list/history/candidate privatechecksumabsent,334exact after. Acceptance /tmp/dispatch-continuation-68.1-technical-acceptance.json SHA78cddfb51e801be09741f6f19494961905ffaf85a66417e478a89828c4464cea; validation/dataInventory final notes updated. AC1-4 and automatedDoD1 verified. StatusInProgress/manualDoD2OPEN; no user manualDone or live model/deployed termination/OCC/screenreader/full33-36 certification. Continue authorized backend scope to68.2 verification-only; old standalone generation has no retrospectively certified composite envelope.
 <!-- SECTION:NOTES:END -->

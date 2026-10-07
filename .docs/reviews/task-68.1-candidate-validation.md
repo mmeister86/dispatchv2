@@ -1,6 +1,6 @@
 # TASK-68.1 native candidate validation
 
-Current state: **source handoff, fresh independent SPEC, distinct QUALITY, whole native suite and seven static gates verified; source commit and final EU Dev acceptance pending**. Manual Done remains open. This record must be updated with exact source commit and existing EU Dev metadata before technical acceptance.
+Current state: **TECHNICALLY ACCEPTED**, source commit `42616e119a964965d586e56e1053c17f56d3fa66`, 1375 native tests/54 files, seven static gates, fresh independent SPEC and distinct QUALITY, exact existing EU Dev verified. Manual Done remains open.
 
 ## Concrete change
 
@@ -49,6 +49,14 @@ Root seven static gates EXIT0 against the same freeze: final codegen, App TypeSc
 
 Installed whole native command `node node_modules/vitest/vitest.mjs run --testTimeout 15000` passes **1375 tests / 54 files / zero failed or skipped**, EXIT0 at `15:03:30.055709–15:18:52.145473Z`, elapsed 922.089 seconds. Root independently read the actual complete 1026-byte log and timed receipt, verified log SHA256 `f2e351b4b761f6157487d7868cb2d82adf5669cf6f3bce03a84fe332fe44e3f4` and all 334 source hashes against the same reviewed freeze. Receipt `/tmp/dispatch-continuation-68.1-all-final-receipt.json`; root proof `/tmp/dispatch-continuation-68.1-native-root-verification.json`. This covers the registered native suite, not live model/provider quality or manual acceptance.
 
-## Remaining acceptance
+## Exact source commit and existing EU Dev
 
-Exact source commit and existing EU Dev function metadata remain pending. No real model quality, paid provider call, deployed late-action/OCC behavior, screenreader/manual acceptance or exhaustive TASK-33–36 certification is claimed. No Jev verifier or repair is included in this unit. All TASK-68.1 acceptance criteria remain open until those technical gates are complete; manual Done requires the user's later explicit confirmation.
+Source commit `42616e119a964965d586e56e1053c17f56d3fa66` contains exactly 22 reviewed unit paths on `master`; other task preparation and concurrent TASK-9 changes remain separate. Existing `https://accurate-lion-749.eu-west-1.convex.cloud` sync EXIT0 at `15:20:36.385019–15:20:48.447570Z`, log SHA256 `ba29b61ca152645030b6fd632e418f919922c9deaa0536fcd349d5b561fc2234`. Read-only metadata fetch EXIT0 at `15:21:15.160325–15:21:16.595041Z`, metadata SHA256 `a2263a4453d97f5a8b195f3668329cd2cea469ba3b162fcd54ee0a3ccb313563`.
+
+Actual Dev metadata has 431 entries: public `content/ideas:candidate` Query and `applyCandidate` Mutation, plus internal `research/contentCleanup:candidateRun` and `candidateCopies` Mutations. All 422 prior registered identifiers, kinds, visibility and original validator branches are retained; five HTTP entries are unchanged. All 68 reviewed-module interfaces match native registration. Root read actual complete four new contracts and eight deduplicated semantic delta groups across 11 changed contracts: optional candidate ancestry/output/handoff/payload/media fields and retained perspective branch. Public Idea get/list/history/candidate schemas contain no private candidate checksum pins. Whole metadata hash verification is not a prose read of every unchanged contract.
+
+Technical acceptance `/tmp/dispatch-continuation-68.1-technical-acceptance.json`, SHA256 `78cddfb51e801be09741f6f19494961905ffaf85a66417e478a89828c4464cea`; root Dev proof `/tmp/dispatch-continuation-68.1-dev-root-verification.json`. All 334 source files remain exact after commit/sync/metadata inspection.
+
+## Remaining manual acceptance
+
+No real model quality, paid provider call, deployed late-action/OCC behavior, screenreader/manual acceptance or exhaustive TASK-33–36 certification is claimed. No Jev verifier or repair is included in this unit. Technical acceptance criteria and automated documentation may be checked; manual Done requires the user's later explicit confirmation. Status remains In Progress.

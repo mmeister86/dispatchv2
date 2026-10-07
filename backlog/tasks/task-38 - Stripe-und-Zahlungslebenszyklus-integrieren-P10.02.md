@@ -4,7 +4,7 @@ title: Stripe und Zahlungslebenszyklus integrieren (P10.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 15:27'
+updated_date: '2026-10-07 13:50'
 labels:
   - p10
   - r4
@@ -56,4 +56,6 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /settings/billing. Review local plan changes, cancellation/reactivation, failure/trial/grace scenarios and illustrative invoice download. Grenze: No Stripe checkout, payments, contract, tax receipt, refunds or webhooks. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
 
 Root hat vollständigen /tmp/dispatch-continuation-37-38-seams.md gelesen: keineStripeDependency/Config/Webhook/Checkout/ReconcileCron vorhanden. KleinsterPfad concreteNativeBinding/OutboundCommand/InboundID+DigestReceipt+sameEntitlementApply mit unavailableUI, konkrete offering/SDK/signature erstoffiziellecurrentDocs+nächsteActualConfig. RawSignature/Environment/StoredCustomerScope→durableReceipt→ack; ArrivalTime/EventID keineProviderRevision, staleCanonicalResponse/CASallein reichtnicht—ingressgeneration/restrictiveCancelDeleteFence+actualCanonicalProof. Renewal setztOriginalProviderHolds nichtzurück; externCancel/Refund/Delete undlateFinance bleibenreconcilefähigohneProduktReaktivierung. D11ManagedPayments nurcandidate, nooffer/defaultprice/secrets/providerActivation/mail; manual/Done offen.
+
+Root adopted readonly current delta /tmp/dispatch-37-38-current-native-reconciliation.md SHA a29180e3522c084be4324eedfefb2947c4e660c3fd32feda721cc8ad9fde2d25 after full report/semantic receipt;41 unowned source+2 input before/after sha/bytes exact. Actual seven financing families include new own-content-embedding and jev-intent-router; six createRun call sites in five modules. Team49 actual accept has new-member CAS and personal-workspace bootstrap; Research pause withdraws material and must not become payment pause. Preserve original three distinct budgets, once-per-attempt original currency, known0 versus enteredunknown, late settlement and publishing checkpoints across payment/role/source loss. Native Billing/Stripe absent; D10 tariff/units/trial/migration/grace and D11 actual offering/config stay open, never Demo defaults. Moving68.1 excluded, captured tool output digests qualified (no underlying persisted logs for independent root recomputation). No tests/source release/config/provider/billing/manual acceptance; allAC/DoD remain open.
 <!-- SECTION:NOTES:END -->
