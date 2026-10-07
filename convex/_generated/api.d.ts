@@ -93,6 +93,7 @@ import type * as media_uploads from "../media/uploads.js";
 import type * as media_validation from "../media/validation.js";
 import type * as operations_export from "../operations/export.js";
 import type * as operations_health from "../operations/health.js";
+import type * as operations_pilot from "../operations/pilot.js";
 import type * as performance_backfill from "../performance/backfill.js";
 import type * as performance_baselines from "../performance/baselines.js";
 import type * as performance_calibration from "../performance/calibration.js";
@@ -246,6 +247,7 @@ declare const fullApi: ApiFromModules<{
   "media/validation": typeof media_validation;
   "operations/export": typeof operations_export;
   "operations/health": typeof operations_health;
+  "operations/pilot": typeof operations_pilot;
   "performance/backfill": typeof performance_backfill;
   "performance/baselines": typeof performance_baselines;
   "performance/calibration": typeof performance_calibration;

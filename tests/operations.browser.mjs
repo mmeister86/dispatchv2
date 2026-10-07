@@ -12,7 +12,7 @@ const mocks = {
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
 const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';throw new Error('No domain writes in health fixture');});return funcs.get(name)};
 export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(name!=='operations/export:self')throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
-export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
+export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
 export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
 };
@@ -162,6 +162,44 @@ try {
       events: [],
       notifications: [],
       resourcesLimited: false,
+    };
+    window.pilotByKey = {};
+    window.publishPilot = (patch = {}) => {
+      const a = window.queries
+        .filter((q) => q.name === "operations/pilot:get")
+        .at(-1)?.args;
+      if (!a) throw Error("No mounted pilot query");
+      const until = Date.now() + 10000;
+      window.pilotByKey[a.refreshKey] = {
+        authId: window.session.user.id,
+        sessionId: window.session.session.id,
+        refreshKey: a.refreshKey,
+        data: {
+          accountId: a.accountId,
+          observedAt: Date.now(),
+          windowHours: 24,
+          until,
+          coverage: {
+            partial: true,
+            candidateLimit: 5,
+            subset: "original_single_text_post",
+            remainder: "unknown",
+          },
+          cohorts: [
+            {
+              key: "opaque-synthetic",
+              dialect: "post-fields-repost-v2",
+              unit: "post",
+              media: "none",
+              windowHours: 24,
+              until,
+              impressions: { n: 1, sum: 0, mean: 0 },
+            },
+          ],
+        },
+        ...patch,
+      };
+      window.update({});
     };
     window.healthByKey = {};
     window.publishHealth = (health) => {
@@ -925,6 +963,244 @@ try {
       window.commands.filter((c) => c.name !== "users:bootstrap"),
     ),
   ).toEqual([]);
+  // TASK-35.1: actual Cloud Pilot mount, current Store selection and transport correlation.
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.goto("http://127.0.0.1:5189/operations");
+  await page
+    .getByRole("tab", { name: "Pilot-Auswertung", exact: true })
+    .click();
+  await expect(
+    page.getByText("Bitte einen Account auswählen.", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      window.queries.filter((q) => q.name === "operations/pilot:get"),
+    ),
+  ).toEqual([]);
+  await page
+    .getByRole("combobox", { name: "Aktiver Account", exact: true })
+    .selectOption("account-native");
+  await expect(
+    page.getByText("Messwerte werden geladen …", { exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() => window.publishPilot());
+  await expect(page.getByTestId("native-pilot")).toBeVisible();
+  await expect(page.getByTestId("pilot-n")).toHaveText("1");
+  await expect(page.getByTestId("pilot-sum")).toHaveText("0");
+  await expect(page.getByTestId("pilot-mean")).toHaveText("0");
+  expect(await page.locator("main").innerText()).toContain(
+    "Der weitere Umfang ist unbekannt",
+  );
+  expect(await page.locator("main").innerText()).not.toMatch(
+    /ROI|Stunden gespart|USD|EUR|opaque-synthetic|test-v1/,
+  );
+  await page.screenshot({
+    path: `${evidence}/pilot-1280.png`,
+    fullPage: false,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await page.screenshot({ path: `${evidence}/pilot-390.png`, fullPage: false });
+  const oldPilotKey = await page.evaluate(
+    () =>
+      window.queries.filter((q) => q.name === "operations/pilot:get").at(-1)
+        .args.refreshKey,
+  );
+  await page
+    .getByRole("button", { name: "Messwerte aktualisieren", exact: true })
+    .click();
+  await expect(page.getByTestId("native-pilot")).toHaveCount(0);
+  const newPilotKey = await page.evaluate(
+    () =>
+      window.queries.filter((q) => q.name === "operations/pilot:get").at(-1)
+        .args.refreshKey,
+  );
+  expect(newPilotKey).not.toBe(oldPilotKey);
+  await page.evaluate(
+    (key) => window.publishPilot({ refreshKey: key }),
+    oldPilotKey,
+  );
+  await expect(
+    page.getByText(
+      "Der Messnachweis gehört nicht mehr zur aktuellen Auswahl. Bitte aktualisieren.",
+    ),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    const a = window.queries
+      .filter((q) => q.name === "operations/pilot:get")
+      .at(-1).args;
+    window.publishPilot();
+    const value = window.pilotByKey[a.refreshKey];
+    window.publishPilot({
+      data: {
+        ...value.data,
+        cohorts: value.data.cohorts.map((c) => ({
+          ...c,
+          impressions: { n: 0, sum: null, mean: null },
+        })),
+      },
+    });
+  });
+  await expect(page.getByTestId("pilot-n")).toHaveText("0");
+  await expect(page.getByTestId("pilot-sum")).toHaveText("Unbekannt");
+  await expect(page.getByTestId("pilot-mean")).toHaveText("Unbekannt");
+  await page.evaluate(() => window.publishPilot());
+  const readCount = await page.evaluate(
+    () =>
+      window.queries.filter((q) => q.name === "operations/pilot:get").length,
+  );
+  await page.clock.runFor(10001);
+  await expect(
+    page.getByText("Messnachweis abgelaufen. Bitte aktualisieren."),
+  ).toBeVisible();
+  await expect(page.getByTestId("native-pilot")).toHaveCount(0);
+  // Clock expiry renders locally and keeps the existing subscription key.
+  expect(
+    await page.evaluate(
+      (readCount) => [
+        ...new Set(
+          window.queries
+            .filter((q) => q.name === "operations/pilot:get")
+            .slice(readCount)
+            .map((q) => q.args.refreshKey),
+        ),
+      ],
+      readCount,
+    ),
+  ).toEqual([newPilotKey]);
+  await page.evaluate(() => {
+    window.savedPilotEntropy = crypto.randomUUID.bind(crypto);
+    crypto.randomUUID = () => {
+      throw Error("Synthetic entropy failure");
+    };
+  });
+  await page
+    .getByRole("button", { name: "Messwerte aktualisieren", exact: true })
+    .click();
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "Messwerte konnten nicht geladen werden" }),
+  ).toBeVisible();
+  await expect(page.getByTestId("native-pilot")).toHaveCount(0);
+  await page.evaluate(() => {
+    crypto.randomUUID = window.savedPilotEntropy;
+  });
+  await page
+    .getByRole("button", { name: "Messwerte aktualisieren", exact: true })
+    .click();
+  await page.evaluate(() => window.publishPilot());
+  await expect(page.getByTestId("native-pilot")).toBeVisible();
+  await page.evaluate(() =>
+    window.update({
+      resources: {
+        ...window.resources,
+        accounts: [
+          ...window.resources.accounts,
+          {
+            ...window.resources.accounts[0],
+            _id: "account-other",
+            name: "Other X",
+            handle: "@other",
+          },
+        ],
+      },
+    }),
+  );
+  await page
+    .getByRole("combobox", { name: "Aktiver Account", exact: true })
+    .selectOption("account-other");
+  await expect(page.getByTestId("native-pilot")).toHaveCount(0);
+  await page.evaluate(() =>
+    window.publishPilot({
+      data: {
+        ...window.pilotByKey[Object.keys(window.pilotByKey)[0]].data,
+        accountId: "account-native",
+      },
+    }),
+  );
+  await expect(
+    page.getByText(
+      "Der Messnachweis gehört nicht mehr zur aktuellen Auswahl. Bitte aktualisieren.",
+    ),
+  ).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "Aktiver Account", exact: true })
+    .selectOption("account-native");
+  await expect(page.getByTestId("native-pilot")).toHaveCount(0);
+  for (const role of ["Editor", "Viewer", "Admin", "Owner"]) {
+    await page.evaluate(
+      (role) =>
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role }],
+          },
+        }),
+      role,
+    );
+    await page
+      .getByRole("tab", { name: "Pilot-Auswertung", exact: true })
+      .click();
+    if (role === "Editor" || role === "Viewer") {
+      await expect(
+        page.getByText(
+          "Diese Auswertung steht nur Ownern und Admins zur Verfügung.",
+        ),
+      ).toBeVisible();
+      await expect(page.getByTestId("native-pilot")).toHaveCount(0);
+    } else {
+      await page
+        .getByRole("combobox", { name: "Aktiver Account", exact: true })
+        .selectOption("account-native");
+      await expect(
+        page.getByText("Messwerte werden geladen …", { exact: true }),
+      ).toBeVisible();
+      await expect(page.getByTestId("native-pilot")).toHaveCount(0);
+      await page.evaluate(() => window.publishPilot());
+      await expect(page.getByTestId("native-pilot")).toBeVisible();
+    }
+  }
+  for (const id of ["session-other", "session-owner"]) {
+    await page.evaluate(
+      (id) =>
+        window.update({ session: { ...window.session, session: { id } } }),
+      id,
+    );
+    await page
+      .getByRole("tab", { name: "Pilot-Auswertung", exact: true })
+      .click();
+    await page
+      .getByRole("combobox", { name: "Aktiver Account", exact: true })
+      .selectOption("account-native");
+    await expect(page.getByTestId("native-pilot")).toHaveCount(0);
+  }
+  await page.evaluate(() => window.update({ pilotError: true }));
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "Messwerte konnten nicht geladen werden" }),
+  ).toBeVisible();
+  expect(await page.locator("main").innerText()).not.toContain(
+    "PRIVATE_PROVIDER_ERROR",
+  );
+  await page.evaluate(() => window.update({ pilotError: false }));
+  await page
+    .getByRole("button", { name: "Messwerte aktualisieren", exact: true })
+    .click();
+  await page.evaluate(() => window.publishPilot());
+  await expect(page.getByTestId("native-pilot")).toBeVisible();
+  expect(
+    await page.evaluate(() =>
+      window.commands.filter((c) => c.name !== "users:bootstrap"),
+    ),
+  ).toEqual([]);
+  expect(await page.evaluate(() => window.storageWrites)).toEqual([]);
+
   await page.goto("http://127.0.0.1:5189/operations?demo=1");
   await expect(page.getByText("Lokale Demo", { exact: true })).toBeVisible();
   await expect(
@@ -1071,6 +1347,16 @@ try {
         exportLocalHandoffFailureRevokesUrl: true,
         exportRoleLateResultRejected: true,
         exportFileCount: exportedFiles.length,
+        nativePilot: {
+          selectedAccountOnly: true,
+          roles: ["Owner", "Admin"],
+          zeroUnknown: true,
+          refreshAndCorrelation: true,
+          expiryWithoutNewKey: true,
+          entropyFailureRetry: true,
+          accountRoleSessionABA: true,
+          safeError: true,
+        },
         provider,
         errors,
         manualAccessibility: false,

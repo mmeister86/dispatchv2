@@ -1,3 +1,4 @@
+import { NativePilot } from "@/features/operations/pilot";
 import { NativeHealth } from "@/features/operations/health";
 import { CalibrationReferences } from "@/features/intelligence/calibration";
 import { IntelligenceProfiles } from "@/features/intelligence/profiles";
@@ -88,9 +89,7 @@ function RealOperationsPage() {
           <NativeHealth />
         </TabsContent>
         <TabsContent value="pilot">
-          <Section title="Pilot-Auswertung">
-            <p>Echte Pilot-Auswertung noch nicht verfügbar (TASK-35).</p>
-          </Section>
+          <NativePilot />
         </TabsContent>
         <TabsContent value="calibration">
           <CalibrationReferences />
