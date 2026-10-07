@@ -1,3 +1,4 @@
+import { produce as notice } from "./notices";
 import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
@@ -22,6 +23,7 @@ import {
   policyValue,
   stages,
   commandResult,
+  assignmentResult,
   type reviewPin,
 } from "./reviewFields";
 
@@ -48,7 +50,7 @@ export function isReviewLoss(error: unknown) {
     ].includes(String(error.data))
   );
 }
-function loss(error: unknown) {
+export function loss(error: unknown) {
   if (isReviewLoss(error)) return;
   if (
     error instanceof ConvexError &&
@@ -120,7 +122,7 @@ async function control(
     )
     .unique();
 }
-async function effective(ctx: Ctx, ver: Doc<"draftVersions">) {
+export async function effective(ctx: Ctx, ver: Doc<"draftVersions">) {
   const local = ver.content.accountId
     ? await control(ctx, ver.workspaceId, ver.content.accountId)
     : null;
@@ -303,7 +305,7 @@ export async function historicalReviewSource(
     throw new ConvexError("REVIEW_SOURCE_UNAVAILABLE");
   return horizon;
 }
-function commandInput(key: string, revision: number) {
+export function commandInput(key: string, revision: number) {
   if (
     !/^[a-zA-Z0-9_-]{1,128}$/.test(key) ||
     !Number.isSafeInteger(revision) ||
@@ -316,7 +318,11 @@ async function commandSource(ctx: Ctx, c: Doc<"editorialReviewCommands">) {
     ctx,
     c.workspaceId,
     c.actorId,
-    c.kind === "policy" ? ["Owner", "Admin"] : stageRoles(c.kind),
+    c.kind === "policy"
+      ? ["Owner", "Admin"]
+      : c.kind === "assignment" || c.kind === "request"
+        ? ["Owner", "Admin", "Editor"]
+        : stageRoles(c.kind),
   );
   if (c.accountId)
     requireReference(c.workspaceId, await ctx.db.get(c.accountId));
@@ -326,6 +332,32 @@ async function commandSource(ctx: Ctx, c: Doc<"editorialReviewCommands">) {
       ? (await exactVersion(ctx, c.workspaceId, c.versionId)).until
       : null,
   );
+  if (c.kind === "assignment" || c.kind === "request") {
+    if (!c.assignmentResult || !c.versionId || !c.draftId)
+      throw new ConvexError("REVIEW_SOURCE_UNAVAILABLE");
+    const draft = await ctx.db.get(c.draftId),
+      ver = await ctx.db.get(c.versionId);
+    if (
+      !draft ||
+      !ver ||
+      ver.draftId !== draft._id ||
+      draft.workspaceId !== c.workspaceId ||
+      ver.content.accountId !== c.accountId
+    )
+      throw new ConvexError("REVIEW_SOURCE_UNAVAILABLE");
+    if (c.assigneeId)
+      await reviewer(
+        ctx,
+        c.workspaceId,
+        c.assigneeId,
+        c.kind === "request" && c.requestStage
+          ? stageRoles(c.requestStage)
+          : ["Owner", "Admin", "Editor", "Viewer"],
+      );
+    if (horizon !== null && horizon <= Date.now())
+      throw new ConvexError("REVIEW_SOURCE_UNAVAILABLE");
+    return horizon;
+  }
   if (!c.result) throw new ConvexError("REVIEW_SOURCE_UNAVAILABLE");
   if (c.result.policyId) {
     const p = await ctx.db.get(c.result.policyId);
@@ -381,7 +413,7 @@ async function commandSource(ctx: Ctx, c: Doc<"editorialReviewCommands">) {
     throw new ConvexError("REVIEW_SOURCE_UNAVAILABLE");
   return horizon;
 }
-async function command(
+export async function command(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
   actorId: Id<"users">,
@@ -401,7 +433,7 @@ async function command(
   if (old) {
     if (
       old.sourceUnavailable ||
-      !old.result ||
+      (!old.result && !old.assignmentResult) ||
       (old.sourceUntil !== null && old.sourceUntil <= Date.now())
     )
       throw new ConvexError("REVIEW_COMMAND_UNAVAILABLE");
@@ -519,48 +551,11 @@ export const get = workspaceQuery({
     sessionId: v.string(),
   }),
   handler: async (ctx, a) => {
-    const { ver, until } = await exactVersion(
-        ctx,
-        ctx.workspace._id,
-        a.versionId,
-      ),
-      p = await effective(ctx, ver);
-    let horizon = until,
-      prior: Id<"editorialReviewDecisions"> | null = null,
-      brand: Id<"editorialReviewDecisions"> | null = null;
-    if (p)
-      for (const stage of ["editorial", "brand"] as const)
-        if (p[stage]) {
-          const d = await activeDecision(ctx, ver, p._id, stage);
-          if (d)
-            try {
-              if (stage === "brand" && p.editorial && !prior)
-                throw new ConvexError("REVIEW_REQUIRED");
-              horizon = await decisionProof(
-                ctx,
-                ver,
-                p._id,
-                stage,
-                d._id,
-                prior,
-                horizon,
-              );
-              if (stage === "editorial") prior = d._id;
-              else brand = d._id;
-            } catch (error) {
-              loss(error);
-            }
-        }
+    const projection = await presentation(ctx, ctx.workspace._id, a.versionId);
     const sessionId = (await ctx.auth.getUserIdentity())?.sessionId;
     if (typeof sessionId !== "string") throw new ConvexError("Unauthenticated");
     return {
-      revision: ver.reviewRevision ?? 0,
-      policyId: p?._id ?? null,
-      editorial: p?.editorial ?? false,
-      brand: p?.brand ?? false,
-      editorialDecisionId: prior,
-      brandDecisionId: brand,
-      sourceUntil: horizon,
+      ...projection,
       authId: ctx.user.authId,
       sessionId,
     };
@@ -650,6 +645,13 @@ export const decide = workspaceMutation({
       sourceUnavailable: false,
     });
     await ctx.db.patch(ver._id, { reviewRevision: revision });
+    await notice(
+      ctx,
+      ver,
+      ctx.user._id,
+      { kind: "decision", decisionId, withdrawn: false },
+      horizon,
+    );
     const result = { revision, policyId: p._id, decisionId };
     await ctx.db.insert("editorialReviewCommands", {
       workspaceId: ctx.workspace._id,
@@ -705,7 +707,18 @@ export const withdraw = workspaceMutation({
       throw new ConvexError("REVIEW_REVISION_CONFLICT");
     const revision = a.expectedRevision + 1,
       result = { revision, policyId: d.policyId, decisionId: d._id };
-    await ctx.db.patch(d._id, { active: false, withdrawnAt: Date.now() });
+    await ctx.db.patch(d._id, {
+      active: false,
+      withdrawnAt: Date.now(),
+      withdrawnBy: ctx.user._id,
+    });
+    await notice(
+      ctx,
+      ver,
+      ctx.user._id,
+      { kind: "decision", decisionId: d._id, withdrawn: true },
+      minimum(until, d.sourceUntil),
+    );
     await ctx.db.patch(ver._id, { reviewRevision: revision });
     await ctx.db.insert("editorialReviewCommands", {
       workspaceId: ctx.workspace._id,
@@ -726,10 +739,15 @@ async function scrubDecision(
   ctx: MutationCtx,
   d: Doc<"editorialReviewDecisions">,
 ) {
+  await ctx.scheduler.runAfter(0, internal.editorial.notices.cleanupVersion, {
+    versionId: d.versionId,
+    cursor: null,
+  });
   await ctx.db.patch(d._id, {
     active: false,
     sourceUnavailable: true,
     reviewerId: undefined,
+    withdrawnBy: undefined,
     priorDecisionId: undefined,
     sourceUntil: null,
   });
@@ -738,9 +756,16 @@ async function scrubCommand(
   ctx: MutationCtx,
   c: Doc<"editorialReviewCommands">,
 ) {
+  if (c.versionId)
+    await ctx.scheduler.runAfter(0, internal.editorial.notices.cleanupVersion, {
+      versionId: c.versionId,
+      cursor: null,
+    });
   await ctx.db.patch(c._id, {
     fingerprint: undefined,
     result: undefined,
+    assignmentResult: undefined,
+    assigneeId: undefined,
     sourceUnavailable: true,
     sourceUntil: null,
   });
@@ -749,6 +774,7 @@ export const purgeVersion = internalMutation({
   args: { versionId: v.id("draftVersions") },
   returns: v.null(),
   handler: async (ctx, a) => {
+    await ctx.scheduler.runAfter(0, internal.editorial.notices.purgeVersion, a);
     const decisions = await ctx.db
       .query("editorialReviewDecisions")
       .withIndex("by_versionId_and_sourceUnavailable", (q) =>
@@ -886,3 +912,131 @@ export const sweep = internalMutation({
     return null;
   },
 });
+
+export const request = workspaceMutation({
+  args: {
+    versionId: v.id("draftVersions"),
+    stage: stages,
+    policyId: v.union(v.id("editorialReviewPolicies"), v.null()),
+    expectedRevision: v.number(),
+    commandKey: v.string(),
+  },
+  returns: assignmentResult,
+  handler: async (ctx, a) => {
+    requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
+    commandInput(a.commandKey, a.expectedRevision);
+    const { ver, until } = await exactVersion(
+      ctx,
+      ctx.workspace._id,
+      a.versionId,
+    );
+    const { old, fingerprint } = await command(
+      ctx,
+      ctx.workspace._id,
+      ctx.user._id,
+      a.commandKey,
+      [
+        "request",
+        ver._id,
+        ver.content.accountId,
+        a.stage,
+        a.policyId,
+        a.expectedRevision,
+      ],
+    );
+    if (old) return old.assignmentResult!;
+    const p = await effective(ctx, ver),
+      draft = await ctx.db.get(ver.draftId);
+    if (!p || p._id !== a.policyId || !p[a.stage])
+      throw new ConvexError("REVIEW_POLICY_CHANGED");
+    if (
+      (ver.reviewRevision ?? 0) !== a.expectedRevision ||
+      draft?.currentVersionId !== ver._id
+    )
+      throw new ConvexError("REVIEW_REVISION_CONFLICT");
+    if (!draft.assigneeId) throw new ConvexError("REVIEW_RECIPIENT_REQUIRED");
+    await reviewer(
+      ctx,
+      ctx.workspace._id,
+      draft.assigneeId,
+      stageRoles(a.stage),
+    );
+    const result = {
+      revision: a.expectedRevision,
+      assigneeId: draft.assigneeId,
+      versionId: ver._id,
+    };
+    const commandId = await ctx.db.insert("editorialReviewCommands", {
+      workspaceId: ctx.workspace._id,
+      accountId: ver.content.accountId,
+      actorId: ctx.user._id,
+      commandKey: a.commandKey,
+      kind: "request",
+      draftId: draft._id,
+      versionId: ver._id,
+      assigneeId: draft.assigneeId,
+      requestStage: a.stage,
+      fingerprint,
+      result: {
+        revision: a.expectedRevision,
+        policyId: p._id,
+        decisionId: null,
+      },
+      assignmentResult: result,
+      sourceUntil: until,
+      sourceUnavailable: false,
+    });
+    await notice(
+      ctx,
+      ver,
+      ctx.user._id,
+      { kind: "request", commandId, stage: a.stage },
+      until,
+    );
+    return result;
+  },
+});
+
+export async function presentation(
+  ctx: Ctx,
+  workspaceId: Id<"workspaces">,
+  versionId: Id<"draftVersions">,
+) {
+  const { ver, until } = await exactVersion(ctx, workspaceId, versionId),
+    p = await effective(ctx, ver);
+  let horizon = until,
+    prior: Id<"editorialReviewDecisions"> | null = null,
+    brand: Id<"editorialReviewDecisions"> | null = null;
+  if (p)
+    for (const stage of ["editorial", "brand"] as const)
+      if (p[stage]) {
+        const d = await activeDecision(ctx, ver, p._id, stage);
+        if (d)
+          try {
+            if (stage === "brand" && p.editorial && !prior)
+              throw new ConvexError("REVIEW_REQUIRED");
+            horizon = await decisionProof(
+              ctx,
+              ver,
+              p._id,
+              stage,
+              d._id,
+              prior,
+              horizon,
+            );
+            if (stage === "editorial") prior = d._id;
+            else brand = d._id;
+          } catch (error) {
+            loss(error);
+          }
+      }
+  return {
+    revision: ver.reviewRevision ?? 0,
+    policyId: p?._id ?? null,
+    editorial: p?.editorial ?? false,
+    brand: p?.brand ?? false,
+    editorialDecisionId: prior,
+    brandDecisionId: brand,
+    sourceUntil: horizon,
+  };
+}

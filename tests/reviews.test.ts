@@ -683,6 +683,10 @@ test("exact old comment source guard ignores a healthy latest version and produc
   await f.signed.mutation(api.editorial.assign, {
     ...f.scope,
     draftId: f.draftId,
+    versionId: (await f.t.run((ctx) => ctx.db.get(f.draftId)))!
+      .currentVersionId!,
+    expectedAssignmentRevision: 0,
+    commandKey: crypto.randomUUID(),
     assigneeId: f.userId,
   });
   await expect(f.approve()).rejects.toThrow("REVIEW_REQUIRED");
@@ -1162,3 +1166,956 @@ test("actual replacement captures new authorized scheduler while pure move never
     })),
   ).toEqual(before);
 });
+
+test("public J10 assignment uses independent CAS and original replay without overwriting later recipient", async () => {
+  const f = await fixture(),
+    viewer = await join(f, "Viewer"),
+    editor = await join(f, "Editor");
+  const args = {
+    ...f.scope,
+    draftId: f.draftId,
+    versionId: f.versionId,
+    assigneeId: viewer.userId,
+    expectedAssignmentRevision: 0,
+    commandKey: crypto.randomUUID(),
+  };
+  const result = await f.signed.mutation(api.editorial.assign, args);
+  expect(result).toMatchObject({
+    revision: 1,
+    assigneeId: viewer.userId,
+    versionId: f.versionId,
+  });
+  await f.signed.mutation(api.editorial.assign, {
+    ...args,
+    assigneeId: editor.userId,
+    expectedAssignmentRevision: 1,
+    commandKey: crypto.randomUUID(),
+  });
+  expect(await f.signed.mutation(api.editorial.assign, args)).toEqual(result);
+  expect((await f.t.run((ctx) => ctx.db.get(f.draftId)))!).toMatchObject({
+    assigneeId: editor.userId,
+    assignmentRevision: 2,
+    revision: 1,
+  });
+  await expect(
+    f.signed.mutation(api.editorial.assign, {
+      ...args,
+      commandKey: crypto.randomUUID(),
+    }),
+  ).rejects.toThrow("ASSIGNMENT_CONFLICT");
+  await expect(
+    f.signed.mutation(api.editorial.assign, {
+      ...args,
+      assigneeId: editor.userId,
+    }),
+  ).rejects.toThrow("REVIEW_COMMAND_CONFLICT");
+  const commentId = await editor.signed.mutation(api.editorial.addComment, {
+    ...f.scope,
+    versionId: f.versionId,
+    text: "J10 exact comment",
+  });
+  await editor.signed.mutation(api.editorial.resolveComment, {
+    ...f.scope,
+    commentId,
+    expectedResolved: false,
+  });
+  expect(
+    await f.t.run((ctx) => ctx.db.query("editorialReviewDecisions").collect()),
+  ).toHaveLength(0);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("approvals").collect()),
+  ).toHaveLength(0);
+  expect((await f.t.run((ctx) => ctx.db.get(commentId)))!.resolved).toBe(true);
+  await f.configure(true, true);
+  const p = await editor.signed.query(reviews.get, {
+    ...f.scope,
+    versionId: f.versionId,
+  });
+  await expect(
+    viewer.signed.mutation(reviews.decide, {
+      ...f.scope,
+      versionId: f.versionId,
+      stage: "editorial",
+      policyId: p.policyId,
+      expectedRevision: p.revision,
+      commandKey: crypto.randomUUID(),
+    }),
+  ).rejects.toThrow("ROLE_ACCESS_DENIED");
+  const editorial = await editor.signed.mutation(reviews.decide, {
+    ...f.scope,
+    versionId: f.versionId,
+    stage: "editorial",
+    policyId: p.policyId,
+    expectedRevision: p.revision,
+    commandKey: crypto.randomUUID(),
+  });
+  const brand = await f.decide("brand");
+  const approvalId = await f.approve(),
+    scheduleId = await f.schedule(approvalId);
+  expect((await f.t.run((ctx) => ctx.db.get(approvalId)))!).toMatchObject({
+    actorId: f.userId,
+    versionId: f.versionId,
+    accountId: f.accountId,
+    reviewPin: {
+      policyId: p.policyId,
+      decisionIds: [editorial.decisionId!, brand.decisionId!],
+    },
+  });
+  expect(
+    await f.t.run(
+      async (ctx) =>
+        (await preflight(ctx, (await ctx.db.get(scheduleId))!))._id,
+    ),
+  ).toBe(f.versionId);
+});
+
+test("distinct authenticated Owner withdrawal records its actual actor and recipient outcome without approval", async () => {
+  const f = await fixture(),
+    editor = await join(f, "Editor");
+  await f.configure(true, false);
+  await f.signed.mutation(api.editorial.assign, {
+    ...f.scope,
+    draftId: f.draftId,
+    versionId: f.versionId,
+    assigneeId: editor.userId,
+    expectedAssignmentRevision: 0,
+    commandKey: crypto.randomUUID(),
+  });
+  const p = await editor.signed.query(reviews.get, {
+    ...f.scope,
+    versionId: f.versionId,
+  });
+  const decided = await editor.signed.mutation(reviews.decide, {
+    ...f.scope,
+    versionId: f.versionId,
+    stage: "editorial",
+    policyId: p.policyId,
+    expectedRevision: p.revision,
+    commandKey: crypto.randomUUID(),
+  });
+  await f.signed.mutation(reviews.withdraw, {
+    ...f.scope,
+    decisionId: decided.decisionId!,
+    expectedRevision: decided.revision,
+    commandKey: crypto.randomUUID(),
+  });
+  const rows = await f.t.run((ctx) =>
+    ctx.db.query("editorialNotices").collect(),
+  );
+  const outcome = rows.find(
+    (n) => n.parent.kind === "decision" && n.parent.withdrawn,
+  );
+  expect(outcome).toMatchObject({
+    actorId: f.userId,
+    recipientId: editor.userId,
+  });
+  expect(
+    await f.t.run((ctx) => ctx.db.query("approvals").collect()),
+  ).toHaveLength(0);
+  expect(
+    await editor.signed.query(api.editorial.notices.get, {
+      ...f.scope,
+      noticeId: outcome!._id,
+    }),
+  ).not.toBeNull();
+  await f.t.run((ctx) => ctx.db.delete(f.userId));
+  expect(
+    await editor.signed.query(api.editorial.notices.get, {
+      ...f.scope,
+      noticeId: outcome!._id,
+    }),
+  ).toBeNull();
+});
+
+test("recipient notices dedupe exact occurrences, isolate owned readstate and clamp current policy/source", async () => {
+  const f = await fixture(),
+    editor = await join(f, "Editor"),
+    other = await join(f, "Editor");
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("No transport in native review"));
+  await f.signed.mutation(api.editorial.assign, {
+    ...f.scope,
+    draftId: f.draftId,
+    versionId: f.versionId,
+    assigneeId: editor.userId,
+    expectedAssignmentRevision: 0,
+    commandKey: crypto.randomUUID(),
+  });
+  await f.configure(true, false);
+  const p = await f.signed.query(reviews.get, {
+    ...f.scope,
+    versionId: f.versionId,
+  });
+  const request = {
+    ...f.scope,
+    versionId: f.versionId,
+    stage: "editorial" as const,
+    policyId: p.policyId,
+    expectedRevision: p.revision,
+    commandKey: crypto.randomUUID(),
+  };
+  await f.signed.mutation(reviews.request, request);
+  await f.signed.mutation(reviews.request, request);
+  const own = await editor.signed.query(api.editorial.notices.list, {
+    ...f.scope,
+    paginationOpts: { cursor: null, numItems: 25 },
+  });
+  expect(own.page).toHaveLength(2);
+  expect(
+    (
+      await other.signed.query(api.editorial.notices.list, {
+        ...f.scope,
+        paginationOpts: { cursor: null, numItems: 25 },
+      })
+    ).page,
+  ).toHaveLength(0);
+  expect(
+    await other.signed.query(api.editorial.notices.get, {
+      ...f.scope,
+      noticeId: own.page[0].id,
+    }),
+  ).toBeNull();
+  await expect(
+    other.signed.mutation(api.editorial.notices.read, {
+      ...f.scope,
+      noticeIds: [own.page[0].id],
+    }),
+  ).rejects.toThrow("NOTICE_UNAVAILABLE");
+  await expect(
+    editor.signed.mutation(api.editorial.notices.read, {
+      ...f.scope,
+      noticeIds: Array(26).fill(own.page[0].id),
+    }),
+  ).rejects.toThrow("NOTICE_READ_LIMIT");
+  await editor.signed.mutation(api.editorial.notices.read, {
+    ...f.scope,
+    noticeIds: [own.page[0].id],
+  });
+  expect(
+    (await editor.signed.query(api.editorial.notices.get, {
+      ...f.scope,
+      noticeId: own.page[0].id,
+    }))!.readAt,
+  ).not.toBeNull();
+  await f.signed.mutation(reviews.request, {
+    ...request,
+    commandKey: crypto.randomUUID(),
+  });
+  expect(
+    (
+      await editor.signed.query(api.editorial.notices.list, {
+        ...f.scope,
+        paginationOpts: { cursor: null, numItems: 25 },
+      })
+    ).page,
+  ).toHaveLength(3);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("editorialReviewDecisions").collect()),
+  ).toHaveLength(0);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("approvals").collect()),
+  ).toHaveLength(0);
+  await f.configure(false, false);
+  expect(
+    (
+      await editor.signed.query(api.editorial.notices.list, {
+        ...f.scope,
+        paginationOpts: { cursor: null, numItems: 25 },
+      })
+    ).page,
+  ).toHaveLength(1);
+  expect(fetch).toHaveBeenCalledTimes(0);
+});
+
+test("current vs historical vs frozen projections keep native queue pagination and unavailable holes", async () => {
+  const f = await fixture();
+  await f.configure(true, false);
+  await f.decide("editorial");
+  const approvalId = await f.approve(),
+    scheduleId = await f.schedule(approvalId);
+  const before = await f.signed.query(api.editorial.get, {
+    ...f.scope,
+    draftId: f.draftId,
+  });
+  expect(before!.review!.approvalId).toBe(approvalId);
+  await f.configure(true, true);
+  const after = await f.signed.query(api.editorial.get, {
+    ...f.scope,
+    draftId: f.draftId,
+  });
+  expect(after!.review!.approvalId).toBeNull();
+  expect(
+    after!.approvals.find((a) => a._id === approvalId)!.revokedAt,
+  ).toBeNull();
+  expect(
+    after!.frozenReviews.find((s) => s.scheduleId === scheduleId)!.usable,
+  ).toBe(true);
+  for (let i = 0; i < 27; i++)
+    await f.signed.mutation(api.editorial.create, {
+      ...f.scope,
+      content: { ...f.content, title: `Queue ${i}` },
+      source: "Manual",
+    });
+  const missing = await f.t.run(
+    async (ctx) =>
+      (await ctx.db
+        .query("drafts")
+        .withIndex("by_workspaceId_and_updatedAt", (q) =>
+          q.eq("workspaceId", f.workspaceId),
+        )
+        .order("desc")
+        .first())!,
+  );
+  await f.t.run((ctx) =>
+    ctx.db.patch(missing.currentVersionId!, { sourceUnavailable: true }),
+  );
+  const page = await f.signed.query(api.editorial.list, {
+    ...f.scope,
+    paginationOpts: { cursor: null, numItems: 1000 },
+  });
+  expect(page.page).toHaveLength(25);
+  expect(page.isDone).toBe(false);
+  expect(page.page.find((b) => b.draft._id === missing._id)!.review).toBeNull();
+  const next = await f.signed.query(api.editorial.list, {
+    ...f.scope,
+    paginationOpts: { cursor: page.continueCursor, numItems: 25 },
+  });
+  expect(next.isDone).toBe(true);
+  expect(next.page).toHaveLength(3);
+});
+
+test("root-gone null-horizon notice cleanup drains later pages and cannot restore receipts or publishing parents", async () => {
+  vi.useFakeTimers();
+  const f = await fixture(),
+    editor = await join(f, "Editor");
+  await f.configure(true, false);
+  await f.signed.mutation(api.editorial.assign, {
+    ...f.scope,
+    draftId: f.draftId,
+    versionId: f.versionId,
+    assigneeId: editor.userId,
+    expectedAssignmentRevision: 0,
+    commandKey: crypto.randomUUID(),
+  });
+  const p = await f.signed.query(reviews.get, {
+    ...f.scope,
+    versionId: f.versionId,
+  });
+  for (let i = 0; i < 61; i++)
+    await f.signed.mutation(reviews.request, {
+      ...f.scope,
+      versionId: f.versionId,
+      stage: "editorial",
+      policyId: p.policyId,
+      expectedRevision: p.revision,
+      commandKey: crypto.randomUUID(),
+    });
+  const rows = await f.t.run((ctx) =>
+    ctx.db.query("editorialNotices").collect(),
+  );
+  expect(rows).toHaveLength(62);
+  expect(rows.every((n) => n.sourceUntil === null)).toBe(true);
+  const parent = await f.t.run((ctx) => ctx.db.get(f.versionId));
+  await f.t.run((ctx) => ctx.db.delete(f.versionId));
+  expect(
+    (
+      await editor.signed.query(api.editorial.notices.list, {
+        ...f.scope,
+        paginationOpts: { cursor: null, numItems: 25 },
+      })
+    ).page,
+  ).toHaveLength(0);
+  const before = await f.t.run(async (ctx) => ({
+    approvals: await ctx.db.query("approvals").collect(),
+    schedules: await ctx.db.query("schedules").collect(),
+    finance: await ctx.db.query("aiAttempts").collect(),
+  }));
+  await f.t.mutation(internal.editorial.notices.purgeVersion, {
+    versionId: f.versionId,
+  });
+  await f.t.finishAllScheduledFunctions(vi.runAllTimers);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("editorialNotices").collect()),
+  ).toHaveLength(0);
+  expect(
+    await f.t.run(async (ctx) => ({
+      approvals: await ctx.db.query("approvals").collect(),
+      schedules: await ctx.db.query("schedules").collect(),
+      finance: await ctx.db.query("aiAttempts").collect(),
+    })),
+  ).toEqual(before);
+  expect(JSON.stringify(rows)).not.toContain(f.content.title);
+  expect(JSON.stringify(rows)).not.toContain(f.content.text[0]);
+  expect(parent).not.toBeNull();
+});
+
+test.each(["reviewer", "actor", "recipient", "source"] as const)(
+  "withdrawal outcome separates original reviewer, actual actor, recipient and source loss: %s",
+  async (lost) => {
+    vi.useFakeTimers();
+    const f = await fixture(),
+      reviewer = await join(f, "Editor"),
+      recipient = await join(f, "Editor");
+    const root = await noteSource(f, 1, Date.now() + 600000);
+    await f.configure(true, false);
+    await f.signed.mutation(api.editorial.assign, {
+      ...f.scope,
+      draftId: f.draftId,
+      versionId: f.versionId,
+      assigneeId: recipient.userId,
+      expectedAssignmentRevision: 0,
+      commandKey: crypto.randomUUID(),
+    });
+    const p = await reviewer.signed.query(reviews.get, {
+      ...f.scope,
+      versionId: f.versionId,
+    });
+    const d = await reviewer.signed.mutation(reviews.decide, {
+      ...f.scope,
+      versionId: f.versionId,
+      stage: "editorial",
+      policyId: p.policyId,
+      expectedRevision: p.revision,
+      commandKey: crypto.randomUUID(),
+    });
+    await f.signed.mutation(reviews.withdraw, {
+      ...f.scope,
+      decisionId: d.decisionId!,
+      expectedRevision: d.revision,
+      commandKey: crypto.randomUUID(),
+    });
+    const n = (
+      await f.t.run((ctx) => ctx.db.query("editorialNotices").collect())
+    ).find((n) => n.parent.kind === "decision" && n.parent.withdrawn)!;
+    expect(n).toMatchObject({
+      actorId: f.userId,
+      recipientId: recipient.userId,
+    });
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(d.decisionId!)))!.reviewerId,
+    ).toBe(reviewer.userId);
+    expect(
+      await recipient.signed.query(api.editorial.notices.get, {
+        ...f.scope,
+        noticeId: n._id,
+      }),
+    ).not.toBeNull();
+    const userId =
+      lost === "reviewer"
+        ? reviewer.userId
+        : lost === "actor"
+          ? f.userId
+          : recipient.userId;
+    const membershipId =
+      lost === "reviewer"
+        ? reviewer.membershipId
+        : lost === "actor"
+          ? (await f.t.run((ctx) =>
+              ctx.db
+                .query("memberships")
+                .withIndex("by_userId_and_workspaceId", (q) =>
+                  q.eq("userId", f.userId).eq("workspaceId", f.workspaceId),
+                )
+                .unique(),
+            ))!._id
+          : recipient.membershipId;
+    const saved = await f.t.run(async (ctx) =>
+      lost === "source" ? ctx.db.get(root) : ctx.db.get(membershipId),
+    );
+    await f.t.run(async (ctx) => {
+      await (lost === "source"
+        ? ctx.db.patch(root, { researchProofUntil: 0 })
+        : ctx.db.delete(membershipId));
+    });
+    if (lost !== "recipient")
+      expect(
+        await recipient.signed.query(api.editorial.notices.get, {
+          ...f.scope,
+          noticeId: n._id,
+        }),
+      ).toBeNull();
+    const parentBefore = await f.t.run(async (ctx) => ({
+      decisions: await ctx.db.query("editorialReviewDecisions").collect(),
+      approvals: await ctx.db.query("approvals").collect(),
+      schedules: await ctx.db.query("schedules").collect(),
+    }));
+    await f.t.mutation(internal.editorial.notices.sweep, { cursor: null });
+    await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0));
+    expect(await f.t.run((ctx) => ctx.db.get(n._id))).toBeNull();
+    // Fixture-only restoration of the same original source/role does not recreate a physically deleted occurrence.
+    await f.t.run(async (ctx) => {
+      await (lost === "source"
+        ? ctx.db.patch(root, {
+            researchProofUntil:
+              (saved as import("../convex/_generated/dataModel").Doc<"ideaVersions">)!
+                .researchProofUntil,
+          })
+        : ctx.db.insert(
+            "memberships",
+            Object.fromEntries(
+              Object.entries(saved!).filter(
+                ([k]) => !["_id", "_creationTime"].includes(k),
+              ),
+            ) as never,
+          ));
+    });
+    expect(await f.t.run((ctx) => ctx.db.get(n._id))).toBeNull();
+    expect(
+      await f.t.run(async (ctx) => ({
+        decisions: await ctx.db.query("editorialReviewDecisions").collect(),
+        approvals: await ctx.db.query("approvals").collect(),
+        schedules: await ctx.db.query("schedules").collect(),
+      })),
+    ).toEqual(parentBefore);
+    expect(userId).toBeTruthy();
+  },
+);
+
+test("notice cleanup propagates ancestry capacity and unknown proof failures atomically", async () => {
+  const f = await fixture(),
+    recipient = await join(f, "Editor");
+  await noteSource(f);
+  await f.signed.mutation(api.editorial.assign, {
+    ...f.scope,
+    draftId: f.draftId,
+    versionId: f.versionId,
+    assigneeId: recipient.userId,
+    expectedAssignmentRevision: 0,
+    commandKey: crypto.randomUUID(),
+  });
+  const before = await f.t.run((ctx) =>
+    ctx.db.query("editorialNotices").collect(),
+  );
+  await noteSource(f, 40);
+  await expect(
+    f.t.mutation(internal.editorial.notices.sweep, { cursor: null }),
+  ).rejects.toThrow("STYLE_ANCESTRY_LIMIT");
+  expect(
+    await f.t.run((ctx) => ctx.db.query("editorialNotices").collect()),
+  ).toEqual(before);
+  const proof = await import("../convex/research/contentProof");
+  vi.spyOn(proof, "draftResearchProof").mockRejectedValueOnce(
+    new Error("synthetic notice resource failure"),
+  );
+  await expect(
+    f.t.mutation(internal.editorial.notices.sweep, { cursor: null }),
+  ).rejects.toThrow("synthetic notice resource failure");
+  expect(
+    await f.t.run((ctx) => ctx.db.query("editorialNotices").collect()),
+  ).toEqual(before);
+});
+
+test.each(["reviewer", "withdrawer"] as const)(
+  "withdrawal notices require the original %s user root before parent cleanup",
+  async (lost) => {
+    vi.useFakeTimers();
+    const f = await fixture(),
+      reviewer = await join(f, "Editor"),
+      recipient = await join(f, "Editor");
+    await f.configure(true, false);
+    await f.signed.mutation(api.editorial.assign, {
+      ...f.scope,
+      draftId: f.draftId,
+      versionId: f.versionId,
+      assigneeId: recipient.userId,
+      expectedAssignmentRevision: 0,
+      commandKey: crypto.randomUUID(),
+    });
+    const p = await reviewer.signed.query(reviews.get, {
+      ...f.scope,
+      versionId: f.versionId,
+    });
+    const d = await reviewer.signed.mutation(reviews.decide, {
+      ...f.scope,
+      versionId: f.versionId,
+      stage: "editorial",
+      policyId: p.policyId,
+      expectedRevision: p.revision,
+      commandKey: crypto.randomUUID(),
+    });
+    await f.signed.mutation(reviews.withdraw, {
+      ...f.scope,
+      decisionId: d.decisionId!,
+      expectedRevision: d.revision,
+      commandKey: crypto.randomUUID(),
+    });
+    const n = (
+      await f.t.run((ctx) => ctx.db.query("editorialNotices").collect())
+    ).find((n) => n.parent.kind === "decision" && n.parent.withdrawn)!;
+    await f.t.run((ctx) =>
+      ctx.db.delete(lost === "reviewer" ? reviewer.userId : f.userId),
+    );
+    // The parent is not yet scrubbed: notice proof must independently check both truthful original roots.
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(d.decisionId!)))!.sourceUnavailable,
+    ).toBe(false);
+    expect(
+      await recipient.signed.query(api.editorial.notices.get, {
+        ...f.scope,
+        noticeId: n._id,
+      }),
+    ).toBeNull();
+    await f.t.mutation(internal.editorial.notices.sweep, { cursor: null });
+    await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0));
+    expect(await f.t.run((ctx) => ctx.db.get(n._id))).toBeNull();
+    expect(
+      await f.t.run((ctx) => ctx.db.query("approvals").collect()),
+    ).toHaveLength(0);
+  },
+);
+
+test("read and dismiss authorize every observed ID before changing any owned row", async () => {
+  const f = await fixture(),
+    recipient = await join(f, "Editor"),
+    other = await join(f, "Editor");
+  await f.signed.mutation(api.editorial.assign, {
+    ...f.scope,
+    draftId: f.draftId,
+    versionId: f.versionId,
+    assigneeId: recipient.userId,
+    expectedAssignmentRevision: 0,
+    commandKey: crypto.randomUUID(),
+  });
+  const second = await f.signed.mutation(api.editorial.create, {
+    ...f.scope,
+    content: { ...f.content, title: "Different recipient" },
+    source: "Manual",
+  });
+  const versionId = (await f.t.run((ctx) => ctx.db.get(second)))!
+    .currentVersionId!;
+  await f.signed.mutation(api.editorial.assign, {
+    ...f.scope,
+    draftId: second,
+    versionId,
+    assigneeId: other.userId,
+    expectedAssignmentRevision: 0,
+    commandKey: crypto.randomUUID(),
+  });
+  const rows = await f.t.run((ctx) =>
+      ctx.db.query("editorialNotices").collect(),
+    ),
+    own = rows.find((n) => n.recipientId === recipient.userId)!,
+    foreign = rows.find((n) => n.recipientId === other.userId)!;
+  for (const operation of [
+    api.editorial.notices.read,
+    api.editorial.notices.dismiss,
+  ]) {
+    await expect(
+      recipient.signed.mutation(operation, {
+        ...f.scope,
+        noticeIds: [own._id, foreign._id],
+      }),
+    ).rejects.toThrow("NOTICE_UNAVAILABLE");
+    expect(await f.t.run((ctx) => ctx.db.get(own._id))).toEqual(own);
+    expect(await f.t.run((ctx) => ctx.db.get(foreign._id))).toEqual(foreign);
+  }
+});
+
+test("native notices retain exact account parents and isolate a second current workspace", async () => {
+  const f = await fixture(),
+    foreignActor = await join(f, "Editor"),
+    recipient = await join(f, "Editor");
+  const foreignWorkspaceId = await foreignActor.signed.mutation(
+    api.workspaces.create,
+    { name: "Second workspace", description: "Native notice privacy" },
+  );
+  await foreignActor.signed.mutation(api.workspaces.select, {
+    workspaceId: foreignWorkspaceId,
+  });
+  const foreign = {
+    signed: foreignActor.signed,
+    scope: { workspaceId: foreignWorkspaceId },
+    workspaceId: foreignWorkspaceId,
+  };
+  expect(foreignWorkspaceId).not.toBe(f.workspaceId);
+  const account = (await f.t.run((ctx) => ctx.db.get(f.accountId)))!;
+  const secondAccountId = await f.t.run((ctx) =>
+    ctx.db.insert("socialAccounts", {
+      ...Object.fromEntries(
+        Object.entries(account).filter(
+          ([k]) => !["_id", "_creationTime"].includes(k),
+        ),
+      ),
+      providerIdentity: "second-account",
+    } as never),
+  );
+  const second = await f.signed.mutation(api.editorial.create, {
+    ...f.scope,
+    content: { ...f.content, accountId: secondAccountId },
+    source: "Manual",
+  });
+  const secondVersion = (await f.t.run((ctx) => ctx.db.get(second)))!
+    .currentVersionId!;
+  for (const [draftId, versionId] of [
+    [f.draftId, f.versionId],
+    [second, secondVersion],
+  ] as const)
+    await f.signed.mutation(api.editorial.assign, {
+      ...f.scope,
+      draftId,
+      versionId,
+      assigneeId: recipient.userId,
+      expectedAssignmentRevision: 0,
+      commandKey: crypto.randomUUID(),
+    });
+  const own = await recipient.signed.query(api.editorial.notices.list, {
+    ...f.scope,
+    paginationOpts: { cursor: null, numItems: 25 },
+  });
+  expect(new Set(own.page.map((n) => n.accountId))).toEqual(
+    new Set([f.accountId, secondAccountId]),
+  );
+  expect(
+    (
+      await foreign.signed.query(api.editorial.notices.list, {
+        ...foreign.scope,
+        paginationOpts: { cursor: null, numItems: 25 },
+      })
+    ).page,
+  ).toHaveLength(0);
+  expect(
+    await foreign.signed.query(api.editorial.notices.get, {
+      ...foreign.scope,
+      noticeId: own.page[0].id,
+    }),
+  ).toBeNull();
+  await expect(
+    foreign.signed.mutation(api.editorial.notices.read, {
+      ...foreign.scope,
+      noticeIds: [own.page[0].id],
+    }),
+  ).rejects.toThrow("NOTICE_UNAVAILABLE");
+  await f.t.run((ctx) =>
+    ctx.db.patch(secondAccountId, { workspaceId: foreign.workspaceId }),
+  );
+  expect(
+    await recipient.signed.query(api.editorial.notices.get, {
+      ...f.scope,
+      noticeId: own.page.find((n) => n.accountId === secondAccountId)!.id,
+    }),
+  ).toBeNull();
+  expect(
+    await recipient.signed.query(api.editorial.notices.get, {
+      ...f.scope,
+      noticeId: own.page.find((n) => n.accountId === f.accountId)!.id,
+    }),
+  ).not.toBeNull();
+});
+
+test.each([false, true])(
+  "selected publishing approval retains its original shorter source deadline stages=%s",
+  async (enabled) => {
+    vi.useFakeTimers();
+    const f = await fixture(),
+      short = Date.now() + 60000,
+      long = Date.now() + 900000;
+    const root = await noteSource(f, 1, long);
+    await f.configure(enabled, enabled);
+    if (enabled) {
+      await f.decide("editorial");
+      await f.decide("brand");
+    }
+    await f.t.run((ctx) => ctx.db.patch(root, { researchProofUntil: short }));
+    const approvalId = await f.approve();
+    const original = (await f.t.run((ctx) => ctx.db.get(approvalId)))!;
+    expect(original.reviewPin?.sourceUntil).toBe(short);
+    await f.t.run((ctx) => ctx.db.patch(root, { researchProofUntil: long }));
+    const projected = await f.signed.query(api.editorial.get, {
+      ...f.scope,
+      draftId: f.draftId,
+    });
+    if (!projected) throw new Error("Expected current native draft projection");
+    expect(projected.review?.approvalId).toBe(approvalId);
+    expect(projected.review?.sourceUntil).toBe(short);
+    vi.setSystemTime(short + 1);
+    expect(projected.review!.sourceUntil! > Date.now()).toBe(false);
+    const expired = await f.signed.query(api.editorial.get, {
+      ...f.scope,
+      draftId: f.draftId,
+    });
+    if (!expired) throw new Error("Expected current native draft after expiry");
+    expect(expired.review?.approvalId).toBeNull();
+    expect(expired.review?.sourceUntil).toBe(long);
+    await expect(f.schedule(approvalId)).rejects.toThrow(
+      "REVIEW_SOURCE_UNAVAILABLE",
+    );
+    expect(await f.t.run((ctx) => ctx.db.get(approvalId))).toEqual(original);
+    expect(
+      await f.t.run((ctx) => ctx.db.query("schedules").collect()),
+    ).toHaveLength(0);
+  },
+);
+
+test("first-write approval retains original source deadline after source extension", async () => {
+  vi.useFakeTimers();
+  const f = await fixture(),
+    short = Date.now() + 60000,
+    long = Date.now() + 900000;
+  const root = await noteSource(f, 1, long);
+  await f.configure(true, true);
+  await f.decide("editorial");
+  await f.decide("brand");
+  await f.t.run(async (ctx) => {
+    const account = (await ctx.db.get(f.accountId))!;
+    await ctx.db.patch(f.accountId, {
+      capability: { ...account.capability, publish: false },
+      xEvidence: {
+        scopes: ["tweet.read", "users.read", "tweet.write"],
+        identityVerifiedAt: Date.now(),
+        connectionSequence: 1,
+        textScopeEligible: true,
+        mediaScopeEligible: false,
+        liveWrite: "unverified",
+      },
+    });
+    await ctx.db.insert("xBindings", {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      providerIdentity: account.providerIdentity,
+      changedAt: Date.now(),
+    });
+    await ctx.db.insert("xCredentials", {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      generation: 1,
+      envelope: {
+        version: 1,
+        keyId: "synthetic",
+        iv: "synthetic",
+        ciphertext: "synthetic",
+      },
+      expiresAt: Date.now() + 86400000,
+      scopes: ["tweet.read", "users.read", "tweet.write"],
+      leaseUntil: 0,
+      cleanAfter: Date.now() + 86400000,
+    });
+    await ctx.db.patch(root, { researchProofUntil: short });
+  });
+  const approvalId = await f.signed.mutation(api.editorial.approveFirstWrite, {
+    ...f.scope,
+    versionId: f.versionId,
+    accountId: f.accountId,
+  });
+  const original = (await f.t.run((ctx) => ctx.db.get(approvalId)))!;
+  expect(original.reviewPin?.sourceUntil).toBe(short);
+  expect(original.expiresAt).toBeGreaterThan(long);
+  await f.t.run((ctx) => ctx.db.patch(root, { researchProofUntil: long }));
+  const projected = await f.signed.query(api.editorial.get, {
+    ...f.scope,
+    draftId: f.draftId,
+  });
+  if (!projected) throw new Error("Expected current native draft projection");
+  expect(projected.review?.approvalId).toBeNull();
+  expect(projected.review?.sourceUntil).toBe(long);
+  vi.setSystemTime(short + 1);
+  await expect(
+    f.signed.mutation(api.editorial.confirmFirstWrite, {
+      ...f.scope,
+      versionId: f.versionId,
+      approvalId,
+      accountId: f.accountId,
+    }),
+  ).rejects.toThrow("REVIEW_SOURCE_UNAVAILABLE");
+  expect(
+    await f.t.run((ctx) => ctx.db.query("schedules").collect()),
+  ).toHaveLength(0);
+  expect(await f.t.run((ctx) => ctx.db.get(approvalId))).toEqual(original);
+});
+
+test.each([
+  [false, false],
+  [true, false],
+  [false, true],
+  [true, true],
+])(
+  "current stages survive ordinary approval expiry and admit fresh approval enabled=%s unbounded=%s",
+  async (enabled, unbounded) => {
+    vi.useFakeTimers();
+    const f = await fixture(),
+      short = Date.now() + 60000,
+      long = unbounded ? null : Date.now() + 900000;
+    const root = await noteSource(f, 1, long);
+    await f.configure(enabled, enabled);
+    const decisions = enabled
+      ? [
+          (await f.decide("editorial")).decisionId,
+          (await f.decide("brand")).decisionId,
+        ]
+      : [];
+    await f.t.run((ctx) => ctx.db.patch(root, { researchProofUntil: short }));
+    const oldId = await f.approve(),
+      original = await f.t.run((ctx) => ctx.db.get(oldId));
+    await f.t.run((ctx) =>
+      ctx.db.patch(root, { researchProofUntil: long ?? undefined }),
+    );
+    const cached = await f.signed.query(api.editorial.get, {
+      ...f.scope,
+      draftId: f.draftId,
+    });
+    expect(cached?.review).toMatchObject({
+      approvalId: oldId,
+      sourceUntil: short,
+      stageSourceUntil: long,
+    });
+    vi.setSystemTime(short + 1);
+    const freshId = await f.approve(),
+      fresh = (await f.t.run((ctx) => ctx.db.get(freshId)))!;
+    expect(freshId).not.toBe(oldId);
+    expect(fresh.reviewPin).toMatchObject({
+      sourceUntil: long,
+      decisionIds: decisions,
+    });
+    expect(await f.t.run((ctx) => ctx.db.get(oldId))).toEqual(original);
+    expect(
+      await f.t.run((ctx) => ctx.db.query("schedules").collect()),
+    ).toHaveLength(0);
+  },
+);
+
+test.each([false, true])(
+  "current stage/source expiry remains terminal enabled=%s",
+  async (enabled) => {
+    vi.useFakeTimers();
+    const f = await fixture(),
+      short = Date.now() + 60000;
+    const root = await noteSource(f, 1, short);
+    await f.configure(enabled, enabled);
+    if (enabled) {
+      await f.decide("editorial");
+      await f.decide("brand");
+    }
+    const id = await f.approve();
+    if (enabled)
+      await f.t.run((ctx) =>
+        ctx.db.patch(root, { researchProofUntil: short + 900000 }),
+      );
+    const cached = await f.signed.query(api.editorial.get, {
+      ...f.scope,
+      draftId: f.draftId,
+    });
+    expect(cached?.review).toMatchObject({
+      approvalId: id,
+      sourceUntil: short,
+      stageSourceUntil: short,
+    });
+    vi.setSystemTime(short + 1);
+    const after = await f.signed.query(api.editorial.get, {
+      ...f.scope,
+      draftId: f.draftId,
+    });
+    if (enabled)
+      expect(after?.review).toMatchObject({
+        approvalId: null,
+        editorialDecisionId: null,
+        brandDecisionId: null,
+      });
+    else expect(after?.review).toBeNull();
+    await expect(f.approve()).rejects.toThrow(
+      enabled ? "REVIEW_SOURCE_UNAVAILABLE" : "MODEL_SOURCE_EXPIRED",
+    );
+    expect(
+      await f.t.run((ctx) => ctx.db.query("schedules").collect()),
+    ).toHaveLength(0);
+  },
+);

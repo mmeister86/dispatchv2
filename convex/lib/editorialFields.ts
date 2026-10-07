@@ -84,6 +84,7 @@ export const assetFields = {
   r2AccountId: v.optional(v.string()),
 };
 export const draftFields = {
+  assignmentRevision: v.optional(v.number()),
   assessmentRequestId: v.optional(v.id("jevAssessmentRequests")),
   workspaceId: v.id("workspaces"),
   revision: v.number(),

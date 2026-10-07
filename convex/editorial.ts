@@ -1,9 +1,19 @@
 import {
+  reviewPresentation,
+  frozenPresentation,
+  assignmentResult,
+} from "./editorial/reviewFields";
+import { produce as notice } from "./editorial/notices";
+import {
   currentReviewActor,
   currentReview,
   approvalReview,
   sameReview,
   historicalReviewSource,
+  command,
+  commandInput,
+  presentation,
+  loss,
 } from "./editorial/reviews";
 import { record as recordFeedback } from "./content/feedback";
 import { ConvexError, v } from "convex/values";
@@ -17,6 +27,7 @@ import {
   requireReference,
   requireRole,
   requireActiveWorkspace,
+  requireUser,
 } from "./lib/authorization";
 import {
   content,
@@ -67,6 +78,20 @@ export const scheduleDoc = v.object({
   ...scheduleFields,
 });
 const bundle = v.object({
+  authId: v.string(),
+  sessionId: v.string(),
+  review: v.union(
+    v.object({
+      ...reviewPresentation.fields,
+      stageSourceUntil: v.optional(v.union(v.number(), v.null())),
+      approvalId: v.union(v.id("approvals"), v.null()),
+      approvalsLimited: v.boolean(),
+    }),
+    v.null(),
+  ),
+  frozenReviews: v.array(
+    v.object({ scheduleId: v.id("schedules"), ...frozenPresentation.fields }),
+  ),
   assets: v.array(assetDoc),
   draft: draftDoc,
   versions: v.array(versionDoc),
@@ -164,7 +189,9 @@ export async function draftBundle(
     .query("approvals")
     .withIndex("by_draftId", (q) => q.eq("draftId", draft._id))
     .order("desc")
-    .take(100);
+    .take(101);
+  const approvalsLimited = approvals.length > 100;
+  if (approvalsLimited) approvals.pop();
   for (const schedule of schedules)
     if (!approvals.some((a) => a._id === schedule.approvalId)) {
       const approval = await ctx.db.get(schedule.approvalId);
@@ -200,7 +227,63 @@ export async function draftBundle(
       };
   }
   const assets = await versionAssets(ctx, draft.workspaceId, versions);
+  const current = draft.currentVersionId
+    ? await ctx.db.get(draft.currentVersionId)
+    : null;
+  let review = null;
+  if (current && !current.sourceUnavailable)
+    try {
+      const status = await presentation(ctx, draft.workspaceId, current._id);
+      let approvalId: Id<"approvals"> | null = null;
+      let sourceUntil = status.sourceUntil ?? Infinity;
+      for (const a of approvals)
+        if (
+          a.versionId === current._id &&
+          a.accountId === current.content.accountId &&
+          a.revokedAt === null &&
+          (a.purpose ?? "publishing") === "publishing"
+        )
+          try {
+            await checkApproval(
+              ctx,
+              draft.workspaceId,
+              current._id,
+              a.accountId,
+              a._id,
+            );
+            approvalId = a._id;
+            sourceUntil = Math.min(
+              sourceUntil,
+              a.reviewPin?.sourceUntil ?? Infinity,
+            );
+            break;
+          } catch (e) {
+            projectionLoss(e);
+          }
+      review = {
+        ...status,
+        stageSourceUntil: status.sourceUntil,
+        sourceUntil: Number.isFinite(sourceUntil) ? sourceUntil : null,
+        approvalId,
+        approvalsLimited,
+      };
+    } catch (e) {
+      projectionLoss(e);
+    }
+  const frozenReviews = await Promise.all(
+    schedules.map(async (s) => ({
+      scheduleId: s._id,
+      ...(await frozenStatus(ctx, s)),
+    })),
+  );
+  const actor = await requireUser(ctx),
+    sessionId = (await ctx.auth.getUserIdentity())?.sessionId;
+  if (typeof sessionId !== "string") throw new ConvexError("Unauthenticated");
   return {
+    authId: actor.authId,
+    sessionId,
+    review,
+    frozenReviews,
     assets,
     draft,
     comments,
@@ -353,7 +436,13 @@ export const calendar = workspaceQuery({
     accountId: v.optional(v.id("socialAccounts")),
   },
   returns: v.object({
-    rows: v.array(v.object({ schedule: scheduleDoc, version: versionDoc })),
+    rows: v.array(
+      v.object({
+        schedule: scheduleDoc,
+        version: versionDoc,
+        frozenReview: frozenPresentation,
+      }),
+    ),
     tooDense: v.boolean(),
   }),
   handler: async (ctx, a) => {
@@ -391,6 +480,7 @@ export const calendar = workspaceQuery({
       rows: await Promise.all(
         rows.map(async (schedule) => ({
           schedule,
+          frozenReview: await frozenStatus(ctx, schedule),
           version: await projectDraft(
             ctx,
             (await ctx.db.get(schedule.versionId))!,
@@ -697,6 +787,13 @@ export async function approveTransaction(
     revokedAt: null,
     revokedBy: null,
   });
+  await notice(
+    ctx,
+    ver,
+    actorId,
+    { kind: "approval", approvalId: id, revoked: false },
+    reviewPin.sourceUntil,
+  );
   await recordFeedback(ctx, ver, actorId, "accept");
   await event(ctx, workspaceId, ver.draftId, "VERSION_APPROVED", actorId);
   return id;
@@ -846,6 +943,13 @@ export const approveFirstWrite = workspaceMutation({
       expiresAt: Date.now() + FIRST_WRITE_MS,
       mediaPlacement: "first_post",
     });
+    await notice(
+      ctx,
+      ver,
+      ctx.user._id,
+      { kind: "approval", approvalId: id, revoked: false },
+      reviewPin.sourceUntil,
+    );
     await event(
       ctx,
       ctx.workspace._id,
@@ -1009,6 +1113,15 @@ export const revoke = workspaceMutation({
         revokedAt: Date.now(),
         revokedBy: ctx.user._id,
       });
+      const ver = await ctx.db.get(approval.versionId);
+      if (ver)
+        await notice(
+          ctx,
+          ver,
+          ctx.user._id,
+          { kind: "approval", approvalId: approval._id, revoked: true },
+          approval.reviewPin?.sourceUntil ?? null,
+        );
       await event(
         ctx,
         ctx.workspace._id,
@@ -1471,15 +1584,26 @@ export const resolveComment = workspaceMutation({
 export const assign = workspaceMutation({
   args: {
     draftId: v.id("drafts"),
+    versionId: v.id("draftVersions"),
     assigneeId: v.union(v.id("users"), v.null()),
+    expectedAssignmentRevision: v.number(),
+    commandKey: v.string(),
   },
-  returns: v.null(),
+  returns: assignmentResult,
   handler: async (ctx, a) => {
     requireRole(ctx.membership, ["Owner", "Admin", "Editor"]);
+    commandInput(a.commandKey, a.expectedAssignmentRevision);
     const draft = requireReference(
       ctx.workspace._id,
       await ctx.db.get(a.draftId),
     ) as Doc<"drafts">;
+    const ver = requireReference(
+      ctx.workspace._id,
+      await ctx.db.get(a.versionId),
+    ) as Doc<"draftVersions">;
+    if (ver.draftId !== draft._id)
+      throw new ConvexError("REVIEW_SOURCE_UNAVAILABLE");
+    const until = await historicalReviewSource(ctx, ver);
     if (a.assigneeId) {
       const member = await ctx.db
         .query("memberships")
@@ -1487,9 +1611,52 @@ export const assign = workspaceMutation({
           q.eq("userId", a.assigneeId!).eq("workspaceId", ctx.workspace._id),
         )
         .unique();
-      if (!member) throw new ConvexError("REFERENCE_ACCESS_DENIED");
+      if (!member || !(await ctx.db.get(a.assigneeId)))
+        throw new ConvexError("REFERENCE_ACCESS_DENIED");
     }
-    await ctx.db.patch(draft._id, { assigneeId: a.assigneeId ?? undefined });
+    const { old, fingerprint } = await command(
+      ctx,
+      ctx.workspace._id,
+      ctx.user._id,
+      a.commandKey,
+      [
+        "assignment",
+        draft._id,
+        ver._id,
+        ver.content.accountId,
+        a.expectedAssignmentRevision,
+        a.assigneeId,
+      ],
+    );
+    if (old) return old.assignmentResult!;
+    if (
+      draft.currentVersionId !== ver._id ||
+      (draft.assignmentRevision ?? 0) !== a.expectedAssignmentRevision
+    )
+      throw new ConvexError("ASSIGNMENT_CONFLICT");
+    const result = {
+      revision: a.expectedAssignmentRevision + 1,
+      assigneeId: a.assigneeId,
+      versionId: ver._id,
+    };
+    await ctx.db.patch(draft._id, {
+      assigneeId: a.assigneeId ?? undefined,
+      assignmentRevision: result.revision,
+    });
+    const commandId = await ctx.db.insert("editorialReviewCommands", {
+      workspaceId: ctx.workspace._id,
+      accountId: ver.content.accountId,
+      actorId: ctx.user._id,
+      commandKey: a.commandKey,
+      kind: "assignment",
+      draftId: draft._id,
+      versionId: ver._id,
+      ...(a.assigneeId ? { assigneeId: a.assigneeId } : {}),
+      fingerprint,
+      assignmentResult: result,
+      sourceUntil: until,
+      sourceUnavailable: false,
+    });
     await event(
       ctx,
       ctx.workspace._id,
@@ -1497,7 +1664,18 @@ export const assign = workspaceMutation({
       "DRAFT_ASSIGNED",
       ctx.user._id,
     );
-    return null;
+    await notice(
+      ctx,
+      ver,
+      ctx.user._id,
+      { kind: "assignment", commandId },
+      until,
+    );
+    await ctx.scheduler.runAfter(0, internal.editorial.notices.cleanupVersion, {
+      versionId: ver._id,
+      cursor: null,
+    });
+    return result;
   },
 });
 
@@ -1578,5 +1756,61 @@ async function recordMediaReferences(
       versionId,
       assetId,
     });
+  }
+}
+
+function projectionLoss(e: unknown) {
+  if (
+    e instanceof ConvexError &&
+    [
+      "APPROVAL_REQUIRED",
+      "APPROVER_AUTHORITY_CHANGED",
+      "SCHEDULER_AUTHORITY_CHANGED",
+      "APPROVAL_PURPOSE_MISMATCH",
+      "FIRST_WRITE_INTENT_EXPIRED",
+      "ACCOUNT_CONNECTION_CHANGED",
+      "ACCOUNT_REAUTH_OR_CAPABILITY_REQUIRED",
+      "MEDIA_NOT_READY",
+      "MEDIA_SNAPSHOT_CHANGED",
+      "SCHEDULE_ABORT_REQUESTED",
+      "X_REAUTH_REQUIRED",
+      "X_SCOPE_REQUIRED",
+      "CAPABILITY_VALIDATION_FAILED",
+    ].includes(String(e.data))
+  )
+    return;
+  loss(e);
+}
+async function frozenStatus(ctx: QueryCtx, s: Doc<"schedules">) {
+  try {
+    const m = await ctx.db
+      .query("memberships")
+      .withIndex("by_userId_and_workspaceId", (q) =>
+        q.eq("userId", s.actorId).eq("workspaceId", s.workspaceId),
+      )
+      .unique();
+    if (!m || !["Owner", "Admin"].includes(m.role))
+      throw new ConvexError("SCHEDULER_AUTHORITY_CHANGED");
+    await checkAccountConnection(ctx, s);
+    const ver = await checkApproval(
+      ctx,
+      s.workspaceId,
+      s.versionId,
+      s.accountId,
+      s.approvalId,
+      s,
+    );
+    return {
+      usable: true,
+      sourceUntil: await historicalReviewSource(
+        ctx,
+        ver,
+        s.reviewPin?.sourceUntil,
+        (await ctx.db.get(s.approvalId))?.reviewPin?.sourceUntil,
+      ),
+    };
+  } catch (e) {
+    projectionLoss(e);
+    return { usable: false, sourceUntil: s.reviewPin?.sourceUntil ?? null };
   }
 }

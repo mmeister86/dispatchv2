@@ -1,3 +1,4 @@
+import { NativeNoticeInbox } from "@/features/drafts/review";
 import {
   Component,
   Suspense,
@@ -497,6 +498,7 @@ export function AppShell() {
               onClick={() => setNotifications(true)}
             >
               <Bell size={17} />
+              {!demoMode && <NativeNoticeInbox indicator />}
               {issues.some((s) => !read.includes(s.id)) && (
                 <span className="absolute right-2 top-2 size-1.5 rounded-full bg-primary" />
               )}
@@ -667,6 +669,15 @@ export function AppShell() {
             </SheetDescription>
           </SheetHeader>
           <div className="space-y-4 p-4">
+            {!demoMode && (
+              <NativeNoticeInbox onOpen={() => setNotifications(false)} />
+            )}
+            {!!issues.length && (
+              <p className="text-xs muted">
+                Publishing-Hinweise · lokal gelesene Ausgabe, kein
+                Mail-Zustellnachweis
+              </p>
+            )}
             {issues.map((s) => (
               <div
                 className={cn(
@@ -702,7 +713,7 @@ export function AppShell() {
                 </Button>
               </div>
             ))}
-            {!issues.length && (
+            {demoMode && !issues.length && (
               <p className="text-sm muted">Alle Abläufe sind ruhig.</p>
             )}
             <Button

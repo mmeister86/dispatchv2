@@ -1,5 +1,6 @@
 import { teamResult, deliveryFields } from "./teamFields";
 import {
+  noticeFields,
   policyFields as reviewPolicyFields,
   controlFields as reviewControlFields,
   decisionFields as reviewDecisionFields,
@@ -903,6 +904,26 @@ export default defineSchema({
   })
     .index("by_assetId", ["assetId"])
     .index("by_versionId", ["versionId"]),
+  editorialNotices: defineTable(noticeFields)
+    .index("by_occurrence_and_recipientId", ["occurrence", "recipientId"])
+    .index("by_workspaceId_and_recipientId_and_createdAt", [
+      "workspaceId",
+      "recipientId",
+      "createdAt",
+    ])
+    .index("by_versionId_and_sourceUnavailable", [
+      "versionId",
+      "sourceUnavailable",
+    ])
+    .index("by_recipientId_and_sourceUnavailable", [
+      "recipientId",
+      "sourceUnavailable",
+    ])
+    .index("by_actorId_and_sourceUnavailable", ["actorId", "sourceUnavailable"])
+    .index("by_sourceUnavailable_and_sourceUntil", [
+      "sourceUnavailable",
+      "sourceUntil",
+    ]),
   editorialReviewPolicies: defineTable(reviewPolicyFields).index(
     "by_workspaceId_and_accountId_and_revision",
     ["workspaceId", "accountId", "revision"],

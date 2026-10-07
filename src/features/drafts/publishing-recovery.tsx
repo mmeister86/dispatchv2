@@ -1,3 +1,6 @@
+import { NativeReview } from "./review";
+import { authClient } from "@/lib/auth-client";
+import { useGithubSourceProofClock } from "@/lib/github-source-proof";
 import { useEffect, useRef, useState } from "react";
 import { useAction, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -11,12 +14,44 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 
 export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
-  const { state, cancelSchedule } = useStore();
+  const { state, nativeScope, cancelSchedule } = useStore();
+  const scope = useRef(nativeScope),
+    epoch = useRef(0);
+  if (scope.current !== nativeScope) {
+    scope.current = nativeScope;
+    epoch.current++;
+  }
   const args = {
     workspaceId: schedule.workspaceId as Id<"workspaces">,
     scheduleId: schedule.id as Id<"schedules">,
   };
   const inspection = useQuery(api.publishing.reconcile.inspect, args);
+  const { data: session } = authClient.useSession();
+  const response = useQuery(api.editorial.reviews.get, {
+    workspaceId: args.workspaceId,
+    versionId: schedule.versionId as Id<"draftVersions">,
+  });
+  const review =
+    response?.authId === session?.user.id &&
+    response?.sessionId === session?.session.id
+      ? response
+      : null;
+  const until = Math.min(
+      schedule.sourceProofUntil ?? Infinity,
+      review?.sourceUntil ?? Infinity,
+    ),
+    proofClock = useGithubSourceProofClock(
+      Number.isFinite(until)
+        ? [{ authorized: true, proofExpiresAt: until }]
+        : [],
+    ),
+    latestUntil = useRef(until);
+  latestUntil.current = until;
+  const reviewReady =
+    !!review &&
+    (!review.editorial || !!review.editorialDecisionId) &&
+    (!review.brand || !!review.brandDecisionId) &&
+    until > proofClock;
   const lookup = useAction(api.publishing.reconcile.lookup),
     continueThread = useMutation(api.publishing.reconcile.continueThread),
     finalizeAbort = useMutation(api.publishing.reconcile.finalizeAbort);
@@ -36,6 +71,9 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
   useEffect(() => {
     setAck(false);
   }, [schedule.generation, state.activeWorkspaceId]);
+  useEffect(() => {
+    if (!reviewReady) setAck(false);
+  }, [reviewReady]);
   const allowed =
     canApprove(state.role) && state.activeWorkspaceId === schedule.workspaceId;
   const unknown = inspection?.positions.some((p) => p.stage === "unknown");
@@ -62,7 +100,16 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
     confirmedId?: string,
   ) => {
     if (pending) return;
-    const expectedGeneration = schedule.generation!;
+    const expectedGeneration = schedule.generation!,
+      originalScope = nativeScope,
+      originalEpoch = epoch.current,
+      originalUntil = until;
+    const current = () =>
+      mounted.current &&
+      scope.current === originalScope &&
+      epoch.current === originalEpoch &&
+      generation.current === expectedGeneration &&
+      Math.min(originalUntil, latestUntil.current) > Date.now();
     setPending(true);
     setFeedback("");
     setAck(false);
@@ -70,7 +117,7 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
       const target = { ...args, expectedGeneration };
       if (abort === "request") {
         const ok = await cancelSchedule(schedule);
-        if (mounted.current)
+        if (current())
           setFeedback(
             ok
               ? "Abbruch angefordert. Ungeklärte Ergebnisse bleiben gesperrt und müssen lesend abgeglichen werden."
@@ -78,7 +125,7 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
           );
       } else if (abort === "finalize") {
         await finalizeAbort(target);
-        if (mounted.current)
+        if (current())
           setFeedback(
             "Der gespeicherte Abbruch wurde anhand der bekannten Ergebnisse abgeschlossen.",
           );
@@ -93,7 +140,7 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
               ?.externalId ??
             "",
         });
-        if (mounted.current && generation.current === expectedGeneration)
+        if (current())
           setFeedback(
             result === "confirmed"
               ? "Dieser Beitrag wurde bestätigt. Eine Fortsetzung benötigt eine eigene sichtbare Bestätigung."
@@ -101,22 +148,28 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
           );
       } else {
         await continueThread(target);
-        if (mounted.current)
+        if (current())
           setFeedback(
             "Die unveränderte Snapshot-Version wurde neu freigegeben. Nur ausstehende Beiträge werden ausgeführt.",
           );
       }
     } catch (e) {
-      if (mounted.current) setFeedback(editorialActionError(e));
+      if (current()) setFeedback(editorialActionError(e));
     } finally {
-      if (mounted.current) setPending(false);
+      if (current()) setPending(false);
     }
   };
   return (
     <section
-      className="mt-3 space-y-3 rounded-md border p-3 text-sm"
+      className="mt-3 min-w-0 space-y-3 rounded-md border p-3 text-sm break-words"
       aria-label="Veröffentlichung abgleichen und fortsetzen"
     >
+      <NativeReview
+        versionId={schedule.versionId!}
+        accountId={schedule.accountId}
+        disabled={!!schedule.sourceUnavailable}
+        sourceUntil={schedule.sourceProofUntil ?? null}
+      />
       <p className="text-xs">
         Snapshot v{schedule.version} ·{" "}
         {state.accounts.find((a) => a.id === schedule.accountId)?.handle}.
@@ -241,7 +294,12 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
             <Checkbox
               checked={ack}
               disabled={
-                pending || !allowed || !inspection || unknown || permanent
+                pending ||
+                !allowed ||
+                !inspection ||
+                !reviewReady ||
+                unknown ||
+                permanent
               }
               onCheckedChange={(v) => setAck(v === true)}
               aria-label="Sichtbare Fortsetzung bestätigen"
@@ -254,6 +312,7 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
               pending ||
               !allowed ||
               !inspection ||
+              !reviewReady ||
               unknown ||
               permanent ||
               !ack ||
@@ -262,6 +321,7 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
                 Boolean(p.notBefore && p.notBefore > Date.now()),
               )
             }
+            className="max-w-full h-auto whitespace-normal py-2"
             onClick={() => void execute()}
           >
             {pending

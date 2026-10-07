@@ -1,4 +1,8 @@
 import {
+  NativeReviewPolicies,
+  NativeReviewQueue,
+} from "@/features/drafts/review";
+import {
   Component,
   useCallback,
   useEffect,
@@ -264,6 +268,8 @@ function TeamWorkspace({
           Aktuellen Stand prüfen
         </Button>
       )}
+      <NativeReviewPolicies />
+      <NativeReviewQueue />
       <Section
         title="Mitglieder"
         description={`${roster.members.length} Mitglieder · Deine Rolle: ${state.role}`}

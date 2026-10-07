@@ -1,9 +1,17 @@
+import { NativeReview } from "./review";
+import { useGithubSourceProofClock } from "@/lib/github-source-proof";
 import { useEffect, useRef, useState } from "react";
 import { PublishingRecovery } from "./publishing-recovery";
 import { Link } from "react-router-dom";
 import { useStore } from "@/lib/store";
 import { demoMode } from "@/lib/auth-client";
-import { canApprove, currentVersion, draftValid } from "@/lib/model";
+import {
+  canApprove,
+  currentVersion,
+  draftValid,
+  reviewComplete,
+  reviewStageSourceUntil,
+} from "@/lib/model";
 import type { Draft, Schedule } from "@/lib/model";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -23,7 +31,14 @@ export function FirstWriteConfirmation({
   draft: Draft;
   disabled: boolean;
 }) {
-  const { state, approveFirstWrite, confirmFirstWrite } = useStore();
+  const { state, nativeScope, approveFirstWrite, confirmFirstWrite } =
+    useStore();
+  const scope = useRef(nativeScope);
+  const epoch = useRef(0);
+  if (scope.current !== nativeScope) {
+    scope.current = nativeScope;
+    epoch.current++;
+  }
   const [open, setOpen] = useState(false),
     [pending, setPending] = useState(false),
     [approvalId, setApprovalId] = useState<string | null>(null),
@@ -38,6 +53,34 @@ export function FirstWriteConfirmation({
   }, []);
   const version = currentVersion(draft),
     account = state.accounts.find((a) => a.id === draft.accountId);
+  const proofUntil = reviewStageSourceUntil(draft),
+    approval = draft.approvals?.find((a) => a.id === approvalId),
+    until = Math.min(
+      proofUntil ?? Infinity,
+      approval?.expiresAt ?? Infinity,
+      approval?.reviewPin?.sourceUntil ?? Infinity,
+    ),
+    approvalUsable =
+      !!approval &&
+      !approval.revokedAt &&
+      approval.purpose === "first_write_verification" &&
+      approval.versionId === version.id &&
+      approval.accountId === draft.accountId &&
+      (approval.reviewPin?.sourceUntil ?? Infinity) > Date.now() &&
+      (approval.expiresAt ?? 0) > Date.now(),
+    clock = useGithubSourceProofClock(
+      Number.isFinite(until)
+        ? [{ authorized: true, proofExpiresAt: until }]
+        : [],
+    ),
+    currentUntil = useRef(until);
+  currentUntil.current = until;
+  useEffect(() => {
+    if (until <= clock) {
+      setAck(false);
+      setApprovalId(null);
+    }
+  }, [until, clock]);
   if (
     demoMode ||
     !account ||
@@ -56,9 +99,18 @@ export function FirstWriteConfirmation({
     draft.workspaceId === state.activeWorkspaceId &&
     draftValid(draft, state.accounts, state.media) &&
     !disabled &&
+    until > clock &&
+    reviewComplete(draft) &&
     !active;
   return (
     <section className="mb-4 rounded-md border p-4 text-sm">
+      <NativeReview
+        versionId={version.id!}
+        accountId={draft.accountId}
+        sourceUntil={reviewStageSourceUntil(draft)}
+        disabled={!!version.sourceUnavailable}
+      />
+
       <p>
         Der X-Schreibzugang ist noch nicht belegt. Die Erstveröffentlichung
         erstellt einen sichtbaren Beitrag: Inhalt freigeben und anschließend
@@ -94,7 +146,7 @@ export function FirstWriteConfirmation({
             }
           }}
         >
-          <DialogContent className="sm:max-w-xl">
+          <DialogContent className="sm:max-w-xl [&>*]:min-w-0 max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Erstveröffentlichung auf X</DialogTitle>
               <DialogDescription>
@@ -149,12 +201,23 @@ export function FirstWriteConfirmation({
             <DialogFooter>
               {!approvalId ? (
                 <Button
+                  className="h-auto whitespace-normal py-2"
                   disabled={pending || !eligible}
                   onClick={async () => {
+                    const originalScope = nativeScope,
+                      originalEpoch = epoch.current,
+                      originalUntil = until;
                     setPending(true);
                     setError("");
                     const id = await approveFirstWrite(draft);
-                    if (!mounted.current) return;
+                    if (
+                      !mounted.current ||
+                      scope.current !== originalScope ||
+                      epoch.current !== originalEpoch ||
+                      Math.min(originalUntil, currentUntil.current) <=
+                        Date.now()
+                    )
+                      return;
                     setPending(false);
                     if (id) setApprovalId(id);
                     else
@@ -169,12 +232,23 @@ export function FirstWriteConfirmation({
                 </Button>
               ) : (
                 <Button
-                  disabled={pending || !eligible || !ack}
+                  className="h-auto whitespace-normal py-2"
+                  disabled={pending || !eligible || !approvalUsable || !ack}
                   onClick={async () => {
+                    const originalScope = nativeScope,
+                      originalEpoch = epoch.current,
+                      originalUntil = until;
                     setPending(true);
                     setError("");
                     const ok = await confirmFirstWrite(draft, approvalId);
-                    if (!mounted.current) return;
+                    if (
+                      !mounted.current ||
+                      scope.current !== originalScope ||
+                      epoch.current !== originalEpoch ||
+                      Math.min(originalUntil, currentUntil.current) <=
+                        Date.now()
+                    )
+                      return;
                     setPending(false);
                     if (ok) {
                       setOpen(false);

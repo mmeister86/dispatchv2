@@ -43,6 +43,7 @@ import type * as content_similarity from "../content/similarity.js";
 import type * as content_similarityFields from "../content/similarityFields.js";
 import type * as crons from "../crons.js";
 import type * as editorial from "../editorial.js";
+import type * as editorial_notices from "../editorial/notices.js";
 import type * as editorial_reviewFields from "../editorial/reviewFields.js";
 import type * as editorial_reviews from "../editorial/reviews.js";
 import type * as http from "../http.js";
@@ -188,6 +189,7 @@ declare const fullApi: ApiFromModules<{
   "content/similarityFields": typeof content_similarityFields;
   crons: typeof crons;
   editorial: typeof editorial;
+  "editorial/notices": typeof editorial_notices;
   "editorial/reviewFields": typeof editorial_reviewFields;
   "editorial/reviews": typeof editorial_reviews;
   http: typeof http;

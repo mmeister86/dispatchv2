@@ -716,6 +716,10 @@ test("list only current snapshot, composer fetch beyond first page and paged his
   await f.signed.mutation(api.editorial.assign, {
     workspaceId: f.workspaceId,
     draftId: f.draftId,
+    versionId: (await f.t.run((ctx) => ctx.db.get(f.draftId)))!
+      .currentVersionId!,
+    expectedAssignmentRevision: 0,
+    commandKey: crypto.randomUUID(),
     assigneeId: f.userId,
   });
   expect((await f.t.run((ctx) => ctx.db.get(f.draftId)))!.assigneeId).toBe(

@@ -1,9 +1,25 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test, vi } from "vitest";
-vi.mock("../src/lib/auth-client", () => ({ demoMode: false }));
+vi.mock("../src/lib/auth-client", () => ({
+  demoMode: false,
+  authClient: {
+    useSession: () => ({
+      data: { user: { id: "auth-owner" }, session: { id: "session-owner" } },
+    }),
+  },
+}));
 vi.mock("convex/react", () => ({
   useQuery: () => ({
+    authId: "auth-owner",
+    sessionId: "session-owner",
+    revision: 0,
+    policyId: null,
+    editorial: false,
+    brand: false,
+    editorialDecisionId: null,
+    brandDecisionId: null,
+    sourceUntil: null,
     aborted: false,
     positions: [
       { position: 0, stage: "confirmed", errorCode: null, notBefore: null },

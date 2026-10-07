@@ -24,7 +24,7 @@ import {
   scheduleDraft,
 } from "./model";
 import { api } from "../../convex/_generated/api";
-import type { FunctionReturnType } from "convex/server";
+import type { FunctionArgs, FunctionReturnType } from "convex/server";
 import { useGithubSourceProofClock } from "./github-source-proof";
 import type { Id } from "../../convex/_generated/dataModel";
 import { authClient, demoMode } from "./auth-client";
@@ -73,7 +73,13 @@ const Context = createContext<{
   members: { id: string; role: string; name: string }[];
   addComment: (draft: Draft, text: string) => Promise<boolean>;
   resolveComment: (id: string, expectedResolved: boolean) => Promise<boolean>;
-  assignDraft: (draft: Draft, userId: string) => Promise<boolean>;
+  assignDraft: (
+    draft: Draft,
+    userId: string,
+    commandKey?: string,
+  ) => Promise<boolean>;
+  nativeScope: string;
+  draftCoverage: string;
   saveDraft: (input: SaveDraftInput) => Promise<boolean>;
   approveVersion: (draft: Draft) => Promise<boolean>;
   approveFirstWrite: (draft: Draft) => Promise<string | null>;
@@ -323,6 +329,8 @@ function DemoStoreProvider({ children }: { children: ReactNode }) {
         hasMoreDrafts: false,
         resourcesLimited: false,
         events: [],
+        nativeScope: "demo",
+        draftCoverage: "Demo",
         notifications: [],
         setState,
         mutate,
@@ -393,6 +401,8 @@ function unavailable() {
 }
 const emptyContext = {
   state: emptyState,
+  nativeScope: "unavailable",
+  draftCoverage: "loading",
   setState: unavailable,
   mutate: unavailable,
   members: [],
@@ -545,8 +555,9 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
   )!.role;
   return (
     <WorkspaceDataStore
-      key={`${snapshot.userId}:${snapshot.activeWorkspaceId}:${role}`}
+      key={`${authId}:${sessionId}:${snapshot.userId}:${snapshot.activeWorkspaceId}:${role}`}
       snapshot={snapshot}
+      sessionScope={`${authId}:${sessionId}`}
     >
       {children}
     </WorkspaceDataStore>
@@ -555,8 +566,10 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
 function WorkspaceDataStore({
   children,
   snapshot,
+  sessionScope,
 }: {
   children: ReactNode;
+  sessionScope: string;
   snapshot: Extract<
     FunctionReturnType<typeof api.users.current>,
     { state: "ready" }
@@ -616,56 +629,91 @@ function WorkspaceDataStore({
     ...(detail?.comments ?? []),
   ];
   const contentClock = useGithubSourceProofClock(
-    proofVersions
+    [
+      ...[...list.results, ...(detail ? [detail] : [])].flatMap((b) =>
+        [b.review?.sourceUntil, b.review?.stageSourceUntil]
+          .filter((until): until is number => typeof until === "number")
+          .map((sourceProofUntil) => ({
+            sourceProofUntil,
+            sourceUnavailable: false,
+          })),
+      ),
+      ...proofVersions,
+    ]
       .filter((v) => v.sourceProofUntil !== undefined)
       .map((v) => ({
         authorized: !v.sourceUnavailable,
         proofExpiresAt: v.sourceProofUntil!,
       })),
   );
-  const projectBundle = <T extends NonNullable<typeof detail>>(b: T): T => ({
-    ...b,
-    versions: b.versions.map((v) =>
-      v.sourceUnavailable ||
-      (v.sourceProofUntil !== undefined && v.sourceProofUntil <= contentClock)
-        ? {
-            ...v,
-            sourceUnavailable: true,
-            content: {
-              ...v.content,
-              title: "",
-              text: v.content.text.map(() => ""),
-              media: v.content.media.map((ref) => ({ ...ref, alt: "" })),
-              pillar: "",
-              strategy: "",
-            },
-            reason: "",
-          }
-        : v,
-    ),
-    comments: b.comments.map((c) => {
-      const v = b.versions.find((v) => v._id === c.versionId);
-      return c.sourceUnavailable ||
-        (c.sourceProofUntil !== undefined &&
-          c.sourceProofUntil <= contentClock) ||
-        (v?.sourceProofUntil !== undefined &&
-          v.sourceProofUntil <= contentClock)
-        ? { ...c, text: "" }
-        : c;
-    }),
-  });
-  const safeList = list.results.map(projectBundle);
-  const fullDetail = detail
-    ? {
-        ...detail,
-        assets: [...detail.assets, ...history.results.flatMap((v) => v.assets)],
-        versions: [
-          ...new Map(
-            [...detail.versions, ...history.results].map((v) => [v._id, v]),
-          ).values(),
-        ].sort((a, b) => a.number - b.number),
-      }
-    : null;
+  const projectBundle = <T extends NonNullable<typeof detail>>(b: T): T => {
+    const review = b.review,
+      stageUntil =
+        review?.stageSourceUntil === undefined
+          ? review?.sourceUntil
+          : review.stageSourceUntil;
+    return {
+      ...b,
+      review:
+        review &&
+        (stageUntil === null ||
+          (stageUntil !== undefined && stageUntil > contentClock))
+          ? {
+              ...review,
+              approvalId:
+                review.sourceUntil === null || review.sourceUntil > contentClock
+                  ? review.approvalId
+                  : null,
+            }
+          : null,
+      versions: b.versions.map((v) =>
+        v.sourceUnavailable ||
+        (v.sourceProofUntil !== undefined && v.sourceProofUntil <= contentClock)
+          ? {
+              ...v,
+              sourceUnavailable: true,
+              content: {
+                ...v.content,
+                title: "",
+                text: v.content.text.map(() => ""),
+                media: v.content.media.map((ref) => ({ ...ref, alt: "" })),
+                pillar: "",
+                strategy: "",
+              },
+              reason: "",
+            }
+          : v,
+      ),
+      comments: b.comments.map((c) => {
+        const v = b.versions.find((v) => v._id === c.versionId);
+        return c.sourceUnavailable ||
+          (c.sourceProofUntil !== undefined &&
+            c.sourceProofUntil <= contentClock) ||
+          (v?.sourceProofUntil !== undefined &&
+            v.sourceProofUntil <= contentClock)
+          ? { ...c, text: "" }
+          : c;
+      }),
+    };
+  };
+  const ownedBundle = (b: NonNullable<typeof detail>) =>
+    `${b.authId}:${b.sessionId}` === sessionScope;
+  const safeList = list.results.filter(ownedBundle).map(projectBundle);
+  const fullDetail =
+    detail && ownedBundle(detail)
+      ? {
+          ...detail,
+          assets: [
+            ...detail.assets,
+            ...history.results.flatMap((v) => v.assets),
+          ],
+          versions: [
+            ...new Map(
+              [...detail.versions, ...history.results].map((v) => [v._id, v]),
+            ).values(),
+          ].sort((a, b) => a.number - b.number),
+        }
+      : null;
   const workspace = snapshot.workspaces.find(
     (w) => w.id === snapshot.activeWorkspaceId,
   );
@@ -731,6 +779,7 @@ function WorkspaceDataStore({
             mediaChecksums: [],
             content: { ...b.versions.at(-1)!.content, text: [], media: [] },
           },
+          b.frozenReviews?.find((p) => p.scheduleId === x._id),
         ),
       ),
     ),
@@ -750,12 +799,17 @@ function WorkspaceDataStore({
     versionId: d.versions.at(-1)!.id as Id<"draftVersions">,
     accountId: d.accountId as Id<"socialAccounts">,
   });
-  const approvalId = (d: Draft) => d.approval?.id as Id<"approvals">;
+  const approvalId = (d: Draft) =>
+    (d.nativeReview !== undefined
+      ? d.nativeReview?.approvalId
+      : d.approval?.id) as Id<"approvals">;
   return (
     <Context.Provider
       value={{
         ...emptyContext,
         state,
+        nativeScope: `${sessionScope}:${workspaceId}:${state.activeAccountId}:${state.role}`,
+        draftCoverage: list.status,
         onboardingStep,
         loadMoreVersions: () => history.loadMore(20),
         hasMoreVersions: history.status === "CanLoadMore",
@@ -818,14 +872,17 @@ function WorkspaceDataStore({
               expectedResolved,
             }),
           ),
-        assignDraft: (d, userId) =>
-          command(() =>
-            assignContent({
-              workspaceId: snapshot.activeWorkspaceId,
-              draftId: d.id as Id<"drafts">,
-              assigneeId: userId ? (userId as Id<"users">) : null,
-            }),
-          ),
+        assignDraft: async (d, userId, commandKey = crypto.randomUUID()) => {
+          await assignContent({
+            workspaceId: snapshot.activeWorkspaceId,
+            draftId: d.id as Id<"drafts">,
+            versionId: d.currentVersionId as Id<"draftVersions">,
+            assigneeId: userId ? (userId as Id<"users">) : null,
+            expectedAssignmentRevision: d.assignmentRevision ?? 0,
+            commandKey,
+          });
+          return true;
+        },
         saveDraft: (a) =>
           command(() =>
             saveContent({
@@ -866,7 +923,7 @@ function WorkspaceDataStore({
           command(() =>
             revokeContent({
               workspaceId: snapshot.activeWorkspaceId,
-              approvalId: approvalId(d),
+              approvalId: d.approval?.id as Id<"approvals">,
             }),
           ),
         replaceSchedule: (d, s) =>

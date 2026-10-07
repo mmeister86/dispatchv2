@@ -17,6 +17,7 @@ export const approvalView = (
   versions: Doc<"draftVersions">[],
 ): Approval => ({
   id: a._id,
+  reviewPin: a.reviewPin,
   purpose: a.purpose,
   expiresAt: a.expiresAt,
   versionId: a.versionId,
@@ -80,12 +81,26 @@ export const publishingError = (code: string | null) =>
 export function scheduleView(
   s: Doc<"schedules">,
   v: Doc<"draftVersions">,
+  frozenReview?: { usable: boolean; sourceUntil: number | null },
 ): Schedule {
   const unavailable =
     v.sourceUnavailable ||
     (v.sourceProofUntil !== undefined && v.sourceProofUntil <= Date.now());
   return {
-    sourceProofUntil: v.sourceProofUntil,
+    frozenReview,
+    reviewPin: s.reviewPin,
+    sourceProofUntil:
+      Math.min(
+        v.sourceProofUntil ?? Infinity,
+        frozenReview?.sourceUntil ?? Infinity,
+        s.reviewPin?.sourceUntil ?? Infinity,
+      ) === Infinity
+        ? undefined
+        : Math.min(
+            v.sourceProofUntil ?? Infinity,
+            frozenReview?.sourceUntil ?? Infinity,
+            s.reviewPin?.sourceUntil ?? Infinity,
+          ),
     sourceUnavailable: unavailable,
     id: s._id,
     purpose: s.purpose,
@@ -118,6 +133,7 @@ export function scheduleView(
 }
 export function draftView(b: {
   draft: Doc<"drafts">;
+  review?: Draft["nativeReview"];
   versions: Doc<"draftVersions">[];
   approvals: Doc<"approvals">[];
   historyLimited?: boolean;
@@ -125,10 +141,16 @@ export function draftView(b: {
   schedulesLimited?: boolean;
   comments?: Doc<"editorialComments">[];
 }): Draft {
-  const c = b.versions.at(-1)!.content;
+  const c = (
+    b.versions.find((v) => v._id === b.draft.currentVersionId) ??
+    b.versions.at(-1)!
+  ).content;
   const approvals = b.approvals.map((a) => approvalView(a, b.versions));
   return {
     id: b.draft._id,
+    currentVersionId: b.draft.currentVersionId ?? undefined,
+    assignmentRevision: b.draft.assignmentRevision ?? 0,
+    nativeReview: b.review === undefined ? null : b.review,
     revision: b.draft.revision,
     historyLimited: b.historyLimited,
     commentsLimited: b.commentsLimited,
@@ -213,6 +235,16 @@ export function editorialActionError(error: unknown) {
       "Bereits veröffentlichte Beiträge können nicht verschoben oder storniert werden.",
     CONTENT_SNAPSHOT_TOO_LARGE:
       "Dieser Entwurf überschreitet die Speichergrenze von 32 KiB. Text oder Alt-Texte kürzen.",
+    ASSIGNMENT_CONFLICT:
+      "Die Zuständigkeit oder Version wurde geändert. Aktuellen Stand prüfen und neu entscheiden.",
+    REVIEW_REVISION_CONFLICT:
+      "Die Review-Revision wurde geändert. Aktuellen Stand prüfen und neu entscheiden.",
+    REVIEW_POLICY_CHANGED:
+      "Für diese Version gilt inzwischen eine andere Review-Regel. Aktuellen Stand prüfen.",
+    REVIEW_REQUIRED:
+      "Die aktivierten Reviews für diese genaue Version fehlen noch.",
+    REVIEW_COMMAND_CONFLICT:
+      "Dieser Auftrag hat bereits einen anderen unveränderlichen Inhalt.",
     COMMENT_CONFLICT:
       "Der Kommentar wurde inzwischen geändert. Aktuellen Status prüfen und erneut entscheiden.",
     INVALID_CONTENT:

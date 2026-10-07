@@ -49,6 +49,11 @@ export interface Version {
   reason: string;
 }
 export interface Approval {
+  reviewPin?: {
+    policyId: string | null;
+    decisionIds: string[];
+    sourceUntil: number | null;
+  };
   purpose?: "publishing" | "first_write_verification";
   expiresAt?: number;
   id?: string;
@@ -67,6 +72,20 @@ export interface Comment {
   resolved: boolean;
 }
 export interface Draft {
+  assignmentRevision?: number;
+  currentVersionId?: string;
+  nativeReview?: {
+    revision: number;
+    policyId: string | null;
+    editorial: boolean;
+    brand: boolean;
+    editorialDecisionId: string | null;
+    brandDecisionId: string | null;
+    sourceUntil: number | null;
+    approvalId: string | null;
+    stageSourceUntil?: number | null;
+    approvalsLimited: boolean;
+  } | null;
   revision?: number;
   historyLimited?: boolean;
   commentsLimited?: boolean;
@@ -94,6 +113,12 @@ export interface Draft {
   }[];
 }
 export interface Schedule {
+  frozenReview?: { usable: boolean; sourceUntil: number | null };
+  reviewPin?: {
+    policyId: string | null;
+    decisionIds: string[];
+    sourceUntil: number | null;
+  };
   sourceProofUntil?: number;
   sourceUnavailable?: boolean;
   media?: { assetId: string; alt: string }[];
@@ -179,7 +204,10 @@ export interface AppState {
 export const now = () => new Date().toISOString();
 export const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 export const currentVersion = (draft: Draft) =>
-  draft.versions[draft.versions.length - 1];
+  draft.versions.find(
+    (v) =>
+      draft.currentVersionId !== undefined && v.id === draft.currentVersionId,
+  ) ?? draft.versions[draft.versions.length - 1];
 export const limits: Record<Channel, number> = {
   X: 280,
   LinkedIn: 3000,
@@ -237,6 +265,12 @@ export function draftValid(
   );
 }
 export function approved(draft: Draft) {
+  if (draft.nativeReview !== undefined)
+    return (
+      !!draft.nativeReview?.approvalId &&
+      (draft.nativeReview.sourceUntil === null ||
+        draft.nativeReview.sourceUntil > Date.now())
+    );
   return (
     draft.approval?.version === currentVersion(draft).number &&
     draft.approval?.accountId === draft.accountId &&
@@ -245,7 +279,24 @@ export function approved(draft: Draft) {
     reviewComplete(draft)
   );
 }
+export function reviewStageSourceUntil(draft: Draft): number | null {
+  const r = draft.nativeReview;
+  return r
+    ? r.stageSourceUntil === undefined
+      ? r.sourceUntil
+      : r.stageSourceUntil
+    : (currentVersion(draft).sourceProofUntil ?? null);
+}
 export function reviewComplete(draft: Draft) {
+  if (draft.nativeReview !== undefined)
+    return (
+      !!draft.nativeReview &&
+      (!draft.nativeReview.editorial ||
+        !!draft.nativeReview.editorialDecisionId) &&
+      (!draft.nativeReview.brand || !!draft.nativeReview.brandDecisionId) &&
+      (reviewStageSourceUntil(draft) === null ||
+        reviewStageSourceUntil(draft)! > Date.now())
+    );
   return (["editorial", "brand"] as const).every(
     (stage) =>
       !draft.reviewPolicy?.[stage] ||

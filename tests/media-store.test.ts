@@ -16,6 +16,12 @@ vi.mock("../src/lib/auth-client", () => ({
   authClient: {
     useSession: () => ({
       data: {
+        session: {
+          id: (
+            responses.queries["editorial:get"] as
+              { sessionId?: string } | undefined
+          )?.sessionId,
+        },
         user: {
           id: (
             responses.queries["users:current"] as

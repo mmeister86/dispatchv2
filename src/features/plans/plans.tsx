@@ -1,3 +1,4 @@
+import { NativeReview } from "@/features/drafts/review";
 import { FiniteSeries } from "./series";
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
@@ -39,7 +40,7 @@ const reasons: Record<string, string> = {
 };
 const states: Record<string, string> = {
   proposed: "Vorschlag",
-  accepted: "Angenommen · im Kalender",
+  accepted: "Historisch angenommen · im Kalender",
   rejected: "Abgelehnt",
   expired: "Abgelaufen",
   version_changed: "Version geändert · neuen Vorschlag prüfen",
@@ -539,6 +540,13 @@ function PlanForm({
                             {text.join("\n\n")}
                           </p>
                         )}
+                        {readable && status === "proposed" && (
+                          <NativeReview
+                            versionId={item.versionId}
+                            accountId={item.accountId}
+                            sourceUntil={displayUntil}
+                          />
+                        )}
                         <div className="rounded-md bg-background p-3 text-[11px] break-words">
                           <p>
                             {item.localTime} · {item.timezone}
@@ -569,7 +577,7 @@ function PlanForm({
                           )}
                           <p>{item.reason}</p>
                           {approvalId && item.status === "proposed" && (
-                            <p>Deine Freigabe: {approvalId}</p>
+                            <p>Aktuell nutzbare Freigabe: {approvalId}</p>
                           )}
                           {item.status === "accepted" &&
                             item.acceptedScheduleId && (
@@ -578,8 +586,8 @@ function PlanForm({
                                 <Link to="/calendar" className="underline">
                                   Kalender öffnen
                                 </Link>{" "}
-                                · {item.acceptedScheduleId} · Freigabe{" "}
-                                {item.acceptedApprovalId}
+                                · {item.acceptedScheduleId} · historische
+                                Freigabe {item.acceptedApprovalId}
                               </p>
                             )}
                         </div>

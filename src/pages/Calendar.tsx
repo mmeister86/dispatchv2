@@ -1,3 +1,4 @@
+import { NativeReview } from "@/features/drafts/review";
 import { PublishingRecovery } from "@/features/drafts/publishing-recovery";
 import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -52,9 +53,17 @@ import {
   approveSnapshot,
   resumeSnapshot,
   now,
+  currentVersion,
+  type Draft,
   type Schedule,
 } from "@/lib/model";
 type CalendarRange = { start: number; end: number; account: string };
+function draftLabel(draft: Draft | undefined, schedule?: Schedule) {
+  return (draft && currentVersion(draft).sourceUnavailable) ||
+    schedule?.sourceUnavailable
+    ? "Quelle nicht verfügbar"
+    : draft?.title || schedule?.draftTitle || "Entwurf";
+}
 export function CalendarPage() {
   return demoMode ? <CalendarContent /> : <ConnectedCalendarPage />;
 }
@@ -108,7 +117,7 @@ function CalendarContent({
   const calendarSchedules = demoMode
     ? state.schedules
     : (remote?.rows ?? []).map((row) =>
-        scheduleView(row.schedule, row.version),
+        scheduleView(row.schedule, row.version, row.frozenReview),
       );
   const protectedSchedules = [
     ...calendarSchedules,
@@ -306,7 +315,7 @@ function CalendarContent({
                   <AccountIcon channel={a?.channel ?? "X"} />
                   <div className="min-w-0 flex-1">
                     <strong className="block text-sm">
-                      {d?.title ?? s.draftTitle}
+                      {draftLabel(d, s)}
                     </strong>
                     <span className="mt-1 block text-[11px] muted">
                       {a?.handle} · v{s.version} ·{" "}
@@ -407,7 +416,7 @@ function CalendarContent({
                             </span>
                           </div>
                           <h3 className="mb-2 text-[11px] leading-snug">
-                            {d?.title ?? s.draftTitle}
+                            {draftLabel(d, s)}
                           </h3>
                           <div className="mb-2">
                             <PublishBadge status={s.status} />
@@ -455,7 +464,7 @@ function CalendarContent({
               to={`/drafts/${d.id}`}
               className="rounded-md border bg-card px-3 py-2 text-xs hover:border-primary"
             >
-              {d.title}
+              {draftLabel(d)}
               <ArrowRight size={12} className="ml-2 inline" />
             </Link>
           ))}
@@ -466,10 +475,12 @@ function CalendarContent({
           if (!o) setDetail(null);
         }}
       >
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-xl [&>*]:min-w-0 max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {draft?.title ?? currentDetail?.draftTitle ?? "Termindetails"}
+              {currentDetail
+                ? draftLabel(draft, currentDetail)
+                : "Termindetails"}
             </DialogTitle>
             <DialogDescription>
               Geplanter Snapshot · v{currentDetail?.version} ·{" "}
@@ -602,6 +613,18 @@ function CalendarContent({
                     <CheckCircle2 size={14} />
                     Demo-Abgleich durchführen
                   </Button>
+                )}
+                {!demoMode && (
+                  <div className="stack text-sm">
+                    <p>
+                      Gespeicherte Review-Regel:{" "}
+                      {currentDetail.reviewPin?.policyId ?? "Legacy OFF"} ·{" "}
+                      {currentDetail.frozenReview?.usable
+                        ? "eingefrorener Nachweis aktuell verfügbar"
+                        : "eingefrorener Nachweis nicht verfügbar"}
+                      . Eine reine Zeitverschiebung behält diesen Nachweis.
+                    </p>
+                  </div>
                 )}
                 {demoMode &&
                   (currentDetail.status === "partial" ||

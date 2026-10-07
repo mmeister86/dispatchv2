@@ -103,4 +103,10 @@ crons.interval(
   internal.editorial.reviews.sweep,
   { cursor: null, phase: "decisions" },
 );
+crons.interval(
+  "Recipient editorial notice cleanup",
+  { minutes: 15 },
+  internal.editorial.notices.sweep,
+  { cursor: null },
+);
 export default crons;

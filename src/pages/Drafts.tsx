@@ -1,3 +1,8 @@
+import {
+  NativeAssignment,
+  NativeReview,
+  NativeCommentResolution,
+} from "@/features/drafts/review";
 import { Similarity } from "@/features/content/Similarity";
 import { SavedAssessment } from "@/features/intelligence/assessments";
 import { IntelligenceProfiles } from "@/features/intelligence/profiles";
@@ -66,6 +71,8 @@ import { useStore } from "@/lib/store";
 import {
   currentVersion,
   approved,
+  reviewComplete,
+  reviewStageSourceUntil,
   editDraft,
   approveDraft,
   draftValid,
@@ -269,6 +276,7 @@ export function DraftsPage() {
               {drafts.map((d) => {
                 const a = state.accounts.find((a) => a.id === d.accountId);
                 const v = currentVersion(d);
+                const unavailable = !demoMode && v.sourceUnavailable;
                 const scheduled = state.schedules.find(
                   (s) => s.draftId === d.id && s.status === "scheduled",
                 );
@@ -277,10 +285,14 @@ export function DraftsPage() {
                     <td className="min-w-64">
                       <Link to={`/drafts/${d.id}`} className="block">
                         <strong className="text-sm font-semibold">
-                          {d.title}
+                          {unavailable
+                            ? "Quelle nicht verfügbar"
+                            : d.title || "Entwurf"}
                         </strong>
                         <span className="mt-1.5 block max-w-md truncate text-xs muted">
-                          {v.text[0] || "Noch kein Text"}
+                          {unavailable
+                            ? "Geschützter Inhalt ist nicht verfügbar."
+                            : v.text[0] || "Noch kein Text"}
                         </span>
                         <span className="mt-2 block text-[10px] muted">
                           {d.pillar}
@@ -300,7 +312,11 @@ export function DraftsPage() {
                     </td>
                     <td>
                       <Status tone={approved(d) ? "green" : "orange"}>
-                        {approved(d) ? "Freigegeben" : "Entwurf"}
+                        {unavailable
+                          ? "Quelle nicht verfügbar"
+                          : approved(d)
+                            ? "Freigegeben"
+                            : "Entwurf"}
                       </Status>
                       {scheduled && (
                         <span className="mt-1 block text-[10px] muted">
@@ -369,6 +385,7 @@ export function ComposerPage() {
     members,
     addComment,
     resolveComment,
+    nativeScope,
     assignDraft,
   } = useStore();
   const nav = useNavigate();
@@ -714,7 +731,11 @@ export function ComposerPage() {
       </div>
       <PageHeader
         eyebrow="Composer"
-        title={draft.title}
+        title={
+          v.sourceUnavailable
+            ? "Quelle nicht verfügbar"
+            : draft.title || "Entwurf"
+        }
         description={`${draft.source ?? "Manueller Entwurf"} · ${account?.handle ?? "Account auswählen"} · ${draft.versions.length} Version${draft.versions.length === 1 ? "" : "en"}`}
         actions={
           <>
@@ -730,6 +751,7 @@ export function ComposerPage() {
               disabled={
                 dirty ||
                 !review ||
+                !reviewComplete(draft) ||
                 !draftValid(draft, state.accounts, state.media) ||
                 approved(draft) ||
                 (!demoMode && !account?.capability?.publish)
@@ -754,7 +776,7 @@ export function ComposerPage() {
         </p>
       )}
       <FirstWriteConfirmation
-        key={`${draft.id}:${v.id}:${draft.accountId}:${v.sourceUnavailable ?? false}`}
+        key={`${nativeScope}:${draft.id}:${v.id}:${draft.accountId}:${v.sourceUnavailable ?? false}`}
         draft={draft}
         disabled={dirty || conflict || saving || !!v.sourceUnavailable}
       />
@@ -1204,6 +1226,16 @@ export function ComposerPage() {
             </div>
           </Section>
           <Section title="Freigabe & Terminierung">
+            {!demoMode && (
+              <NativeReview
+                key={`${draft.id}:${v.id}:${draft.accountId}`}
+                versionId={v.id!}
+                accountId={draft.accountId}
+                disabled={!!v.sourceUnavailable}
+                readOnly={dirty}
+                sourceUntil={reviewStageSourceUntil(draft)}
+              />
+            )}
             <div className="mb-4 flex items-start gap-3">
               <ShieldCheck
                 size={20}
@@ -1215,9 +1247,16 @@ export function ComposerPage() {
                     ? `Version ${v.number} für ${account?.handle} freigegeben`
                     : `Diese Arbeitsversion für ${account?.handle ?? "keinen Account"} ist noch nicht freigegeben`}
                 </strong>
+                {draft.nativeReview?.approvalsLimited &&
+                  !draft.nativeReview.approvalId && (
+                    <p className="text-xs muted">
+                      Die begrenzte Freigabe-Historie belegt keine aktuell
+                      nutzbare Freigabe.
+                    </p>
+                  )}
                 <p className="mt-2 mb-0 text-xs leading-relaxed muted">
                   {draft.approval
-                    ? `Letzte Freigabe: v${draft.approval.version} · ${draft.approval.by}. Änderungen an Text, Account oder Medien benötigen eine neue Freigabe.`
+                    ? `Historische Freigabe: v${draft.approval.version} · ${draft.approval.by}. Änderungen an Text, Account oder Medien benötigen eine neue Freigabe.`
                     : "Freigabe bestätigt den Inhalt. Ein Termin entsteht erst durch deine separate Planung."}
                 </p>
               </div>
@@ -1237,6 +1276,13 @@ export function ComposerPage() {
                 <CalendarDays size={15} />
                 Version planen
               </Button>
+              {draft.nativeReview?.approvalsLimited &&
+                !draft.nativeReview.approvalId && (
+                  <p className="text-xs muted">
+                    Die begrenzte Freigabe-Historie belegt keine aktuell
+                    nutzbare Freigabe.
+                  </p>
+                )}
               {draft.approval && (
                 <Button
                   variant="ghost"
@@ -1267,32 +1313,40 @@ export function ComposerPage() {
             title="Zusammenarbeit"
             actions={<MessageSquare size={16} className="muted" />}
           >
-            <label className="mb-4 block">
-              <span className="field-label">Zuständig</span>
-              <select
-                className="native-select"
-                value={draft.assignee ?? ""}
+            {!demoMode ? (
+              <NativeAssignment
+                key={`${draft.id}:${v.id}`}
+                draft={draft}
                 disabled={!canWrite}
-                onChange={async (e) => {
-                  await assignDraft(draft, e.target.value);
-                }}
-              >
-                <option value="">Nicht zugewiesen</option>
-                {demoMode ? (
-                  <>
-                    <option>Matthias</option>
-                    <option>Lea</option>
-                    <option>Jonas</option>
-                  </>
-                ) : (
-                  members.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name} · {m.role}
-                    </option>
-                  ))
-                )}
-              </select>
-            </label>
+              />
+            ) : (
+              <label className="mb-4 block">
+                <span className="field-label">Zuständig</span>
+                <select
+                  className="native-select"
+                  value={draft.assignee ?? ""}
+                  disabled={!canWrite}
+                  onChange={async (e) => {
+                    await assignDraft(draft, e.target.value);
+                  }}
+                >
+                  <option value="">Nicht zugewiesen</option>
+                  {demoMode ? (
+                    <>
+                      <option>Matthias</option>
+                      <option>Lea</option>
+                      <option>Jonas</option>
+                    </>
+                  ) : (
+                    members.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name} · {m.role}
+                      </option>
+                    ))
+                  )}
+                </select>
+              </label>
+            )}
             {draft.commentsLimited && (
               <p className="text-xs muted">
                 Die letzten 100 Kommentare werden angezeigt. Ältere Kommentare
@@ -1311,16 +1365,26 @@ export function ComposerPage() {
                   </Status>
                 </div>
                 <p className="my-2 text-xs leading-relaxed">{c.text}</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  disabled={!canWrite}
-                  onClick={async () => {
-                    await resolveComment(c.id, c.resolved);
-                  }}
-                >
-                  {c.resolved ? "Wieder öffnen" : "Als erledigt markieren"}
-                </Button>
+                {demoMode ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={!canWrite}
+                    onClick={async () => {
+                      await resolveComment(c.id, c.resolved);
+                    }}
+                  >
+                    {c.resolved ? "Wieder öffnen" : "Als erledigt markieren"}
+                  </Button>
+                ) : (
+                  <NativeCommentResolution
+                    draft={draft}
+                    commentId={c.id}
+                    versionNumber={c.version}
+                    resolved={c.resolved}
+                    unavailable={!!v.sourceUnavailable || !c.text}
+                  />
+                )}
               </div>
             ))}
             <VersionCommentInput

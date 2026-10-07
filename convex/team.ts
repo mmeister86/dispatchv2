@@ -650,6 +650,10 @@ export const purgeActor = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    if (!a.phase)
+      await ctx.scheduler.runAfter(0, internal.editorial.notices.purgeActor, {
+        actorId: a.actorId,
+      });
     if (!a.phase || a.phase === "invitations") {
       const page = await ctx.db
         .query("teamInvitations")
