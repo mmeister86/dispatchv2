@@ -3,10 +3,10 @@ id: TASK-49.2
 title: >-
   Verbinde native Team- und Einladungspfade mit ehrlichem optionalem Mailstatus
   (P13.01, Teil 2)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-06 16:13'
-updated_date: '2026-10-07 01:31'
+updated_date: '2026-10-07 02:01'
 labels: []
 dependencies:
   - TASK-49.1
@@ -37,10 +37,22 @@ Nach akzeptiertem49.1 reale Team/Demo-Split, auth-only Acceptance und notwendige
 - [ ] #2 Der Nutzer bestätigt nach manueller Prüfung ausdrücklich die Freigabe zum Done-Status.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Reconcile technically accepted49.1 API/Store, final49 UI/auth preflight and existing real routes.
+2. Implement native Team/Demo dispatcher and verified auth-only invitation/returnpath/Viewer entry.
+3. Preserve immutable pending/retry commands and actual actor/session/workspace/role/expiry fences.
+4. Add optional explicit existing Resend delivery with durable claim, bounded immutable idempotency, current proof and introduced cleanup; all transport intercepted.
+5. Actual native/styled full-route checks, SOURCE_READY STOP, rootfinalcodegen/freeze/freshSPEC/distinctQUALITY/wholegate/sourcecommit/exactexistingEUDev; manualDone staysopen.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 Read-onlySpezialisten-Vorarbeit .docs/reviews/task-49-team-preflight.md angenommen: nativeTeam/DemoSplit+auth-onlyverifiedInvitationReturnRoute+StoreRecovery auf separataccepted49.1, keine localGuest/Support/Review50Mockfreigabe. OptionalResend viaexistingdirectFetch: explicitSend/durableClaim/fixedunchangedbytes+key/originalboundedwindow/providerAccepted≠delivered, currentInviteAuthority, unknown/lateOriginalReceipt undPersonalCleanup vorConsumer. Keine tatsächlicheMail, keineSecretsgeprüft, aktuelleProviderdocs vorImplementation viactx7. Styles/desktop390/nativeRoute/dirtyretry/role-workspace-unmount-expiry; reineVorarbeitkeineImplementierung/Review/Done.
 
 Focusedreadonly final49source UI/auth preflight adopted task-49.2-final49-ui-preflight.md/-source.json; root18repositoryhashes inclcontract+brief verified against historicalb908freeze (49.1QUALITYcorrection/fullsuite/Dev stillpending). Explicit sharedverifiedAuthBoundary auth-only invitationRoute must bypass WorkspaceStoreProvider/AppShell; callback signup/reverification currently forces invitation via onboarding. Actual previewworkspaceId captured beside immutableaccept args then awaited nativeworkspaces.select; acceptresult hasnoworkspaceId and preview no recipientemail (own verifiedsessionemail onlyifdisplayneeded). CloudTeamallowlist/nativeDemo dispatcher beforemockbody; original50review/guests/support unavailable. ExistingdirectResend syntaxonly, noactualdurableinvite deliveryyet. No source/tests/providers/manual acceptancebyreadonlyreport.
+
+Predecessor49.1 technically accepted8494666:1091/52nativePASS709.029s/freshfinalSPEC/distinctQUALITY/static/codegen/build/bundle/exactEUDev02:00:39UTC/389actualmetadata/6newteaminterfaces/323hashes unchanged. Rootprepared concrete SoleWriter brief and final49 UI/auth preflight; historicalb908 preflight must reconcile finalf832 uniqueStoreoperation/session.id fix. SOURCE implementation release after verification-docscommit. No actualemails/provider/grants/manualDone.
 <!-- SECTION:NOTES:END -->
