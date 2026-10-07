@@ -4,7 +4,7 @@ title: 'Betriebsereignisse, Alerts und Wiederherstellung konsolidieren (P09.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 23:54'
+updated_date: '2026-10-07 11:28'
 labels:
   - p09
   - r3
@@ -77,4 +77,6 @@ Root adotiert read-only31/32Seams und .docs/operations-notifications-contract.md
 Read-only konkrete Vorarbeit /tmp/dispatch-31-preflight.md (SHA44a65617073b56d39a75ac361aa27a1867e4117353a874dc617c739d139b3a27) identifiziert vorhandene native Belege/Index-/Recovery-/UI-Seams. Kein31Source/Tests/Provider/Dev-Nachweis. Erste Umsetzung soll begrenzte Owner/Admin-Projektion mit echten Domain-Links verwenden, ohne weiteren Publisher/Ledger/Watchdog/Registry/Eventbus. Bestehendes ai.runs.recent hat keinen private-Actor-Filter und ist nicht unverändert als Operations-Quelle geeignet; globale GitHubscanStatus-Abdeckung ist keine Tenant-Vollständigkeit. Leere/partielle Ausschnitte sind nicht gesund, unbekannte Kosten/Publishing-Effekte bleiben erhalten. Konkrete Query-Grenzen und private hasMore-/Count-Leaks vor Implementierung am tatsächlichen Quellstand prüfen. Reconcile nach46–50/67–68; keine AcceptanceCriteria geschlossen.
 
 Weitere konkrete reineVorbereitung: /tmp/dispatch-31-writer-brief.md hält native bounded receipt projection, privateActor+Count guard, genuine current actions, honestempty/unknown/coverage und minimalconsumed episode fest. Nochkeine31SourceFreigabe oderTest/Review/Dev-Abnahme; finale47/49/50/67/68 SourceReconciliation bleibt Pflicht. GanzeBackendFortsetzung läuft47.2, genau einSourceWriter.
+
+Read-only future reconciliation adopted: .docs/reviews/task-31-32-35-current-native-reconciliation.md. Actual notices/routing finance and mounted UI reviewed; native health requires bounded domain proofs, private chat exclusion before counts, honest coverage and current recovery links. TASK-67.2 is moving; reconcile accepted TASK-68 before source release. No implementation/test acceptance; all ACs remain open.
 <!-- SECTION:NOTES:END -->

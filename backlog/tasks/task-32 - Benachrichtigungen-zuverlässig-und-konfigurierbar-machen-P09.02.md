@@ -4,7 +4,7 @@ title: Benachrichtigungen zuverlässig und konfigurierbar machen (P09.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 16:04'
+updated_date: '2026-10-07 11:28'
 labels:
   - p09
   - r3
@@ -55,4 +55,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 Root hat /tmp/dispatch-continuation-31-32-seams.md gelesen: reale publishingNotifications+Resendnotify existieren mit perRowIdempotencyKey/generischemCalendarBody, sent bedeutetnurHTTPaccepted—not delivered. KeinNativePrefs/Read/Dismiss/OccurrenceDedupe/DeadlineLease; workspaceResourceszeigtcurrentlylatest50allRecipientMetadata. MinimalnativeSelfPrefs/currentRecipientQuery+readDismiss/exactOccurrence first, optionalboundedquietSummary danach, bestehendenEmailtransportnuractualConfig/HumanPrefs/currentMember/Lifecycle/ParentProof hardenen; unknownAcceptance nichtautomatischresenden. Authreset/verification separateRequestedTransaction; keineactualMailaufrufe/ProviderConfig/SDK/NeuerChannel. IntroducedProtectedCopiesMask/Purge vorProducer, whole33/36manualoffen. AktuellerReportread-only keinefreshTests.
 
 Rootcontract .docs/operations-notifications-contract.md konkretisiert sequenziell SelfPreferences+RecipientInApp, finiteOptInSummary/IANAquiet, dann bestehendeResendHärtung mit echten offiziellenProviderReceipts. Legacy sent=HTTPaccepted weder delivered noch read; scheduleBoundRows nicht alsGenericNotification missbrauchen. CurrentRecipient/pref/lifecycle/domain/privateActor vorcallback/send, sourcecopyindexedphysicalCleanup vorProducer. MissingConfigsichtbar, keineActualEmail/Provideraktivierung/zweiterService;32Source/Test/ManualDone weiterhin offen.
+
+Read-only future reconciliation adopted: .docs/reviews/task-31-32-35-current-native-reconciliation.md. Existing preferences can host self opt-in; absent opt-in remains OFF. Actual convex/http.ts contains Auth/GitHub only: signed mail-provider callbacks are NOT implemented. Future current official provider receipt protocol/configuration and native recipient/parent replay/lifecycle proofs remain required. Earlier signed-callback references describe planned work only. No source release/test acceptance; all ACs remain open.
 <!-- SECTION:NOTES:END -->

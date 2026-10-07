@@ -3,10 +3,10 @@ id: TASK-68.1
 title: >-
   Erzeuge native Social-Post-Kandidaten im bestehenden finanzierten Generator
   (Voraussetzung für Jev-Prüfung)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-06 23:11'
-updated_date: '2026-10-07 09:46'
+updated_date: '2026-10-07 12:53'
 labels: []
 dependencies:
   - TASK-67.2
@@ -55,4 +55,10 @@ Konkrete CLI-Vorbereitung unter fortlaufend freigegebenem Backend-Ausbau, noch k
 KonkreterReadonlyCallerPreflight .docs/reviews/task-67-routing-generator-preflight.md: purpose=draft tatsächlicherperspectiveJSON erzeugtIdea, keinSocialPostPipeline. Expliziteroutputmode+wholeNativeCandidateID/hash/run/intent muss vorVerifier existieren; currentprovider.execute/common5createRunCallers, mediaSnapshot/recordMediaReferences/CAS/humanunapprovednewversion undindexedrun/source/style/AgentexecutionFinishedCleanup beachten. Agent0.6.4text-onlyInvariant nutzen; komponentenfilesDeleteMetadata≠storagebytesdelete undmemories/orphanVectorsnichtthreaddelete. NurVorbereitung, ToDo/unreleased/unverified.
 
 Root vollständig las83-line aktuellen Readonly-Plan .docs/reviews/task-68.1-actual-candidate-source-plan.md, SHA80a2455bdd0bc3abd33d22b1b1acb2fe6e5f8b0682bc920a30912df904ca2090. Tatsächlicher gefundeter Agent/parser, whole ordered Capability/Content/Media, native Idea/Draft/CAS/Source/Approval und indexed Cleanup-Seams konkret geprüft. Minimum-Vorschlag: optionaler immutable Kandidat in vorhandenen ideaVersions, vorhandene mediaVersionReferences mit exakt typisiertem nativen Version-Ziel, originaler purpose=draft und fünf Caller erhalten. Menschliche Anwendung nutzt bestehenden Buffer/Revisionspfad und einen ausdrücklich gewählten Target; kein neues Workflow-Framework. Exact67.2 API/Request/Proof bleibt ungeklärt bis separat technisch akzeptiert; nur Vorbereitung, keine Source-Freigabe/Tests/Provider/AC-Akzeptanz. To Do/manualDone offen.
+
+Root prepared /tmp/dispatch-68.1-writer-brief.md (preparation only) after fully reading adopted83line candidate plan and actual shared editorial/media/source/Composer callers. Existing-family candidate/nativeVersion+media reference union, exact new/current Draft application preserving both ancestry, shared save propagation for recommendations, independent root-gone terminal payload/ref cleanup clarified. No source release or test/API acceptance; final67.2 source/receipt/cleanup reconciliation first. Task remains To Do/ACs and manualDoD open.
+
+Readonly current frozen67.2 seam delta adopted as proposal: root reconstructed exact19-path hash9346cfbc654d18f688a456655201e315f5316d4282b4dfad6df97429aee94505 against6c249e93. Targeted agent ranges/searches, not full-file reads; five proposed control bodies not freshly inspected. Exact14production+6control proposal in /tmp/dispatch-68.1-writer-brief.md. Existing provider/ai.fields/Store/mapping/Settings/media readers reference-only; candidate X-only explicit mode/media/wholecommand proof; native read/apply existing handoff receipt/Composer fences; shared lineage and bounded cleanup before root/research guards. Current67.2QUALITY/fullgates/commit/exactDev pending; no source release/test acceptance, ToDo/AC/manualDoD open.
+
+Predecessor67.2 separately TECHNICALLY_ACCEPTED sourcecommit2f095443e8880c5027030c98b58728045fbc04fe/334freeze6c249e93/freshSPEC+distinctQUALITY/1351native54files/sevenstatic/exact existingEUDev427metadata/one newinternalpurgeRouting/41interfaces/fiveHTTP unchanged. Root adopted current frozen-seam19-path readonly reconciliation and minimum14production+6control proposal; solewriter release planned after root verificationdocs commit and immutable baseline. Reuse existing funded provider transport/nativeMedia/Composer and source32/horizons/original3scope finance; X-only explicit candidate mode, ordered payload/nativeID/hash/run, explicit human unapproved application and bounded rootgone cleanup. All68.1 AC/DoD remain open; no sourcewriter/candidate/verifier/repair/provider activation yet.
 <!-- SECTION:NOTES:END -->

@@ -1,10 +1,10 @@
 Status: TECHNICALLY_ACCEPTED. Source commit 76dab214ed918031c6a571314380b7054aacdedb;334-source freeze9290a0f9; fresh SPEC/distinctQUALITY,1328/54 whole-native, seven static gates and exact existing EU Dev426 metadata/63 module interfaces PASS. Manual Done remains open.
 
-# TASK-67.1 native Intent-Routing — implementation in progress
+# TASK-67.1 native Intent-Routing — technically accepted
 
-Latest state: SOURCE_READY STOP accepted for independent review on the final334-file freeze below. Earlier moving-source and pending-handoff statements are historical checkpoints; technical acceptance and manual confirmation remain pending.
+Latest state: TECHNICALLY_ACCEPTED on the final334-file freeze and source76dab214. Earlier moving-source and pending-handoff statements below are historical checkpoints; only manual confirmation, real configuration/provider use and whole33–36 acceptance remain open.
 
-Sole AI Engineer implements the approved native router after technically accepted50.2 sourcef364e727 and verification-docs72ae566. Root owns generated bindings, evidence reconciliation, inventory, CLI, final reviews/gates/commit/exact existingEUDev. Source remains moving; all67.1 ACs and manual acceptance are open. The actual minimum plan is [task-67.1-actual-source-plan.md](task-67.1-actual-source-plan.md).
+The sole AI Engineer implemented the approved native router after technically accepted50.2 sourcef364e727 and verification-docs72ae566. Root accepted generated bindings, evidence reconciliation, inventory, CLI, independent reviews, complete gates, source commit and exact existingEUDev. All67.1 ACs and automated DoD1 are checked; status remains In Progress with manual DoD2 open. The actual minimum plan is [task-67.1-actual-source-plan.md](task-67.1-actual-source-plan.md).
 
 ## Actual intermediate evidence
 

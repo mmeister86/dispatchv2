@@ -4,7 +4,7 @@ title: Produktanalytics und Pilotmessung einführen (P09.05)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 16:04'
+updated_date: '2026-10-07 11:28'
 labels:
   - p09
   - r3
@@ -61,4 +61,6 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 Root read-only sequel /tmp/dispatch-continuation-35-seams.md erstellt: kein productEvents/Rybbit/metric-definitions Backend vorhanden; native editorial/plan/recommendation/Jev/publication receipts liefern Teilfakten, keine kompletten Kohorten oder gemessenen Aufwand/Zeitersparnis. Nach31/32 Ereignis-/Recipient-Scope bestehende Fakten/prospektive47Outcomes dedupliziert nutzen, keine zweite Eventbus-/Finanzledger und keine private/nestedPayloads/externeTelemetry-Seeding. ThreadPositionen≠vollePublication, cancelledLateConfirm und readOnlyMatch als tatsächlicheBelege getrennt; PlanReplay/lateFinance nie neueCounts. LegacyFeedbackaccept Approval-vs-explicit ambiguous,TextDistance≠Effort,UsersProvisionTime≠SignupCohort undmutableDraftsource≠SourceAttribution. BoundedwindowCoverage/denominators/unknownCosts/currencies/originalSourceMask+physicalintroducedcopyCleanup beforeconsumer; tatsächliche Pilot/Provider/Abnahme offen. KeineSourceImplementation/Testclaim diesesReports.
 
 Weiterer konsolidierter Vertrag .docs/operations-notifications-contract.md bindet ProductMeasurement an bestehende Domain/finite31Occurrence/explicit47Outcomes. Keine externeAnalytics- oder SessionReplay-Entscheidung/SDK durch diesen Vertrag. VollständigeProducerprüfung/final45-50/67-68ProofReconciliation und separate native SourceUnits bleiben vorImplementierung Pflicht.
+
+Read-only future reconciliation adopted: .docs/reviews/task-31-32-35-current-native-reconciliation.md. Reuse finite native publication counts/receipt currencies and prospective human usefulness/effort/attribution facts; default unspecified measurements remain unset, Demo amounts are not native pilot evidence. Reconcile accepted TASK-68 before release. No implementation/test acceptance; all ACs remain open.
 <!-- SECTION:NOTES:END -->

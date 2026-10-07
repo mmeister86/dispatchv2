@@ -4,7 +4,7 @@ title: Prüfe exakte native Kandidaten mit Jev und konservativen manuellen Ergeb
 status: To Do
 assignee: []
 created_date: '2026-10-06 23:12'
-updated_date: '2026-10-06 23:12'
+updated_date: '2026-10-07 11:13'
 labels: []
 dependencies:
   - TASK-68.1
@@ -49,4 +49,6 @@ Nach separat technisch akzeptierter nativer Kandidaten-Voraussetzung und Routing
 
 <!-- SECTION:NOTES:BEGIN -->
 Konkrete CLI-Vorbereitung unter fortlaufend freigegebenem Backend-Ausbau, noch kein SourceWriter/Implementierungs-/Test-/Review-/Dev-Nachweis. Finale vorherige Source-Einheiten zuerst technisch akzeptieren; Root hält genau einen Writer und unabhängige frische SPEC/QUALITY. Status To Do, AC/DoD ungeprüft, keine Provideraktivierung oder manuelle Abnahme.
+
+Root fullyread/adopted independent readonly native source proposal .docs/reviews/task-68.2-68.3-native-source-plan.md SHA c0f8369abecbf6081a6f70c009f76e2bc4e9ca77460a61e04172765648bf9fd0; receipt e4ed76a5/report30445bytes, actual Context7library-first3 commands outside sandbox/installedSDK0.6.0. Seven own Noul rubrics/probability-not-confidence, strictnormalization/sticky original claim/meaning/intent risk; existingcontentRequest optional envelope and owned receipt counted once across two provider budgetgraphs, immutable clock before initial generation/no retroactive claims, truthful finalverification reserve and one-shot repairedcandidate binding proposed. Root verified18observed source/docs/installed entries (moving owned allowed),3preserved prior artifacts and last saved docslog; first2docsUTC/stdout and targetedtruncation qualified. Newreserved owner-state and already-booked spend+reheld unknown semantics/API remain decisions requiring accepted68.1/68.2 reconciliation; no source release/tests/provider/Dev/AC acceptance. ToDo/manualDone remain open. Initial multi-task append-notes command was rejected without changes; separate per-task CLI updates apply this note.
 <!-- SECTION:NOTES:END -->

@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 22:34'
-updated_date: '2026-10-07 12:49'
+updated_date: '2026-10-07 12:52'
 labels: []
 dependencies:
   - TASK-67.1
@@ -28,12 +28,12 @@ Nach separat technisch akzeptierter67.1 den bestehenden gefundeten Perspective-I
 - [x] #1 Der tatsächliche bestehende Generator konsumiert nur aktuell bewiesene originale Routing-/Source-/Style-/Intent-Belege; explizite Wahl, Fallback und Replays verändern keine Freigaben/Termine.
 - [x] #2 Actual styled Settings/Ideas zeigen die tatsächlich bewiesene Router-Verfügbarkeit ready/configuration_required, explizite menschliche Wahl und ehrliche generic-/Fallback-Zuordnung mit originaler receiptgebundener Pending-/Unknown-Kostenanzeige; sichere Rollen-/Account-/Style-/Dirty-/Original-Key-/CAS-Zustände auf Desktop und390px, Demo getrennt. Keine erfundene OFF/unset/partial-Unterscheidung oder Setup-/Grant-Freigabe aus dem begrenzten aktuellen DTO.
 - [x] #3 Neue Consumer/Agent-Derivate sind vor Öffnung durch aktuelle Maskierung und indexed physische Cleanup erreichbar; Originalhorizonte/Finanz-Eltern bleiben unverändert.
-- [ ] #4 Registered native Consumer- und echte styled Browser-Prüfungen, fresh SPEC/distinct QUALITY sowie vollständige native/static/build/bundle/codegen und exaktes bestehendes EUDev sind belegt; manualDone/empirical/live bleibt offen.
+- [x] #4 Registered native Consumer- und echte styled Browser-Prüfungen, fresh SPEC/distinct QUALITY sowie vollständige native/static/build/bundle/codegen und exaktes bestehendes EUDev sind belegt; manualDone/empirical/live bleibt offen.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Automatisierte Prüfungen und offene manuelle Abnahme sind konkret dokumentiert.
+- [x] #1 Automatisierte Prüfungen und offene manuelle Abnahme sind konkret dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
@@ -81,4 +81,6 @@ Distinct qualifiedQUALITY accepted root12:32:57.590504UTC same334freeze6c249e93/
 Root sevenstatic gates PASS on same334freeze6c249e93; all seven actual logs fully read/hashverified, current334 exact. Codegen/appTSC-b/backendTSC/configuredlint/owned14formatting/originalbuild-clientsecret assertions/diffcheck passed; six subsequent gates12:33:17.156097→12:33:33.658069UTC. Whole native started12:33 and pending, sourcecommit/exactfinalEUDev/manual open. No original limits or assertions weakened.
 
 Root complete native gate1351PASS54files (no skipped/failed), EXIT0 12:33:17.154103→12:47:13.593642UTC/836.439s, log490a371d6bed8deae0c7b2d457ebc8231d4fc28c52a31479f54401a761a354ec fully read/hashverified/current334exact6c249e93. FreshSPEC+distinctQUALITY+sevenstatic accepted. AC1–3 technically verified; AC4 exact finalDev and DoD/manual remain open. Exact19-path sourcecommit prepared; no human ignore/unrelated source staging.
+
+TECHNICALLY_ACCEPTED sourcecommit2f095443e8880c5027030c98b58728045fbc04fe exact19paths/master; full1351/54native +7static +freshSPEC/distinctQUALITY +334freeze6c249e93. Existing authorizedEUDev dev--once12:49:55.588566→12:50:07.394822UTC EXIT0, logd0e21dee4bda4766eed9a53d9b76d931c77eae10c6c7d04b6bb1fbad6e5efb96; function-spec12:50:44.225006→12:50:46.149402UTC EXIT0,427entries/exactone newinternalpurgeRouting/41reviewed interfaces/prior IDs retained/fiveHTTP unchanged/additive3contracts verified/current334exact. Root technicalreceipt /tmp/dispatch-continuation-67.2-technical-acceptance.json. All technicalAC1–4/automatedDoD1 verified; status stays InProgress/manualDoD2OPEN, no live/empirical/manual/full33–36 claim. Candidate68.1 next, no sourcewriter released yet.
 <!-- SECTION:NOTES:END -->
