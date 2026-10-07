@@ -4,7 +4,7 @@ title: 'Zusätzlichen Kanal anhand realer Zugänge auswählen (P14.02, Teil 1)'
 status: To Do
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-07 17:22'
 labels:
   - p14
   - r7
@@ -39,3 +39,9 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P14.02. Der übergeord
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Nutzerklärung im Fortsetzungs-Chat am07.10.2026: künftig sind grundsätzlich alle Social-Media-Kanäle vorstellbar; aktuell bestehen keine API-Vorbereitungen. Eine LinkedIn-App wurde für v1 angelegt. Root plant LinkedIn als ersten zu untersuchenden zusätzlichen Kanal; dies ist noch kein bestätigter nutzbarer API-Zugang, keine fertige Provider-Auswahl/AC2-Abnahme und kein Aktivierungsbeleg. Vergleich/Zugangsprüfung und konkreter Adaptervertrag bleiben vor Umsetzung erforderlich; laufende native Backend-Pakete werden unabhängig fortgesetzt.
+<!-- SECTION:NOTES:END -->
