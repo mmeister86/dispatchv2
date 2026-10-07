@@ -4,7 +4,7 @@ title: Zeige eine begrenzte native Impressions-Stichprobe im Pilotbereich
 status: In Progress
 assignee: []
 created_date: '2026-10-07 21:59'
-updated_date: '2026-10-07 22:33'
+updated_date: '2026-10-07 22:35'
 labels: []
 dependencies: []
 parent_task_id: TASK-35
@@ -23,12 +23,12 @@ Erste kleine native Pilot-Einheit: vorhandene unabhängig autorisierte 24h-Own-M
 - [x] #1 Aktuelle verifizierte Owner/Admin und ausgewählter Workspace/Account werden vor Zahlen autorisiert; jede Messung bleibt an ursprüngliche Position, Version, Attempt, Confirmation, Policy und aktuelle numerische Rechte gebunden.
 - [x] #2 Latest5/24h-Singleton-Text-Teilumfang ist explizit; Impressions verwenden ihren eigenen bekannten n/sum/mean und Nullable-Werte. Keine privaten Texte, Provider-IDs, verborgenen/entzogenen Counts, ganzen Pilotdenominatoren, Kosten oder Zeitersparnis.
 - [x] #3 Kleine direkte Sample-Assembly nutzt bestehende Proof/Aggregation und native same-snapshot Grenzwerte mit ehrlicher Read-Overage-Qualifikation. Unerwartete Fehler liefern keine Zahlen; vollständige DTO-Größe und Erfolgsmetriken sind begrenzt, kein zusätzlicher Framework-/Schema-Pfad.
-- [ ] #4 Native Proof-/Null-/Zero-/Isolation-/Grenz-/Fehlerkontrollen und echter scoped Browser mit Ablauf/Wechseln, unverändertem Demo/Analytics, unabhängigen Reviews, Type/Build/Codegen und exaktem EUDev sind dokumentiert. Manual Done und Parent35 bleiben offen.
+- [x] #4 Native Proof-/Null-/Zero-/Isolation-/Grenz-/Fehlerkontrollen und echter scoped Browser mit Ablauf/Wechseln, unverändertem Demo/Analytics, unabhängigen Reviews, Type/Build/Codegen und exaktem EUDev sind dokumentiert. Manual Done und Parent35 bleiben offen.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Technische Prüfungen und konkrete Grenzen der Teilmetrik sind dokumentiert.
+- [x] #1 Technische Prüfungen und konkrete Grenzen der Teilmetrik sind dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
@@ -51,4 +51,6 @@ Backend-Zwischenstand: acht registrierte native Tests bestanden; exakter Einzelp
 QUALITY final1 NEEDS_WORK: registrierter Gegenbeweis zeigt observedAt=NaN als fälschlich gültige 24h-Messung (n=1, Summe/Mittelwert=7). Final1-Freigabe zurückgehalten; Bericht/Receipt/RED unverändert erhalten. Begrenzte Korrektur ausschließlich im neuen Reader und seinem Test; frischer final2-Freeze mit SPEC und separater QUALITY erforderlich.
 
 Final2 technisch lokal geprüft: frische SPEC und separate QUALITY PASS, unveränderter NaN-Gegenbeweis GREEN, Root31/3 gezielte Tests und7Static/Codegen/Build PASS. Sourcecommit d528e0a169cc46e992141c0e8272979cdd118184. EUDev-Sync vor Ausführung durch automatische Freigabeprüfung abgelehnt: ausdrückliche Zustimmung zu Codeübertragung und Dienständerung am konkreten bestehenden EUDev-Ziel erforderlich. AC4/DoD/ManualDone offen, Status In Progress; .docs/reviews/task-35.1-validation.md enthält Grenzen und Nachweise.
+
+Exakter EUDev-Sync jetzt PASS: ursprüngliche direkte menschliche Dev-Zugriffs-/Entscheidungsfreigabe aus referenziertem Ursprungschat01a10b34/userMessage01a10b37 neu abgerufen und der automatischen Prüfung vorgelegt; neue Prüfung akzeptierte denselben Schritt. Source d528e0a auf bestehendem accurate-lion-749 synchronisiert,459Metadata/exakt2PilotQueries/all457priorContracts/5HTTP unchanged/all349Hashes exact. Frühere Ablehnung bleibt als nicht ausgeführter Versuch dokumentiert. Alle technischen AC/DoD1 geprüft; ManualDoD2 und InProgress bleiben offen.
 <!-- SECTION:NOTES:END -->
