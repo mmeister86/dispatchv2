@@ -1,3 +1,4 @@
+import { NativeHealth } from "@/features/operations/health";
 import { CalibrationReferences } from "@/features/intelligence/calibration";
 import { IntelligenceProfiles } from "@/features/intelligence/profiles";
 import { demoMode } from "@/lib/auth-client";
@@ -84,9 +85,7 @@ function RealOperationsPage() {
           <TabsTrigger value="algorithm">Algorithmusprofile</TabsTrigger>
         </TabsList>
         <TabsContent value="health">
-          <Section title="Systemzustand">
-            <p>Echte Systemzustandsprüfung noch nicht verfügbar (TASK-31).</p>
-          </Section>
+          <NativeHealth />
         </TabsContent>
         <TabsContent value="pilot">
           <Section title="Pilot-Auswertung">

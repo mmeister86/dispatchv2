@@ -583,6 +583,11 @@ export default defineSchema({
     ["profileId", "actorId", "commandKey"],
   ),
   researchOrders: defineTable(researchOrderFields)
+    .index("by_public_profile_createdAt", [
+      "profileId",
+      "targetedChat.conversationId",
+      "createdAt",
+    ])
     .index("by_targetedChat_conversationId_and_createdAt", [
       "targetedChat.conversationId",
       "createdAt",
@@ -763,6 +768,15 @@ export default defineSchema({
   aiPolicies: defineTable(policyFields).index("by_key", ["key"]),
   aiBudgets: defineTable(budgetFields).index("by_key", ["key"]),
   agentRuns: defineTable(runFields)
+    .index("by_public_purpose_createdAt", [
+      "workspaceId",
+      "accountId",
+      "purpose",
+      "conversationId",
+      "chatOperationId",
+      "research.orderId",
+      "createdAt",
+    ])
     .index("by_compositeParentId", ["compositeParentId"])
     .index("by_compositeRootRunId", ["compositeRootRunId"])
     .index("by_styleContext_versionId", ["styleContext.versionId"])

@@ -12,7 +12,7 @@ import { recoveryFields, observedDelivery } from "./signalFields";
 import { localEvidence, admitFact } from "./deliveries";
 import type { QueryCtx } from "../../_generated/server";
 import type { Doc } from "../../_generated/dataModel";
-async function checkRecoverySource(
+export async function checkRecoverySource(
   ctx: QueryCtx,
   r: Doc<"githubRecoveries">,
   generation: number,
