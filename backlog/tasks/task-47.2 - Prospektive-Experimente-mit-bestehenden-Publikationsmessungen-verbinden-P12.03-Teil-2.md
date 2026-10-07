@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 15:23'
-updated_date: '2026-10-07 00:43'
+updated_date: '2026-10-07 00:44'
 labels: []
 dependencies:
   - TASK-47.1
@@ -28,12 +28,12 @@ Nach separat akzeptiertem47.1 exakte vorhandene freigegebeneSchedule/Version/Acc
 - [x] #1 Arm-Zuordnung vor erstem möglichen Publishing-Effekt bindet exaktSchedule/Version/Account und verhindert rückwirkende/duplizierte Proben, ohne bestehende Termine zu verändern.
 - [x] #2 Unabhängig erlaubte echte vergleichbare Messungen liefern genaue beobachtete Unterschiede und explizite Ausschlüsse; unbekannte/partielle/fehlende Ergebnisse bleiben unbekannt.
 - [x] #3 Purpose/Metric/Source/Actorverlust maskiert und entfernt eingeführteDerivative physisch, während Publishing/Approval/Finanzfakten unverändert erhalten bleiben.
-- [ ] #4 Native echtePublishing/MetricLifecycle und styledUI sowie separate frische SPEC/QUALITY und exaktes bestehendes EUDev sind dokumentiert; empirical/live/manualDone bleiben offen.
+- [x] #4 Native echtePublishing/MetricLifecycle und styledUI sowie separate frische SPEC/QUALITY und exaktes bestehendes EUDev sind dokumentiert; empirical/live/manualDone bleiben offen.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Automatisierte Prüfungen und noch offene manuelle Abnahme sind konkret dokumentiert.
+- [x] #1 Automatisierte Prüfungen und noch offene manuelle Abnahme sind konkret dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
@@ -67,4 +67,6 @@ Frische korrigierte unabhängige SPEC PASS: vollständiger Bericht task-47.2-spe
 Separate frische CodeReviewer QUALITY PASS: Root voll gelesen/adoptiert task-47.2-quality.md, tatsächliche117/3 registered,72/3Lifecycle,11/3+5/3+4/1unveränderte/zusätzlicheRepros und fresh productionCSSBrowser/Tastatur/clock-onlyEnd-PASS bestätigt. Alle319correctedFreezeHashes unverändert; Root bestätigt21direkteReport/Log/Pixelhashes. Erster zusätzlicher temporärer Browserselector war zu eng, nur/tmp korrigiert; Originalfehlerbeleg bewahrt, vollständigerRerunPASS, keineProduktänderung. Vollständiger offiziellerNativeLauf noch aktiv; Commit/exaktesEUDev/AC/DoD/manualDone noch offen.
 
 Offizielles vollständiges natives Root-Gate tatsächlich PASS:1065Tests/51Dateien, Exit0 in711.579Sekunden; corrected319FreezeSHA363e5ae6/all319Hashes unverändert. Receipt/FinalLogSHA rootvalidiert. FrischeSPEC/separateQUALITY sowie finaleCodegen/TSC/konfigurierteLint/Format/nativeBuild/OriginalBundleAssertions PASS. SoftwareAC1–3 verifiziert. Sourcecommit und tatsächlicher exakterEUDev/Metadatenabgleich folgen; AC4/DoD/manualDone weiterhin offen. Keine echten Provider/Grants/Pilotmessungen aktiviert.
+
+TASK47.2 technisch akzeptiert: Source4f2996be0b2561c9a8c153b5ed3d2ab36b57b541/exaktesbestehendesEUDev2026-10-07T00:43:38.303455UTC tatsächlicherExit0. Read-onlystrictFunctionSpec383actualEntries, exakt2newinternalbindSnapshots/purgeSnapshot,21AffectedModuleKindsVisibility,fünfHTTPunverändert,keineoldIDentfernt,alle319FreezeHashesunchanged. AC1–4/DoD1 softwareverifiziert und tatsächlicheBelege dokumentiert. StatusInProgress, manuelleDoD2/empirical/live/full33/36 undDone bleiben offen ohne explizite menschlicheAbnahme. Ganze Backend-Fortsetzung geht49.1 weiter.
 <!-- SECTION:NOTES:END -->
