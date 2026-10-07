@@ -2,11 +2,12 @@ import { convexTest } from "convex-test";
 import betterAuthComponent from "@convex-dev/better-auth/test";
 import { expect, test, vi, afterEach } from "vitest";
 import schema from "../convex/schema";
-import { ConvexError } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import * as contentProof from "../convex/research/contentProof";
 import { api, internal, components } from "../convex/_generated/api";
 import { resolveLocalTime, localInput } from "../src/lib/time";
-import { preflight } from "../convex/publishing";
+import { preflight, failure } from "../convex/publishing";
+import { internalQuery } from "../convex/_generated/server";
 const modules = import.meta.glob("../convex/**/*.ts");
 test("manual account move preserves old scheduled snapshot and excludes mixed edit feedback", async () => {
   const f = await setup();
@@ -112,8 +113,8 @@ afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllEnvs();
 });
-async function setup() {
-  const t = convexTest(schema, modules);
+async function setup(fixtureModules = modules) {
+  const t = convexTest(schema, fixtureModules);
   betterAuthComponent.register(t);
   const identity = await t.run(async (ctx) => {
     const u = await ctx.runMutation(components.betterAuth.adapter.create, {
@@ -434,13 +435,16 @@ test("revocation, missing asset, disconnection and loss of authority block claim
     }),
   ).toBe(false);
 });
-test("dispatcher records real unavailable failure and visibly blocked critical email without external request", async () => {
+test("dispatcher records real unavailable failure and blocked optional email without external request", async () => {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-06T12:00:00Z"));
   vi.stubEnv("AUTH_EMAIL_FROM", "");
   const f = await setup();
   const scheduleId = await f.plan();
   vi.setSystemTime(Math.floor(Date.now() / 60000) * 60000 + 3600000);
+  const fetchIO = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("UNEXPECTED_PROVIDER_IO"));
   await f.t.action(internal.publishing.dispatch, { scheduleId, generation: 1 });
   await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(60000));
   const notification = await f.t.run((ctx) =>
@@ -459,7 +463,17 @@ test("dispatcher records real unavailable failure and visibly blocked critical e
   );
   expect(
     (await f.t.run((ctx) => ctx.db.get(notification!._id)))!.errorCode,
-  ).toBe("EMAIL_CONFIGURATION_REQUIRED");
+  ).toBe("OPTIONAL_EMAIL_UNAVAILABLE");
+  expect(notification).toMatchObject({
+    generation: 1,
+    state: "blocked",
+    errorCode: "OPTIONAL_EMAIL_UNAVAILABLE",
+  });
+  expect(await f.t.run((ctx) => ctx.db.get(notification!._id))).toEqual(
+    notification,
+  );
+  expect(fetchIO).not.toHaveBeenCalled();
+  fetchIO.mockRestore();
 });
 test("server validates DST gaps, overlap chosen instant, future times and bounded calendar", async () => {
   vi.useFakeTimers();
@@ -946,4 +960,217 @@ test("feedback known source withdrawal masks and physically removes descriptive 
   ).toEqual([
     expect.objectContaining({ sourceUnavailable: true, editExtent: null }),
   ]);
+});
+
+test("failure episodes retain the first native receipt across actual helper replay and concurrent transactions", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-07T12:00:00Z"));
+  const f = await setup();
+  const scheduleId = await f.plan();
+  const jobs = await f.t.run((ctx) =>
+    ctx.db.system.query("_scheduled_functions").collect(),
+  );
+  const fail = (code: string) =>
+    f.t.run(async (ctx) => failure(ctx, (await ctx.db.get(scheduleId))!, code));
+  await Promise.all([fail("FIRST_FAILURE"), fail("CONCURRENT_FAILURE")]);
+  const first = await f.t.run((ctx) =>
+    ctx.db.query("publishingNotifications").collect(),
+  );
+  expect(first).toHaveLength(1);
+  expect(first[0]).toMatchObject({
+    scheduleId,
+    generation: 1,
+    recipientId: f.userId,
+    state: "blocked",
+    errorCode: "OPTIONAL_EMAIL_UNAVAILABLE",
+  });
+  vi.setSystemTime(Date.now() + 1000);
+  await fail("REPLAY_FAILURE");
+  expect(
+    await f.t.run((ctx) => ctx.db.query("publishingNotifications").collect()),
+  ).toEqual(first);
+  expect(
+    await f.t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect(),
+    ),
+  ).toEqual(jobs);
+  expect((await f.t.run((ctx) => ctx.db.get(scheduleId)))!.errorCode).toBe(
+    "REPLAY_FAILURE",
+  );
+  const events = await f.t.run((ctx) =>
+    ctx.db.query("editorialEvents").collect(),
+  );
+  expect(
+    events.filter((e) =>
+      ["FIRST_FAILURE", "CONCURRENT_FAILURE", "REPLAY_FAILURE"].includes(
+        e.code,
+      ),
+    ),
+  ).toHaveLength(3); // A preexisting corrupted duplicate must not roll back the core failure fact.
+  await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...receipt } = first[0];
+    await ctx.db.insert("publishingNotifications", receipt);
+  });
+  await fail("DUPLICATE_HISTORY_FAILURE");
+  expect(await f.t.run((ctx) => ctx.db.get(first[0]._id))).toEqual(first[0]);
+  expect((await f.t.run((ctx) => ctx.db.get(scheduleId)))!.errorCode).toBe(
+    "DUPLICATE_HISTORY_FAILURE",
+  );
+});
+
+test("failure episode identity uses original generation, recipient and schedule while malformed generations keep domain facts only", async () => {
+  const f = await setup();
+  const scheduleId = await f.plan();
+  const original = (await f.t.run((ctx) => ctx.db.get(scheduleId)))!;
+  await f.signed.mutation(api.editorial.reschedule, {
+    workspaceId: f.workspaceId,
+    scheduleId,
+    expectedGeneration: 1,
+    at: original.at + 60000,
+    timezone: "UTC",
+    localTime: localInput(new Date(original.at + 60000).toISOString(), "UTC"),
+  });
+  // Exercise the captured original failure header as well as the actual new registered generation.
+  await f.t.run((ctx) => failure(ctx, original, "ORIGINAL_FAILURE"));
+  await f.t.run(async (ctx) =>
+    failure(ctx, (await ctx.db.get(scheduleId))!, "NEW_GENERATION_FAILURE"),
+  );
+  const another = await f.plan();
+  await f.t.run(async (ctx) =>
+    failure(ctx, (await ctx.db.get(another))!, "OTHER_SCHEDULE_FAILURE"),
+  );
+  const recipientId = await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...user } = (await ctx.db.get(f.userId))!;
+    return ctx.db.insert("users", {
+      ...user,
+      authId: "other-synthetic-recipient",
+    });
+  });
+  await f.t.run((ctx) =>
+    failure(
+      ctx,
+      { ...original, actorId: recipientId },
+      "OTHER_RECIPIENT_FAILURE",
+    ),
+  );
+  const receipts = await f.t.run((ctx) =>
+    ctx.db.query("publishingNotifications").collect(),
+  );
+  expect(receipts).toHaveLength(4);
+  expect(
+    receipts
+      .filter((n) => n.scheduleId === scheduleId && n.recipientId === f.userId)
+      .map((n) => n.generation)
+      .sort(),
+  ).toEqual([1, 2]);
+  expect(receipts.find((n) => n.scheduleId === another)!.generation).toBe(1);
+  expect(receipts.find((n) => n.recipientId === recipientId)!.generation).toBe(
+    1,
+  );
+  const jobs = await f.t.run((ctx) =>
+    ctx.db.system.query("_scheduled_functions").collect(),
+  );
+  for (const generation of [0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1]) {
+    await f.t.run((ctx) =>
+      failure(ctx, { ...original, generation }, "MALFORMED_GENERATION"),
+    );
+  }
+  expect(
+    await f.t.run((ctx) => ctx.db.query("publishingNotifications").collect()),
+  ).toEqual(receipts);
+  expect(
+    await f.t.run((ctx) =>
+      ctx.db.system.query("_scheduled_functions").collect(),
+    ),
+  ).toEqual(jobs);
+  expect((await f.t.run((ctx) => ctx.db.get(scheduleId)))!.errorCode).toBe(
+    "MALFORMED_GENERATION",
+  );
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("editorialEvents").collect())).filter(
+      (e) => e.code === "MALFORMED_GENERATION",
+    ),
+  ).toHaveLength(4);
+});
+
+test("configured direct and queued notify preserve all legacy receipts without recipient or provider IO and retain original late results", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date("2026-10-07T12:00:00Z"));
+  vi.stubEnv("AUTH_EMAIL_FROM", "synthetic@example.test");
+  vi.stubEnv("RESEND_API_KEY", "synthetic-not-a-key");
+  vi.stubEnv("SITE_URL", "https://synthetic.example.test");
+  const recipientIO = vi.fn(() => {
+    throw new Error("UNEXPECTED_RECIPIENT_IO");
+  });
+  const f = await setup({
+    ...modules,
+    "../convex/publishing.ts": async () => ({
+      ...((await modules[
+        "../convex/publishing.ts"
+      ]()) as typeof import("../convex/publishing")),
+      recipient: internalQuery({
+        args: { notificationId: v.id("publishingNotifications") },
+        returns: v.null(),
+        handler: recipientIO,
+      }),
+    }),
+  });
+  const scheduleId = await f.plan();
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId,
+    expectedGeneration: 1,
+  });
+  const ids = await f.t.run(async (ctx) => {
+    const ids = [];
+    for (const state of ["pending", "sent", "blocked"] as const)
+      ids.push(
+        await ctx.db.insert("publishingNotifications", {
+          workspaceId: f.workspaceId,
+          scheduleId,
+          recipientId: f.userId,
+          state,
+          errorCode: state === "blocked" ? "HISTORICAL_TRANSPORT_ERROR" : null,
+          createdAt: Date.now() - 10000,
+        }),
+      );
+    await failure(ctx, (await ctx.db.get(scheduleId))!, "NEW_FAILURE");
+    return ids;
+  });
+  const before = await f.t.run((ctx) =>
+    ctx.db.query("publishingNotifications").collect(),
+  );
+  const fetchIO = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("UNEXPECTED_PROVIDER_IO"));
+  try {
+    for (const n of before)
+      await f.t.action(internal.publishing.notify, { notificationId: n._id });
+    await f.t.run(async (ctx) => {
+      for (const n of before)
+        await ctx.scheduler.runAfter(0, internal.publishing.notify, {
+          notificationId: n._id,
+        });
+    });
+    await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(1000));
+    expect(recipientIO).not.toHaveBeenCalled();
+    expect(fetchIO).not.toHaveBeenCalled();
+    expect(
+      await f.t.run((ctx) => ctx.db.query("publishingNotifications").collect()),
+    ).toEqual(before);
+    expect(before.filter((n) => n.generation === undefined)).toHaveLength(3);
+    expect(before.filter((n) => n.generation === 2)).toHaveLength(1);
+    await f.t.mutation(internal.publishing.notificationResult, {
+      notificationId: ids[0],
+      state: "sent",
+      errorCode: null,
+    });
+    expect(await f.t.run((ctx) => ctx.db.get(ids[0]))).toEqual({
+      ...before.find((n) => n._id === ids[0])!,
+      state: "sent",
+      errorCode: null,
+    });
+  } finally {
+    fetchIO.mockRestore();
+  }
 });

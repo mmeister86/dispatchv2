@@ -1121,10 +1121,13 @@ export default defineSchema({
     "by_workspaceId_and_createdAt",
     ["workspaceId", "createdAt"],
   ),
-  publishingNotifications: defineTable(notificationFields).index(
-    "by_workspaceId_and_createdAt",
-    ["workspaceId", "createdAt"],
-  ),
+  publishingNotifications: defineTable(notificationFields)
+    .index("by_workspaceId_and_createdAt", ["workspaceId", "createdAt"])
+    .index("by_scheduleId_and_generation_and_recipientId", [
+      "scheduleId",
+      "generation",
+      "recipientId",
+    ]),
   teamInvitations: defineTable({
     workspaceId: v.id("workspaces"),
     createdBy: v.optional(v.id("users")),

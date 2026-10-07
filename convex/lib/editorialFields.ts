@@ -181,6 +181,7 @@ export const eventFields = {
 export const notificationFields = {
   workspaceId: v.id("workspaces"),
   scheduleId: v.id("schedules"),
+  generation: v.optional(v.number()),
   recipientId: v.id("users"),
   state: v.union(v.literal("pending"), v.literal("sent"), v.literal("blocked")),
   errorCode: v.union(v.string(), v.null()),

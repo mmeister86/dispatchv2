@@ -4,7 +4,7 @@ import {
   internalMutation,
   internalQuery,
 } from "./_generated/server";
-import { internal, components } from "./_generated/api";
+import { internal } from "./_generated/api";
 import {
   checkApproval,
   checkAccountConnection,
@@ -52,16 +52,25 @@ export async function failure(
     errorCode: code,
   });
   await event(ctx, s.workspaceId, s.draftId, code, null, s._id);
-  const id = await ctx.db.insert("publishingNotifications", {
+  if (!Number.isSafeInteger(s.generation) || s.generation <= 0) return;
+  const prior = await ctx.db
+    .query("publishingNotifications")
+    .withIndex("by_scheduleId_and_generation_and_recipientId", (q) =>
+      q
+        .eq("scheduleId", s._id)
+        .eq("generation", s.generation)
+        .eq("recipientId", s.actorId),
+    )
+    .first();
+  if (prior) return;
+  await ctx.db.insert("publishingNotifications", {
     workspaceId: s.workspaceId,
     scheduleId: s._id,
+    generation: s.generation,
     recipientId: s.actorId,
-    state: "pending",
-    errorCode: null,
+    state: "blocked",
+    errorCode: "OPTIONAL_EMAIL_UNAVAILABLE",
     createdAt: Date.now(),
-  });
-  await ctx.scheduler.runAfter(0, internal.publishing.notify, {
-    notificationId: id,
   });
 }
 export const claim = internalMutation({
@@ -185,55 +194,12 @@ export const notificationResult = internalMutation({
     return null;
   },
 });
+// Optional mail stays off until native admission exists. Legacy pending may already
+// have entered transport; preserve its receipt and allow genuine late results.
 export const notify = internalAction({
   args: { notificationId: v.id("publishingNotifications") },
   returns: v.null(),
-  handler: async (ctx, a) => {
-    let errorCode: string | null = null;
-    if (
-      !process.env.AUTH_EMAIL_FROM ||
-      !process.env.RESEND_API_KEY ||
-      !process.env.SITE_URL
-    )
-      errorCode = "EMAIL_CONFIGURATION_REQUIRED";
-    else {
-      const recipient = await ctx.runQuery(internal.publishing.recipient, a);
-      if (!recipient) errorCode = "RECIPIENT_UNAVAILABLE";
-      else {
-        const user = await ctx.runQuery(components.betterAuth.adapter.findOne, {
-          model: "user",
-          where: [{ field: "_id", value: recipient.authId }],
-        });
-        if (!user?.email) errorCode = "RECIPIENT_UNAVAILABLE";
-        else
-          try {
-            const response = await fetch("https://api.resend.com/emails", {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-                "Content-Type": "application/json",
-                "Idempotency-Key": `publishing-${a.notificationId}`,
-              },
-              body: JSON.stringify({
-                from: process.env.AUTH_EMAIL_FROM,
-                to: [user.email],
-                subject: "Dispatch: Veröffentlichung benötigt Aufmerksamkeit",
-                text: `Ein geplanter Beitrag konnte nicht ausgeführt werden. Bitte Account und Publishing-Konfiguration im Kalender prüfen.\n\n${new URL("/calendar", process.env.SITE_URL).href}`,
-              }),
-            });
-            if (!response.ok) errorCode = "EMAIL_DELIVERY_FAILED";
-          } catch {
-            errorCode = "EMAIL_DELIVERY_FAILED";
-          }
-      }
-    }
-    await ctx.runMutation(internal.publishing.notificationResult, {
-      ...a,
-      state: errorCode ? "blocked" : "sent",
-      errorCode,
-    });
-    return null;
-  },
+  handler: async () => null,
 });
 
 export const version = internalQuery({
