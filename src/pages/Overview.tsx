@@ -91,11 +91,12 @@ export function OverviewPage() {
       )}
       {!demoMode && notifications.some((n) => n.state === "blocked") && (
         <div role="alert" className="mb-4 surface p-4 text-sm">
-          Eine kritische Publishing-Benachrichtigung konnte nicht zugestellt
-          werden. E-Mail-Absender und Zugang fehlen oder die Zustellung ist
-          fehlgeschlagen.{" "}
+          Der Versandstatus einer Publishing-Benachrichtigung benötigt Prüfung.
+          Die Versandanforderung kann zurückgehalten worden sein oder ein
+          Transportproblem haben. Ob die Nachricht zugestellt wurde, ist damit
+          nicht geklärt.{" "}
           <Link to="/settings/integrations" className="underline">
-            X- und E-Mail-Einrichtung prüfen
+            E-Mail-Transport prüfen
           </Link>
         </div>
       )}

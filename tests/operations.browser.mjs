@@ -13,7 +13,7 @@ const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()
 const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';throw new Error('No domain writes in health fixture');});return funcs.get(name)};
 export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:async()=>{throw new Error('No direct remote read expected')}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
 export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
-export const usePaginatedQuery=()=>{tick();return {results:[],status:'Exhausted',loadMore(){}}};`,
+export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
 };
 const server = await createServer({
@@ -57,7 +57,7 @@ try {
     errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
   await page.route(
-    /router\.eu\.requesty\.ai|api\.x\.com|api\.github\.com|cloudflare/,
+    /router\.eu\.requesty\.ai|api\.x\.com|api\.github\.com|api\.resend\.com|cloudflare/,
     (route) => {
       provider.push(route.request().url());
       return route.abort();
@@ -73,6 +73,13 @@ try {
       for (const fn of window.listeners) fn();
     };
     window.commands = [];
+    window.storageWrites = [];
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (key, value) {
+      window.storageWrites.push(key);
+      return setItem.call(this, key, value);
+    };
+    window.notices = [];
     window.queries = [];
     window.session = {
       user: {
@@ -514,6 +521,161 @@ try {
   await expect(
     page.getByRole("button", { name: "Nachweis aktualisieren", exact: true }),
   ).toBeVisible();
+  // TASK-32.1: actual mounted Cloud settings are unavailable/off for every role.
+  await page.goto("http://127.0.0.1:5189/settings/notifications");
+  const options = [
+    "In-App-Zusammenfassungen",
+    "E-Mail-Zusammenfassungen",
+    "Wöchentlicher Überblick",
+    "Research-Zusammenfassungen",
+    "Ruhezeiten",
+  ];
+  for (const role of ["Owner", "Admin", "Editor", "Viewer"]) {
+    await page.evaluate(
+      (role) =>
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role }],
+          },
+        }),
+      role,
+    );
+    for (const name of options) {
+      await expect(
+        page.getByRole("switch", { name, exact: true }),
+      ).toHaveAttribute("aria-checked", "false");
+      await expect(
+        page.getByRole("switch", { name, exact: true }),
+      ).toBeDisabled();
+    }
+    await expect(
+      page.getByText(
+        "Optionale Zusammenfassungen und Ruhezeiten sind im Cloud-Workspace noch nicht verfügbar. Es wird keine Präferenz gespeichert.",
+      ),
+    ).toBeVisible();
+  }
+  expect(
+    await page.evaluate(() =>
+      window.storageWrites.filter((key) => key.endsWith("-notifications")),
+    ),
+  ).toEqual([]);
+  expect(
+    await page.evaluate(() =>
+      window.commands.filter((c) => c.name !== "users:bootstrap"),
+    ),
+  ).toEqual([]);
+  await page.evaluate(() =>
+    window.update({
+      snapshot: {
+        ...window.snapshot,
+        workspaces: [{ ...window.snapshot.workspaces[0], role: "Owner" }],
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({
+    path: `${evidence}/notifications-cloud-1280.png`,
+    fullPage: false,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${evidence}/notifications-cloud-390.png`,
+    fullPage: false,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  await page.goto("http://127.0.0.1:5189/overview");
+  await page.evaluate(() =>
+    window.update({
+      resources: {
+        ...window.resources,
+        notifications: [
+          {
+            _id: "transport-blocked",
+            state: "blocked",
+            errorCode: "PRIVATE_TRANSPORT_ERROR",
+          },
+        ],
+      },
+      notices: [
+        {
+          authId: "auth-owner",
+          sessionId: "session-owner",
+          id: "notice-owner",
+          draftId: "draft-notice",
+          versionId: "version-notice",
+          accountId: "account-native",
+          parent: { kind: "assignment", commandId: "assignment-notice" },
+          createdAt: 1,
+          sourceUntil: null,
+          readAt: null,
+          dismissedAt: null,
+        },
+      ],
+    }),
+  );
+  const transport = page
+    .getByRole("alert")
+    .filter({ hasText: "Publishing-Benachrichtigung" });
+  await expect(transport).toContainText(
+    "Ob die Nachricht zugestellt wurde, ist damit nicht geklärt.",
+  );
+  expect(await transport.innerText()).not.toMatch(
+    /konnte nicht zugestellt|Zustellung ist fehlgeschlagen|PRIVATE_TRANSPORT_ERROR/,
+  );
+  await expect(transport.getByRole("link")).toHaveAttribute(
+    "href",
+    "/settings/integrations",
+  );
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({
+    path: `${evidence}/transport-overview-1280.png`,
+    fullPage: false,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${evidence}/transport-overview-390.png`,
+    fullPage: false,
+  });
+  await page
+    .getByRole("button", { name: "Benachrichtigungen öffnen", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Dein Posteingang", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Entwurf zugewiesen", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Entwurf prüfen", exact: true }),
+  ).toHaveAttribute("href", "/drafts/draft-notice");
+  await expect(
+    page.getByRole("button", { name: "Als gelesen markieren", exact: true }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.evaluate(() =>
+    window.update({
+      resources: {
+        ...window.resources,
+        notifications: [
+          { _id: "transport-sent", state: "sent", errorCode: null },
+        ],
+      },
+    }),
+  );
+  await expect(transport).toHaveCount(0);
+  expect(await page.locator("main").innerText()).not.toMatch(
+    /Zustellung bestätigt|Nachricht zugestellt|E-Mail gelesen/,
+  );
+  expect(
+    await page.evaluate(() =>
+      window.commands.filter((c) => c.name !== "users:bootstrap"),
+    ),
+  ).toEqual([]);
   await page.goto("http://127.0.0.1:5189/operations?demo=1");
   await expect(page.getByText("Lokale Demo", { exact: true })).toBeVisible();
   await expect(
@@ -536,6 +698,70 @@ try {
       window.queries.filter((q) => q.name === "operations/health:get"),
     ),
   ).toEqual([]);
+  await page.goto("http://127.0.0.1:5189/settings/notifications?demo=1");
+  for (const [name, checked] of [
+    ["In-App-Zusammenfassungen", true],
+    ["E-Mail-Zusammenfassungen", false],
+    ["Wöchentlicher Überblick", true],
+    ["Research-Zusammenfassungen", true],
+    ["Ruhezeiten", true],
+  ]) {
+    await expect(
+      page.getByRole("switch", { name, exact: true }),
+    ).toHaveAttribute("aria-checked", String(checked));
+    await expect(page.getByRole("switch", { name, exact: true })).toBeEnabled();
+  }
+  await page
+    .getByRole("switch", { name: "E-Mail-Zusammenfassungen", exact: true })
+    .click();
+  await page.getByRole("switch", { name: "Ruhezeiten", exact: true }).click();
+  const demoPrefs = await page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((k) => k.endsWith("-notifications"))
+      .map((k) => JSON.parse(localStorage.getItem(k))),
+  );
+  expect(demoPrefs).toEqual([
+    {
+      inApp: true,
+      email: true,
+      summaries: true,
+      research: true,
+      quiet: false,
+      start: "20:00",
+      end: "08:00",
+    },
+  ]);
+  await page.reload();
+  await expect(
+    page.getByRole("switch", { name: "E-Mail-Zusammenfassungen", exact: true }),
+  ).toHaveAttribute("aria-checked", "true");
+  await expect(
+    page.getByRole("switch", { name: "Ruhezeiten", exact: true }),
+  ).toHaveAttribute("aria-checked", "false");
+  await expect(page.getByLabel("Ab", { exact: true })).toHaveCount(0);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.screenshot({
+    path: `${evidence}/notifications-demo-1280.png`,
+    fullPage: false,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({
+    path: `${evidence}/notifications-demo-390.png`,
+    fullPage: false,
+  });
+  await page.evaluate(async () => {
+    const { createSeed } = await import("/src/lib/model.ts");
+    localStorage.setItem(
+      "dispatch-demo-v1",
+      JSON.stringify({ ...createSeed(), role: "Viewer" }),
+    );
+  });
+  await page.reload();
+  for (const name of options)
+    await expect(
+      page.getByRole("switch", { name, exact: true }),
+    ).toBeDisabled();
+  expect(await page.evaluate(() => window.commands)).toEqual([]);
   expect(provider).toEqual([]);
   expect(errors.filter((e) => !e.includes("PRIVATE_PROVIDER_ERROR"))).toEqual(
     [],
@@ -556,6 +782,12 @@ try {
         partialCoverage: true,
         existingTabs: true,
         isolatedDemoTimer: true,
+        cloudNotificationsOffUnavailable: true,
+        cloudNotificationRoles: ["Owner", "Admin", "Editor", "Viewer"],
+        cloudNoPreferenceStorageOrMutation: true,
+        existingRecipientInbox: true,
+        unresolvedTransportCopy: true,
+        demoPreferencePersistenceAndViewer: true,
         provider,
         errors,
         manualAccessibility: false,
