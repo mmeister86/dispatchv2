@@ -68,6 +68,7 @@ type SourcePin = Pick<
   | "style"
   | "sourceUntil"
   | "sourceUnavailable"
+  | "candidateMediaChecksums"
 >;
 const request = { operationId: v.id("jevRoutingOperations") };
 const cursor = v.union(v.string(), v.null());
@@ -316,9 +317,49 @@ async function source(
     idea.workspaceId !== o.workspaceId ||
     ver.workspaceId !== o.workspaceId ||
     ver.ideaId !== o.ideaId ||
+    ver.sourceUnavailable ||
     idea.status === "archived"
   )
     fail("ROUTING_SOURCE_UNAVAILABLE");
+  if (o.intent.outputKind === "social-post-candidate") {
+    if (!o.intent.media || !o.candidateMediaChecksums)
+      fail("ROUTING_SOURCE_UNAVAILABLE");
+    const { validateContent, immutableMedia } = await import("../../editorial");
+    const content = {
+      title: ver.title,
+      text: [""],
+      media: o.intent.media,
+      accountId: o.accountId,
+      pillar: "Building in public",
+      strategy: o.intent.strategy ?? "generic",
+    };
+    try {
+      await validateContent(ctx, o.workspaceId, content);
+      await immutableMedia(ctx, {
+        content,
+        mediaChecksums: o.candidateMediaChecksums,
+      });
+    } catch (error) {
+      if (
+        error instanceof ConvexError &&
+        [
+          "MEDIA_NOT_READY",
+          "MEDIA_SNAPSHOT_CHANGED",
+          "CAPABILITY_VALIDATION_FAILED",
+        ].includes(String(error.data))
+      )
+        fail("ROUTING_SOURCE_UNAVAILABLE");
+      throw error;
+    }
+    for (const m of content.media) {
+      const key = `candidate-media:${m.assetId}`;
+      if (!walk.done.has(key)) {
+        enterMaterial(walk, key, "ROUTING_MATERIAL_LIMIT");
+        walk.active.delete(key);
+        walk.done.set(key, null);
+      }
+    }
+  }
   const until = await ideaProofUntil(ctx, ver, walk, o.accountId);
   const style = o.style
     ? await scopedStyleProof(ctx, o, o.style, current, walk)
@@ -373,6 +414,7 @@ async function semantic(
     | "accountConnectionSequence"
     | "capabilityFingerprint"
     | "style"
+    | "candidateMediaChecksums"
   >,
   state: Infer<typeof stateContract>,
   sourcePin: Doc<"ideaVersions">["source"],
@@ -399,6 +441,9 @@ async function semantic(
             sourceUntil: o.style.sourceUntil,
           }
         : null,
+      ...(o.candidateMediaChecksums !== undefined
+        ? { candidateMediaChecksums: o.candidateMediaChecksums }
+        : {}),
       state,
       sourcePin,
       policyFingerprint,
@@ -529,6 +574,8 @@ export async function routingProof(
     | "inputVersionId"
     | "inputRevision"
     | "intent"
+    | "outputKind"
+    | "routingCommandFingerprint"
   >,
   fresh = true,
   walk: MaterialWalk = materialWalk(),
@@ -548,7 +595,14 @@ export async function routingProof(
     )
       fail("ROUTING_RECEIPT_INVALID");
     const kept = await retained(ctx, o, walk);
-    if (!o.intent || o.intent.intent !== pin.intent)
+    if (
+      !o.intent ||
+      o.intent.intent !== pin.intent ||
+      (o.intent.outputKind === "social-post-candidate"
+        ? pin.outputKind !== "social-post-candidate" ||
+          pin.routingCommandFingerprint !== o.commandFingerprint
+        : pin.outputKind !== undefined)
+    )
       fail("ROUTING_RECEIPT_INVALID");
     if (!o.result) fail("ROUTING_PENDING");
     if (run) {
@@ -603,6 +657,12 @@ export const prepare = workspaceMutation({
       )
     )
       fail("ROUTING_INPUT_INVALID");
+    if (
+      a.intent.outputKind === "social-post-candidate"
+        ? !a.intent.media || a.intent.media.length > 20
+        : a.intent.media !== undefined
+    )
+      fail("ROUTING_INPUT_INVALID");
     const strategy =
       a.intent.strategy === "thought-leadership"
         ? "thoughtLeadership"
@@ -653,7 +713,26 @@ export const prepare = workspaceMutation({
     ) as Doc<"socialAccounts">;
     const style =
       (await captureStyle(ctx, ctx.workspace._id, a.accountId)) ?? null;
+    let candidateMediaChecksums: Doc<"jevRoutingOperations">["candidateMediaChecksums"];
+    if (intent.outputKind === "social-post-candidate") {
+      const { validateContent, mediaSnapshot } =
+        await import("../../editorial");
+      const input = (await ctx.db.get(idea.currentVersionId))!;
+      const content = {
+        title: input.title,
+        text: [""],
+        media: intent.media!,
+        accountId: a.accountId,
+        pillar: "Building in public",
+        strategy: canonical ?? "generic",
+      };
+      await validateContent(ctx, ctx.workspace._id, content);
+      candidateMediaChecksums = await mediaSnapshot(ctx, content);
+    }
     const base = {
+      ...(candidateMediaChecksums !== undefined
+        ? { candidateMediaChecksums }
+        : {}),
       workspaceId: ctx.workspace._id,
       actorId: ctx.user._id,
       accountId: a.accountId,
@@ -1181,6 +1260,7 @@ async function erase(ctx: MutationCtx, o: Operation) {
     await ctx.db.patch(o._id, {
       sourceUnavailable: true,
       intent: null,
+      candidateMediaChecksums: undefined,
       result: null,
     });
 }

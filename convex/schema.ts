@@ -666,6 +666,7 @@ export default defineSchema({
     ])
     .index("by_conversationId_and_createdAt", ["conversationId", "createdAt"]),
   ideas: defineTable(ideaFields)
+    .index("by_handoff_ideaVersionId", ["handoff.ideaVersionId"])
     .index("by_handoff_draftId", ["handoff.draftId"])
     .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"])
     .index("by_workspaceId_and_actorId_and_operationKey", [
@@ -923,7 +924,7 @@ export default defineSchema({
   mediaVersionReferences: defineTable({
     workspaceId: v.id("workspaces"),
     assetId: v.id("mediaAssets"),
-    versionId: v.id("draftVersions"),
+    versionId: v.union(v.id("draftVersions"), v.id("ideaVersions")),
   })
     .index("by_assetId", ["assetId"])
     .index("by_versionId", ["versionId"]),
@@ -1010,6 +1011,7 @@ export default defineSchema({
     "updatedAt",
   ]),
   draftVersions: defineTable(versionFields)
+    .index("by_candidateVersionId", ["candidateVersionId"])
     .index("by_ideaVersionId", ["ideaVersionId"])
     .index("by_ideaVersionId_and_researchCleanupPending", [
       "ideaVersionId",

@@ -9,11 +9,11 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';import {ConvexError} from 'convex/values';
-const read=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='content/ideas:list')return window.list;if(name==='content/ideas:get')return window.linked??null;if(name==='content/performance:context')return {entries:[],configuration:null};if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};if(name==='content/ideas:generationStatus')return window.runs;if(name==='ai/styleProfiles:get')return window.style??{control:null,versions:[],proposals:[],usable:false};if(name==='ai/styleProfiles:version')return window.styleVersion??null;if(name==='ai/jev/routing:get')return window.routingViews[args.operationId];return {page:[],isDone:true,continueCursor:''};};export const useQuery=read;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore(){}});export const useConvex=()=>({query:async(ref,args)=>read(ref,args)});
+const read=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='content/ideas:list')return window.list;if(name==='content/ideas:get')return window.linked??null;if(name==='content/ideas:candidate')return window.candidateViews?.[args.versionId]??null;if(name==='content/performance:context')return {entries:[],configuration:null};if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};if(name==='content/ideas:generationStatus')return window.runs;if(name==='ai/styleProfiles:get')return window.style??{control:null,versions:[],proposals:[],usable:false};if(name==='ai/styleProfiles:version')return window.styleVersion??null;if(name==='ai/jev/routing:get')return window.routingViews[args.operationId];return {page:[],isDone:true,continueCursor:''};};export const useQuery=read;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore(){}});export const useConvex=()=>({query:async(ref,args)=>read(ref,args)});
 export const useAction=ref=>async args=>{window.routingActions.push({name:getFunctionName(ref),args});if(window.classifyDeferred)return new Promise((resolve,reject)=>window.classifyCommands.push({args,resolve,reject}));window.routingViews[args.operationId]={...window.routingViews[args.operationId],result:{status:'routed',generatorKind:'generic',effectiveStrategy:'generic',category:'educational',suggestion:'educational',choiceConfidence:.75,score:75,noulProbability:null,thresholdVersion:'jev-routing-hypotheses-v1'},usage:{state:'settled',heldMicros:0,estimatedMicros:30,currency:'USD'}};};
 export const useMutation=ref=>args=>{const name=getFunctionName(ref);if(name==='ai/jev/routing:prepare'){window.routingCommands.push({name,args});const prior=window.preparedIds[args.operationKey];const id=prior??'routing-'+window.routingCommands.length;window.preparedIds[args.operationKey]=id;if(!prior)window.routingViews[id]=window.nextRouting??{applicability:'current',sourceUntil:null,deadline:Date.now()+5000,usage:null,result:{status:args.intent.strategy?'human_choice':'configuration_required',generatorKind:'generic',effectiveStrategy:args.intent.strategy??'generic',category:null,suggestion:null,choiceConfidence:null,score:null,noulProbability:null,thresholdVersion:'jev-routing-hypotheses-v1'}};if(window.prepareDeferred)return new Promise((resolve,reject)=>window.prepareCommands.push({args,id,resolve,reject}));return Promise.resolve(id);}return new Promise((resolve,reject)=>window.commands.push({name,args,resolve,reject:error=>reject(error.message.startsWith('MODEL_')||error.message.startsWith('STYLE_')?new ConvexError(error.message):error)}));};`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';export const authClient={useSession:()=>({data:{session:{id:window.session},user:{id:'native-auth-user'}}})};`,
-  "@/lib/store": `import {useState} from "react"; export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({nativeScope:JSON.stringify(['native-auth-user',window.session,window.workspace,window.account,window.role]),state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:'account-one',workspaceId:window.workspace,name:'Synthetic',channel:'X'}],ideas:window.demoIdeas??[],drafts:[]},setState:fn=>{window.demoIdeas=fn({ideas:window.demoIdeas??[]}).ideas;window.render();}});`,
+  "@/lib/store": `import {useState} from "react"; export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({nativeScope:JSON.stringify(['native-auth-user',window.session,window.workspace,window.account,window.role]),state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:'account-one',workspaceId:window.workspace,name:'Synthetic',channel:'X'}],ideas:window.demoIdeas??[],drafts:[],media:window.media??[]},setState:fn=>{window.demoIdeas=fn({ideas:window.demoIdeas??[]}).ideas;window.render();}});`,
 };
 const entry = `import '/src/index.css';import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter,useLocation} from 'react-router-dom';import {IdeasPage} from '/src/pages/Ideas.tsx';import {SignalIdeaHandoff} from '/src/features/ideas/signal-handoff.tsx';function Route(){return React.createElement('p',{'data-testid':'route','data-account':window.account},useLocation().pathname);}window.session='session-one';window.routingViews={};window.preparedIds={};window.prepareCommands=[];window.routingCommands=[];window.routingActions=[];window.classifyCommands=[];window.workspace='workspace-one';window.account='';window.role='Owner';window.queries=[];window.commands=[];window.list=undefined;window.runs=[];window.allowed=true;const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,{key:window.workspace,initialEntries:[new URLSearchParams(location.search).has('idea')?'/ideas'+location.search:'/']},React.createElement(Route),new URLSearchParams(location.search).has('signal')?React.createElement(SignalIdeaHandoff,{key:window.workspace,workspaceId:window.workspace,signalId:'actual-signal',title:'Actual signed event',allowed:window.allowed}):React.createElement(IdeasPage))));window.render();`;
 const server = await createServer({
@@ -974,6 +974,245 @@ try {
     "ideas-demo-390",
     page.getByRole("heading", { name: "Hier beginnt die Geschichte" }),
   );
+  // TASK68.1 appended candidate controls use actual native consumers and original CSS.
+  await freshRouting();
+  await dialog
+    .getByLabel("Ausgabe", { exact: true })
+    .selectOption("social-post-candidate");
+  await dialog.getByLabel("Ausdrückliche Strategie").selectOption("generic");
+  await page.evaluate(() => {
+    window.media = [
+      {
+        id: "asset-one",
+        workspaceId: window.workspace,
+        name: "Human media",
+        status: "ready",
+        alt: "Original alt",
+      },
+    ];
+    window.render();
+  });
+  await dialog
+    .getByRole("checkbox", { name: "Human media", exact: true })
+    .check();
+  await dialog
+    .getByLabel("Alternativtext für Human media")
+    .fill("Exact human alt");
+  await dialog.getByRole("button", { name: "Vorschlag anfordern" }).click();
+  await expect.poll(() => page.evaluate(() => window.commands.length)).toBe(1);
+  const candidatePrepare = await page.evaluate(
+    () => window.routingCommands[0].args,
+  );
+  const candidateGenerate = await page.evaluate(() => window.commands[0].args);
+  expect(candidatePrepare.intent).toMatchObject({
+    outputKind: "social-post-candidate",
+    media: [{ assetId: "asset-one", alt: "Exact human alt" }],
+  });
+  expect(candidateGenerate).toMatchObject({
+    outputKind: "social-post-candidate",
+    routingOperationId: "routing-1",
+    operationKey: candidatePrepare.operationKey,
+  });
+  await page.evaluate(() =>
+    window.commands[0].reject(new Error("candidate generation ACK lost")),
+  );
+  await dialog
+    .getByRole("button", { name: "Denselben Auftrag wiederholen" })
+    .click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(
+    candidateGenerate,
+  );
+  expect(await page.evaluate(() => window.routingCommands.length)).toBe(1);
+  await page.evaluate(() => window.commands[1].resolve("native-run"));
+  await expect(
+    dialog.getByRole("button", { name: "Wird gespeichert …" }),
+  ).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await page.evaluate(() => {
+    const candidate = {
+      content: {
+        title: "Unverified candidate",
+        text: ["  Original first post  ", "Second post"],
+        media: [{ assetId: "asset-one", alt: "Exact human alt" }],
+        accountId: "account-one",
+        pillar: "Building in public",
+        strategy: "generic",
+      },
+      contentHash: "original-native-hash",
+      provenanceHash: "original-provenance",
+      routingOperationId: "routing-1",
+      commandFingerprint: "native-whole-command",
+    };
+    window.candidateViews = {
+      "native-candidate": {
+        versionId: "native-candidate",
+        ideaId: "candidate-idea",
+        runId: "native-run",
+        applicability: "current",
+        sourceUntil: null,
+        candidate,
+        intent: window.routingCommands[0].args.intent,
+      },
+    };
+    window.list = {
+      page: [
+        {
+          idea: {
+            _id: "candidate-idea",
+            workspaceId: window.workspace,
+            revision: 1,
+            status: "new",
+            currentVersionId: "native-candidate",
+          },
+          version: {
+            _id: "native-candidate",
+            number: 1,
+            title: "Unverified candidate",
+            note: "",
+            perspective: "",
+            priority: "normal",
+            source: { kind: "note" },
+            originals: [],
+            questions: [],
+            rationale: "",
+            candidate,
+          },
+        },
+      ],
+      isDone: true,
+      continueCursor: "",
+    };
+    window.commands = [];
+    window.render();
+  });
+  const application = page.getByRole("button", {
+    name: "Kandidat geprüft · neuen Entwurf erstellen",
+  });
+  await expect(application).toBeDisabled();
+  await page
+    .getByLabel("Absicht der Kandidatenübernahme")
+    .fill("Explicit native ordered preview review");
+  await page
+    .getByRole("checkbox", {
+      name: "Angaben, Posts und Medien geprüft · ungeprüfte Arbeitsversion übernehmen.",
+    })
+    .focus();
+  await page.keyboard.press("Space");
+  expect(await page.locator("ol li").allTextContents()).toEqual([
+    "  Original first post  ",
+    "Second post",
+  ]);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await picture(
+    "candidate-ideas-1280",
+    page.getByText("Social-Post-Kandidat · ungeprüft", { exact: true }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await picture(
+    "candidate-ideas-390",
+    page.getByText("Social-Post-Kandidat · ungeprüft", { exact: true }),
+  );
+  await application.click();
+  const originalApply = await page.evaluate(() => window.commands[0].args);
+  expect(originalApply).toMatchObject({
+    versionId: "native-candidate",
+    contentHash: "original-native-hash",
+    target: null,
+    claimsReviewed: true,
+  });
+  await page.evaluate(() =>
+    window.commands[0].reject(new Error("application ACK lost")),
+  );
+  await page
+    .getByRole("button", { name: "Denselben Übernahmeauftrag wiederholen" })
+    .click();
+  expect(await page.evaluate(() => window.commands[1].args)).toEqual(
+    originalApply,
+  );
+  await page.evaluate(() =>
+    window.commands[1].resolve({
+      draftId: "candidate-draft",
+      versionId: "candidate-draft-version",
+      ideaVersionId: "native-candidate",
+    }),
+  );
+  await expect(page.getByTestId("route")).toHaveText("/drafts/candidate-draft");
+  await page.evaluate(() => {
+    window.session = "session-two";
+    window.render();
+  });
+  await expect(page.getByLabel("Absicht der Kandidatenübernahme")).toHaveValue(
+    "",
+  );
+  await page.evaluate(() => {
+    window.session = "session-one";
+    window.render();
+  });
+  await expect(application).toBeDisabled();
+  await page
+    .getByLabel("Absicht der Kandidatenübernahme")
+    .fill("Old session context");
+  await page
+    .getByRole("checkbox", {
+      name: "Angaben, Posts und Medien geprüft · ungeprüfte Arbeitsversion übernehmen.",
+    })
+    .check();
+  await application.click();
+  await page.evaluate(() => {
+    window.session = "session-two";
+    window.render();
+  });
+  await expect(page.getByLabel("Absicht der Kandidatenübernahme")).toHaveValue(
+    "",
+  );
+  await expect(application).toBeDisabled();
+  await page.evaluate(() => {
+    window.session = "session-one";
+    window.render();
+  });
+  await expect(page.getByLabel("Absicht der Kandidatenübernahme")).toHaveValue(
+    "",
+  );
+  await expect(application).toBeDisabled();
+  await page.evaluate(() => {
+    window.commands[2].resolve({
+      draftId: "stale-target",
+      versionId: "stale-version",
+      ideaVersionId: "native-candidate",
+    });
+  });
+  await page.evaluate(
+    () =>
+      new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+  );
+  await expect(page.getByTestId("route")).toHaveText("/drafts/candidate-draft");
+  await page.clock.install();
+  await page.evaluate(() => {
+    window.candidateViews["native-candidate"].sourceUntil = Date.now() + 1000;
+    window.render();
+  });
+  await page
+    .getByLabel("Absicht der Kandidatenübernahme")
+    .fill("Expires without query refresh");
+  await page
+    .getByRole("checkbox", {
+      name: "Angaben, Posts und Medien geprüft · ungeprüfte Arbeitsversion übernehmen.",
+    })
+    .check();
+  await page.clock.fastForward(1100);
+  await expect(application).toHaveCount(0);
+  await expect(
+    page.getByText("Social-Post-Kandidat nicht verfügbar", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Original first post", { exact: false }),
+  ).toHaveCount(0);
+  expect(await page.evaluate(() => window.commands.length)).toBe(3);
+  await picture(
+    "candidate-source-expired-390",
+    page.getByText("Social-Post-Kandidat nicht verfügbar", { exact: true }),
+  );
   writeFileSync(
     `${evidence}/facts.json`,
     JSON.stringify(
@@ -984,6 +1223,8 @@ try {
         routing:
           "generic/null/fallback/unknown/immutable/sessionABA/styleClock/history",
         Demo: "actual DemoIdeasPage with local state fixture; no native router",
+        candidate:
+          "X mode + explicit media/full-args generation/application replay, ordered native preview, session ABA, clock-only masking, keyboard Space confirmation",
         providerCalls: 0,
         consoleErrors: errors,
       },

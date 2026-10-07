@@ -69,7 +69,7 @@ export async function draftResearchProof(
   if (ver.sourceUnavailable)
     throw new ConvexError("RESEARCH_CONTENT_SOURCE_CHANGED");
   const idea = await draftIdeaVersion(ctx, ver);
-  if (!idea) {
+  if (!idea && !ver.candidateVersionId) {
     if (ver.researchCleanupPending || ver.researchProofUntil !== undefined)
       throw new ConvexError("RESEARCH_CONTENT_SOURCE_CHANGED");
     return null;
@@ -79,11 +79,25 @@ export async function draftResearchProof(
   if (walk.done.has(key)) return walk.done.get(key)!;
   enterMaterial(walk, key, "STYLE_ANCESTRY_LIMIT");
   try {
-    const until = await ideaProofUntil(ctx, idea, walk, ver.content.accountId);
+    const until = idea
+      ? await ideaProofUntil(ctx, idea, walk, ver.content.accountId)
+      : null;
+    const candidateParent = ver.candidateVersionId
+      ? await ctx.db.get(ver.candidateVersionId)
+      : null;
     if (
-      idea.source.kind === "research" ||
-      (idea.source.kind === "context-set" &&
-        idea.source.sources.some((s) => "kind" in s))
+      ver.candidateVersionId &&
+      (!candidateParent || candidateParent.workspaceId !== ver.workspaceId)
+    )
+      throw new ConvexError("IDEA_SOURCE_CHANGED");
+    const candidateUntil = candidateParent
+      ? await ideaProofUntil(ctx, candidateParent, walk, ver.content.accountId)
+      : null;
+    if (
+      idea &&
+      (idea.source.kind === "research" ||
+        (idea.source.kind === "context-set" &&
+          idea.source.sources.some((s) => "kind" in s)))
     ) {
       if (
         (ver.researchProofUntil ?? 0) <= Date.now() ||
@@ -95,7 +109,11 @@ export async function draftResearchProof(
       )
         throw new ConvexError("RESEARCH_CONTENT_SOURCE_CHANGED");
     }
-    const n = Math.min(until ?? Infinity, ver.researchProofUntil ?? Infinity);
+    const n = Math.min(
+      until ?? Infinity,
+      candidateUntil ?? Infinity,
+      ver.researchProofUntil ?? Infinity,
+    );
     const horizon = Number.isFinite(n) ? n : null;
     walk.done.set(key, horizon);
     return horizon;
@@ -116,6 +134,12 @@ export async function ideaProofUntil(
   const idea = await ctx.db.get(ver.ideaId);
   if (!idea || idea.workspaceId !== ver.workspaceId || ver.sourceUnavailable)
     throw new ConvexError("IDEA_SOURCE_CHANGED");
+  if (
+    ver.candidate &&
+    accountId !== undefined &&
+    ver.candidate.content.accountId !== accountId
+  )
+    throw new ConvexError("RESEARCH_CONTENT_ACCOUNT_CHANGED");
   const recursive = !!(
     ver.runId ||
     ver.inputVersionId ||
@@ -144,6 +168,10 @@ export async function ideaProofUntil(
       if (!run || run.workspaceId !== ver.workspaceId)
         throw new ConvexError("IDEA_SOURCE_CHANGED");
       horizons.push(await retainedRunProof(ctx, run, walk, accountId));
+      if (ver.candidate)
+        horizons.push(
+          (await candidateProof(ctx, ver, false, walk)).sourceUntil,
+        );
     }
     if (ver.inputVersionId) {
       const parent = await ctx.db.get(ver.inputVersionId);
@@ -164,16 +192,18 @@ export async function ideaProofUntil(
   }
 }
 export async function projectIdea(ctx: QueryCtx, ver: Doc<"ideaVersions">) {
+  const { candidateMediaChecksums: privateMedia, ...visible } = ver;
   try {
     const until = await ideaProofUntil(ctx, ver);
     if (!ver.sourceUnavailable)
-      return until === null ? ver : { ...ver, sourceProofUntil: until };
+      return until === null ? visible : { ...visible, sourceProofUntil: until };
   } catch (error) {
     rethrowUnexpectedSourceError(error);
     /* fail closed without changing history */
   }
   return {
-    ...ver,
+    ...visible,
+    candidate: undefined,
     sourceUnavailable: true,
     title: "",
     note: "",
@@ -231,4 +261,128 @@ export async function evidenceSource(
       proofUntil,
     },
   };
+}
+
+export async function candidateProof(
+  ctx: QueryCtx,
+  ver: Doc<"ideaVersions">,
+  fresh = false,
+  walk: MaterialWalk = materialWalk(),
+) {
+  const c = ver.candidate;
+  if (
+    !c ||
+    ver.sourceUnavailable ||
+    ver.sourceCleanupState ||
+    !ver.runId ||
+    !ver.inputVersionId ||
+    !ver.candidateMediaChecksums ||
+    !c.content.accountId
+  )
+    throw new ConvexError("IDEA_SOURCE_CHANGED");
+  const run = await ctx.db.get(ver.runId);
+  const request = await ctx.db
+    .query("contentRequests")
+    .withIndex("by_runId", (q) => q.eq("runId", ver.runId!))
+    .unique();
+  if (
+    !run ||
+    !request ||
+    request.outputKind !== "social-post-candidate" ||
+    request.routingOperationId !== c.routingOperationId ||
+    request.routingCommandFingerprint !== c.commandFingerprint ||
+    request.resultIdeaId !== ver.ideaId ||
+    request.inputVersionId !== ver.inputVersionId ||
+    request.workspaceId !== ver.workspaceId ||
+    request.actorId !== ver.actorId ||
+    request.accountId !== c.content.accountId ||
+    run.actorId !== ver.actorId ||
+    run.workspaceId !== ver.workspaceId ||
+    run.accountId !== c.content.accountId
+  )
+    throw new ConvexError("IDEA_SOURCE_CHANGED");
+  const { routingProof } = await import("../ai/jev/routing");
+  const proof = await routingProof(
+    ctx,
+    c.routingOperationId,
+    request,
+    fresh,
+    walk,
+    run,
+  );
+  if (
+    proof.operation.intent?.outputKind !== "social-post-candidate" ||
+    JSON.stringify(proof.operation.intent.media) !==
+      JSON.stringify(c.content.media) ||
+    JSON.stringify(proof.operation.candidateMediaChecksums) !==
+      JSON.stringify(ver.candidateMediaChecksums) ||
+    !c.content.text.length ||
+    c.content.text.some((t) => !t.trim()) ||
+    (await candidateContentHash(c.content)) !== c.contentHash ||
+    (await sha256(
+      JSON.stringify([
+        c.contentHash,
+        c.commandFingerprint,
+        ver.inputVersionId,
+        run._id,
+        ver.actorId,
+        ver.workspaceId,
+        request.accountId,
+        run.styleContext ?? null,
+        ver.candidateMediaChecksums,
+      ]),
+    )) !== c.provenanceHash
+  )
+    throw new ConvexError("IDEA_SOURCE_CHANGED");
+  const { validateContent, immutableMedia } = await import("../editorial");
+  try {
+    await validateContent(ctx, ver.workspaceId, c.content);
+    await immutableMedia(ctx, {
+      content: c.content,
+      mediaChecksums: ver.candidateMediaChecksums,
+    });
+  } catch (error) {
+    if (
+      error instanceof ConvexError &&
+      [
+        "MEDIA_NOT_READY",
+        "MEDIA_SNAPSHOT_CHANGED",
+        "CAPABILITY_VALIDATION_FAILED",
+      ].includes(String(error.data))
+    )
+      throw new ConvexError("IDEA_SOURCE_CHANGED");
+    throw error;
+  }
+  if (fresh) {
+    const owner = await ctx.db.get(ver.ideaId);
+    if (
+      !owner ||
+      owner.currentVersionId !== ver._id ||
+      owner.status === "archived"
+    )
+      throw new ConvexError("ROUTING_SUPERSEDED");
+  }
+  const retained = await retainedRunProof(ctx, run, walk, c.content.accountId);
+  const n = Math.min(
+    proof.sourceUntil ?? Infinity,
+    retained ?? Infinity,
+    ver.researchProofUntil ?? Infinity,
+  );
+  return {
+    operation: proof.operation,
+    sourceUntil: Number.isFinite(n) ? n : null,
+  };
+}
+
+export function candidateContentHash(c: Doc<"draftVersions">["content"]) {
+  return sha256(
+    JSON.stringify([
+      c.title,
+      c.text,
+      c.media.map((m) => [m.assetId, m.alt]),
+      c.accountId,
+      c.pillar,
+      c.strategy,
+    ]),
+  );
 }

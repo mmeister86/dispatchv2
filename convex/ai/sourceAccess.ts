@@ -233,6 +233,8 @@ export async function retainedRunProof(
         request.actorId !== r.actorId
       )
         throw new ConvexError("IDEA_SOURCE_CHANGED");
+      if (request.outputKind && !request.routingOperationId)
+        throw new ConvexError("ROUTING_RECEIPT_INVALID");
       if (request.routingOperationId) {
         const { routingProof } = await import("./jev/routing");
         horizons.push(

@@ -83,6 +83,12 @@ export const sweep = internalMutation({
   returns: v.null(),
   handler: async (ctx, a) => {
     if (a.ideaVersionId && !a.phase && a.cursor === null)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.candidateCopies,
+        { versionId: a.ideaVersionId, cursor: null, phase: "references" },
+      );
+    if (a.ideaVersionId && !a.phase && a.cursor === null)
       await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
         inputVersionId: a.ideaVersionId,
         cursor: null,
@@ -113,6 +119,12 @@ export const sweep = internalMutation({
         });
     };
     if (a.runId) {
+      if (a.cursor === null)
+        await ctx.scheduler.runAfter(
+          0,
+          internal.research.contentCleanup.candidateRun,
+          { runId: a.runId, cursor: null },
+        );
       const r = await ctx.db.get(a.runId);
       if (!r || r.sourceCleanupState) return null;
       const { retainedRunProof } = await import("./sourceAccess");

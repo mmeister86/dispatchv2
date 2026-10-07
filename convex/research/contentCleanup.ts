@@ -3,9 +3,16 @@ import { ConvexError, v } from "convex/values";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
-async function scrubDraft(ctx: MutationCtx, id: Id<"draftVersions">) {
+import { ideaProofUntil } from "./contentProof";
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
+async function scrubDraft(
+  ctx: MutationCtx,
+  id: Id<"draftVersions">,
+  force = false,
+) {
   const ver = await ctx.db.get(id);
-  if (!ver || (!ver.researchCleanupPending && !ver.sourceUnavailable)) return;
+  if (!ver || (!force && !ver.researchCleanupPending && !ver.sourceUnavailable))
+    return;
   await ctx.scheduler.runAfter(0, internal.editorial.reviews.purgeVersion, {
     versionId: id,
   });
@@ -76,6 +83,12 @@ export const version = internalMutation({
   returns: v.null(),
   handler: async (ctx, a) => {
     if (!a.family)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.candidateCopies,
+        { versionId: a.versionId, phase: "references", cursor: null },
+      );
+    if (!a.family)
       await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
         inputVersionId: a.versionId,
         cursor: null,
@@ -134,6 +147,8 @@ export const version = internalMutation({
     }
     if (ver.researchCleanupPending) {
       await ctx.db.patch(ver._id, {
+        candidate: undefined,
+        candidateMediaChecksums: undefined,
         title: "",
         note: "",
         perspective: "",
@@ -387,6 +402,153 @@ export const semanticDrafts = internalMutation({
         internal.research.contentCleanup.semanticDrafts,
         { ...a, cursor: page.continueCursor },
       );
+    return null;
+  },
+});
+
+// Exact indexed new protected families, independently of Research flags and root existence.
+export const candidateRun = internalMutation({
+  args: { runId: v.id("agentRuns"), cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const page = await ctx.db
+      .query("ideaVersions")
+      .withIndex("by_runId", (q) => q.eq("runId", a.runId))
+      .paginate({ numItems: 25, cursor: a.cursor });
+    for (const ver of page.page)
+      if (ver.candidate || ver.candidateMediaChecksums || ver.sourceUnavailable)
+        await ctx.scheduler.runAfter(
+          0,
+          internal.research.contentCleanup.candidateCopies,
+          { versionId: ver._id, phase: "references", cursor: null },
+        );
+    if (!page.isDone)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.research.contentCleanup.candidateRun,
+        { ...a, cursor: page.continueCursor },
+      );
+    return null;
+  },
+});
+export const candidateCopies = internalMutation({
+  args: {
+    versionId: v.id("ideaVersions"),
+    cursor: v.union(v.string(), v.null()),
+    phase: v.union(
+      v.literal("references"),
+      v.literal("receipts"),
+      v.literal("candidateDrafts"),
+      v.literal("ideaDrafts"),
+      v.literal("children"),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const ver = await ctx.db.get(a.versionId);
+    if (ver && !ver.sourceUnavailable && !ver.sourceCleanupState) {
+      try {
+        await ideaProofUntil(ctx, ver);
+        return null;
+      } catch (error) {
+        rethrowUnexpectedSourceError(error);
+      }
+    }
+    if (ver && (ver.candidate || ver.candidateMediaChecksums))
+      await ctx.db.patch(ver._id, {
+        candidate: undefined,
+        candidateMediaChecksums: undefined,
+        title: "",
+        note: "",
+        perspective: "",
+        originals: [],
+        rationale: "",
+        questions: [],
+        sourceUnavailable: true,
+      });
+    const next = async (
+      page: { isDone: boolean; continueCursor: string },
+      phase: typeof a.phase | undefined,
+    ) => {
+      if (!page.isDone || phase)
+        await ctx.scheduler.runAfter(
+          0,
+          internal.research.contentCleanup.candidateCopies,
+          {
+            versionId: a.versionId,
+            phase: page.isDone ? phase! : a.phase,
+            cursor: page.isDone ? null : page.continueCursor,
+          },
+        );
+    };
+    if (a.phase === "references") {
+      const page = await ctx.db
+        .query("mediaVersionReferences")
+        .withIndex("by_versionId", (q) => q.eq("versionId", a.versionId))
+        .paginate({ numItems: 25, cursor: a.cursor });
+      for (const ref of page.page) await ctx.db.delete(ref._id);
+      await next(page, "receipts");
+    } else if (a.phase === "receipts") {
+      const page = await ctx.db
+        .query("ideas")
+        .withIndex("by_handoff_ideaVersionId", (q) =>
+          q.eq("handoff.ideaVersionId", a.versionId),
+        )
+        .paginate({ numItems: 25, cursor: a.cursor });
+      for (const row of page.page)
+        if (row.handoff)
+          await ctx.db.patch(row._id, {
+            handoff: { ...row.handoff, intent: "", text: "" },
+          });
+      await next(page, "candidateDrafts");
+    } else if (a.phase === "candidateDrafts" || a.phase === "ideaDrafts") {
+      const page =
+        a.phase === "candidateDrafts"
+          ? await ctx.db
+              .query("draftVersions")
+              .withIndex("by_candidateVersionId", (q) =>
+                q.eq("candidateVersionId", a.versionId),
+              )
+              .paginate({ numItems: 25, cursor: a.cursor })
+          : await ctx.db
+              .query("draftVersions")
+              .withIndex("by_ideaVersionId", (q) =>
+                q.eq("ideaVersionId", a.versionId),
+              )
+              .paginate({ numItems: 25, cursor: a.cursor });
+      for (const row of page.page) await scrubDraft(ctx, row._id, true);
+      await next(
+        page,
+        a.phase === "candidateDrafts" ? "ideaDrafts" : "children",
+      );
+    } else {
+      const page = await ctx.db
+        .query("ideaVersions")
+        .withIndex("by_inputVersionId", (q) =>
+          q.eq("inputVersionId", a.versionId),
+        )
+        .paginate({ numItems: 25, cursor: a.cursor });
+      for (const row of page.page) {
+        await ctx.db.patch(row._id, {
+          candidate: undefined,
+          candidateMediaChecksums: undefined,
+          title: "",
+          note: "",
+          perspective: "",
+          originals: [],
+          rationale: "",
+          questions: [],
+          sourceUnavailable: true,
+          researchCleanupPending: true,
+        });
+        await ctx.scheduler.runAfter(
+          0,
+          internal.research.contentCleanup.version,
+          { versionId: row._id },
+        );
+      }
+      await next(page, undefined);
+    }
     return null;
   },
 });

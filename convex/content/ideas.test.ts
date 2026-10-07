@@ -1916,3 +1916,1029 @@ test("routed run shares original aggregate32 proof budget and rejects next ances
     [],
   );
 });
+
+// TASK-68.1: an explicit native mode, not a perspective result relabelled by a client.
+test("candidate mode commits exact ordered native posts through the original funded installed SDK without editorial authority", async () => {
+  const f = await modelFixture();
+  vi.stubEnv("REQUESTY_API_KEY", "synthetic-key");
+  const ideaId = await f.signed.mutation(api.content.ideas.create, {
+    workspaceId: f.workspaceId,
+    ...input,
+    operationKey: "candidate-original",
+  });
+  const intent = {
+    intent: "Prepare an unverified two-post candidate from my supplied claim",
+    outputKind: "social-post-candidate" as const,
+    network: "x" as const,
+    strategy: "generic" as const,
+    objective: "Explain the supplied account",
+    tone: "Careful",
+    cta: null,
+    media: [],
+  };
+  const operationId = await f.signed.mutation(api.ai.jev.routing.prepare, {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    operationKey: "candidate-command",
+    intent,
+  });
+  const runId = await f.signed.mutation(api.content.ideas.generate, {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    intent: intent.intent,
+    operationKey: "candidate-generation",
+    routingOperationId: operationId,
+    outputKind: intent.outputKind,
+  });
+  const posts = [
+    "  My supplied account is unverified.  ",
+    "What evidence would clarify it?",
+  ];
+  let physical = 0;
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (url, init) => {
+    physical++;
+    expect(String(url)).toBe(
+      "https://router.eu.requesty.ai/v1/chat/completions",
+    );
+    expect(init?.redirect).toBe("error");
+    const attempts = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      runId,
+      state: "sent",
+      heldMicros: 8100,
+    });
+    const budgets = await f.t.run((ctx) => ctx.db.query("aiBudgets").collect());
+    expect(budgets).toHaveLength(3);
+    expect(budgets.map((b) => b.heldMicros)).toEqual([8100, 8100, 8100]);
+    expect(String(init?.body)).toContain("social-post-candidate");
+    return Response.json({
+      id: "synthetic-candidate",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({ text: JSON.stringify(posts) }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    });
+  });
+  await f.t.action(internal.ai.provider.execute, { runId });
+  const request = (await f.t.run((ctx) =>
+    ctx.db
+      .query("contentRequests")
+      .withIndex("by_runId", (q) => q.eq("runId", runId))
+      .unique(),
+  ))!;
+  expect(request.resultIdeaId).not.toBeNull();
+  await f.t.run(async (ctx) => {
+    const header = (await ctx.db.get(request.resultIdeaId!))!;
+    const ver = (await ctx.db.get(header.currentVersionId!))!;
+    const { ideaProofUntil } = await import("../research/contentProof");
+    await ideaProofUntil(ctx, ver);
+  });
+  const result = (await f.signed.query(api.content.ideas.get, {
+    workspaceId: f.workspaceId,
+    ideaId: request.resultIdeaId!,
+  }))!;
+  expect(result.version.candidate).toMatchObject({
+    routingOperationId: operationId,
+    content: { text: posts, accountId: f.accountId, media: [] },
+  });
+  expect(result.version.runId).toBe(runId);
+  expect(result.version.perspective).toBe("");
+  expect(result.version.rationale).toBe("");
+  expect(result.version.questions).toEqual([]);
+  expect(result.version.candidate!.contentHash).toMatch(/^[A-Za-z0-9_-]{43}$/);
+  expect("candidateMediaChecksums" in result.version).toBe(false);
+  const read = await f.signed.query(api.content.ideas.candidate, {
+    workspaceId: f.workspaceId,
+    versionId: result.version._id,
+  });
+  expect(read).toMatchObject({
+    applicability: "current",
+    candidate: { content: { text: posts } },
+  });
+  expect(physical).toBe(1);
+  expect(await f.t.run((ctx) => ctx.db.query("drafts").collect())).toEqual([]);
+  expect(await f.t.run((ctx) => ctx.db.query("approvals").collect())).toEqual(
+    [],
+  );
+  expect(await f.t.run((ctx) => ctx.db.query("schedules").collect())).toEqual(
+    [],
+  );
+});
+
+// Direct native commit controls isolate parser/application/lifecycle; the SDK boundary is above.
+async function candidateNative(media = false, claim = true) {
+  vi.stubEnv("R2_MEDIA_BUCKET", "synthetic-eu");
+  const f = await modelFixture();
+  const asset = media ? await f.ready() : null;
+  const ideaId = await f.signed.mutation(api.content.ideas.create, {
+    workspaceId: f.workspaceId,
+    ...input,
+    operationKey: "candidate-control-note",
+  });
+  const intent = {
+    intent: "Unverified candidate only",
+    strategy: "generic" as const,
+    outputKind: "social-post-candidate" as const,
+    network: "x" as const,
+    objective: null,
+    tone: null,
+    cta: null,
+    media: asset ? [{ assetId: asset.assetId, alt: "Exact human alt" }] : [],
+  };
+  const prepare = {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    operationKey: "candidate-control-router",
+    intent,
+  };
+  const operationId = await f.signed.mutation(
+    api.ai.jev.routing.prepare,
+    prepare,
+  );
+  const args = {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    operationKey: "candidate-control-generate",
+    intent: intent.intent,
+    outputKind: intent.outputKind,
+    routingOperationId: operationId,
+  };
+  const runId = await f.signed.mutation(api.content.ideas.generate, args);
+  const executionKey = "candidate-control-execution";
+  if (claim)
+    await f.t.mutation(internal.ai.runs.claim, { runId, executionKey });
+  const commit = (value: unknown) =>
+    f.t.mutation(internal.content.ideas.commitProposal, {
+      runId,
+      executionKey,
+      output: JSON.stringify(value),
+    });
+  return {
+    ...f,
+    asset,
+    ideaId,
+    operationId,
+    prepare,
+    args,
+    runId,
+    executionKey,
+    commit,
+  };
+}
+async function committedCandidate(media = false) {
+  const f = await candidateNative(media),
+    resultIdeaId = (await f.commit([
+      "  First supplied claim  ",
+      "Second supplied claim",
+    ]))!;
+  await f.t.mutation(internal.ai.runs.finish, {
+    runId: f.runId,
+    generation: 1,
+    executionKey: f.executionKey,
+    failed: false,
+  });
+  const version = (await f.signed.query(api.content.ideas.get, {
+    workspaceId: f.workspaceId,
+    ideaId: resultIdeaId,
+  }))!.version;
+  const application = {
+    workspaceId: f.workspaceId,
+    versionId: version._id,
+    contentHash: version.candidate!.contentHash,
+    operationKey: "candidate-control-apply",
+    intent: "I explicitly reviewed these claims",
+    claimsReviewed: true,
+    target: null,
+  };
+  return { ...f, resultIdeaId, version, application };
+}
+
+test.each([
+  [],
+  [""],
+  ["   "],
+  { text: ["Post"] },
+  ["Post", 7],
+  ["x".repeat(281)],
+  ["界".repeat(141)],
+  Array(11).fill("Post"),
+])(
+  "candidate strict inner parser/capability rejects %j atomically",
+  async (value) => {
+    const f = await candidateNative();
+    await expect(f.commit(value)).rejects.toThrow();
+    expect(
+      await f.t.run((ctx) => ctx.db.query("ideaVersions").collect()),
+    ).toHaveLength(1);
+    expect(
+      (await f.t.run((ctx) => ctx.db.query("contentRequests").first()))!
+        .resultIdeaId,
+    ).toBeNull();
+    expect(await f.t.run((ctx) => ctx.db.query("drafts").collect())).toEqual(
+      [],
+    );
+  },
+);
+
+test("candidate exact replay preserves legacy command identity and candidate media ordering, no mode promotion", async () => {
+  const f = await candidateNative(true);
+  expect(await f.signed.mutation(api.ai.jev.routing.prepare, f.prepare)).toBe(
+    f.operationId,
+  );
+  expect(await f.signed.mutation(api.content.ideas.generate, f.args)).toBe(
+    f.runId,
+  );
+  await vi.advanceTimersByTimeAsync(5001);
+  expect(
+    await f.signed.query(api.ai.jev.routing.get, {
+      workspaceId: f.workspaceId,
+      operationId: f.operationId,
+    }),
+  ).toMatchObject({ applicability: "current", sourceUntil: null });
+  expect(await f.signed.mutation(api.content.ideas.generate, f.args)).toBe(
+    f.runId,
+  );
+  await expect(
+    f.signed.mutation(api.content.ideas.generate, {
+      ...f.args,
+      outputKind: "perspective",
+    }),
+  ).rejects.toThrow();
+  await expect(
+    f.signed.mutation(api.content.ideas.generate, {
+      ...f.args,
+      routingOperationId: undefined,
+    }),
+  ).rejects.toThrow();
+  await expect(
+    f.signed.mutation(api.ai.jev.routing.prepare, {
+      ...f.prepare,
+      intent: {
+        ...f.prepare.intent,
+        media: [{ assetId: f.asset!.assetId, alt: "Changed" }],
+      },
+    }),
+  ).rejects.toThrow("OPERATION_CONFLICT");
+  const op = await f.t.run((ctx) => ctx.db.get(f.operationId));
+  expect(op!.candidateMediaChecksums).toHaveLength(1);
+  expect(op!.intent!.media).toEqual(f.prepare.intent.media);
+  const request = await f.t.run((ctx) =>
+    ctx.db.query("contentRequests").first(),
+  );
+  expect(request).toMatchObject({
+    outputKind: "social-post-candidate",
+    routingCommandFingerprint: op!.commandFingerprint,
+  });
+  const old = await generative();
+  const oldRequest = await old.t.run((ctx) =>
+    ctx.db.query("contentRequests").first(),
+  );
+  expect("outputKind" in oldRequest!).toBe(false);
+  expect("routingCommandFingerprint" in oldRequest!).toBe(false);
+});
+
+test("candidate exact native application creates one unapproved draft, proof precedes replay and hash/actor claims", async () => {
+  const f = await committedCandidate(true);
+  await expect(
+    f.signed.mutation(api.content.ideas.applyCandidate, {
+      ...f.application,
+      claimsReviewed: false,
+    }),
+  ).rejects.toThrow("CLARIFICATION_REQUIRED");
+  await expect(
+    f.signed.mutation(api.content.ideas.applyCandidate, {
+      ...f.application,
+      contentHash: "foreign hash",
+    }),
+  ).rejects.toThrow("OUTPUT_CONFLICT");
+  await f.signed.mutation(api.media.assets.setAlt, {
+    workspaceId: f.workspaceId,
+    assetId: f.asset!.assetId,
+    alt: "Changed library default only",
+  });
+  await expect(
+    f.signed.mutation(api.media.uploads.remove, {
+      workspaceId: f.workspaceId,
+      assetId: f.asset!.assetId,
+    }),
+  ).rejects.toThrow("MEDIA_REFERENCED");
+  expect(
+    (await f.signed.query(api.content.ideas.candidate, {
+      workspaceId: f.workspaceId,
+      versionId: f.version._id,
+    }))!.candidate!.content.media,
+  ).toEqual(f.prepare.intent.media);
+  const a = await f.signed.mutation(
+    api.content.ideas.applyCandidate,
+    f.application,
+  );
+  expect(
+    await f.signed.mutation(api.content.ideas.applyCandidate, f.application),
+  ).toEqual(a);
+  await expect(
+    f.signed.mutation(api.content.ideas.applyCandidate, {
+      ...f.application,
+      intent: "Changed whole command",
+    }),
+  ).rejects.toThrow("ALREADY_BOUND");
+  const d = await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: a.draftId,
+  });
+  expect(d!.versions[0]).toMatchObject({
+    ideaVersionId: f.version._id,
+    content: {
+      text: f.version.candidate!.content.text,
+      media: f.prepare.intent.media,
+    },
+  });
+  const refs = await f.t.run((ctx) =>
+    ctx.db.query("mediaVersionReferences").collect(),
+  );
+  expect(refs.map((r) => r.versionId).sort()).toEqual(
+    [f.version._id, a.versionId].sort(),
+  );
+  expect(await f.t.run((ctx) => ctx.db.query("approvals").collect())).toEqual(
+    [],
+  );
+  expect(await f.t.run((ctx) => ctx.db.query("schedules").collect())).toEqual(
+    [],
+  );
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.asset!.assetId, { checksum: "lost exact original" }),
+  );
+  await expect(
+    f.signed.mutation(api.content.ideas.applyCandidate, f.application),
+  ).rejects.toThrow();
+  expect(
+    await f.signed.query(api.content.ideas.candidate, {
+      workspaceId: f.workspaceId,
+      versionId: f.version._id,
+    }),
+  ).toMatchObject({
+    applicability: "unavailable",
+    candidate: null,
+    intent: null,
+  });
+});
+
+test("candidate applies to exact existing version/CAS and central saves preserve independent old ancestry", async () => {
+  const f = await committedCandidate();
+  const targetId = await f.signed.mutation(api.editorial.create, {
+    workspaceId: f.workspaceId,
+    source: "Original independent draft",
+    content: {
+      title: "Old title",
+      text: ["Original buffer"],
+      media: [],
+      accountId: f.accountId,
+      pillar: "Original pillar",
+      strategy: "generic",
+    },
+  });
+  const original = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: targetId,
+  }))!;
+  const target = {
+    draftId: targetId,
+    versionId: original.draft.currentVersionId!,
+    revision: original.draft.revision,
+  };
+  await expect(
+    f.signed.mutation(api.content.ideas.applyCandidate, {
+      ...f.application,
+      target: { ...target, revision: 2 },
+    }),
+  ).rejects.toThrow("SAVE_CONFLICT");
+  const applied = await f.signed.mutation(api.content.ideas.applyCandidate, {
+    ...f.application,
+    target,
+  });
+  expect(
+    await f.signed.mutation(api.content.ideas.applyCandidate, {
+      ...f.application,
+      target,
+    }),
+  ).toEqual(applied);
+  const current = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: targetId,
+  }))!;
+  expect(
+    current.versions.find((v) => v._id === applied.versionId),
+  ).toMatchObject({
+    candidateVersionId: f.version._id,
+    content: { text: f.version.candidate!.content.text },
+  });
+  expect(
+    current.versions.find((v) => v._id === target.versionId)!.content.text,
+  ).toEqual(["Original buffer"]);
+  await f.signed.mutation(api.editorial.save, {
+    workspaceId: f.workspaceId,
+    draftId: targetId,
+    expectedRevision: 2,
+    content: { ...f.version.candidate!.content, text: ["Human later edit"] },
+    reason: "Human edit",
+  });
+  const saved = (await f.signed.query(api.editorial.get, {
+    workspaceId: f.workspaceId,
+    draftId: targetId,
+  }))!;
+  expect(
+    saved.versions.find((v) => v._id === saved.draft.currentVersionId)!
+      .candidateVersionId,
+  ).toBe(f.version._id);
+  expect(saved.draft.source).toBe("Original independent draft");
+});
+
+test("candidate superseded current choice stays readable as history without fresh application", async () => {
+  const f = await committedCandidate();
+  await f.signed.mutation(api.content.ideas.edit, {
+    workspaceId: f.workspaceId,
+    ideaId: f.ideaId,
+    expectedRevision: 1,
+    title: "New source choice",
+    note: "New own account",
+    perspective: "New perspective",
+    priority: "normal",
+    feedback: "Source superseded",
+  });
+  const view = await f.signed.query(api.content.ideas.candidate, {
+    workspaceId: f.workspaceId,
+    versionId: f.version._id,
+  });
+  expect(view).toMatchObject({
+    applicability: "historical",
+    candidate: { content: { text: f.version.candidate!.content.text } },
+    sourceUntil: null,
+  });
+  await expect(
+    f.signed.mutation(api.content.ideas.applyCandidate, f.application),
+  ).rejects.toThrow();
+  expect(await f.t.run((ctx) => ctx.db.query("drafts").collect())).toEqual([]);
+});
+
+test.each(["missing", "complete"])(
+  "candidate physical cleanup discovers >25 applied raw copies and receipt when root %s",
+  async (kind) => {
+    const f = await committedCandidate(true);
+    const applied = await f.signed.mutation(
+      api.content.ideas.applyCandidate,
+      f.application,
+    );
+    const native = (await f.t.run((ctx) => ctx.db.get(applied.versionId)))!;
+    const sibling = await f.signed.mutation(api.editorial.create, {
+      workspaceId: f.workspaceId,
+      source: "Healthy sibling",
+      content: {
+        ...native.content,
+        title: "Healthy independent",
+        text: ["Keep healthy"],
+        media: f.prepare.intent.media,
+      },
+    });
+    const copies = await f.t.run(async (ctx) => {
+      const ids = [];
+      for (let i = 0; i < 26; i++) {
+        const { _id, _creationTime, ...fields } = native;
+        ids.push(
+          await ctx.db.insert("draftVersions", {
+            ...fields,
+            number: i + 20,
+            ideaVersionId: undefined,
+            candidateVersionId: f.version._id,
+            researchCleanupPending: undefined,
+            sourceUnavailable: undefined,
+          }),
+        );
+      }
+      return ids;
+    });
+    const thread = (await f.t.run((ctx) => ctx.db.get(f.runId)))!.threadId;
+    expect(
+      (
+        await f.t.query(components.agent.messages.listMessagesByThreadId, {
+          threadId: thread,
+          order: "asc",
+          paginationOpts: { numItems: 10, cursor: null },
+        })
+      ).page.length,
+    ).toBeGreaterThan(0);
+    await f.t.run(async (ctx) => {
+      if (kind === "missing") await ctx.db.delete(f.version._id);
+      else
+        await ctx.db.patch(f.version._id, {
+          sourceUnavailable: true,
+          sourceCleanupState: "complete",
+          researchCleanupPending: undefined,
+        });
+    });
+    await f.t.mutation(internal.research.contentCleanup.version, {
+      versionId: f.version._id,
+    });
+    await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+    for (const id of [...copies, applied.versionId])
+      expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({
+        sourceUnavailable: true,
+        content: {
+          title: "",
+          text: ["", ""],
+          media: [{ assetId: f.asset!.assetId, alt: "" }],
+        },
+      });
+    const header = (await f.t.run((ctx) => ctx.db.get(f.resultIdeaId)))!;
+    expect(header.handoff).toMatchObject({
+      intent: "",
+      text: "",
+      candidateCommand: { key: f.application.operationKey },
+    });
+    expect(
+      await f.t.run((ctx) =>
+        ctx.db
+          .query("mediaVersionReferences")
+          .withIndex("by_versionId", (q) => q.eq("versionId", f.version._id))
+          .collect(),
+      ),
+    ).toEqual([]);
+    const healthy = (await f.signed.query(api.editorial.get, {
+      workspaceId: f.workspaceId,
+      draftId: sibling,
+    }))!;
+    expect(healthy.versions[0].content.text).toEqual(["Keep healthy"]);
+    expect(
+      await f.t.run((ctx) =>
+        ctx.db
+          .query("mediaVersionReferences")
+          .withIndex("by_versionId", (q) =>
+            q.eq("versionId", healthy.versions[0]._id),
+          )
+          .collect(),
+      ),
+    ).toHaveLength(1);
+    expect(
+      (await f.t.run((ctx) => ctx.db.query("aiBudgets").collect())).every(
+        (b) => b.heldMicros === 0 && b.spentMicros === 0,
+      ),
+    ).toBe(true);
+    expect(await f.t.run((ctx) => ctx.db.query("schedules").collect())).toEqual(
+      [],
+    );
+  },
+);
+
+test("candidate shared material walk counts media once and propagates exhausted capacity without masking or erasing", async () => {
+  const f = await committedCandidate(true);
+  const { materialWalk } = await import("../research/pipelineAccess"),
+    { candidateProof } = await import("../research/contentProof");
+  await f.t.run(async (ctx) => {
+    const native = (await ctx.db.get(f.version._id))!,
+      walk = materialWalk();
+    await candidateProof(ctx, native, false, walk);
+    const counted = walk.budget.counted.size;
+    expect(walk.budget.counted.has(`candidate-media:${f.asset!.assetId}`)).toBe(
+      true,
+    );
+    await candidateProof(ctx, native, false, walk);
+    expect(walk.budget.counted.size).toBe(counted);
+    expect(walk.budget.remaining).toBe(32 - counted);
+    await expect(
+      candidateProof(ctx, native, false, materialWalk(1)),
+    ).rejects.toThrow("ROUTING_MATERIAL_LIMIT");
+  });
+  expect(await f.t.run((ctx) => ctx.db.get(f.version._id))).toMatchObject({
+    candidate: f.version.candidate,
+  });
+});
+
+test.each(["missing", "complete"])(
+  "candidate run-root %s independently erases introduced request/intent/output before original purge early return",
+  async (kind) => {
+    const f = await committedCandidate(true);
+    const applied = await f.signed.mutation(
+      api.content.ideas.applyCandidate,
+      f.application,
+    );
+    await f.t.run(async (ctx) => {
+      if (kind === "missing") await ctx.db.delete(f.runId);
+      else await ctx.db.patch(f.runId, { sourceCleanupState: "complete" });
+      await ctx.db.delete(f.operationId);
+    });
+    await f.t.mutation(internal.ai.jev.routing.scrub, {
+      operationId: f.operationId,
+    });
+    await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+    const request = (await f.t.run((ctx) =>
+      ctx.db.query("contentRequests").first(),
+    ))!;
+    expect(request.intent).toBe("");
+    expect(request.routingCommandFingerprint).toBeUndefined();
+    const raw = (await f.t.run((ctx) => ctx.db.get(f.version._id)))!;
+    expect(raw.candidate).toBeUndefined();
+    expect(raw.candidateMediaChecksums).toBeUndefined();
+    expect(await f.t.run((ctx) => ctx.db.get(applied.versionId))).toMatchObject(
+      { sourceUnavailable: true, content: { text: ["", ""] } },
+    );
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(f.resultIdeaId)))!.handoff!.intent,
+    ).toBe("");
+    expect(
+      await f.t.run((ctx) =>
+        ctx.db
+          .query("mediaVersionReferences")
+          .withIndex("by_versionId", (q) => q.eq("versionId", f.version._id))
+          .collect(),
+      ),
+    ).toEqual([]);
+  },
+);
+
+test("candidate actual finished Agent gate keeps in-flight bytes then erases original prompt after authenticated withdrawal", async () => {
+  const f = await candidateNative();
+  const resultIdeaId = (await f.commit(["Protected candidate"]))!;
+  const versionId = (await f.t.run((ctx) => ctx.db.get(resultIdeaId)))!
+    .currentVersionId!;
+  const threadId = (await f.t.run((ctx) => ctx.db.get(f.runId)))!.threadId;
+  await f.signed.mutation(api.ai.jev.routing.disable, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+  });
+  await f.t.mutation(internal.ai.runs.purgeSource, { runId: f.runId });
+  for (const phase of [
+    "references",
+    "receipts",
+    "candidateDrafts",
+    "ideaDrafts",
+    "children",
+  ] as const)
+    await f.t.mutation(internal.research.contentCleanup.candidateCopies, {
+      versionId,
+      phase,
+      cursor: null,
+    });
+  expect(
+    (
+      await f.t.query(components.agent.messages.listMessagesByThreadId, {
+        threadId,
+        order: "asc",
+        paginationOpts: { numItems: 10, cursor: null },
+      })
+    ).page.length,
+  ).toBeGreaterThan(0);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.runId)))!.executionFinishedAt,
+  ).toBeUndefined();
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(versionId)))!.candidate,
+  ).toBeUndefined();
+  await f.t.mutation(internal.ai.runs.finish, {
+    runId: f.runId,
+    generation: 1,
+    executionKey: f.executionKey,
+    failed: true,
+  });
+  await f.t.mutation(internal.ai.runs.purgeSource, { runId: f.runId });
+  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+  expect(
+    (
+      await f.t.query(components.agent.messages.listMessagesByThreadId, {
+        threadId,
+        order: "asc",
+        paginationOpts: { numItems: 10, cursor: null },
+      })
+    ).page,
+  ).toEqual([]);
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.runId)))!.sourceCleanupState,
+  ).toBe("complete");
+});
+
+test.each(["withdraw", "unknown-proof"])(
+  "candidate actual SDK post-fund %s reproof holds all three scopes before zero-HTTP known-zero denial",
+  async (kind) => {
+    const f = await candidateNative(false, false);
+    vi.stubEnv("REQUESTY_API_KEY", "synthetic-no-live-key");
+    const { getFunctionName } = await import("convex/server"),
+      { execute } = await import("../ai/provider");
+    const nameOf = (ref: Parameters<typeof getFunctionName>[0]) => {
+      try {
+        return getFunctionName(ref);
+      } catch {
+        return "component-reference";
+      }
+    };
+    let funded = false;
+    const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      throw new Error("Physical HTTP forbidden in known-zero denial");
+    });
+    await f.t.action(async (ctx) => {
+      const runMutation: typeof ctx.runMutation = async (ref, args) => {
+        const result = await ctx.runMutation(ref, args);
+        if (nameOf(ref) === "ai/runs:fund") {
+          const attempt = (await f.t.run((db) =>
+            db.db.get(
+              result as import("../_generated/dataModel").Id<"aiAttempts">,
+            ),
+          ))!;
+          expect(attempt).toMatchObject({
+            runId: f.runId,
+            workspaceId: f.workspaceId,
+            generation: 1,
+            state: "sent",
+            heldMicros: 8100,
+          });
+          expect(new Set(attempt.budgetIds).size).toBe(3);
+          for (const id of attempt.budgetIds)
+            expect(await f.t.run((db) => db.db.get(id))).toMatchObject({
+              heldMicros: 8100,
+              spentMicros: 0,
+            });
+          funded = true;
+          if (kind === "withdraw")
+            await f.signed.mutation(api.ai.jev.routing.disable, {
+              workspaceId: f.workspaceId,
+              accountId: f.accountId,
+            });
+        }
+        return result;
+      };
+      const runQuery: typeof ctx.runQuery = async (ref, args) => {
+        if (
+          funded &&
+          kind === "unknown-proof" &&
+          nameOf(ref) === "ai/runs:context"
+        )
+          throw new ConvexError("SYNTHETIC_NATIVE_RESOURCE_FAULT");
+        return ctx.runQuery(ref, args);
+      };
+      await (
+        execute as unknown as {
+          _handler: (
+            ctx: import("../_generated/server").ActionCtx,
+            args: { runId: typeof f.runId },
+          ) => Promise<null>;
+        }
+      )._handler({ ...ctx, runMutation, runQuery }, { runId: f.runId });
+    });
+    expect(funded).toBe(true);
+    expect(fetch).not.toHaveBeenCalled();
+    const attempts = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      state: "settled",
+      heldMicros: 0,
+      inputTokens: 0,
+      outputTokens: 0,
+      estimatedMicros: 0,
+    });
+    expect(
+      (await f.t.run((ctx) => ctx.db.query("aiBudgets").collect())).every(
+        (b) => b.heldMicros === 0 && b.spentMicros === 0,
+      ),
+    ).toBe(true);
+    expect(
+      (await f.t.run((ctx) => ctx.db.query("contentRequests").first()))!
+        .resultIdeaId,
+    ).toBeNull();
+  },
+);
+
+test("candidate actual entered SDK HTTP keeps unknown original hold and settles genuine late usage once without output", async () => {
+  const f = await candidateNative(false, false);
+  vi.stubEnv("REQUESTY_API_KEY", "synthetic-no-live-key");
+  let entered!: () => void, answer!: (value: Response) => void;
+  const physical = new Promise<void>((r) => {
+      entered = r;
+    }),
+    response = new Promise<Response>((r) => {
+      answer = r;
+    });
+  const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+    entered();
+    return response;
+  });
+  const execution = f.t.action(internal.ai.provider.execute, {
+    runId: f.runId,
+  });
+  await physical;
+  const attempt = (await f.t.run((ctx) => ctx.db.query("aiAttempts").first()))!;
+  expect(attempt).toMatchObject({
+    state: "sent",
+    runId: f.runId,
+    heldMicros: 8100,
+  });
+  expect(new Set(attempt.budgetIds).size).toBe(3);
+  for (const id of attempt.budgetIds)
+    expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({
+      heldMicros: 8100,
+      spentMicros: 0,
+    });
+  await vi.advanceTimersByTimeAsync(60001);
+  await execution;
+  expect(await f.t.run((ctx) => ctx.db.get(attempt._id))).toMatchObject({
+    state: "unknown",
+    heldMicros: 8100,
+    estimatedMicros: null,
+  });
+  await f.signed.mutation(api.ai.jev.routing.disable, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+  });
+  answer(
+    Response.json({
+      id: "synthetic-late-candidate",
+      object: "chat.completion",
+      created: 1791210000,
+      model: "synthetic/model",
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({
+              text: JSON.stringify(["Late original candidate"]),
+            }),
+          },
+          finish_reason: "stop",
+        },
+      ],
+      usage: { prompt_tokens: 10, completion_tokens: 20, total_tokens: 30 },
+    }),
+  );
+  await vi.waitFor(async () =>
+    expect(await f.t.run((ctx) => ctx.db.get(attempt._id))).toMatchObject({
+      state: "settled",
+      heldMicros: 0,
+      estimatedMicros: 30,
+    }),
+  );
+  await f.t.action(internal.ai.provider.execute, { runId: f.runId });
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("aiAttempts").collect()),
+  ).toHaveLength(1);
+  for (const id of attempt.budgetIds)
+    expect(await f.t.run((ctx) => ctx.db.get(id))).toMatchObject({
+      heldMicros: 0,
+      spentMicros: 30,
+    });
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("contentRequests").first()))!
+      .resultIdeaId,
+  ).toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.query("schedules").collect())).toEqual(
+    [],
+  );
+});
+
+test("candidate >25 genuine native request/output/Agent families are erased on null-horizon original operation loss", async () => {
+  const f = await committedCandidate(true),
+    rows = [{ runId: f.runId, versionId: f.version._id }];
+  for (let i = 0; i < 25; i++) {
+    const runId = await f.signed.mutation(api.content.ideas.generate, {
+        ...f.args,
+        operationKey: `candidate-page-${i}`,
+      }),
+      executionKey = `candidate-page-execution-${i}`;
+    await f.t.mutation(internal.ai.runs.claim, { runId, executionKey });
+    const ideaId = (await f.t.mutation(internal.content.ideas.commitProposal, {
+      runId,
+      executionKey,
+      output: JSON.stringify([`Protected candidate ${i}`]),
+    }))!;
+    await f.t.mutation(internal.ai.runs.finish, {
+      runId,
+      generation: 1,
+      executionKey,
+      failed: false,
+    });
+    rows.push({
+      runId,
+      versionId: (await f.t.run((ctx) => ctx.db.get(ideaId)))!
+        .currentVersionId!,
+    });
+  }
+  expect(
+    (await f.signed.query(api.content.ideas.candidate, {
+      workspaceId: f.workspaceId,
+      versionId: f.version._id,
+    }))!.sourceUntil,
+  ).toBeNull();
+  const threads = await f.t.run(async (ctx) =>
+    Promise.all(rows.map(async (r) => (await ctx.db.get(r.runId))!.threadId)),
+  );
+  await f.signed.mutation(api.ai.jev.routing.disable, {
+    workspaceId: f.workspaceId,
+    accountId: f.accountId,
+  });
+  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+  const requests = await f.t.run((ctx) =>
+    ctx.db.query("contentRequests").collect(),
+  );
+  expect(requests).toHaveLength(26);
+  expect(
+    requests.every(
+      (r) => r.intent === "" && r.routingCommandFingerprint === undefined,
+    ),
+  ).toBe(true);
+  for (const r of rows) {
+    const v = (await f.t.run((ctx) => ctx.db.get(r.versionId)))!;
+    expect(v.candidate).toBeUndefined();
+    expect(v.candidateMediaChecksums).toBeUndefined();
+    expect(v.sourceUnavailable).toBe(true);
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(r.runId)))!.sourceCleanupState,
+    ).toBe("complete");
+  }
+  for (const threadId of threads)
+    expect(
+      (
+        await f.t.query(components.agent.messages.listMessagesByThreadId, {
+          threadId,
+          order: "asc",
+          paginationOpts: { numItems: 10, cursor: null },
+        })
+      ).page,
+    ).toEqual([]);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("mediaVersionReferences").collect()),
+  ).toEqual([]);
+  expect(await f.t.run((ctx) => ctx.db.query("drafts").collect())).toEqual([]);
+  expect(
+    (await f.t.run((ctx) => ctx.db.query("aiBudgets").collect())).every(
+      (b) => b.heldMicros === 0 && b.spentMicros === 0,
+    ),
+  ).toBe(true);
+});
+
+test("candidate current actor loss masks before physical cleanup and regrant cannot restore erased native payload", async () => {
+  const f = await committedCandidate();
+  const membership = (await f.t.run((ctx) =>
+    ctx.db
+      .query("memberships")
+      .withIndex("by_userId_and_workspaceId", (q) =>
+        q.eq("userId", f.userId).eq("workspaceId", f.workspaceId),
+      )
+      .unique(),
+  ))!;
+  await f.t.run((ctx) => ctx.db.patch(membership._id, { role: "Viewer" }));
+  expect(
+    await f.signed.query(api.content.ideas.candidate, {
+      workspaceId: f.workspaceId,
+      versionId: f.version._id,
+    }),
+  ).toMatchObject({
+    applicability: "unavailable",
+    candidate: null,
+    intent: null,
+  });
+  await expect(
+    f.signed.mutation(api.content.ideas.applyCandidate, f.application),
+  ).rejects.toThrow("ROLE_ACCESS_DENIED");
+  await f.t.mutation(internal.ai.runs.purgeSource, { runId: f.runId });
+  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.version._id)))!.candidate,
+  ).toBeUndefined();
+  await f.t.run((ctx) => ctx.db.patch(membership._id, { role: "Owner" }));
+  expect(
+    await f.signed.query(api.content.ideas.candidate, {
+      workspaceId: f.workspaceId,
+      versionId: f.version._id,
+    }),
+  ).toMatchObject({
+    applicability: "unavailable",
+    candidate: null,
+    intent: null,
+  });
+  await expect(
+    f.signed.mutation(api.content.ideas.applyCandidate, f.application),
+  ).rejects.toThrow();
+  expect(await f.t.run((ctx) => ctx.db.query("drafts").collect())).toEqual([]);
+  expect(await f.t.run((ctx) => ctx.db.query("schedules").collect())).toEqual(
+    [],
+  );
+});

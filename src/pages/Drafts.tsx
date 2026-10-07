@@ -1,3 +1,5 @@
+import { ComposerCandidates } from "@/features/ideas/ideas";
+import type { Id } from "../../convex/_generated/dataModel";
 import {
   NativeAssignment,
   NativeReview,
@@ -774,6 +776,40 @@ export function ComposerPage() {
           Die Quellenfreigabe ist abgelaufen oder geändert. Geschützte Inhalte
           wurden ausgeblendet; vorhandene technische Belege bleiben erhalten.
         </p>
+      )}
+      {!demoMode && v.id && (
+        <ComposerCandidates
+          target={{
+            draftId: draft.id as Id<"drafts">,
+            versionId: v.id as Id<"draftVersions">,
+            revision: base.current?.revision ?? draft.revision ?? v.number,
+          }}
+          targetUntil={v.sourceProofUntil ?? null}
+          disabled={
+            !canWrite || dirty || conflict || saving || !!v.sourceUnavailable
+          }
+          bufferScope={JSON.stringify([
+            nativeScope,
+            draft.id,
+            v.id,
+            base.current,
+            title,
+            text,
+            accountId,
+            mediaReferences,
+            pillar,
+            strategy,
+          ])}
+          onApplied={() => {
+            setAnalysis("idle");
+            setAnalysisText([]);
+            setVerification("unchecked");
+            setRecommendation(null);
+            toast.success(
+              "Ungeprüfte Arbeitsversion gespeichert. Freigabe separat erforderlich.",
+            );
+          }}
+        />
       )}
       <FirstWriteConfirmation
         key={`${nativeScope}:${draft.id}:${v.id}:${draft.accountId}:${v.sourceUnavailable ?? false}`}

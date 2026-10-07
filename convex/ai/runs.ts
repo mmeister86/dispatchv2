@@ -153,6 +153,7 @@ export async function active(
   runId: Id<"agentRuns">,
   generation?: number,
   executionKey?: string,
+  walk: MaterialWalk = materialWalk(),
 ) {
   const r = await ctx.db.get(runId);
   if (
@@ -163,7 +164,6 @@ export async function active(
     (executionKey !== undefined && r.executionKey !== executionKey)
   )
     throw new ConvexError("MODEL_RUN_INACTIVE");
-  const walk = materialWalk();
   await authority(ctx, r, walk);
   if (r.conversationId) await conversationAuthority(ctx, r);
   const contentRequest = await ctx.db
@@ -183,6 +183,8 @@ export async function active(
       idea.status === "archived"
     )
       throw new ConvexError("IDEA_SOURCE_CHANGED");
+    if (contentRequest.outputKind && !contentRequest.routingOperationId)
+      throw new ConvexError("ROUTING_RECEIPT_INVALID");
     const input = await ctx.db.get(contentRequest.inputVersionId);
     if (!input) throw new ConvexError("IDEA_SOURCE_CHANGED");
     await ideaProofUntil(ctx, input, walk, r.accountId);
@@ -940,6 +942,11 @@ export const purgeSource = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    await ctx.scheduler.runAfter(
+      0,
+      internal.research.contentCleanup.candidateRun,
+      { runId: a.runId, cursor: null },
+    );
     const r = await ctx.db.get(a.runId);
     if (!r || r.sourceCleanupState === "complete") return null;
     if (!r.sourceCleanupState) {
@@ -961,7 +968,11 @@ export const purgeSource = internalMutation({
       .query("contentRequests")
       .withIndex("by_runId", (q) => q.eq("runId", r._id))
       .unique();
-    if (request?.intent) await ctx.db.patch(request._id, { intent: "" });
+    if (request?.intent || request?.routingCommandFingerprint)
+      await ctx.db.patch(request!._id, {
+        intent: "",
+        routingCommandFingerprint: undefined,
+      });
     for (const input of await runInputs(ctx, r))
       if (input.state === "retained")
         await ctx.db.patch(input._id, { state: "removed" });

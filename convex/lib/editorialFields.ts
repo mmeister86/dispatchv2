@@ -13,6 +13,13 @@ export const mediaReference = v.object({
   assetId: v.id("mediaAssets"),
   alt: v.string(),
 });
+export const mediaChecksums = v.array(
+  v.object({
+    assetId: v.id("mediaAssets"),
+    checksum: v.string(),
+    objectKey: v.string(),
+  }),
+);
 export const content = v.object({
   title: v.string(),
   text: v.array(v.string()),
@@ -98,19 +105,12 @@ export const versionFields = {
   reviewRevision: v.optional(v.number()),
   ...researchCopyFields,
   ideaVersionId: v.optional(v.id("ideaVersions")),
+  candidateVersionId: v.optional(v.id("ideaVersions")),
   workspaceId: v.id("workspaces"),
   draftId: v.id("drafts"),
   number: v.number(),
   content,
-  mediaChecksums: v.optional(
-    v.array(
-      v.object({
-        assetId: v.id("mediaAssets"),
-        checksum: v.string(),
-        objectKey: v.string(),
-      }),
-    ),
-  ),
+  mediaChecksums: v.optional(mediaChecksums),
   authorId: v.id("users"),
   createdAt: v.number(),
   reason: v.string(),

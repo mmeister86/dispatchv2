@@ -2,19 +2,22 @@ import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
 import { existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const evidence =
+  process.env.DISPATCH_CANDIDATE_COMPOSER_EVIDENCE_DIR ??
+  "/tmp/dispatch-68.1-browser-composer";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import React from 'react';import {ConvexError} from 'convex/values';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';window.NativeConvexError=ConvexError;
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
 const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';return new Promise((resolve,reject)=>window.pending.push({name,args,resolve,reject}));});return funcs.get(name)};
-export const useMutation=invoke;export const useAction=invoke;export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
-export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const n=getFunctionName(ref);if(n==='users:current')return window.snapshot;if(n==='team:list')return window.roster;if(n==='editorial:resources')return window.resources;if(n==='editorial:get')return window.bundles.find(b=>b.draft._id===args.draftId)??null;if(n==='editorial/reviews:get')return {...window.review,authId:window.session.user.id,sessionId:window.session.session.id};if(n==='editorial/reviews:policy')return window.policy;if(n==='editorial:calendar')return {rows:[window.calendar],tooDense:false};if(n==='publishing/reconcile:inspect')return {aborted:false,positions:[{position:0,stage:'unsent',errorCode:null,notBefore:null}]};if(n==='planning/plans:context')return {preferenceId:'preference',timezone:'Europe/Berlin'};if(n==='planning/plans:list')return [];if(n==='planning/strategy:get')return {control:null,version:null,styleUntil:null,pillars:[],candidates:[],reason:null,selectedStyleVersionId:null};if(n==='team:preview')return window.invitation;return undefined;};
+export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:async(ref,args)=>{const n=getFunctionName(ref);if(n==='content/ideas:candidate')return window.candidateViews?.[args.versionId]??null;throw new Error('Unconfigured direct fixture query '+n);}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
+export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const n=getFunctionName(ref);if(n==='content/ideas:list')return window.candidateList;if(n==='content/ideas:candidate')return window.candidateViews?.[args.versionId]??null;if(n==='users:current')return window.snapshot;if(n==='team:list')return window.roster;if(n==='editorial:resources')return window.resources;if(n==='editorial:get')return window.bundles.find(b=>b.draft._id===args.draftId)??null;if(n==='editorial/reviews:get')return {...window.review,authId:window.session.user.id,sessionId:window.session.session.id};if(n==='editorial/reviews:policy')return window.policy;if(n==='editorial:calendar')return {rows:[window.calendar],tooDense:false};if(n==='publishing/reconcile:inspect')return {aborted:false,positions:[{position:0,stage:'unsent',errorCode:null,notBefore:null}]};if(n==='planning/plans:context')return {preferenceId:'preference',timezone:'Europe/Berlin'};if(n==='planning/plans:list')return [];if(n==='planning/strategy:get')return {control:null,version:null,styleUntil:null,pillars:[],candidates:[],reason:null,selectedStyleVersionId:null};if(n==='team:preview')return window.invitation;return undefined;};
 export const usePaginatedQuery=(ref,args,opts)=>{tick();const n=getFunctionName(ref);if(args==='skip')return {results:[],status:'Exhausted',loadMore:()=>{}};if(n==='editorial:list')return {results:window.bundles.slice(0,window.loaded),status:window.loaded<window.bundles.length?'CanLoadMore':'Exhausted',loadMore:()=>window.update({loaded:window.bundles.length})};if(n==='editorial/notices:list')return {results:window.notices,status:'CanLoadMore',loadMore:()=>{}};return {results:[],status:'Exhausted',loadMore:()=>{}};};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
 };
 const server = await createServer({
   root,
-  cacheDir: "/tmp/dispatch-50.2-browser-liveness-fix-vite",
+  cacheDir: `${evidence}/vite-cache`,
   configFile: `${root}/vite.config.ts`,
   server: { host: "127.0.0.1", port: 5184, strictPort: true },
   plugins: [
@@ -439,11 +442,11 @@ try {
       runningFiniteAnimations: 0,
       opacity,
     });
-    mkdirSync("/tmp/dispatch-50.2-browser-liveness-fix", {
+    mkdirSync(evidence, {
       recursive: true,
     });
     await page.screenshot({
-      path: `/tmp/dispatch-50.2-browser-liveness-fix/${label}.png`,
+      path: `${evidence}/${label}.png`,
       fullPage: true,
       animations: "disabled",
     });
@@ -1155,6 +1158,305 @@ try {
     });
     if (enabled) await picture("current-stages-expired-390");
   }
+  // TASK68.1 appended controls: native Store + real Composer, exact current target and dirty buffer.
+  await page.goto("http://127.0.0.1:5184/drafts/draft-0");
+  await page.evaluate(() => {
+    const candidate = {
+      content: {
+        title: "Native candidate",
+        text: ["  Candidate original first  ", "Candidate second"],
+        media: [],
+        accountId: "account-native",
+        pillar: "Building in public",
+        strategy: "generic",
+      },
+      contentHash: "native-candidate-hash",
+      provenanceHash: "native-provenance",
+      routingOperationId: "native-operation",
+      commandFingerprint: "native-command",
+    };
+    window.candidateViews = {
+      "native-candidate": {
+        versionId: "native-candidate",
+        ideaId: "native-idea",
+        runId: "native-run",
+        applicability: "current",
+        sourceUntil: null,
+        candidate,
+        intent: null,
+      },
+    };
+    window.candidateList = {
+      page: [
+        {
+          idea: {
+            _id: "native-idea",
+            status: "new",
+            currentVersionId: "native-candidate",
+          },
+          version: { _id: "native-candidate", candidate },
+        },
+      ],
+      isDone: true,
+      continueCursor: "",
+    };
+    window.update({});
+  });
+  const candidateApply = page.getByRole("button", {
+    name: "Kandidat geprüft · neue Arbeitsversion",
+  });
+  const candidateAck = page.getByRole("checkbox", {
+    name: "Angaben, Posts und Medien geprüft · ungeprüfte Arbeitsversion übernehmen.",
+  });
+  const candidateIntent = page.getByLabel("Absicht der Kandidatenübernahme");
+  await expect(candidateApply).toBeDisabled();
+  await candidateIntent.fill("Reviewed current opened target only");
+  await candidateAck.check();
+  await page
+    .getByLabel("Text Beitrag 1", { exact: true })
+    .fill("Dirty human buffer preserved");
+  await expect(candidateApply).toBeDisabled();
+  await expect(candidateAck).not.toBeChecked();
+  await expect(candidateIntent).toHaveValue("");
+  expect(
+    await page.evaluate(
+      () =>
+        window.commands.filter((c) => c.name === "content/ideas:applyCandidate")
+          .length,
+    ),
+  ).toBe(0);
+  await page
+    .getByLabel("Text Beitrag 1", { exact: true })
+    .fill("Native exact content 0");
+  await candidateIntent.fill("Reconfirmed clean exact target");
+  await candidateAck.check();
+  await candidateApply.click();
+  const applyCommand = await page.evaluate(
+    () =>
+      window.pending.find((c) => c.name === "content/ideas:applyCandidate")
+        .args,
+  );
+  expect(applyCommand).toMatchObject({
+    versionId: "native-candidate",
+    contentHash: "native-candidate-hash",
+    target: { draftId: "draft-0", versionId: "version-0", revision: 1 },
+    claimsReviewed: true,
+  });
+  await page.evaluate(() =>
+    window.pending
+      .find((c) => c.name === "content/ideas:applyCandidate")
+      .reject(new Error("lost native application ACK")),
+  );
+  await page
+    .getByRole("button", { name: "Denselben Übernahmeauftrag wiederholen" })
+    .click();
+  expect(
+    await page.evaluate(
+      () =>
+        window.pending.filter(
+          (c) => c.name === "content/ideas:applyCandidate",
+        )[1].args,
+    ),
+  ).toEqual(applyCommand);
+  await page.evaluate(() => {
+    const b = window.bundles[0],
+      old = b.versions[0],
+      content = window.candidateViews["native-candidate"].candidate.content;
+    const next = {
+      ...old,
+      _id: "candidate-draft-version",
+      number: 2,
+      content,
+      candidateVersionId: "native-candidate",
+    };
+    b.draft = { ...b.draft, revision: 2, currentVersionId: next._id };
+    b.versions = [next, old];
+    b.review = {
+      ...window.review,
+      approvalId: null,
+      editorialDecisionId: null,
+      brandDecisionId: null,
+    };
+    b.approvals = [];
+    window.update({ bundles: [...window.bundles] });
+    window.pending
+      .filter((c) => c.name === "content/ideas:applyCandidate")[1]
+      .resolve({
+        draftId: "draft-0",
+        versionId: next._id,
+        ideaVersionId: "native-candidate",
+      });
+  });
+  await expect(page.getByLabel("Text Beitrag 1", { exact: true })).toHaveValue(
+    "  Candidate original first  ",
+  );
+  await expect(page.getByLabel("Text Beitrag 2", { exact: true })).toHaveValue(
+    "Candidate second",
+  );
+  await expect(candidateAck).not.toBeChecked();
+  const candidateCaptures = [];
+  async function candidatePicture(label) {
+    await expect(
+      page.getByText("Social-Post-Kandidat · ungeprüft", { exact: true }),
+    ).toBeVisible();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await Promise.allSettled(
+        document
+          .getAnimations()
+          .filter(
+            (a) =>
+              Number.isFinite(a.effect?.getComputedTiming().iterations) &&
+              a.playState === "running",
+          )
+          .map((a) => a.finished),
+      );
+      await new Promise((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(r)),
+      );
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    const opacity = await page
+      .locator("main")
+      .evaluate((el) => getComputedStyle(el).opacity);
+    expect(opacity).toBe("1");
+    const path = `${evidence}/${label}.png`;
+    await page.screenshot({ path, fullPage: true, animations: "disabled" });
+    candidateCaptures.push({ label, path, opacity, orderedPosts: true });
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await candidatePicture("candidate-composer-1280");
+  await page.setViewportSize({ width: 390, height: 844 });
+  await candidatePicture("candidate-composer-390");
+  await candidateIntent.fill("Pending exact original scope");
+  await candidateAck.check();
+  await candidateApply.click();
+  await page.evaluate(() =>
+    window.update({
+      session: { ...window.session, session: { id: "session-other" } },
+    }),
+  );
+  await expect(candidateIntent).toHaveCount(0);
+  await expect(candidateAck).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Entwurf nicht gefunden", exact: true }),
+  ).toBeVisible();
+  await page.evaluate(() =>
+    window.update({
+      session: { ...window.session, session: { id: "session-owner" } },
+    }),
+  );
+  await expect(candidateAck).not.toBeChecked();
+  await page.evaluate(() =>
+    window.pending
+      .filter((c) => c.name === "content/ideas:applyCandidate")[2]
+      .resolve({
+        draftId: "stale-other",
+        versionId: "stale-version",
+        ideaVersionId: "native-candidate",
+      }),
+  );
+  await page.evaluate(
+    () =>
+      new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+  );
+  await expect(page.getByLabel("Text Beitrag 1", { exact: true })).toHaveValue(
+    "  Candidate original first  ",
+  );
+  await page.evaluate(() => {
+    window.candidateViews["native-candidate"].sourceUntil = Date.now() + 1000;
+    window.update({});
+  });
+  await candidateIntent.fill("Source expires without transport refresh");
+  await candidateAck.check();
+  await page.clock.fastForward(1100);
+  await expect(candidateApply).toHaveCount(0);
+  await expect(
+    page.getByText("Social-Post-Kandidat nicht verfügbar", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        window.commands.filter((c) => c.name === "content/ideas:applyCandidate")
+          .length,
+    ),
+  ).toBe(3);
+  await page.addInitScript(() => {
+    window.demo = new URLSearchParams(location.search).get("demo") === "1";
+  });
+  await page.goto("http://127.0.0.1:5184/drafts/draft-1?demo=1");
+  await expect(
+    page.getByLabel("Text Beitrag 1", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Social-Post-Kandidat für diesen Entwurf", { exact: true }),
+  ).toHaveCount(0);
+  const demoText = "Demo candidate isolation · local human save";
+  await page.getByLabel("Text Beitrag 1", { exact: true }).fill(demoText);
+  await page.getByRole("button", { name: "Speichern", exact: true }).click();
+  await expect(
+    page.getByText("Lokal gespeichert · Version 2", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Text Beitrag 1", { exact: true })).toHaveValue(
+    demoText,
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        window.commands.filter((c) => c.name === "content/ideas:applyCandidate")
+          .length,
+    ),
+  ).toBe(0);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await Promise.allSettled(
+      document
+        .getAnimations()
+        .filter(
+          (a) =>
+            Number.isFinite(a.effect?.getComputedTiming().iterations) &&
+            a.playState === "running",
+        )
+        .map((a) => a.finished),
+    );
+    await new Promise((r) =>
+      requestAnimationFrame(() => requestAnimationFrame(r)),
+    );
+  });
+  await page.screenshot({
+    path: `${evidence}/candidate-demo-composer-1280.png`,
+    fullPage: true,
+    animations: "disabled",
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `${evidence}/candidate-demo-composer-390.png`,
+    fullPage: true,
+    animations: "disabled",
+  });
+  console.log(
+    JSON.stringify({
+      candidateConsumer: "PASS",
+      candidateCaptures,
+      dirtyBufferPreserved: true,
+      wholeArgsRetry: true,
+      currentTargetCAS: true,
+      sessionABA: true,
+      clockOnlyExpiry: true,
+      automaticApprovalOrPublish: false,
+    }),
+  );
   expect(provider).toEqual([]);
   expect(errors).toEqual([]);
   console.log(
@@ -1170,7 +1472,7 @@ try {
         "/team/invitations/:id",
       ],
       viewportWidths: [1280, 390],
-      screenshots: "/tmp/dispatch-50.2-browser-liveness-fix",
+      screenshots: evidence,
       stableCaptures: captures,
       ordinaryExpiryCases,
       selectedSourceExpiryAssertions: {

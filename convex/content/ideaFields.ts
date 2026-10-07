@@ -1,5 +1,13 @@
 import { source as agentSource } from "../ai/fields";
 import { v } from "convex/values";
+import { content, mediaChecksums } from "../lib/editorialFields";
+export const candidate = v.object({
+  content,
+  contentHash: v.string(),
+  provenanceHash: v.string(),
+  routingOperationId: v.id("jevRoutingOperations"),
+  commandFingerprint: v.string(),
+});
 import {
   researchContentSource,
   researchCopyFields,
@@ -41,6 +49,21 @@ export const ideaFields = {
   updatedAt: v.number(),
   handoff: v.optional(
     v.object({
+      candidateCommand: v.optional(
+        v.object({
+          key: v.string(),
+          fingerprint: v.string(),
+          contentHash: v.string(),
+          target: v.union(
+            v.object({
+              draftId: v.id("drafts"),
+              versionId: v.id("draftVersions"),
+              revision: v.number(),
+            }),
+            v.null(),
+          ),
+        }),
+      ),
       ideaVersionId: v.id("ideaVersions"),
       ideaRevision: v.number(),
       accountId: v.union(v.id("socialAccounts"), v.null()),
@@ -55,6 +78,8 @@ export const ideaFields = {
   ),
 };
 export const ideaVersionFields = {
+  candidate: v.optional(candidate),
+  candidateMediaChecksums: v.optional(mediaChecksums),
   ...researchCopyFields,
   workspaceId: v.id("workspaces"),
   ideaId: v.id("ideas"),
@@ -82,6 +107,8 @@ export const feedbackFields = {
 };
 export const requestFields = {
   routingOperationId: v.optional(v.id("jevRoutingOperations")),
+  outputKind: v.optional(v.literal("social-post-candidate")),
+  routingCommandFingerprint: v.optional(v.string()),
   workspaceId: v.id("workspaces"),
   actorId: v.id("users"),
   ideaId: v.id("ideas"),

@@ -19,6 +19,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { demoMode } from "@/lib/auth-client";
 import { useGithubSourceProofClock } from "@/lib/github-source-proof";
 export function ideaError(e: unknown) {
   const s = e instanceof Error ? e.message : String(e);
@@ -76,6 +77,12 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
       version: Doc<"ideaVersions">;
     } | null>(null),
     [mode, setMode] = useState<"edit" | "handoff" | "generate">("edit");
+  const [outputKind, setOutputKind] = useState<
+    "perspective" | "social-post-candidate"
+  >("perspective");
+  const [candidateMedia, setCandidateMedia] = useState<
+    { assetId: Id<"mediaAssets">; alt: string }[]
+  >([]);
   const [humanStrategy, setHumanStrategy] = useState(""),
     [objective, setObjective] = useState(""),
     [tone, setTone] = useState(""),
@@ -260,6 +267,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     style?.control?.selectedBy ?? null,
     style?.usable,
     mode,
+    outputKind,
     !!selected,
   ]);
   const context = useRef({ scope: generationScope, epoch: 0 });
@@ -310,7 +318,10 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
           intent: {
             intent,
             strategy: humanStrategy || null,
-            outputKind: "perspective",
+            outputKind,
+            ...(outputKind === "social-post-candidate"
+              ? { media: candidateMedia }
+              : {}),
             network: "x",
             objective: objective || null,
             tone: tone || null,
@@ -324,6 +335,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
           accountId: account as Id<"socialAccounts">,
           intent,
           operationKey: key,
+          ...(outputKind === "social-post-candidate" ? { outputKind } : {}),
         },
         id: null,
         scope: generationScope,
@@ -410,6 +422,8 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
     setPriority(row.version.priority);
     setIntent("");
     setHumanStrategy("");
+    setOutputKind("perspective");
+    setCandidateMedia([]);
     setObjective("");
     setTone("");
     setCta("");
@@ -512,7 +526,9 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                   ? "In Redaktion"
                   : row.idea.status === "archived"
                     ? "Archiviert"
-                    : "Neue Perspektive"}{" "}
+                    : row.version.candidate
+                      ? "Social-Post-Kandidat"
+                      : "Neue Perspektive"}{" "}
                 · Priorität {row.version.priority}
               </Status>
               <p className="text-xs muted">
@@ -537,12 +553,23 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                   Nutzerangabe · ungeprüft: {row.version.note}
                 </p>
               )}
-              <p className="text-sm">
-                {row.version.runId
-                  ? "Modellinterpretation · Klärung erforderlich"
-                  : "Eigene Perspektive"}
-                : {row.version.perspective || "Noch offen"}
-              </p>
+              {row.version.candidate && (
+                <CandidateApplication
+                  versionId={row.version._id}
+                  target={null}
+                  disabled={!write || busy}
+                  bufferScope="new-draft"
+                  onApplied={(r) => nav(`/drafts/${r.draftId}`)}
+                />
+              )}
+              {!row.version.candidate && (
+                <p className="text-sm">
+                  {row.version.runId
+                    ? "Modellinterpretation · Klärung erforderlich"
+                    : "Eigene Perspektive"}
+                  : {row.version.perspective || "Noch offen"}
+                </p>
+              )}
               {row.version.rationale && (
                 <p className="text-sm">
                   Begründung der Interpretation: {row.version.rationale}
@@ -556,7 +583,7 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
               <div className="flex flex-wrap gap-2">
                 <Button
                   variant="outline"
-                  disabled={!write || busy}
+                  disabled={!write || busy || !!row.version.candidate}
                   onClick={() => begin(row, "edit")}
                 >
                   Bearbeiten
@@ -570,17 +597,22 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
                         : "historisch"}
                     </Link>
                   </Button>
-                ) : (
+                ) : !row.version.candidate ? (
                   <Button
                     disabled={!write || busy || row.idea.status === "archived"}
                     onClick={() => begin(row, "handoff")}
                   >
                     Zum Entwurf
                   </Button>
-                )}
+                ) : null}
                 <Button
                   variant="outline"
-                  disabled={!write || busy || row.idea.status === "archived"}
+                  disabled={
+                    !write ||
+                    busy ||
+                    row.idea.status === "archived" ||
+                    !!row.version.candidate
+                  }
                   onClick={() => begin(row, "generate")}
                 >
                   Perspektive vorschlagen
@@ -768,6 +800,91 @@ function IdeaWorkspace({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
           )}
           {selected && mode === "generate" && (
             <>
+              <label>
+                <span className="field-label">Ausgabe</span>
+                <select
+                  aria-label="Ausgabe"
+                  className="native-select"
+                  value={outputKind}
+                  disabled={busy || generationLocked}
+                  onChange={(e) =>
+                    setOutputKind(e.target.value as typeof outputKind)
+                  }
+                >
+                  <option value="perspective">Perspektive</option>
+                  <option value="social-post-candidate">
+                    Social-Post-Kandidat für X · ungeprüft
+                  </option>
+                </select>
+              </label>
+              {outputKind === "social-post-candidate" && (
+                <fieldset className="stack">
+                  <legend className="field-label">
+                    Medien ausdrücklich auswählen (optional)
+                  </legend>
+                  <p className="text-xs muted">
+                    Nur sichtbare, bereite Medien. Reihenfolge und
+                    Alternativtexte werden an diesen Auftrag gebunden.
+                  </p>
+                  {state.media
+                    ?.filter(
+                      (m) =>
+                        m.workspaceId === workspaceId && m.status === "ready",
+                    )
+                    .slice(0, 20)
+                    .map((m) => (
+                      <div key={m.id}>
+                        <label className="flex gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            disabled={busy || generationLocked}
+                            checked={candidateMedia.some(
+                              (r) => r.assetId === m.id,
+                            )}
+                            onChange={(e) =>
+                              setCandidateMedia((refs) =>
+                                e.target.checked
+                                  ? [
+                                      ...refs,
+                                      {
+                                        assetId: m.id as Id<"mediaAssets">,
+                                        alt: m.alt,
+                                      },
+                                    ]
+                                  : refs.filter((r) => r.assetId !== m.id),
+                              )
+                            }
+                          />
+                          {m.name}
+                        </label>
+                        {candidateMedia.some((r) => r.assetId === m.id) && (
+                          <label>
+                            <span className="field-label">
+                              Alternativtext für {m.name}
+                            </span>
+                            <Input
+                              maxLength={1000}
+                              disabled={busy || generationLocked}
+                              value={
+                                candidateMedia.find((r) => r.assetId === m.id)!
+                                  .alt
+                              }
+                              onChange={(e) =>
+                                setCandidateMedia((refs) =>
+                                  refs.map((r) =>
+                                    r.assetId === m.id
+                                      ? { ...r, alt: e.target.value }
+                                      : r,
+                                  ),
+                                )
+                              }
+                            />
+                          </label>
+                        )}
+                      </div>
+                    ))}
+                </fieldset>
+              )}
               <label>
                 <span className="field-label">Ausdrückliche Strategie</span>
                 <select
@@ -1174,5 +1291,233 @@ function RoutingHistory({
     <RoutingView view={view} />
   ) : (
     <p role="status">Routing-Beleg wird geladen …</p>
+  );
+}
+
+// Both native consumers keep the original whole application command on an uncertain ACK.
+export function CandidateApplication({
+  versionId,
+  target,
+  disabled,
+  bufferScope,
+  targetUntil = null,
+  onApplied,
+}: {
+  versionId: Id<"ideaVersions">;
+  target: FunctionArgs<typeof api.content.ideas.applyCandidate>["target"];
+  disabled: boolean;
+  bufferScope: string;
+  targetUntil?: number | null;
+  onApplied: (
+    result: FunctionReturnType<typeof api.content.ideas.applyCandidate>,
+  ) => void;
+}) {
+  const { state, nativeScope } = useStore();
+  const view = useQuery(api.content.ideas.candidate, {
+    workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+    versionId,
+  });
+  const apply = useMutation(api.content.ideas.applyCandidate);
+  const resultRef = useRef<FunctionReturnType<
+    typeof api.content.ideas.applyCandidate
+  > | null>(null);
+  const [intent, setIntent] = useState(""),
+    [reviewed, setReviewed] = useState(false);
+  const n = Math.min(view?.sourceUntil ?? Infinity, targetUntil ?? Infinity),
+    until = Number.isFinite(n) ? n : null;
+  const clock = useGithubSourceProofClock(
+    until === null
+      ? []
+      : [
+          {
+            authorized: view?.applicability !== "unavailable",
+            proofExpiresAt: until,
+          },
+        ],
+  );
+  const scope = JSON.stringify([
+    nativeScope,
+    versionId,
+    target,
+    bufferScope,
+    disabled,
+    view?.applicability,
+    view?.candidate?.contentHash,
+  ]);
+  const op = useNativeCommand(scope, until);
+  const usable =
+    view?.applicability === "current" &&
+    !!view.candidate &&
+    (until === null || until > clock);
+  useEffect(() => {
+    setIntent("");
+    setReviewed(false);
+  }, [scope, usable]);
+  if (demoMode) return null;
+  if (view === undefined)
+    return <p role="status">Social-Post-Kandidat wird geprüft …</p>;
+  if (!view?.candidate || !usable)
+    return (
+      <p role="status">
+        {view?.applicability === "historical"
+          ? "Historischer Social-Post-Kandidat · keine neue Übernahme"
+          : "Social-Post-Kandidat nicht verfügbar"}
+      </p>
+    );
+  return (
+    <div className="stack text-sm">
+      <Status>Social-Post-Kandidat · ungeprüft</Status>
+      <p>
+        Prüfe Angaben, Reihenfolge und Medien. Die Übernahme erzeugt eine
+        Arbeitsversion; Freigabe und Veröffentlichung bleiben separate Schritte.
+      </p>
+      <ol className="list-decimal space-y-2 pl-5">
+        {view.candidate.content.text.map((post, i) => (
+          <li key={i} className="whitespace-pre-wrap break-words">
+            {post}
+          </li>
+        ))}
+      </ol>
+      {view.candidate.content.media.map((m, i) => (
+        <p key={m.assetId}>
+          Medium {i + 1} · Alternativtext: {m.alt || "Noch zu prüfen"}
+        </p>
+      ))}
+      <label>
+        <span className="field-label">Absicht der Kandidatenübernahme</span>
+        <Textarea
+          maxLength={1000}
+          value={intent}
+          disabled={disabled || op.locked}
+          onChange={(e) => setIntent(e.target.value)}
+        />
+      </label>
+      <label className="flex gap-2">
+        <input
+          type="checkbox"
+          checked={reviewed}
+          disabled={disabled || op.locked}
+          onChange={(e) => setReviewed(e.target.checked)}
+        />
+        Angaben, Posts und Medien geprüft · ungeprüfte Arbeitsversion
+        übernehmen.
+      </label>
+      {disabled && (
+        <p role="status">
+          Übernahme gesperrt: Speichere oder verwerfe lokale Änderungen und
+          prüfe den aktuellen Stand.
+        </p>
+      )}
+      <Button
+        disabled={
+          disabled ||
+          state.role === "Viewer" ||
+          op.locked ||
+          !reviewed ||
+          !intent.trim()
+        }
+        onClick={() => {
+          const args: FunctionArgs<typeof api.content.ideas.applyCandidate> = {
+            workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+            versionId,
+            contentHash: view.candidate!.contentHash,
+            operationKey: crypto.randomUUID(),
+            intent,
+            claimsReviewed: reviewed,
+            target: structuredClone(target),
+          };
+          void op
+            .execute(async () => {
+              resultRef.current = await apply(args);
+            })
+            .then((ok) => {
+              if (ok && resultRef.current) {
+                setReviewed(false);
+                setIntent("");
+                onApplied(resultRef.current);
+              }
+            });
+        }}
+      >
+        {target
+          ? "Kandidat geprüft · neue Arbeitsversion"
+          : "Kandidat geprüft · neuen Entwurf erstellen"}
+      </Button>
+      {op.error && <p role="alert">{op.error}</p>}
+      {op.retry && (
+        <Button
+          variant="outline"
+          disabled={disabled || op.busy}
+          onClick={() =>
+            void op.execute(op.retry!).then((ok) => {
+              if (ok && resultRef.current) {
+                setReviewed(false);
+                setIntent("");
+                onApplied(resultRef.current);
+              }
+            })
+          }
+        >
+          Denselben Übernahmeauftrag wiederholen
+        </Button>
+      )}
+      {op.conflict && (
+        <>
+          <p role="status">
+            Prüfe den aktuellen Kandidaten und Entwurf erneut; eine geänderte
+            Anfrage benötigt eine neue Bestätigung.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setIntent("");
+              setReviewed(false);
+              op.reviewCurrent();
+            }}
+          >
+            Aktuellen Stand prüfen · Übernahme neu bestätigen
+          </Button>
+        </>
+      )}
+    </div>
+  );
+}
+
+export function ComposerCandidates(
+  props: Omit<Parameters<typeof CandidateApplication>[0], "versionId">,
+) {
+  const { state } = useStore();
+  const rows = useQuery(api.content.ideas.list, {
+    workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+    paginationOpts: { numItems: 25, cursor: null },
+  });
+  return (
+    <Section title="Social-Post-Kandidat für diesen Entwurf">
+      <p className="text-xs muted">
+        Bis zu 25 geladene aktuelle Ideen. Eine Übernahme gilt ausschließlich
+        für diesen geöffneten Entwurf.
+      </p>
+      {rows?.page
+        .filter((r) => r.version.candidate && r.idea.status === "new")
+        .map((r) => (
+          <CandidateApplication
+            key={r.version._id}
+            {...props}
+            versionId={r.version._id}
+          />
+        ))}
+      {rows &&
+        !rows.page.some(
+          (r) => r.version.candidate && r.idea.status === "new",
+        ) && (
+          <p className="text-sm muted">
+            Kein aktueller Kandidat auf dieser Seite. Erstelle ihn ausdrücklich
+            in der Ideenbibliothek.
+          </p>
+        )}
+      <Link to="/ideas" className="text-sm underline">
+        Ideenbibliothek öffnen
+      </Link>
+    </Section>
   );
 }

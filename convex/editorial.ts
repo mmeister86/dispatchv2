@@ -57,6 +57,7 @@ import {
   draftIdeaVersion,
 } from "./research/contentProof";
 import { currentIdeaSource } from "./content/ideas";
+import { materialWalk, type MaterialWalk } from "./research/pipelineAccess";
 const draftDoc = v.object({
   _id: v.id("drafts"),
   _creationTime: v.number(),
@@ -581,6 +582,7 @@ export async function createDraftTransaction(
     content: Doc<"draftVersions">["content"];
     source: string;
     ideaVersionId?: Id<"ideaVersions">;
+    proofWalk?: MaterialWalk;
   },
 ) {
   await validateContent(ctx, workspaceId, a.content);
@@ -592,7 +594,7 @@ export async function createDraftTransaction(
       ) as Doc<"ideaVersions">)
     : null;
   if (sourceVersion) {
-    await ideaProofUntil(ctx, sourceVersion, undefined, a.content.accountId);
+    await ideaProofUntil(ctx, sourceVersion, a.proofWalk, a.content.accountId);
     if (
       (sourceVersion.source.kind === "research" ||
         sourceVersion.source.kind === "context-set") &&
@@ -651,13 +653,21 @@ export async function saveDraftTransaction(
     expectedRevision: number;
     content: Doc<"draftVersions">["content"];
     reason: string;
+    candidateVersionId?: Id<"ideaVersions">;
+    expectedCurrentVersionId?: Id<"draftVersions">;
+    proofWalk?: MaterialWalk;
   },
 ) {
   const d = requireReference(
     workspaceId,
     await ctx.db.get(a.draftId),
   ) as Doc<"drafts">;
-  if (d.revision !== a.expectedRevision) throw new ConvexError("SAVE_CONFLICT");
+  if (
+    d.revision !== a.expectedRevision ||
+    (a.expectedCurrentVersionId !== undefined &&
+      d.currentVersionId !== a.expectedCurrentVersionId)
+  )
+    throw new ConvexError("SAVE_CONFLICT");
   const currentVersion = d.currentVersionId
     ? await ctx.db.get(d.currentVersionId)
     : null;
@@ -667,7 +677,8 @@ export async function saveDraftTransaction(
     currentVersion.draftId !== d._id
   )
     throw new ConvexError("DRAFT_VERSION_CHANGED");
-  await checkContentSource(ctx, currentVersion);
+  const walk = a.proofWalk ?? materialWalk();
+  await draftResearchProof(ctx, currentVersion, walk);
   if (
     currentVersion.researchProofUntil &&
     a.content.accountId !== currentVersion.content.accountId
@@ -677,15 +688,28 @@ export async function saveDraftTransaction(
   if (a.reason.length > 500) throw new ConvexError("INVALID_REASON");
   const sourceIdeaVersion = await draftIdeaVersion(ctx, currentVersion);
   if (sourceIdeaVersion)
-    await ideaProofUntil(
+    await ideaProofUntil(ctx, sourceIdeaVersion, walk, a.content.accountId);
+  const candidateVersionId =
+    a.candidateVersionId ?? currentVersion.candidateVersionId;
+  if (candidateVersionId) {
+    const { candidateProof } = await import("./research/contentProof");
+    const candidate = requireReference(
+      workspaceId,
+      await ctx.db.get(candidateVersionId),
+    ) as Doc<"ideaVersions">;
+    await candidateProof(
       ctx,
-      sourceIdeaVersion,
-      undefined,
-      a.content.accountId,
+      candidate,
+      a.candidateVersionId !== undefined,
+      walk,
     );
+    if (candidate.candidate?.content.accountId !== a.content.accountId)
+      throw new ConvexError("RESEARCH_CONTENT_ACCOUNT_CHANGED");
+  }
   const versionId = await ctx.db.insert("draftVersions", {
     workspaceId: workspaceId,
     draftId: d._id,
+    ...(candidateVersionId ? { candidateVersionId } : {}),
     number: d.revision + 1,
     ...(sourceIdeaVersion ? { ideaVersionId: sourceIdeaVersion._id } : {}),
     ...(currentVersion?.researchProofUntil !== undefined
@@ -1679,7 +1703,7 @@ export const assign = workspaceMutation({
   },
 });
 
-async function mediaSnapshot(
+export async function mediaSnapshot(
   ctx: QueryCtx,
   c: Doc<"draftVersions">["content"],
 ) {
@@ -1694,7 +1718,10 @@ async function mediaSnapshot(
     }),
   );
 }
-export async function immutableMedia(ctx: QueryCtx, ver: Doc<"draftVersions">) {
+export async function immutableMedia(
+  ctx: QueryCtx,
+  ver: Pick<Doc<"draftVersions">, "content" | "mediaChecksums">,
+) {
   if (ver.content.media.length !== (ver.mediaChecksums ?? []).length)
     throw new ConvexError("MEDIA_SNAPSHOT_CHANGED");
   for (const ref of ver.mediaChecksums ?? []) {
@@ -1739,10 +1766,10 @@ export const history = workspaceQuery({
   },
 });
 
-async function recordMediaReferences(
+export async function recordMediaReferences(
   ctx: MutationCtx,
   workspaceId: Id<"workspaces">,
-  versionId: Id<"draftVersions">,
+  versionId: Id<"draftVersions"> | Id<"ideaVersions">,
   c: Doc<"draftVersions">["content"],
 ) {
   for (const assetId of new Set(c.media.map((m) => m.assetId))) {

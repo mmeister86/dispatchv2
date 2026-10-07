@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { mediaReference, mediaChecksums } from "../../lib/editorialFields";
 export const outcome = v.union(
   ...(
     [
@@ -202,7 +203,11 @@ export const strategies = [
 export const routingStrategy = v.union(...strategies.map(v.literal));
 export const routingIntent = v.object({
   intent: v.string(),
-  outputKind: v.literal("perspective"),
+  outputKind: v.union(
+    v.literal("perspective"),
+    v.literal("social-post-candidate"),
+  ),
+  media: v.optional(v.array(mediaReference)),
   strategy: v.union(routingStrategy, v.null()),
   network: v.literal("x"),
   objective: v.union(v.string(), v.null()),
@@ -246,6 +251,7 @@ export const routingResult = v.object({
   thresholdVersion: v.literal("jev-routing-hypotheses-v1"),
 });
 export const routingOperationFields = {
+  candidateMediaChecksums: v.optional(mediaChecksums),
   workspaceId: v.id("workspaces"),
   accountId: v.id("socialAccounts"),
   actorId: v.id("users"),
