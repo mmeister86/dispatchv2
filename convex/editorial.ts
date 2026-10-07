@@ -1,3 +1,10 @@
+import {
+  currentReviewActor,
+  currentReview,
+  approvalReview,
+  sameReview,
+  historicalReviewSource,
+} from "./editorial/reviews";
 import { record as recordFeedback } from "./content/feedback";
 import { ConvexError, v } from "convex/values";
 import {
@@ -646,13 +653,18 @@ export async function approveTransaction(
   actorId: Id<"users">,
   a: { versionId: Id<"draftVersions">; accountId: Id<"socialAccounts"> },
 ) {
+  await currentReviewActor(ctx, workspaceId, actorId);
   const ver = requireReference(
     workspaceId,
     await ctx.db.get(a.versionId),
   ) as Doc<"draftVersions">;
   if (ver.content.accountId !== a.accountId)
     throw new ConvexError("APPROVAL_ACCOUNT_MISMATCH");
-  await checkContentSource(ctx, ver);
+  const reviewPin = await currentReview(
+    ctx,
+    ver,
+    await checkContentSource(ctx, ver),
+  );
   await validateContent(ctx, workspaceId, ver.content, true);
   await immutableMedia(ctx, ver);
   const existing = (
@@ -667,7 +679,11 @@ export async function approveTransaction(
     (x) =>
       x.revokedAt === null &&
       x.actorId === actorId &&
-      (x.purpose ?? "publishing") === "publishing",
+      (x.purpose ?? "publishing") === "publishing" &&
+      (sameReview(x.reviewPin, reviewPin) ||
+        (!x.reviewPin && reviewPin.decisionIds.length === 0)) &&
+      (x.reviewPin?.sourceUntil == null ||
+        x.reviewPin.sourceUntil > Date.now()),
   );
   if (existing) return existing._id;
   const id = await ctx.db.insert("approvals", {
@@ -676,6 +692,7 @@ export async function approveTransaction(
     versionId: ver._id,
     accountId: a.accountId,
     actorId,
+    reviewPin,
     createdAt: Date.now(),
     revokedAt: null,
     revokedBy: null,
@@ -789,6 +806,7 @@ export const approveFirstWrite = workspaceMutation({
       draft.currentVersionId !== ver._id
     )
       throw new ConvexError("APPROVAL_ACCOUNT_MISMATCH");
+    const reviewPin = await currentReview(ctx, ver);
     const account = await firstWriteContent(ctx, ctx.workspace._id, ver);
     if (account.capability.publish)
       throw new ConvexError("X_WRITE_ALREADY_VERIFIED");
@@ -806,7 +824,11 @@ export const approveFirstWrite = workspaceMutation({
         x.actorId === ctx.user._id &&
         x.revokedAt === null &&
         (x.expiresAt ?? 0) > Date.now() &&
-        x.accountConnectionSequence === account.xEvidence!.connectionSequence,
+        x.accountConnectionSequence === account.xEvidence!.connectionSequence &&
+        (sameReview(x.reviewPin, reviewPin) ||
+          (!x.reviewPin && reviewPin.decisionIds.length === 0)) &&
+        (x.reviewPin?.sourceUntil == null ||
+          x.reviewPin.sourceUntil > Date.now()),
     );
     if (existing) return existing._id;
     const id = await ctx.db.insert("approvals", {
@@ -815,6 +837,7 @@ export const approveFirstWrite = workspaceMutation({
       versionId: ver._id,
       accountId: a.accountId,
       actorId: ctx.user._id,
+      reviewPin,
       createdAt: Date.now(),
       revokedAt: null,
       revokedBy: null,
@@ -859,15 +882,36 @@ export const confirmFirstWrite = workspaceMutation({
       approval.actorId !== ctx.user._id ||
       approval.accountId !== a.accountId ||
       approval.versionId !== ver._id ||
-      approval.revokedAt !== null ||
-      draft.currentVersionId !== ver._id
+      approval.draftId !== ver.draftId ||
+      ver.content.accountId !== a.accountId
     )
       throw new ConvexError("APPROVAL_PURPOSE_MISMATCH");
     const existing = await ctx.db
       .query("schedules")
       .withIndex("by_approvalId", (q) => q.eq("approvalId", approval._id))
       .first();
-    if (existing) return existing._id; // Separate confirmation is idempotent; never create a second proof job.
+    if (existing) {
+      if (
+        existing.workspaceId !== ctx.workspace._id ||
+        existing.versionId !== ver._id ||
+        existing.draftId !== ver.draftId ||
+        existing.accountId !== a.accountId ||
+        existing.actorId !== ctx.user._id
+      )
+        throw new ConvexError("APPROVAL_PURPOSE_MISMATCH");
+      await historicalReviewSource(
+        ctx,
+        ver,
+        approval.reviewPin?.sourceUntil,
+        existing.reviewPin?.sourceUntil,
+        approval.expiresAt,
+        existing.intentExpiresAt,
+      );
+      return existing._id; // Readable historical result; no new admission, job or resurrection.
+    }
+    if (approval.revokedAt !== null || draft.currentVersionId !== ver._id)
+      throw new ConvexError("APPROVAL_PURPOSE_MISMATCH");
+    const reviewPin = await approvalReview(ctx, ver, approval);
     for (const state of [
       "scheduled",
       "publishing",
@@ -906,6 +950,7 @@ export const confirmFirstWrite = workspaceMutation({
         versionNumber: ver.number,
         accountId: a.accountId,
         approvalId: approval._id,
+        reviewPin,
         actorId: ctx.user._id,
         accountConnectionSequence: approval.accountConnectionSequence,
         generation: 1,
@@ -996,11 +1041,13 @@ export async function checkApproval(
 ) {
   if (schedule?.abortRequestedAt !== undefined)
     throw new ConvexError("SCHEDULE_ABORT_REQUESTED");
+  if (schedule && !(await ctx.db.get(schedule.actorId)))
+    throw new ConvexError("SCHEDULER_AUTHORITY_CHANGED");
   const ver = requireReference(
     workspaceId,
     await ctx.db.get(versionId),
   ) as Doc<"draftVersions">;
-  await checkContentSource(ctx, ver);
+  const sourceUntil = await checkContentSource(ctx, ver);
   const approval = requireReference(
     workspaceId,
     await ctx.db.get(approvalId),
@@ -1013,6 +1060,8 @@ export async function checkApproval(
     ver.content.accountId !== accountId
   )
     throw new ConvexError("APPROVAL_REQUIRED");
+  if (!(await ctx.db.get(approval.actorId)))
+    throw new ConvexError("APPROVER_AUTHORITY_CHANGED");
   const member = await ctx.db
     .query("memberships")
     .withIndex("by_userId_and_workspaceId", (q) =>
@@ -1056,6 +1105,7 @@ export async function checkApproval(
       throw new ConvexError("APPROVAL_PURPOSE_MISMATCH");
     await validateContent(ctx, workspaceId, ver.content, true);
   }
+  await approvalReview(ctx, ver, approval, schedule, sourceUntil);
   await immutableMedia(ctx, ver);
   return ver;
 }
@@ -1101,6 +1151,7 @@ export async function scheduleTransaction(
   },
   readBudget?: { remaining: number },
 ) {
+  await currentReviewActor(ctx, workspaceId, actorId);
   validateTime(a.at, a.timezone, a.localTime);
   const ver = await checkApproval(
     ctx,
@@ -1108,6 +1159,11 @@ export async function scheduleTransaction(
     a.versionId,
     a.accountId,
     a.approvalId,
+  );
+  const reviewPin = await approvalReview(
+    ctx,
+    ver,
+    (await ctx.db.get(a.approvalId))!,
   );
   if (
     await occupied(ctx, workspaceId, a.accountId, a.at, undefined, readBudget)
@@ -1125,6 +1181,7 @@ export async function scheduleTransaction(
     versionNumber: ver.number,
     accountId: a.accountId,
     approvalId: a.approvalId,
+    reviewPin,
     actorId,
     accountConnectionSequence:
       (await ctx.db.get(a.accountId))?.xEvidence?.connectionSequence ?? 0,
@@ -1172,13 +1229,18 @@ export const reschedule = workspaceMutation({
     validateTime(a.at, a.timezone, a.localTime);
     const versionId = a.versionId ?? s.versionId,
       approvalId = a.approvalId ?? s.approvalId;
+    const unchanged = versionId === s.versionId && approvalId === s.approvalId;
     const ver = await checkApproval(
       ctx,
       ctx.workspace._id,
       versionId,
       s.accountId,
       approvalId,
+      unchanged ? s : undefined,
     );
+    const reviewPin = unchanged
+      ? s.reviewPin
+      : await approvalReview(ctx, ver, (await ctx.db.get(approvalId))!);
     if (ver.draftId !== s.draftId)
       throw new ConvexError("REFERENCE_ACCESS_DENIED");
     if (await occupied(ctx, ctx.workspace._id, s.accountId, a.at, s._id))
@@ -1197,6 +1259,8 @@ export const reschedule = workspaceMutation({
       accountConnectionSequence:
         (await ctx.db.get(s.accountId))?.xEvidence?.connectionSequence ?? 0,
       approvalId,
+      reviewPin,
+      actorId: unchanged ? s.actorId : ctx.user._id,
       generation,
       jobId,
     });
@@ -1204,7 +1268,7 @@ export const reschedule = workspaceMutation({
       ctx,
       ctx.workspace._id,
       s.draftId,
-      a.versionId ? "SCHEDULE_VERSION_REPLACED" : "SCHEDULE_MOVED",
+      unchanged ? "SCHEDULE_MOVED" : "SCHEDULE_VERSION_REPLACED",
       ctx.user._id,
       s._id,
     );
@@ -1387,6 +1451,17 @@ export const resolveComment = workspaceMutation({
       ctx.workspace._id,
       await ctx.db.get(a.commentId),
     ) as Doc<"editorialComments">;
+    const ver = requireReference(
+      ctx.workspace._id,
+      await ctx.db.get(comment.versionId),
+    ) as Doc<"draftVersions">;
+    const draft = requireReference(
+      ctx.workspace._id,
+      await ctx.db.get(comment.draftId),
+    ) as Doc<"drafts">;
+    if (comment.sourceUnavailable || ver.draftId !== draft._id)
+      throw new ConvexError("REVIEW_SOURCE_UNAVAILABLE");
+    await historicalReviewSource(ctx, ver, comment.researchProofUntil);
     if (comment.resolved !== a.expectedResolved)
       throw new ConvexError("COMMENT_CONFLICT");
     await ctx.db.patch(comment._id, { resolved: !comment.resolved });

@@ -97,4 +97,10 @@ crons.interval(
   internal.team.sweep,
   { cursor: null, phase: "invitations" },
 );
+crons.interval(
+  "Exact editorial review proof cleanup",
+  { minutes: 15 },
+  internal.editorial.reviews.sweep,
+  { cursor: null, phase: "decisions" },
+);
 export default crons;

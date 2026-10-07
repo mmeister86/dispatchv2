@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import { reviewPin } from "../editorial/reviewFields";
 import { researchCopyFields } from "../research/contentFields";
 import { xEvidence } from "../integrations/x/fields";
 export const capability = v.object({
@@ -93,6 +94,7 @@ export const draftFields = {
   updatedAt: v.number(),
 };
 export const versionFields = {
+  reviewRevision: v.optional(v.number()),
   ...researchCopyFields,
   ideaVersionId: v.optional(v.id("ideaVersions")),
   workspaceId: v.id("workspaces"),
@@ -117,6 +119,7 @@ export const purpose = v.union(
   v.literal("first_write_verification"),
 );
 export const approvalFields = {
+  reviewPin: v.optional(reviewPin),
   purpose: v.optional(purpose),
   accountConnectionSequence: v.optional(v.number()),
   expiresAt: v.optional(v.number()),
@@ -131,6 +134,7 @@ export const approvalFields = {
   revokedBy: v.union(v.id("users"), v.null()),
 };
 export const scheduleFields = {
+  reviewPin: v.optional(reviewPin),
   abortRequestedAt: v.optional(v.number()),
   abortRequestedBy: v.optional(v.id("users")),
   purpose: v.optional(purpose),

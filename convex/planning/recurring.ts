@@ -88,7 +88,8 @@ export async function scrubPlan(ctx: MutationCtx, plan: Doc<"contentPlans">) {
       sources: [],
       families: [],
       rootEvidenceIds: [],
-      historyVersionIds: [],
+      historyVersionIds:
+        item.status === "accepted" ? item.historyVersionIds : [],
       reason: "",
     });
   const bindings = await ctx.db

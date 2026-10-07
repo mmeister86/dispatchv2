@@ -2412,3 +2412,508 @@ test("experiment actual 32 units reuse one complete 125-vector native frame insi
     ),
   );
 }, 900000);
+
+async function acceptedRecurringReplay(
+  mode: "approved" | "approve_and_schedule",
+  outsideHistory = false,
+) {
+  const f = await fixture(outsideHistory ? 6 : 4);
+  let historyScheduleId: Id<"schedules"> | undefined;
+  let historyVersionId: Id<"draftVersions"> | undefined;
+  if (outsideHistory) {
+    historyVersionId = f.config.candidateVersionIds[5];
+    f.request.action.config = {
+      ...f.config,
+      candidateVersionIds: f.config.candidateVersionIds.slice(0, 5),
+    };
+    const approvalId = await f.signed.mutation(api.editorial.approve, {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      versionId: historyVersionId,
+    });
+    const at = Date.now() + 30 * 60000;
+    historyScheduleId = await f.signed.mutation(api.editorial.schedule, {
+      workspaceId: f.workspaceId,
+      accountId: f.accountId,
+      versionId: historyVersionId,
+      approvalId,
+      at,
+      timezone: "UTC",
+      localTime: new Date(at).toISOString().slice(0, 16),
+    });
+  }
+  const series = await f.create(),
+    planId = (await f.fire(series.seriesId))!,
+    view = await f.signed.query(api.planning.plans.get, {
+      workspaceId: f.workspaceId,
+      planId,
+    }),
+    item = view.items[0].item;
+  const approvalId =
+    mode === "approved"
+      ? await f.signed.mutation(api.editorial.approve, {
+          workspaceId: f.workspaceId,
+          accountId: f.accountId,
+          versionId: item.versionId,
+        })
+      : undefined;
+  const args = {
+    workspaceId: f.workspaceId,
+    planId,
+    mode,
+    selections: [
+      {
+        itemId: item._id,
+        versionId: item.versionId,
+        draftRevision: item.draftRevision,
+        ...(approvalId ? { approvalId } : {}),
+      },
+    ],
+  };
+  const accepted = await f.signed.mutation(api.planning.accept.selected, args);
+  for (const scheduleId of [accepted[0].scheduleId, historyScheduleId])
+    if (scheduleId)
+      await f.signed.mutation(api.editorial.cancel, {
+        workspaceId: f.workspaceId,
+        scheduleId,
+        expectedGeneration: 1,
+      });
+  await f.signed.mutation(api.editorial.revoke, {
+    workspaceId: f.workspaceId,
+    approvalId: accepted[0].approvalId,
+  });
+  await f.signed.mutation(api.planning.strategy.change, {
+    ...f.request,
+    seriesId: series.seriesId,
+    expectedRevision: 1,
+    commandKey: "historical-disable",
+    action: { kind: "disable" },
+  });
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0), 1000);
+  const transport = vi.fn();
+  vi.stubGlobal("fetch", transport);
+  const snapshot = () =>
+    f.t.run(async (ctx) => ({
+      schedules: await ctx.db.query("schedules").collect(),
+      approvals: await ctx.db.query("approvals").collect(),
+      budgets: await ctx.db.query("aiBudgets").collect(),
+      attempts: await ctx.db.query("aiAttempts").collect(),
+      series: await ctx.db.query("planningSeries").collect(),
+      versions: await ctx.db.query("planningSeriesVersions").collect(),
+      plans: await ctx.db.query("contentPlans").collect(),
+      items: await ctx.db.query("contentPlanItems").collect(),
+      bindings: await ctx.db.query("semanticPlanBindings").collect(),
+      jobs: await ctx.db.system.query("_scheduled_functions").collect(),
+    }));
+  return {
+    ...f,
+    series,
+    planId,
+    item,
+    args,
+    accepted,
+    historyVersionId,
+    snapshot,
+    transport,
+  };
+}
+
+test.each(["approved", "approve_and_schedule"] as const)(
+  "TASK50 recurring historical replay %s survives proposal scrub with cancelled parents and a past slot",
+  async (mode) => {
+    const f = await acceptedRecurringReplay(mode);
+    vi.setSystemTime(f.item.at + 60000);
+    const before = await f.snapshot();
+    expect(
+      await f.signed.mutation(api.planning.accept.selected, f.args),
+    ).toEqual(f.accepted);
+    expect(await f.snapshot()).toEqual(before);
+    expect(before.items.find((i) => i._id === f.item._id)).toMatchObject({
+      sourceUnavailable: true,
+      sources: [],
+      reason: "",
+    });
+    expect(before.schedules[0].state).toBe("cancelled");
+    expect(before.approvals[0].revokedAt).not.toBeNull();
+    expect(f.transport).not.toHaveBeenCalled();
+  },
+);
+
+const recurringReplayLosses = [
+  ["draft-root", "REVIEW_SOURCE_UNAVAILABLE"],
+  ["version-root", "REFERENCE_ACCESS_DENIED"],
+  ["draft-source", "REVIEW_SOURCE_UNAVAILABLE"],
+  ["series-root", "SERIES_VERSION_CHANGED"],
+  ["series-version-root", "SERIES_VERSION_CHANGED"],
+  ["style-root", "STYLE_REFERENCE_ACCESS_DENIED"],
+  ["original-membership", "SERIES_AUTHORITY_CHANGED"],
+  ["actor-root", "PROFILE_NOT_INITIALIZED"],
+  ["account-connection", "SERIES_AUTHORITY_CHANGED"],
+  ["caller-role", "ROLE_ACCESS_DENIED"],
+  ["item-proof", "REVIEW_SOURCE_UNAVAILABLE"],
+  ["item-validity", "REVIEW_SOURCE_UNAVAILABLE"],
+  ["plan-series-horizon", "REVIEW_SOURCE_UNAVAILABLE"],
+  ["series-horizon", "SERIES_SOURCE_UNAVAILABLE"],
+  ["style-horizon", "STYLE_SOURCE_UNAVAILABLE"],
+  ["approval-horizon", "REVIEW_SOURCE_UNAVAILABLE"],
+  ["schedule-horizon", "REVIEW_SOURCE_UNAVAILABLE"],
+] as const;
+test.each(
+  (["approved", "approve_and_schedule"] as const).flatMap((mode) =>
+    recurringReplayLosses.map(([kind, error]) => ({ mode, kind, error })),
+  ),
+)(
+  "TASK50 recurring historical replay $mode denies actual $kind after scrub",
+  async ({ mode, kind, error }) => {
+    const f = await acceptedRecurringReplay(mode);
+    expect(
+      await f.signed.mutation(api.planning.accept.selected, f.args),
+    ).toEqual(f.accepted);
+    await f.t.run(async (ctx) => {
+      if (kind === "draft-root") await ctx.db.delete(f.item.draftId);
+      if (kind === "version-root") await ctx.db.delete(f.item.versionId);
+      if (kind === "draft-source")
+        await ctx.db.patch(f.item.versionId, { sourceUnavailable: true });
+      if (kind === "series-root") await ctx.db.delete(f.series.seriesId);
+      if (kind === "series-version-root")
+        await ctx.db.delete(f.series.versionId!);
+      if (kind === "style-root") await ctx.db.delete(f.style.versionId!);
+      if (kind === "actor-root") await ctx.db.delete(f.userId);
+      if (kind === "original-membership" || kind === "caller-role") {
+        const member = (await ctx.db
+          .query("memberships")
+          .withIndex("by_userId_and_workspaceId", (q) =>
+            q.eq("userId", f.userId).eq("workspaceId", f.workspaceId),
+          )
+          .unique())!;
+        if (kind === "caller-role")
+          await ctx.db.patch(member._id, { role: "Viewer" });
+        else {
+          await ctx.db.delete(member._id);
+          await ctx.db.insert("memberships", {
+            userId: f.userId,
+            workspaceId: f.workspaceId,
+            role: "Owner",
+          });
+        }
+      }
+      if (kind === "account-connection")
+        await ctx.db.patch(f.accountId, { connection: "disconnected" });
+      if (kind === "item-proof")
+        await ctx.db.patch(f.item._id, { proofUntil: Date.now() - 1 });
+      if (kind === "item-validity")
+        await ctx.db.patch(f.item._id, { validityUntil: Date.now() - 1 });
+      if (kind === "plan-series-horizon") {
+        const p = (await ctx.db.get(f.planId))!;
+        await ctx.db.patch(p._id, {
+          series: { ...p.series!, sourceUntil: Date.now() - 1 },
+        });
+      }
+      if (kind === "series-horizon")
+        await ctx.db.patch(f.series.versionId!, {
+          sourceUntil: Date.now() - 1,
+        });
+      if (kind === "style-horizon")
+        await ctx.db.patch(f.style.versionId!, { sourceUntil: Date.now() - 1 });
+      if (kind === "approval-horizon") {
+        const a = (await ctx.db.get(f.accepted[0].approvalId))!;
+        await ctx.db.patch(a._id, {
+          reviewPin: { ...a.reviewPin!, sourceUntil: Date.now() - 1 },
+        });
+      }
+      if (kind === "schedule-horizon") {
+        const s = (await ctx.db.get(f.accepted[0].scheduleId))!;
+        await ctx.db.patch(s._id, {
+          reviewPin: { ...s.reviewPin!, sourceUntil: Date.now() - 1 },
+        });
+      }
+    });
+    const before = await f.snapshot();
+    await expect(
+      f.signed.mutation(api.planning.accept.selected, f.args),
+    ).rejects.toThrow(error);
+    expect(await f.snapshot()).toEqual(before);
+    expect(f.transport).not.toHaveBeenCalled();
+  },
+);
+
+test.each(["approved", "approve_and_schedule"] as const)(
+  "TASK50 recurring historical replay %s retains consumed history outside the original candidate frame",
+  async (mode) => {
+    const f = await acceptedRecurringReplay(mode, true),
+      item = (await f.t.run((ctx) => ctx.db.get(f.item._id)))!;
+    expect(f.request.action.config.candidateVersionIds).not.toContain(
+      f.historyVersionId,
+    );
+    expect(f.item.historyVersionIds).toContain(f.historyVersionId);
+    expect(item.historyVersionIds).toEqual(f.item.historyVersionIds);
+    expect(item.contextProofUntil).toBe(f.item.contextProofUntil);
+    const view = await f.signed.query(api.planning.plans.get, {
+      workspaceId: f.workspaceId,
+      planId: f.planId,
+    });
+    expect(
+      view.items.every(
+        (i) =>
+          !i.title &&
+          !i.item.reason &&
+          !i.item.historyVersionIds?.length &&
+          !i.item.sources.length,
+      ),
+    ).toBe(true);
+    const before = await f.snapshot();
+    expect(
+      await f.signed.mutation(api.planning.accept.selected, f.args),
+    ).toEqual(f.accepted);
+    expect(await f.snapshot()).toEqual(before);
+    await f.t.run((ctx) =>
+      ctx.db.patch(item._id, { contextProofUntil: Date.now() - 1 }),
+    );
+    const expired = await f.snapshot();
+    await expect(
+      f.signed.mutation(api.planning.accept.selected, f.args),
+    ).rejects.toThrow("REVIEW_SOURCE_UNAVAILABLE");
+    expect(await f.snapshot()).toEqual(expired);
+    await f.t.run(async (ctx) => {
+      await ctx.db.patch(item._id, {
+        contextProofUntil: item.contextProofUntil,
+      });
+      await ctx.db.delete(f.historyVersionId!);
+    });
+    const deleted = await f.snapshot();
+    await expect(
+      f.signed.mutation(api.planning.accept.selected, f.args),
+    ).rejects.toThrow("REFERENCE_ACCESS_DENIED");
+    expect(await f.snapshot()).toEqual(deleted);
+    expect(f.transport).not.toHaveBeenCalled();
+  },
+);
+
+test("TASK50 recurring historical replay preserves actually consumed second-occurrence IDs while proposed context scrubs", async () => {
+  const f = await fixture(6),
+    series = await f.create(),
+    firstId = (await f.fire(series.seriesId))!,
+    first = await f.signed.query(api.planning.plans.get, {
+      workspaceId: f.workspaceId,
+      planId: firstId,
+    }),
+    initial = first.items[0].item;
+  const one = await f.signed.mutation(api.planning.accept.selected, {
+    workspaceId: f.workspaceId,
+    planId: firstId,
+    mode: "approve_and_schedule",
+    selections: [
+      {
+        itemId: initial._id,
+        versionId: initial.versionId,
+        draftRevision: initial.draftRevision,
+      },
+    ],
+  });
+  await f.t.run(async (ctx) => {
+    const sessions = await ctx.runQuery(
+      components.betterAuth.adapter.findMany,
+      { model: "session", paginationOpts: { numItems: 100, cursor: null } },
+    );
+    for (const session of sessions.page)
+      await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+        input: {
+          model: "session",
+          where: [{ field: "_id", value: session._id }],
+          update: { expiresAt: Date.now() + 30 * 86400000 },
+        },
+      });
+  });
+  const secondId = (await f.fire(series.seriesId))!,
+    second = await f.signed.query(api.planning.plans.get, {
+      workspaceId: f.workspaceId,
+      planId: secondId,
+    }),
+    item = second.items[0].item;
+  expect(item.historyVersionIds).toContain(initial.versionId);
+  const args = {
+      workspaceId: f.workspaceId,
+      planId: secondId,
+      mode: "approve_and_schedule" as const,
+      selections: [
+        {
+          itemId: item._id,
+          versionId: item.versionId,
+          draftRevision: item.draftRevision,
+        },
+      ],
+    },
+    accepted = await f.signed.mutation(api.planning.accept.selected, args);
+  for (const result of [...one, ...accepted])
+    await f.signed.mutation(api.editorial.cancel, {
+      workspaceId: f.workspaceId,
+      scheduleId: result.scheduleId,
+      expectedGeneration: 1,
+    });
+  await f.signed.mutation(api.planning.strategy.change, {
+    ...f.request,
+    seriesId: series.seriesId,
+    expectedRevision: 1,
+    commandKey: "second-disable",
+    action: { kind: "disable" },
+  });
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0), 1000);
+  const rows = await f.t.run((ctx) =>
+    ctx.db
+      .query("contentPlanItems")
+      .withIndex("by_planId", (q) => q.eq("planId", secondId))
+      .take(8),
+  );
+  expect(rows.find((i) => i._id === item._id)?.historyVersionIds).toEqual(
+    item.historyVersionIds,
+  );
+  expect(
+    rows
+      .filter((i) => i.status === "proposed")
+      .every(
+        (i) =>
+          i.historyVersionIds?.length === 0 &&
+          i.sources.length === 0 &&
+          !i.reason,
+      ),
+  ).toBe(true);
+  expect(await f.signed.mutation(api.planning.accept.selected, args)).toEqual(
+    accepted,
+  );
+});
+
+test("TASK50 recurring historical replay propagates native capacity errors without source or financial writes", async () => {
+  const f = await acceptedRecurringReplay("approve_and_schedule"),
+    before = await f.snapshot();
+  const measured = await f.signed.run(async (ctx) => {
+    await ctx.runMutation(api.planning.accept.selected, f.args);
+    return ctx.meta.getTransactionMetrics();
+  });
+  expect(measured.databaseQueries.used).toBeGreaterThan(20);
+  await expect(
+    f.signed.run((ctx) =>
+      ctx.runMutation(api.planning.accept.selected, f.args, {
+        transactionLimits: {
+          databaseQueries: measured.databaseQueries.used - 1,
+          bytesRead: 16 * 1024 * 1024,
+          documentsRead: 32000,
+        },
+      }),
+    ),
+  ).rejects.toThrow(/limit/i);
+  expect(await f.snapshot()).toEqual(before);
+  expect(f.transport).not.toHaveBeenCalled();
+});
+
+test.each(
+  (["approved", "approve_and_schedule"] as const).flatMap((mode) =>
+    (["disable", "style"] as const).map((path) => ({ mode, path })),
+  ),
+)(
+  "TASK50 historical replay cannot admit a proposed sibling from its cached proof before $path cleanup ($mode)",
+  async ({ mode, path }) => {
+    const f = await fixture(),
+      series = await f.create(),
+      planId = (await f.fire(series.seriesId))!,
+      view = await f.signed.query(api.planning.plans.get, {
+        workspaceId: f.workspaceId,
+        planId,
+      });
+    const selections: {
+      itemId: Id<"contentPlanItems">;
+      versionId: Id<"draftVersions">;
+      draftRevision: number;
+      approvalId?: Id<"approvals">;
+    }[] = [];
+    for (const { item } of view.items.slice(0, 2)) {
+      const approvalId =
+        mode === "approved"
+          ? await f.signed.mutation(api.editorial.approve, {
+              workspaceId: f.workspaceId,
+              accountId: f.accountId,
+              versionId: item.versionId,
+            })
+          : undefined;
+      selections.push({
+        itemId: item._id,
+        versionId: item.versionId,
+        draftRevision: item.draftRevision,
+        ...(approvalId ? { approvalId } : {}),
+      });
+    }
+    const args = { workspaceId: f.workspaceId, planId, mode, selections };
+    const accepted = await f.signed.mutation(api.planning.accept.selected, {
+      ...args,
+      selections: selections.slice(0, 1),
+    });
+    if (path === "disable")
+      await f.signed.mutation(api.planning.strategy.change, {
+        ...f.request,
+        seriesId: series.seriesId,
+        expectedRevision: 1,
+        commandKey: "mixed-selection-disable",
+        action: { kind: "disable" },
+      });
+    else {
+      const saved = await f.signed.mutation(api.ai.styleProfiles.change, {
+        workspaceId: f.workspaceId,
+        accountId: f.accountId,
+        expectedRevision: 2,
+        commandKey: "mixed-selection-style-save",
+        action: {
+          kind: "save",
+          payload: {
+            author: "Alternative declared author",
+            experiences: [],
+            tone: "Precise",
+            positioning: "Alternative",
+            pillars: [{ name: "Product", weight: 100 }],
+            examples: [],
+            forbidden: [],
+          },
+          freshDeclaration: true,
+          baseVersionId: null,
+          reason: "Explicit alternative declaration",
+        },
+      });
+      await f.signed.mutation(api.ai.styleProfiles.change, {
+        workspaceId: f.workspaceId,
+        accountId: f.accountId,
+        expectedRevision: saved.revision,
+        commandKey: "mixed-selection-style-select",
+        action: {
+          kind: "select",
+          versionId: saved.versionId!,
+          reason: "Explicit alternative selection",
+        },
+      });
+    }
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(selections[1].itemId)))!
+        .sourceUnavailable,
+    ).not.toBe(true);
+    const snapshot = () =>
+      f.t.run(async (ctx) => ({
+        schedules: await ctx.db.query("schedules").collect(),
+        approvals: await ctx.db.query("approvals").collect(),
+        items: await ctx.db.query("contentPlanItems").collect(),
+        series: await ctx.db.get(series.seriesId),
+        budgets: await ctx.db.query("aiBudgets").collect(),
+        attempts: await ctx.db.query("aiAttempts").collect(),
+        jobs: await ctx.db.system.query("_scheduled_functions").collect(),
+      }));
+    const before = await snapshot();
+    await expect(
+      f.signed.mutation(api.planning.accept.selected, args),
+    ).rejects.toThrow(
+      path === "disable" ? "SERIES_VERSION_CHANGED" : "STYLE_SELECTION_CHANGED",
+    );
+    expect(await snapshot()).toEqual(before);
+    expect(
+      await f.signed.mutation(api.planning.accept.selected, {
+        ...args,
+        selections: selections.slice(0, 1),
+      }),
+    ).toEqual(accepted);
+  },
+);

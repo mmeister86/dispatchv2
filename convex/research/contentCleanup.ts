@@ -6,6 +6,9 @@ import type { Id } from "../_generated/dataModel";
 async function scrubDraft(ctx: MutationCtx, id: Id<"draftVersions">) {
   const ver = await ctx.db.get(id);
   if (!ver || (!ver.researchCleanupPending && !ver.sourceUnavailable)) return;
+  await ctx.scheduler.runAfter(0, internal.editorial.reviews.purgeVersion, {
+    versionId: id,
+  });
   await ctx.scheduler.runAfter(0, internal.content.similarity.purge, {
     draftVersionId: id,
   });
@@ -73,11 +76,11 @@ export const version = internalMutation({
   returns: v.null(),
   handler: async (ctx, a) => {
     const ver = await ctx.db.get(a.versionId);
-    if (ver && !a.family)
+    if (!a.family)
       await ctx.scheduler.runAfter(
         0,
         internal.research.contentCleanup.semanticDrafts,
-        { versionId: ver._id, cursor: null },
+        { versionId: a.versionId, cursor: null },
       );
     if (
       !ver ||
@@ -360,10 +363,18 @@ export const semanticDrafts = internalMutation({
       .query("draftVersions")
       .withIndex("by_ideaVersionId", (q) => q.eq("ideaVersionId", a.versionId))
       .paginate({ cursor: a.cursor, numItems: 25 });
-    for (const row of page.page)
+    const root = await ctx.db.get(a.versionId);
+    for (const row of page.page) {
+      if (!root || root.sourceUnavailable)
+        await ctx.scheduler.runAfter(
+          0,
+          internal.editorial.reviews.purgeVersion,
+          { versionId: row._id },
+        );
       await ctx.scheduler.runAfter(0, internal.content.similarity.purge, {
         draftVersionId: row._id,
       });
+    }
     if (!page.isDone)
       await ctx.scheduler.runAfter(
         0,

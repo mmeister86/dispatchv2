@@ -14,7 +14,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllEnvs();
 });
-async function fixture(proof = false, claim = true) {
+async function fixture(proof = false, claim = true, review = false) {
   vi.useFakeTimers();
   vi.setSystemTime(new Date("2026-10-06T12:00Z"));
   vi.stubEnv("AUTH_EMAIL_FROM", "");
@@ -125,6 +125,27 @@ async function fixture(proof = false, claim = true) {
     workspaceId,
     draftId,
   }))!.versions[0]._id;
+  let reviewDecisionId:
+    | import("../convex/_generated/dataModel").Id<"editorialReviewDecisions">
+    | null = null;
+  if (review) {
+    const p = await signed.mutation(api.editorial.reviews.configure, {
+      workspaceId,
+      accountId: null,
+      expectedRevision: 0,
+      commandKey: "initial-review-policy",
+      policy: { editorial: true, brand: false },
+    });
+    const d = await signed.mutation(api.editorial.reviews.decide, {
+      workspaceId,
+      versionId,
+      stage: "editorial",
+      policyId: p.policyId,
+      expectedRevision: 0,
+      commandKey: "initial-review",
+    });
+    reviewDecisionId = d.decisionId;
+  }
   const approve = () =>
     signed.mutation(
       proof ? api.editorial.approveFirstWrite : api.editorial.approve,
@@ -157,6 +178,7 @@ async function fixture(proof = false, claim = true) {
     actorId,
     accountId,
     credentialId,
+    reviewDecisionId,
     content,
     draftId,
     versionId,
@@ -2457,4 +2479,352 @@ test("published terminal status cannot be reopened by stored receipt reconciliat
       expectedGeneration: 1,
     }),
   ).rejects.toThrow();
+});
+
+test("TASK50 first-write historical confirmation replay keeps original intent horizon", async () => {
+  const f = await fixture(true, false, true);
+  const args = {
+    workspaceId: f.workspaceId,
+    versionId: f.versionId,
+    accountId: f.accountId,
+    approvalId: f.approvalId,
+  };
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+  });
+  await f.signed.mutation(api.editorial.revoke, {
+    workspaceId: f.workspaceId,
+    approvalId: f.approvalId,
+  });
+  await f.signed.mutation(api.editorial.save, {
+    workspaceId: f.workspaceId,
+    draftId: f.draftId,
+    expectedRevision: 1,
+    content: { ...f.content, title: "New current version" },
+    reason: "Edit after cancellation",
+  });
+  expect(await f.signed.mutation(api.editorial.confirmFirstWrite, args)).toBe(
+    f.scheduleId,
+  );
+  const stored = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+  vi.setSystemTime(stored.intentExpiresAt! + 1);
+  await expect(
+    f.signed.mutation(api.editorial.confirmFirstWrite, args),
+  ).rejects.toThrow("REVIEW_SOURCE_UNAVAILABLE");
+  expect(await f.t.run((ctx) => ctx.db.get(f.scheduleId))).toEqual(stored);
+});
+test("TASK50 first-write approve and fresh confirmation require current policy while old stored schedule stays P1", async () => {
+  const f = await fixture(true, false);
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId: f.scheduleId,
+    expectedGeneration: 1,
+  });
+  const draftId = await f.signed.mutation(api.editorial.create, {
+    workspaceId: f.workspaceId,
+    content: { ...f.content, title: "Separate first write" },
+    source: "Manual",
+  });
+  const versionId = (await f.t.run((ctx) => ctx.db.get(draftId)))!
+    .currentVersionId!;
+  const args = {
+    workspaceId: f.workspaceId,
+    versionId,
+    accountId: f.accountId,
+  };
+  const p = await f.signed.mutation(api.editorial.reviews.configure, {
+    workspaceId: f.workspaceId,
+    accountId: null,
+    expectedRevision: 0,
+    commandKey: "p1",
+    policy: { editorial: true, brand: false },
+  });
+  await expect(
+    f.signed.mutation(api.editorial.approveFirstWrite, args),
+  ).rejects.toThrow("REVIEW_REQUIRED");
+  await f.signed.mutation(api.editorial.reviews.decide, {
+    workspaceId: f.workspaceId,
+    versionId,
+    stage: "editorial",
+    policyId: p.policyId,
+    expectedRevision: 0,
+    commandKey: "stage1",
+  });
+  const approvalId = await f.signed.mutation(
+    api.editorial.approveFirstWrite,
+    args,
+  );
+  await f.signed.mutation(api.editorial.reviews.configure, {
+    workspaceId: f.workspaceId,
+    accountId: null,
+    expectedRevision: 1,
+    commandKey: "p2",
+    policy: { editorial: true, brand: true },
+  });
+  await expect(
+    f.signed.mutation(api.editorial.confirmFirstWrite, { ...args, approvalId }),
+  ).rejects.toThrow("REVIEW_POLICY_CHANGED");
+  expect(
+    await f.t.run((ctx) => ctx.db.query("schedules").collect()),
+  ).toHaveLength(1);
+});
+test.each([false, true])(
+  "TASK50 explicit continuation mode firstWrite=%s captures current policy and preserves confirmed prefix",
+  async (proof) => {
+    const f = await fixture(proof, true, true);
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(response("101"))
+      .mockResolvedValueOnce(new Response("{}", { status: 429 }));
+    await f.t.action(internal.publishing.workflows.step, f.job);
+    await f.t.action(internal.publishing.workflows.step, f.job);
+    if (proof)
+      await f.t.run(async (ctx) => {
+        const account = (await ctx.db.get(f.accountId))!;
+        await ctx.db.patch(account._id, {
+          capability: { ...account.capability, publish: false },
+          xEvidence: { ...account.xEvidence!, liveWrite: "unverified" },
+        });
+      });
+    const before = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+    const p = await f.signed.mutation(api.editorial.reviews.configure, {
+      workspaceId: f.workspaceId,
+      accountId: null,
+      expectedRevision: 1,
+      commandKey: "continue-p2",
+      policy: { editorial: true, brand: true },
+    });
+    const args = {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      expectedGeneration: 1,
+    };
+    await expect(
+      f.signed.mutation(api.publishing.reconcile.continueThread, args),
+    ).rejects.toThrow("REVIEW_REQUIRED");
+    expect(await f.t.run((ctx) => ctx.db.get(f.scheduleId))).toEqual(before);
+    for (const [i, stage] of (["editorial", "brand"] as const).entries()) {
+      const snapshot = await f.signed.query(api.editorial.reviews.get, {
+        workspaceId: f.workspaceId,
+        versionId: f.versionId,
+      });
+      await f.signed.mutation(api.editorial.reviews.decide, {
+        workspaceId: f.workspaceId,
+        versionId: f.versionId,
+        stage,
+        policyId: p.policyId,
+        expectedRevision: snapshot.revision,
+        commandKey: `continue-stage-${i}`,
+      });
+    }
+    await f.signed.mutation(api.publishing.reconcile.continueThread, args);
+    const next = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+    expect(next.reviewPin?.policyId).toBe(p.policyId);
+    expect(next.reviewPin?.decisionIds).toHaveLength(2);
+    expect(next.externalPosts).toEqual(before.externalPosts);
+    expect(next.publishedCount).toBe(1);
+    expect(next.generation).toBe(2);
+    expect(next.purpose ?? "publishing").toBe(
+      proof ? "first_write_verification" : "publishing",
+    );
+    expect(fetch).toHaveBeenCalledTimes(2);
+  },
+);
+test("TASK50 future text beforeSend blocks withdrawn review but genuine late started receipt settles once", async () => {
+  const f = await fixture(false, true, true);
+  const attempt = (await f.t.mutation(
+    internal.publishing.attempts.claim,
+    f.job,
+  ))!;
+  expect(
+    await f.t.mutation(internal.publishing.attempts.beforeSend, {
+      attemptId: attempt._id,
+      claimSequence: attempt.claimSequence,
+      credentialGeneration: 1,
+      mediaIds: [],
+    }),
+  ).toBe(true);
+  const state = await f.signed.query(api.editorial.reviews.get, {
+    workspaceId: f.workspaceId,
+    versionId: f.versionId,
+  });
+  await f.signed.mutation(api.editorial.reviews.withdraw, {
+    workspaceId: f.workspaceId,
+    decisionId: f.reviewDecisionId!,
+    expectedRevision: state.revision,
+    commandKey: "withdraw-running",
+  });
+  await f.t.mutation(internal.publishing.attempts.receipt, {
+    attemptId: attempt._id,
+    claimSequence: attempt.claimSequence,
+    outcome: "confirmed",
+    externalId: "101",
+    durationMs: 1,
+  });
+  expect((await f.t.run((ctx) => ctx.db.get(attempt._id)))!.stage).toBe(
+    "confirmed",
+  );
+  expect(
+    await f.t.mutation(internal.publishing.attempts.claim, f.job),
+  ).toBeNull();
+  expect((await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.state).toBe(
+    "partially_published",
+  );
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!.publishedCount,
+  ).toBe(1);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("xPostAttempts").collect()),
+  ).toHaveLength(1);
+});
+test.each([
+  "initialize",
+  "append",
+  "finalize",
+  "processing",
+  "metadata",
+] as const)(
+  "TASK50 each media %s beforeRequest rechecks frozen review before physical HTTP",
+  async (phase) => {
+    const f = await fixture(false, true, true),
+      m = await attachMedia(f);
+    await f.t.run((ctx) => ctx.db.patch(m.checkpointId, { phase }));
+    const claim = (await f.t.mutation(internal.publishing.media.claim, {
+      ...f.job,
+      mediaPosition: 0,
+    }))!;
+    expect(claim).not.toBeNull();
+    const state = await f.signed.query(api.editorial.reviews.get, {
+      workspaceId: f.workspaceId,
+      versionId: f.versionId,
+    });
+    await f.signed.mutation(api.editorial.reviews.withdraw, {
+      workspaceId: f.workspaceId,
+      decisionId: f.reviewDecisionId!,
+      expectedRevision: state.revision,
+      commandKey: `withdraw-${phase}`,
+    });
+    await expect(
+      f.t.mutation(internal.publishing.media.beforeRequest, {
+        checkpointId: claim._id,
+        claimSequence: claim.claimSequence,
+        credentialGeneration: 1,
+        bytesRead: 70,
+        durationMs: 1,
+      }),
+    ).rejects.toThrow("REVIEW_DECISION_WITHDRAWN");
+    const fetch = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValue(new Error("Unexpected physical HTTP"));
+    await expect(
+      f.t.action(internal.integrations.x.publish.prepare, {
+        ...f.job,
+        mediaPosition: 0,
+      }),
+    ).rejects.toThrow("REVIEW_DECISION_WITHDRAWN");
+    expect(fetch).toHaveBeenCalledTimes(0);
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(m.checkpointId)))!.providerRequests,
+    ).toBe(claim.providerRequests);
+  },
+);
+
+test("TASK50 actual text beforeSend race rechecks current reviewer without issuing physical HTTP", async () => {
+  const f = await fixture(false, true, true);
+  const attempt = (await f.t.mutation(
+    internal.publishing.attempts.claim,
+    f.job,
+  ))!;
+  const state = await f.signed.query(api.editorial.reviews.get, {
+    workspaceId: f.workspaceId,
+    versionId: f.versionId,
+  });
+  await f.signed.mutation(api.editorial.reviews.withdraw, {
+    workspaceId: f.workspaceId,
+    decisionId: f.reviewDecisionId!,
+    expectedRevision: state.revision,
+    commandKey: "withdraw-beforeSend",
+  });
+  await expect(
+    f.t.mutation(internal.publishing.attempts.beforeSend, {
+      attemptId: attempt._id,
+      claimSequence: attempt.claimSequence,
+      credentialGeneration: 1,
+      mediaIds: [],
+    }),
+  ).rejects.toThrow("REVIEW_DECISION_WITHDRAWN");
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(attempt._id)))!.requestStartedAt,
+  ).toBeUndefined();
+  const fetch = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(new Error("Unexpected physical text HTTP"));
+  await f.t.action(internal.publishing.workflows.step, f.job);
+  expect(fetch).toHaveBeenCalledTimes(0);
+});
+test("TASK50 late started media outcome settles exactly once without reopening after review withdrawal", async () => {
+  const f = await fixture(false, true, true),
+    m = await attachMedia(f);
+  await f.t.run((ctx) => ctx.db.patch(m.checkpointId, { phase: "initialize" }));
+  const claim = (await f.t.mutation(internal.publishing.media.claim, {
+    ...f.job,
+    mediaPosition: 0,
+  }))!;
+  expect(
+    await f.t.mutation(internal.publishing.media.beforeRequest, {
+      checkpointId: claim._id,
+      claimSequence: claim.claimSequence,
+      credentialGeneration: 1,
+      bytesRead: 70,
+      durationMs: 1,
+    }),
+  ).toBe(true);
+  const state = await f.signed.query(api.editorial.reviews.get, {
+    workspaceId: f.workspaceId,
+    versionId: f.versionId,
+  });
+  await f.signed.mutation(api.editorial.reviews.withdraw, {
+    workspaceId: f.workspaceId,
+    decisionId: f.reviewDecisionId!,
+    expectedRevision: state.revision,
+    commandKey: "withdraw-media-started",
+  });
+  const before = await f.t.run(async (ctx) => ({
+    schedule: await ctx.db.get(f.scheduleId),
+    approval: await ctx.db.get(f.approvalId),
+    finance: await ctx.db.query("aiAttempts").collect(),
+  }));
+  const args = {
+    checkpointId: claim._id,
+    claimSequence: claim.claimSequence,
+    phase: "append" as const,
+    mediaId: "456",
+    mediaKey: "3_456",
+    expiresAt: Date.now() + 3600000,
+    waitMs: 0,
+    bytesRead: 0,
+    durationMs: 1,
+    incomplete: false,
+  };
+  await f.t.mutation(internal.publishing.media.receipt, args);
+  const stored = (await f.t.run((ctx) => ctx.db.get(claim._id)))!;
+  expect(stored).toMatchObject({
+    phase: "blocked",
+    mediaId: "456",
+    mediaKey: "3_456",
+    providerRequests: claim.providerRequests + 1,
+    leaseUntil: 0,
+  });
+  expect(stored.operation).toBeUndefined();
+  await f.t.mutation(internal.publishing.media.receipt, args);
+  expect(await f.t.run((ctx) => ctx.db.get(claim._id))).toEqual(stored);
+  expect(
+    await f.t.run(async (ctx) => ({
+      schedule: await ctx.db.get(f.scheduleId),
+      approval: await ctx.db.get(f.approvalId),
+      finance: await ctx.db.query("aiAttempts").collect(),
+    })),
+  ).toEqual(before);
 });

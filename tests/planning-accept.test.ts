@@ -9,6 +9,41 @@ afterEach(() => {
   vi.unstubAllEnvs();
 });
 
+test("accepted planning replay proves exact historical source without reactivating cancelled parents", async () => {
+  const f = await workPlan();
+  const args = {
+    workspaceId: f.workspaceId,
+    planId: f.planId,
+    selections: choose(f.items),
+    mode: "approve_and_schedule" as const,
+  };
+  const accepted = await f.signed.mutation(api.planning.accept.selected, args);
+  await f.signed.mutation(api.editorial.cancel, {
+    workspaceId: f.workspaceId,
+    scheduleId: accepted[0].scheduleId,
+    expectedGeneration: 1,
+  });
+  await f.signed.mutation(api.editorial.revoke, {
+    workspaceId: f.workspaceId,
+    approvalId: accepted[0].approvalId,
+  });
+  expect(await f.signed.mutation(api.planning.accept.selected, args)).toEqual(
+    accepted,
+  );
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.items[0].versionId, { sourceUnavailable: true }),
+  );
+  await expect(
+    f.signed.mutation(api.planning.accept.selected, args),
+  ).rejects.toThrow("REVIEW_SOURCE_UNAVAILABLE");
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(accepted[0].scheduleId)))!.state,
+  ).toBe("cancelled");
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(accepted[0].approvalId)))!.revokedAt,
+  ).not.toBeNull();
+});
+
 test("a new authorized human records their own approval when the former approver loses authority", async () => {
   const f = await mediaFixture();
   const accountId = await f.t.run((ctx) =>
@@ -619,9 +654,9 @@ test("renewed source proof preserves original horizon while shortened current pr
     original,
   );
   vi.setSystemTime(original + 1);
-  expect(await f.signed.mutation(api.planning.accept.selected, args)).toEqual(
-    result,
-  );
+  await expect(
+    f.signed.mutation(api.planning.accept.selected, args),
+  ).rejects.toThrow("REVIEW_SOURCE_UNAVAILABLE");
   expect(
     await f.t.run((ctx) => ctx.db.query("schedules").collect()),
   ).toHaveLength(1);
@@ -769,3 +804,214 @@ test("concurrent exact acceptance returns one schedule and rejects wrong scope o
     await f.t.run((ctx) => ctx.db.query("schedules").collect()),
   ).toHaveLength(1);
 });
+test.each(["approved", "approve_and_schedule"] as const)(
+  "TASK50 genuine two-of-three planning mode %s uses current stages and immutable accepted replay",
+  async (mode) => {
+    const f = await workPlan(true);
+    const scope = { workspaceId: f.workspaceId },
+      p = await f.signed.mutation(api.editorial.reviews.configure, {
+        ...scope,
+        accountId: null,
+        expectedRevision: 0,
+        commandKey: "planning-policy",
+        policy: { editorial: true, brand: true },
+      });
+    const decisions = async (
+      versionId: (typeof f.items)[number]["versionId"],
+    ) => {
+      for (const stage of ["editorial", "brand"] as const) {
+        const state = await f.signed.query(api.editorial.reviews.get, {
+          ...scope,
+          versionId,
+        });
+        await f.signed.mutation(api.editorial.reviews.decide, {
+          ...scope,
+          versionId,
+          stage,
+          policyId: p.policyId,
+          expectedRevision: state.revision,
+          commandKey: crypto.randomUUID(),
+        });
+      }
+    };
+    await decisions(f.items[0].versionId);
+    const old =
+      mode === "approved"
+        ? [
+            await f.signed.mutation(api.editorial.approve, {
+              ...scope,
+              accountId: f.accountId,
+              versionId: f.items[0].versionId,
+            }),
+          ]
+        : undefined;
+    if (mode === "approve_and_schedule") {
+      await expect(
+        f.signed.mutation(api.planning.accept.selected, {
+          ...scope,
+          planId: f.planId,
+          selections: choose(f.items.slice(0, 2)),
+          mode,
+        }),
+      ).rejects.toThrow("REVIEW_REQUIRED");
+      expect(
+        await f.t.run((ctx) => ctx.db.query("approvals").collect()),
+      ).toHaveLength(0);
+      expect(
+        await f.t.run((ctx) => ctx.db.query("schedules").collect()),
+      ).toHaveLength(0);
+    }
+    await decisions(f.items[1].versionId);
+    const approvals =
+      mode === "approved"
+        ? [
+            ...old!,
+            await f.signed.mutation(api.editorial.approve, {
+              ...scope,
+              accountId: f.accountId,
+              versionId: f.items[1].versionId,
+            }),
+          ]
+        : undefined;
+    const args = {
+      ...scope,
+      planId: f.planId,
+      selections: choose(f.items.slice(0, 2), approvals),
+      mode,
+    };
+    const accepted = await f.signed.mutation(
+      api.planning.accept.selected,
+      args,
+    );
+    expect(accepted).toHaveLength(2);
+    expect((await f.t.run((ctx) => ctx.db.get(f.items[2]._id)))!.status).toBe(
+      "proposed",
+    );
+    await f.signed.mutation(api.editorial.reviews.configure, {
+      ...scope,
+      accountId: null,
+      expectedRevision: 1,
+      commandKey: "planning-policy-P2",
+      policy: { editorial: true, brand: false },
+    });
+    await f.signed.mutation(api.editorial.cancel, {
+      ...scope,
+      scheduleId: accepted[0].scheduleId,
+      expectedGeneration: 1,
+    });
+    await f.signed.mutation(api.editorial.revoke, {
+      ...scope,
+      approvalId: accepted[0].approvalId,
+    });
+    expect(await f.signed.mutation(api.planning.accept.selected, args)).toEqual(
+      accepted,
+    );
+    expect(
+      (await f.t.run((ctx) => ctx.db.get(accepted[0].scheduleId)))!.state,
+    ).toBe("cancelled");
+  },
+);
+test("TASK50 planning usable approval projection follows current policy and reports bounded approval coverage", async () => {
+  const f = await workPlan(),
+    scope = { workspaceId: f.workspaceId },
+    item = f.items[0];
+  const approvalId = await f.signed.mutation(api.editorial.approve, {
+    ...scope,
+    accountId: f.accountId,
+    versionId: item.versionId,
+  });
+  const read = () =>
+    f.signed.query(api.planning.plans.get, { ...scope, planId: f.planId });
+  expect((await read())!.items[0].approvalId).toBe(approvalId);
+  await f.signed.mutation(api.editorial.reviews.configure, {
+    ...scope,
+    accountId: null,
+    expectedRevision: 0,
+    commandKey: "badge-P2",
+    policy: { editorial: true, brand: false },
+  });
+  expect((await read())!.items[0].approvalId).toBeNull();
+  const state = await f.signed.query(api.editorial.reviews.get, {
+    ...scope,
+    versionId: item.versionId,
+  });
+  await f.signed.mutation(api.editorial.reviews.decide, {
+    ...scope,
+    versionId: item.versionId,
+    stage: "editorial",
+    policyId: state.policyId,
+    expectedRevision: state.revision,
+    commandKey: "badge-stage",
+  });
+  const current = await f.signed.mutation(api.editorial.approve, {
+    ...scope,
+    accountId: f.accountId,
+    versionId: item.versionId,
+  });
+  expect((await read())!.items[0].approvalId).toBe(current);
+  await f.t.run(async (ctx) => {
+    const row = (await ctx.db.get(current))!,
+      { _id, _creationTime, ...data } = row;
+    for (let i = 0; i < 100; i++)
+      await ctx.db.insert("approvals", { ...data, revokedAt: Date.now() });
+  });
+  expect((await read())!.items[0].approvalsLimited).toBe(true);
+});
+
+test.each([
+  "empty-with-horizon",
+  "unknown-ids",
+  "unknown-horizon",
+  "null-consumed-horizon",
+  "overflow",
+] as const)(
+  "TASK50 accepted planning replay denies erased or unknown original context (%s)",
+  async (kind) => {
+    const f = await workPlan(),
+      args = {
+        workspaceId: f.workspaceId,
+        planId: f.planId,
+        selections: choose(f.items),
+        mode: "approve_and_schedule" as const,
+      };
+    await f.signed.mutation(api.planning.accept.selected, args);
+    await f.t.run((ctx) =>
+      ctx.db.patch(
+        f.items[0]._id,
+        kind === "empty-with-horizon"
+          ? { historyVersionIds: [], contextProofUntil: Date.now() + 60000 }
+          : kind === "unknown-ids"
+            ? { historyVersionIds: undefined }
+            : kind === "unknown-horizon"
+              ? {
+                  historyVersionIds: [f.items[0].versionId],
+                  contextProofUntil: undefined,
+                }
+              : kind === "null-consumed-horizon"
+                ? {
+                    historyVersionIds: [f.items[0].versionId],
+                    contextProofUntil: null,
+                  }
+                : {
+                    historyVersionIds: Array.from(
+                      { length: 11 },
+                      () => f.items[0].versionId,
+                    ),
+                    contextProofUntil: Date.now() + 60000,
+                  },
+      ),
+    );
+    const snapshot = () =>
+        f.t.run(async (ctx) => ({
+          items: await ctx.db.query("contentPlanItems").collect(),
+          approvals: await ctx.db.query("approvals").collect(),
+          schedules: await ctx.db.query("schedules").collect(),
+          jobs: await ctx.db.system.query("_scheduled_functions").collect(),
+        })),
+      before = await snapshot();
+    await expect(
+      f.signed.mutation(api.planning.accept.selected, args),
+    ).rejects.toThrow("PLAN_CONTEXT_CHANGED");
+    expect(await snapshot()).toEqual(before);
+  },
+);

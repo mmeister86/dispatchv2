@@ -1,3 +1,4 @@
+import { currentReview, currentReviewActor } from "../editorial/reviews";
 import { enqueue as enqueueMetrics } from "../performance/snapshots";
 import twitterText from "twitter-text";
 import { ConvexError, v } from "convex/values";
@@ -753,6 +754,8 @@ export const continueThread = workspaceMutation({
     if (purpose === "first_write_verification")
       await firstWriteContent(ctx, s.workspaceId, ver);
     else await validateContent(ctx, s.workspaceId, ver.content, true);
+    await currentReviewActor(ctx, s.workspaceId, user._id);
+    const reviewPin = await currentReview(ctx, ver);
     const now = Date.now(),
       sequence = account.xEvidence!.connectionSequence!;
     // This concrete human command reauthorizes the same immutable version; it never changes identity or unknown outcomes.
@@ -762,6 +765,7 @@ export const continueThread = workspaceMutation({
       versionId: s.versionId,
       accountId: s.accountId,
       actorId: user._id,
+      reviewPin,
       createdAt: now,
       revokedAt: null,
       revokedBy: null,
@@ -775,6 +779,7 @@ export const continueThread = workspaceMutation({
       purpose,
       generation: s.generation + 1,
       approvalId,
+      reviewPin,
       actorId: user._id,
       accountConnectionSequence: sequence,
       confirmedAt: now,
@@ -795,6 +800,7 @@ export const continueThread = workspaceMutation({
       purpose,
       generation: next.generation,
       approvalId,
+      reviewPin,
       actorId: user._id,
       accountConnectionSequence: sequence,
       confirmedAt: now,

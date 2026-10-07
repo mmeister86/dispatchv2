@@ -1,3 +1,4 @@
+import { frozenReview, isReviewLoss } from "../editorial/reviews";
 import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internal } from "../_generated/api";
@@ -47,6 +48,7 @@ const minimum = (...values: (number | null)[]) => {
   return Number.isFinite(n) ? n : null;
 };
 function loss(error: unknown) {
+  if (isReviewLoss(error)) return;
   if (
     (error instanceof Error &&
       error.message === "OWN_METRICS_SOURCE_UNAVAILABLE") ||
@@ -163,6 +165,9 @@ async function assignmentProof(ctx: Ctx, row: Assignment, p = proofContext()) {
         fail("EXPERIMENT_SOURCE_UNAVAILABLE");
     }
     await preflight(ctx, s);
+    horizons.push(
+      (await frozenReview(ctx, ver!, s.reviewPin, horizons[1])).sourceUntil,
+    );
     horizons.push(await publicationRights(ctx, e.spec, row, p));
     const pins = await ctx.db
       .query("editorialExperimentBindings")
@@ -528,11 +533,15 @@ export const change = workspaceMutation({
         )
           fail("REFERENCE_ACCESS_DENIED");
         let horizon = await draftResearchProof(ctx, ver, p.walk);
-        if (u.publication)
+        if (u.publication) {
+          const schedule = (await ctx.db.get(u.publication.scheduleId))!;
           horizon = minimum(
             horizon,
+            (await frozenReview(ctx, ver, schedule.reviewPin, horizon))
+              .sourceUntil,
             await publicationRights(ctx, declaration.spec, row, p),
           );
+        }
         if (row.style)
           horizon = minimum(
             horizon,
@@ -1620,12 +1629,23 @@ async function publicationObservation(
   ctx: Ctx,
   e: Experiment,
   row: Assignment,
-  cache?: { rights: Map<string, number> },
+  cache?: {
+    rights: Map<string, number>;
+    walk?: ReturnType<typeof materialWalk>;
+  },
 ) {
   const s = await publicationSchedule(ctx, row),
     { posts, media } = await publicationHistory(ctx, s._id);
+  const reviewVersion = (await ctx.db.get(row.versionId))!;
+  const sourceUntil = await draftResearchProof(
+    ctx,
+    reviewVersion,
+    cache?.walk ?? materialWalk(),
+  );
   const until = minimum(
     row.sourceUntil,
+    (await frozenReview(ctx, reviewVersion, s.reviewPin, sourceUntil))
+      .sourceUntil,
     await publicationRights(ctx, e.spec!, row, cache),
   );
   const sent = posts.filter((p) => p.requestStartedAt !== undefined),

@@ -1,3 +1,5 @@
+import { historicalReviewSource } from "../editorial/reviews";
+import { seriesVersionProof } from "./strategy";
 import { ConvexError, v } from "convex/values";
 import {
   workspaceMutation,
@@ -46,6 +48,7 @@ export const selected = workspaceMutation({
     ) as Doc<"contentPlans">;
     const readBudget = { remaining: 256 };
     const seriesProofs = new Map<Id<"contentPlans">, number | null>();
+    const historicalSeriesProofs = new Map<Id<"contentPlans">, number>();
     const result = [];
     for (const selected of a.selections) {
       const item = requireReference(
@@ -88,6 +91,64 @@ export const selected = workspaceMutation({
           (a.mode === "approved" && selected.approvalId !== approval._id)
         )
           throw new ConvexError("PLAN_ACCEPTANCE_CHANGED");
+        const ver = requireReference(
+          ctx.workspace._id,
+          await ctx.db.get(item.versionId),
+        ) as Doc<"draftVersions">;
+        if (
+          ver.draftId !== item.draftId ||
+          ver.content.accountId !== item.accountId
+        )
+          throw new ConvexError("REVIEW_SOURCE_UNAVAILABLE");
+        if (
+          !item.historyVersionIds ||
+          item.historyVersionIds.length > 10 ||
+          (item.historyVersionIds.length === 0
+            ? item.contextProofUntil !== null
+            : item.contextProofUntil == null ||
+              !Number.isFinite(item.contextProofUntil))
+        )
+          throw new ConvexError("PLAN_CONTEXT_CHANGED");
+        await historicalReviewSource(
+          ctx,
+          ver,
+          item.proofUntil,
+          item.validityUntil,
+          item.contextProofUntil,
+          approval.reviewPin?.sourceUntil,
+          schedule.reviewPin?.sourceUntil,
+        );
+        if (plan.series) {
+          if (!historicalSeriesProofs.has(plan._id)) {
+            const series = await ctx.db.get(plan.series.seriesId),
+              version = await ctx.db.get(plan.series.versionId);
+            if (
+              !series ||
+              !version ||
+              series.workspaceId !== plan.workspaceId ||
+              series.accountId !== plan.accountId ||
+              series.actorId !== plan.actorId
+            )
+              throw new ConvexError("SERIES_VERSION_CHANGED");
+            const proof = await seriesVersionProof(ctx, series, version, false);
+            historicalSeriesProofs.set(
+              plan._id,
+              Math.min(plan.series.sourceUntil, proof.until),
+            );
+          }
+          const original = historicalSeriesProofs.get(plan._id)!;
+          if (original <= Date.now())
+            throw new ConvexError("REVIEW_SOURCE_UNAVAILABLE");
+        }
+        for (const id of item.historyVersionIds) {
+          const previous = requireReference(
+            ctx.workspace._id,
+            await ctx.db.get(id),
+          ) as Doc<"draftVersions">;
+          if (previous.content.accountId !== item.accountId)
+            throw new ConvexError("PLAN_CONTEXT_CHANGED");
+          await historicalReviewSource(ctx, previous, item.contextProofUntil);
+        }
         result.push({
           itemId: item._id,
           approvalId: approval._id,

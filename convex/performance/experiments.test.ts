@@ -954,8 +954,14 @@ test("declared timestamp window precedes native feedback cap for ended observati
   expect((await f.get(d.experimentId)).counts.accept).toBe(1);
 });
 
-async function publicationFixture(count = 2, positions = 1, mediaCount = 0) {
+async function publicationFixture(
+  count = 2,
+  positions = 1,
+  mediaCount = 0,
+  review = false,
+) {
   const f = await fixture(count);
+  const reviewUntil = review ? await mixedAncestry(f, 0) : null;
   if (mediaCount) {
     vi.stubEnv("R2_MEDIA_BUCKET", "fixture");
     vi.stubEnv("R2_MEDIA_EU_CONFIRMED", "true");
@@ -1130,6 +1136,34 @@ async function publicationFixture(count = 2, positions = 1, mediaCount = 0) {
     policyId,
     policyFingerprint,
   });
+  const reviewDecisionIds: Id<"editorialReviewDecisions">[] = [];
+  if (review) {
+    const p = await f.signed.mutation(api.editorial.reviews.configure, {
+      workspaceId: f.workspaceId,
+      accountId: null,
+      expectedRevision: 0,
+      commandKey: "publication-review-policy",
+      policy: { editorial: true, brand: false },
+    });
+    for (const versionId of f.versions) {
+      const d = await f.signed.mutation(api.editorial.reviews.decide, {
+        workspaceId: f.workspaceId,
+        versionId,
+        policyId: p.policyId,
+        stage: "editorial",
+        expectedRevision: 0,
+        commandKey: crypto.randomUUID(),
+      });
+      reviewDecisionIds.push(d.decisionId!);
+    }
+    // Renew only the underlying readable source before approval; original stage horizon remains immutable.
+    await f.t.run(async (ctx) => {
+      for (const idea of await ctx.db.query("ideaVersions").take(10))
+        await ctx.db.patch(idea._id, {
+          researchProofUntil: Date.now() + 5 * 86400000,
+        });
+    });
+  }
   const schedules: Id<"schedules">[] = [];
   for (const [i, versionId] of f.versions.entries()) {
     const approvalId = await f.signed.mutation(api.editorial.approve, {
@@ -1181,6 +1215,8 @@ async function publicationFixture(count = 2, positions = 1, mediaCount = 0) {
     policyId,
     policyFingerprint,
     schedules,
+    reviewUntil,
+    reviewDecisionIds,
     spec,
     declareArgs,
     declare,
@@ -2290,4 +2326,122 @@ test("TASK47.2 actual schedule-account drift and missing explicit local rights f
   expect(
     await f.t.run((ctx) => ctx.db.query("editorialExperiments").collect()),
   ).toEqual([]);
+});
+
+test("TASK50 publication original and cached minimum includes immutable frozen review horizon after source renewal", async () => {
+  const f = await publicationFixture(2, 1, 0, true),
+    e = await f.declare();
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(e.experimentId)))!.sourceUntil,
+  ).toBe(f.reviewUntil);
+  const assignments = await f.t.run((ctx) =>
+    ctx.db.query("editorialExperimentAssignments").collect(),
+  );
+  expect(assignments.every((r) => r.sourceUntil === f.reviewUntil)).toBe(true);
+  await f.command(e.experimentId, "start", 1);
+  await f.signed.mutation(api.editorial.reviews.configure, {
+    workspaceId: f.workspaceId,
+    accountId: null,
+    expectedRevision: 1,
+    commandKey: "new-policy-alone",
+    policy: { editorial: true, brand: true },
+  });
+  const A = await publishPublication(f, 0),
+    B = await publishPublication(f, 1);
+  await measurePublication(f, A, [2]);
+  await measurePublication(f, B, [3]);
+  const detail = await f.get(e.experimentId);
+  expect(detail.publication?.arms.A.measured).toBe(1);
+  expect(detail.sourceUntil).toBe(f.reviewUntil);
+  expect(
+    detail.publication?.units.every((u) => u.until === f.reviewUntil),
+  ).toBe(true);
+  expect(
+    (
+      await f.t.run((ctx) =>
+        ctx.db.query("editorialExperimentBindings").collect(),
+      )
+    ).every((b) => b.sourceUntil === f.reviewUntil),
+  ).toBe(true);
+  vi.setSystemTime(f.reviewUntil! + 1);
+  expect(await f.get(e.experimentId)).toMatchObject({
+    state: "withdrawn",
+    spec: null,
+    publication: null,
+  });
+});
+test("TASK50 current frozen review loss masks publication cache and drains derivative without erasing confirmed effect or finance", async () => {
+  const f = await publicationFixture(2, 1, 0, true),
+    e = await f.declare();
+  await f.command(e.experimentId, "start", 1);
+  const A = await publishPublication(f, 0),
+    B = await publishPublication(f, 1);
+  await measurePublication(f, A, [2]);
+  await measurePublication(f, B, [3]);
+  const before = await f.t.run(async (ctx) => ({
+    posts: await ctx.db.query("xPostAttempts").collect(),
+    finance: await ctx.db.query("aiAttempts").collect(),
+    schedules: await ctx.db.query("schedules").collect(),
+  }));
+  const state = await f.signed.query(api.editorial.reviews.get, {
+    workspaceId: f.workspaceId,
+    versionId: f.versions[0],
+  });
+  await f.signed.mutation(api.editorial.reviews.withdraw, {
+    workspaceId: f.workspaceId,
+    decisionId: f.reviewDecisionIds[0],
+    expectedRevision: state.revision,
+    commandKey: "withdraw-publication-review",
+  });
+  expect(await f.get(e.experimentId)).toMatchObject({
+    state: "withdrawn",
+    spec: null,
+    publication: null,
+  });
+  await f.t.mutation(internal.performance.experiments.sweep, { cursor: null });
+  await f.t.mutation(internal.performance.experiments.bindSnapshots, {
+    scheduleId: f.schedules[0],
+    cursor: null,
+  });
+  const assignmentId = (
+    await f.t.run((ctx) =>
+      ctx.db.query("editorialExperimentAssignments").collect(),
+    )
+  ).find((r) => r.versionId === f.versions[0])!._id;
+  const bindings = (
+    await f.t.run((ctx) =>
+      ctx.db.query("editorialExperimentBindings").collect(),
+    )
+  ).filter((b) => b.assignmentId === assignmentId);
+  expect(bindings).toHaveLength(1);
+  expect(
+    bindings.every((b) => b.sourceUnavailable && b.snapshotId === null),
+  ).toBe(true);
+  expect(
+    await f.t.run(async (ctx) => ({
+      posts: await ctx.db.query("xPostAttempts").collect(),
+      finance: await ctx.db.query("aiAttempts").collect(),
+      schedules: await ctx.db.query("schedules").collect(),
+    })),
+  ).toEqual(before);
+});
+test("TASK50 current shorter review proof clamps existing publication assignment and cannot renew after sweep", async () => {
+  const f = await publicationFixture(2, 1, 0, true),
+    e = await f.declare();
+  await f.command(e.experimentId, "start", 1);
+  const shortened = Date.now() + 300000;
+  await f.t.run(async (ctx) => {
+    for (const root of await ctx.db.query("ideaVersions").take(10))
+      await ctx.db.patch(root._id, { researchProofUntil: shortened });
+  });
+  expect((await f.get(e.experimentId)).sourceUntil).toBe(shortened);
+  await f.t.mutation(internal.performance.experiments.sweep, { cursor: null });
+  await f.t.run(async (ctx) => {
+    for (const root of await ctx.db.query("ideaVersions").take(10))
+      await ctx.db.patch(root._id, {
+        researchProofUntil: Date.now() + 5 * 86400000,
+      });
+  });
+  vi.setSystemTime(shortened + 1);
+  expect((await f.get(e.experimentId)).spec).toBeNull();
 });

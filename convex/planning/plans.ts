@@ -1,3 +1,4 @@
+import { currentReview, sameReview, isReviewLoss } from "../editorial/reviews";
 import { seriesPlanProof, sourceLoss } from "./strategy";
 import {
   cosine,
@@ -27,6 +28,7 @@ import { currentIdeaSource } from "../content/ideas";
 import { currentEvidence, projectEvidence } from "../research/evidence";
 import {
   validateContent,
+  checkApproval,
   immutableMedia,
   occupied,
   scheduleBlocksSlot,
@@ -745,6 +747,7 @@ export const get = workspaceQuery({
         state: v.string(),
         displayUntil: v.number(),
         approvalId: v.union(v.id("approvals"), v.null()),
+        approvalsLimited: v.boolean(),
       }),
     ),
   }),
@@ -759,21 +762,66 @@ export const get = workspaceQuery({
     const projectedPlan = await projectPlan(ctx, plan!, items);
     const projections = [];
     for (const item of items) {
-      const approvalId =
-        (
-          await ctx.db
-            .query("approvals")
-            .withIndex("by_versionId_and_accountId", (q) =>
-              q.eq("versionId", item.versionId).eq("accountId", item.accountId),
+      const approvals = await ctx.db
+        .query("approvals")
+        .withIndex("by_versionId_and_accountId", (q) =>
+          q.eq("versionId", item.versionId).eq("accountId", item.accountId),
+        )
+        .order("desc")
+        .take(101);
+      let approvalId: Id<"approvals"> | null = null,
+        approvalUntil: number | null = null;
+      if (["Owner", "Admin"].includes(ctx.membership.role))
+        try {
+          const ver = requireReference(
+            ctx.workspace._id,
+            await ctx.db.get(item.versionId),
+          ) as Doc<"draftVersions">;
+          const pin = await currentReview(ctx, ver);
+          const usable = approvals
+            .slice(0, 100)
+            .find(
+              (a) =>
+                a.actorId === ctx.user._id &&
+                a.revokedAt === null &&
+                (a.purpose ?? "publishing") === "publishing" &&
+                (sameReview(a.reviewPin, pin) ||
+                  (!a.reviewPin && pin.decisionIds.length === 0)) &&
+                (a.reviewPin?.sourceUntil == null ||
+                  a.reviewPin.sourceUntil > Date.now()),
+            );
+          if (usable) {
+            await checkApproval(
+              ctx,
+              ctx.workspace._id,
+              item.versionId,
+              item.accountId,
+              usable._id,
+            );
+            approvalId = usable._id;
+            approvalUntil = Math.min(
+              pin.sourceUntil ?? Infinity,
+              usable.reviewPin?.sourceUntil ?? Infinity,
+            );
+          }
+        } catch (error) {
+          if (
+            !isReviewLoss(error) &&
+            !(
+              error instanceof ConvexError &&
+              [
+                "APPROVAL_REQUIRED",
+                "APPROVER_AUTHORITY_CHANGED",
+                "ACCOUNT_REAUTH_OR_CAPABILITY_REQUIRED",
+                "CAPABILITY_VALIDATION_FAILED",
+                "MEDIA_NOT_READY",
+                "MEDIA_SOURCE_CHANGED",
+                "MEDIA_SNAPSHOT_CHANGED",
+              ].includes(String(error.data))
             )
-            .order("desc")
-            .take(100)
-        ).find(
-          (approval) =>
-            approval.actorId === ctx.user._id &&
-            approval.revokedAt === null &&
-            (approval.purpose ?? "publishing") === "publishing",
-        )?._id ?? null;
+          )
+            sourceLoss(error);
+        }
       let state: string = item.status,
         title = "",
         text: string[] = [];
@@ -782,6 +830,7 @@ export const get = workspaceQuery({
         item.validityUntil,
         item.at,
         item.contextProofUntil ?? Infinity,
+        approvalUntil ?? Infinity,
       );
       try {
         if (projectedPlan.sourceUnavailable || item.sourceUnavailable)
@@ -888,7 +937,8 @@ export const get = workspaceQuery({
         displayUntil: unavailable
           ? Math.min(displayUntil, Date.now())
           : displayUntil,
-        approvalId,
+        approvalId: unavailable ? null : approvalId,
+        approvalsLimited: approvals.length > 100,
       });
     }
     return { plan: projectedPlan, items: projections };

@@ -1,5 +1,11 @@
 import { teamResult, deliveryFields } from "./teamFields";
 import {
+  policyFields as reviewPolicyFields,
+  controlFields as reviewControlFields,
+  decisionFields as reviewDecisionFields,
+  commandFields as reviewCommandFields,
+} from "./editorial/reviewFields";
+import {
   experimentFields,
   commandFields as experimentCommandFields,
   assignmentFields as experimentAssignmentFields,
@@ -897,6 +903,48 @@ export default defineSchema({
   })
     .index("by_assetId", ["assetId"])
     .index("by_versionId", ["versionId"]),
+  editorialReviewPolicies: defineTable(reviewPolicyFields).index(
+    "by_workspaceId_and_accountId_and_revision",
+    ["workspaceId", "accountId", "revision"],
+  ),
+  editorialReviewControls: defineTable(reviewControlFields).index(
+    "by_workspaceId_and_accountId",
+    ["workspaceId", "accountId"],
+  ),
+  editorialReviewDecisions: defineTable(reviewDecisionFields)
+    .index("by_versionId_and_policyId_and_stage_and_active", [
+      "versionId",
+      "policyId",
+      "stage",
+      "active",
+    ])
+    .index("by_versionId_and_sourceUnavailable", [
+      "versionId",
+      "sourceUnavailable",
+    ])
+    .index("by_reviewerId_and_sourceUnavailable", [
+      "reviewerId",
+      "sourceUnavailable",
+    ])
+    .index("by_sourceUnavailable_and_sourceUntil", [
+      "sourceUnavailable",
+      "sourceUntil",
+    ]),
+  editorialReviewCommands: defineTable(reviewCommandFields)
+    .index("by_workspaceId_and_actorId_and_commandKey", [
+      "workspaceId",
+      "actorId",
+      "commandKey",
+    ])
+    .index("by_versionId_and_sourceUnavailable", [
+      "versionId",
+      "sourceUnavailable",
+    ])
+    .index("by_actorId_and_sourceUnavailable", ["actorId", "sourceUnavailable"])
+    .index("by_sourceUnavailable_and_sourceUntil", [
+      "sourceUnavailable",
+      "sourceUntil",
+    ]),
   editorialComments: defineTable(commentFields)
     .index("by_versionId_and_researchCleanupPending", [
       "versionId",

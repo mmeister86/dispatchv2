@@ -43,6 +43,8 @@ import type * as content_similarity from "../content/similarity.js";
 import type * as content_similarityFields from "../content/similarityFields.js";
 import type * as crons from "../crons.js";
 import type * as editorial from "../editorial.js";
+import type * as editorial_reviewFields from "../editorial/reviewFields.js";
+import type * as editorial_reviews from "../editorial/reviews.js";
 import type * as http from "../http.js";
 import type * as integrations_github_app from "../integrations/github/app.js";
 import type * as integrations_github_barriers from "../integrations/github/barriers.js";
@@ -186,6 +188,8 @@ declare const fullApi: ApiFromModules<{
   "content/similarityFields": typeof content_similarityFields;
   crons: typeof crons;
   editorial: typeof editorial;
+  "editorial/reviewFields": typeof editorial_reviewFields;
+  "editorial/reviews": typeof editorial_reviews;
   http: typeof http;
   "integrations/github/app": typeof integrations_github_app;
   "integrations/github/barriers": typeof integrations_github_barriers;
