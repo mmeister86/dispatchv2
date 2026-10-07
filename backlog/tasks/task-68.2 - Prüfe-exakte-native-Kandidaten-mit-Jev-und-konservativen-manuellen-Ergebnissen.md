@@ -4,7 +4,7 @@ title: Prüfe exakte native Kandidaten mit Jev und konservativen manuellen Ergeb
 status: In Progress
 assignee: []
 created_date: '2026-10-06 23:12'
-updated_date: '2026-10-07 17:23'
+updated_date: '2026-10-07 17:28'
 labels: []
 dependencies:
   - TASK-68.1
@@ -26,12 +26,12 @@ Nach separat technisch akzeptierter nativer Kandidaten-Voraussetzung und Routing
 - [x] #1 Registered native Jev-Action und echte Questions/Rubrics prüfen alle sieben Kriterien gegen vollständige ursprüngliche Quelle/Absicht und exakte geordnete Candidate-ID/Hash; Purpose/Scope/Policy/Preis/Grant/Funding und Receipt-Bindings werden vor jedem bezahlbaren Effekt geprüft.
 - [x] #2 Deterministische kombinierte Flags erhalten starke Claims und Bedeutungs-/Intentunsicherheit als sticky manual-review; ausgeschaltete, ungültige, fehlende, niedrige Sicherheit oder ausgefallene Prüfung bleibt sichtbar ungeprüft und schafft keine Freigabe.
 - [x] #3 Exakte aktuelle Autorität, Min-Horizons, CAS/Replay/Supersession und indexed physische Quellen-/Style-/Candidate-/Agent-Cleanup gelten vor Consumer; tatsächliche späte Kosten und Unknown-Holds bleiben in vorhandenen Finanzbelegen.
-- [ ] #4 Native Action-/SDK-Abfangtests und tatsächliche styled Settings/Ideas/Composer belegen Kriterien, kombinierte Flags und ehrlichen Default/Fallback; frische separate SPEC/QUALITY, native Gesamtprüfung/static und exaktes bestehendes EUDev sind dokumentiert, reale Modellqualität/manuelle Done bleiben offen.
+- [x] #4 Native Action-/SDK-Abfangtests und tatsächliche styled Settings/Ideas/Composer belegen Kriterien, kombinierte Flags und ehrlichen Default/Fallback; frische separate SPEC/QUALITY, native Gesamtprüfung/static und exaktes bestehendes EUDev sind dokumentiert, reale Modellqualität/manuelle Done bleiben offen.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Automatisierte Prüfungen und offene manuelle Abnahme sind konkret dokumentiert.
+- [x] #1 Automatisierte Prüfungen und offene manuelle Abnahme sind konkret dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
@@ -75,4 +75,6 @@ Fortsetzung im Chat 01a11754-5cc2-78d3-a706-70826aa419b3: finale unabhängige SP
 Root hat finale SPEC-PASS-Übergabe und neue unabhängige QUALITY-PASS-Prüfung übernommen: .docs/reviews/task-68.2-verification-spec-review.md und task-68.2-verification-quality-review.md. QUALITY führt frisch231/6 sowie separat27/1 (25 unveränderte Assertions plus2 unabhängige SDK-Races) erfolgreich aus. Alle338 Quellhashes entsprechen unverändertem Freeze. Sieben statische/codegen/build/bundle-Gates EXIT0. Vollständige native Suite bleibt die offene Bedingung vor Source-Commit/exakter EU-Dev-Synchronisierung; AC/Done/manuelle Abnahme noch offen.
 
 Root Gesamtprüfung vollständig bestanden:1404 Tests/56 Dateien/0 Fehler oder Skips auf unverändertem338-Dateien-Freeze; tatsächlicher native-Receipt /tmp/dispatch-68.2-continuation-native-receipt.json. SPEC und distinctQUALITY ohne offene Befunde, sieben statische/Gens/Build/Bundle-Gates erfolgreich. Dokumentation .docs/reviews/task-68.2-verification-validation.md. Software-AC1–3 geprüft; AC4/exaktesEUDev wird erst nach tatsächlicher Bereitstellung ergänzt. Keine Provideraktivierung, kalibrierte Faktenprüfung, Repair68.3 oder manuelleDone-Abnahme.
+
+Technisch akzeptierter Quellcommit0507715a711d93d5005ce13777a18d3bd8be48a3 ist auf bestehendem EUDev bereit: tatsächlicher Sync EXIT0 am2026-10-07T17:25:02.638709Z. Korrigierter read-only Metadata-Vergleich EXIT0:449 Einträge/genau18 neue Verifier-Interfaces, vorherige Funktions-IDs/Kind/Visibility und5HTTP-Routen erhalten; alle338 Quellhashes unverändert. Erster lokaler Metadata-Vergleich scheiterte an HTTP-Einträgen ohne identifier; Fehler/Logs bleiben erhalten, kein zweiter Push. Prüfbericht ergänzt. Software-AC1–4 und automatisierteDokumentation geprüft; reale Providerqualität, Deployment-OCC/terminatedActionLateReceipt, Screenreader/manuelleAbnahme/full33–36/Done bleiben offen. TASK68.3 ist als nächstes vorgesehen.
 <!-- SECTION:NOTES:END -->

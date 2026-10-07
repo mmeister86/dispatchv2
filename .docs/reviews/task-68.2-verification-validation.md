@@ -1,6 +1,6 @@
 # TASK-68.2 — Exact candidate verification
 
-The stopped implementation from the previous chat was reconciled with its 338-file freeze and independently accepted SPEC report. A new, distinct QUALITY review passes without actionable findings. Source commit and existing EU Dev synchronization are recorded below after their actual completion. Manual Done remains open.
+The stopped implementation from the previous chat was reconciled with its 338-file freeze and independently accepted SPEC report. A new, distinct QUALITY review passes without actionable findings. Source commit `0507715a711d93d5005ce13777a18d3bd8be48a3` is deployed to the existing EU Dev instance. Manual Done remains open.
 
 ## Delivered behavior
 
@@ -16,7 +16,13 @@ Native authorization, source horizons, one-slot replay and original financial re
 - [Distinct QUALITY](task-68.2-verification-quality-review.md): fresh 231 native tests / six files; separate private 27-test run preserving 25 existing assertions and adding overlapping-call and capability-loss controls. PASS, no remaining findings.
 - Root directly inspected the mobile manual-risk Ideas and desktop Composer images. Images were tool-resized; this is an overview inspection, not full-resolution or screen-reader certification. SPEC's synthetic browser transport and native SDK interception are not live provider acceptance.
 
-All 338 source files still match `/tmp/dispatch-68.2-final-freeze.json`. Human `.zcodeignore` and unrelated task work remain outside this unit's commit scope. Existing client/content test files are unchanged; original browser assertions are preserved and the runs-test owner exclusion is qualified in the review reports.
+At acceptance, all 338 source files match `/tmp/dispatch-68.2-final-freeze.json`. Human `.zcodeignore` and unrelated task work remain outside this unit's commit scope. Existing client/content test files are unchanged; original browser assertions are preserved and the runs-test owner exclusion is qualified in the review reports.
+
+## Existing EU Dev
+
+Target: `https://accurate-lion-749.eu-west-1.convex.cloud`. The CLI target was checked before pushing. `convex dev --once` exited zero on 2026-10-07 at 17:25:02 UTC; deployed function metadata has 449 entries with exactly 18 added verifier interfaces. All prior function identifiers, kinds and visibility remain, and the five HTTP routes are unchanged. All source hashes remained exact after synchronization and the corrected metadata check.
+
+Receipts: `/tmp/dispatch-68.2-continuation-dev-receipt.json` and `/tmp/dispatch-68.2-continuation-metadata-corrected-receipt.json`. The initial post-push local comparison failed because HTTP metadata has method/path instead of function identifiers. The failure was preserved; a separate corrected read-only check passed. The successful deployment was not repeated. No configuration or paid provider was activated.
 
 ## Boundaries
 
