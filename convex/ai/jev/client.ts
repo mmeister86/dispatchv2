@@ -14,6 +14,7 @@ import {
   requestFields,
   outcome,
   answer,
+  verificationRef,
   type Outcome,
   type Answer,
 } from "./types";
@@ -24,11 +25,17 @@ import {
   normalizeRouting,
   resolveRoutingQuestions,
 } from "./questions/intentRouting";
+import {
+  normalizeVerification,
+  resolveVerificationQuestions,
+} from "./questions/outputVerification";
+import type { Infer } from "convex/values";
 import { rethrowUnexpectedSourceError } from "../../lib/sourceProof";
 const endpoint = "https://api.typesafe.ai/v1/systemone";
 type Dispatch =
   | { kind: "analyzer"; request: Request }
-  | { kind: "intent-routing"; operationId: Id<"jevRoutingOperations"> };
+  | { kind: "intent-routing"; operationId: Id<"jevRoutingOperations"> }
+  | { kind: "output-verification"; reference: Infer<typeof verificationRef> };
 const resultContract = v.object({
   outcome: v.union(outcome, v.literal("unavailable")),
   answers: v.union(v.record(v.string(), answer), v.null()),
@@ -50,6 +57,14 @@ function routingLoss(error: unknown) {
         "MODEL_BUDGET_EXHAUSTED",
         "ROUTING_ALREADY_ADMITTED",
         "ROUTING_USAGE_UNRESOLVED",
+        "VERIFICATION_SOURCE_UNAVAILABLE",
+        "VERIFICATION_AUTHORITY_UNAVAILABLE",
+        "VERIFICATION_PURPOSE_WITHDRAWN",
+        "VERIFICATION_CONFIGURATION_REQUIRED",
+        "VERIFICATION_CIRCUIT_OPEN",
+        "VERIFICATION_EXPIRED",
+        "VERIFICATION_ALREADY_ADMITTED",
+        "VERIFICATION_USAGE_UNRESOLVED",
       ].includes(error.data)
     )
       return;
@@ -62,7 +77,9 @@ async function executePhysical(
 ): Promise<{
   outcome: Outcome | "unavailable";
   answers: Record<string, Answer> | null;
+  attemptId: Id<"aiAttempts"> | null;
 }> {
+  let attemptId: Id<"aiAttempts"> | null = null;
   let captured;
   try {
     captured =
@@ -74,15 +91,22 @@ async function executePhysical(
               a.request,
             ),
           }
-        : {
-            kind: "intent-routing" as const,
-            value: await ctx.runQuery(internal.ai.jev.routing.context, {
-              operationId: a.operationId,
-            }),
-          };
+        : a.kind === "output-verification"
+          ? {
+              kind: "output-verification" as const,
+              value: await ctx.runQuery(internal.ai.jev.verify.context, {
+                reference: a.reference,
+              }),
+            }
+          : {
+              kind: "intent-routing" as const,
+              value: await ctx.runQuery(internal.ai.jev.routing.context, {
+                operationId: a.operationId,
+              }),
+            };
   } catch (error) {
-    if (a.kind === "intent-routing") routingLoss(error);
-    return { outcome: "unavailable" as const, answers: null };
+    if (a.kind !== "analyzer") routingLoss(error);
+    return { attemptId, outcome: "unavailable" as const, answers: null };
   }
   const timeoutMs =
     a.kind === "analyzer" && a.request.mode === "composer"
@@ -91,14 +115,13 @@ async function executePhysical(
   const deadline = Math.min(
     a.kind === "analyzer"
       ? a.request.deadline
-      : captured.kind === "intent-routing"
+      : captured.kind !== "analyzer"
         ? captured.value.deadline
         : Date.now(),
     Date.now() + timeoutMs,
   );
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined,
-    attemptId: Id<"aiAttempts"> | null = null,
     calls = 0,
     expired = false,
     invalidBody = false,
@@ -116,21 +139,26 @@ async function executePhysical(
         ? value.model
         : null;
     const finalOutcome: Outcome | "unavailable" =
-      a.kind === "intent-routing" && !physicalStarted
+      a.kind !== "analyzer" && !physicalStarted
         ? "unavailable"
         : expired
           ? "timeout"
           : result;
     const settlement = {
       attemptId,
-      ...(a.kind === "intent-routing" && !physicalStarted
+      ...(a.kind !== "analyzer" && !physicalStarted
         ? { inputTokens: 0, outputTokens: 0 }
         : usage(value)),
       resolvedModel: model,
       outcome: finalOutcome,
       latencyMs: Math.min(600000, Math.max(0, Date.now() - started)),
     };
-    if (a.kind === "intent-routing")
+    if (a.kind === "output-verification")
+      await ctx.runMutation(internal.ai.jev.verify.settle, {
+        ...settlement,
+        reference: a.reference,
+      });
+    else if (a.kind === "intent-routing")
       await ctx.runMutation(internal.ai.jev.routing.settle, settlement);
     else
       await ctx.runMutation(internal.ai.jev.access.settle, {
@@ -162,13 +190,20 @@ async function executePhysical(
         )
           throw new Error("JEV_REQUEST_INVALID");
         // Exactly one awaited funded attempt precedes this physical boundary; SDK retries cannot reuse it.
-        if (a.kind === "intent-routing") {
+        if (a.kind !== "analyzer") {
           try {
-            await ctx.runQuery(internal.ai.jev.routing.authorizeFetch, {
-              operationId: a.operationId,
-              attemptId: attemptId!,
-              expectedFingerprint: captured.value.requestFingerprint,
-            });
+            if (a.kind === "output-verification")
+              await ctx.runQuery(internal.ai.jev.verify.authorizeFetch, {
+                reference: a.reference,
+                attemptId: attemptId!,
+                expectedFingerprint: captured.value.requestFingerprint,
+              });
+            else
+              await ctx.runQuery(internal.ai.jev.routing.authorizeFetch, {
+                operationId: a.operationId,
+                attemptId: attemptId!,
+                expectedFingerprint: captured.value.requestFingerprint,
+              });
           } catch (error) {
             proofError = error;
             throw error;
@@ -219,39 +254,50 @@ async function executePhysical(
             ...a.request,
             expectedFingerprint: captured.value.requestFingerprint,
           })
-        : await ctx.runMutation(internal.ai.jev.routing.fund, {
-            operationId: a.operationId,
-            expectedFingerprint: captured.value.requestFingerprint,
-          });
+        : a.kind === "output-verification"
+          ? await ctx.runMutation(internal.ai.jev.verify.fund, {
+              reference: a.reference,
+              expectedFingerprint: captured.value.requestFingerprint,
+            })
+          : await ctx.runMutation(internal.ai.jev.routing.fund, {
+              operationId: a.operationId,
+              expectedFingerprint: captured.value.requestFingerprint,
+            });
     if (Date.now() >= deadline) {
       expired = true;
       controller.abort();
       await record(null, "timeout");
-      return { outcome: "timeout", answers: null };
+      return { attemptId, outcome: "timeout", answers: null };
     }
     const questions: Definition["questions"] =
-      captured.kind === "intent-routing"
-        ? resolveRoutingQuestions(
+      captured.kind === "output-verification"
+        ? resolveVerificationQuestions(
             captured.value.p.questionVersion,
             captured.value.p.normalizationVersion,
+            captured.value.p.thresholdVersion,
           ).questions
-        : Object.fromEntries(
-            Object.entries(validQuestions(captured.value.questions)).map(
-              ([key, q]) => [
-                key,
-                q.type === "score"
-                  ? {
-                      ...q,
-                      criteria: [
-                        q.criteria[0]!,
-                        q.criteria[1]!,
-                        ...q.criteria.slice(2),
-                      ] as [string, string, ...string[]],
-                    }
-                  : q,
-              ],
-            ),
-          );
+        : captured.kind === "intent-routing"
+          ? resolveRoutingQuestions(
+              captured.value.p.questionVersion,
+              captured.value.p.normalizationVersion,
+            ).questions
+          : Object.fromEntries(
+              Object.entries(validQuestions(captured.value.questions)).map(
+                ([key, q]) => [
+                  key,
+                  q.type === "score"
+                    ? {
+                        ...q,
+                        criteria: [
+                          q.criteria[0]!,
+                          q.criteria[1]!,
+                          ...q.criteria.slice(2),
+                        ] as [string, string, ...string[]],
+                      }
+                    : q,
+                ],
+              ),
+            );
     const pending = Promise.resolve(
       client.systemOne(
         {
@@ -270,7 +316,9 @@ async function executePhysical(
         let result =
           captured.kind === "analyzer"
             ? normalize(value, captured.value.questions)
-            : normalizeRouting(value, captured.value.p.model);
+            : captured.kind === "output-verification"
+              ? normalizeVerification(value, captured.value.p.model)
+              : normalizeRouting(value, captured.value.p.model);
         const tokens = usage(value);
         if (
           tokens.inputTokens !== null &&
@@ -298,7 +346,11 @@ async function executePhysical(
                   ? "timeout"
                   : "provider_error";
         const value = error instanceof APIError ? error.body : null;
-        return { outcome: result, receipt: { ...usage(value), model: null } };
+        return {
+          attemptId,
+          outcome: result,
+          receipt: { ...usage(value), model: null },
+        };
       },
     );
     const result = await Promise.race([
@@ -327,23 +379,28 @@ async function executePhysical(
       result.outcome,
     );
     if (proofError) routingLoss(proofError);
-    if (a.kind === "intent-routing" && !physicalStarted)
-      return { outcome: "unavailable", answers: null };
+    if (a.kind !== "analyzer" && !physicalStarted)
+      return { attemptId, outcome: "unavailable", answers: null };
     if (result.outcome === "success" || result.outcome === "low_confidence") {
       // Current permission/source/profile required again before exposing even normalized results.
       try {
         if (a.kind === "analyzer")
           await ctx.runQuery(internal.ai.jev.access.context, a.request);
+        else if (a.kind === "output-verification")
+          await ctx.runQuery(internal.ai.jev.verify.context, {
+            reference: a.reference,
+          });
         else
           await ctx.runQuery(internal.ai.jev.routing.context, {
             operationId: a.operationId,
           });
       } catch (error) {
-        if (a.kind === "intent-routing") routingLoss(error);
-        return { outcome: "unavailable" as const, answers: null };
+        if (a.kind !== "analyzer") routingLoss(error);
+        return { attemptId, outcome: "unavailable" as const, answers: null };
       }
     }
     return {
+      attemptId,
       outcome: result.outcome,
       answers:
         (result.outcome === "success" || result.outcome === "low_confidence") &&
@@ -356,15 +413,16 @@ async function executePhysical(
       null,
       expired
         ? "timeout"
-        : a.kind === "intent-routing"
+        : a.kind !== "analyzer"
           ? "unavailable"
           : "provider_error",
     );
-    if (a.kind === "intent-routing") {
+    if (a.kind !== "analyzer") {
       routingLoss(error);
-      return { outcome: "unavailable", answers: null };
+      return { attemptId, outcome: "unavailable", answers: null };
     }
     return {
+      attemptId,
       outcome: expired ? ("timeout" as const) : ("provider_error" as const),
       answers: null,
     };
@@ -376,15 +434,36 @@ async function executePhysical(
 export const execute = internalAction({
   args: requestFields,
   returns: resultContract,
-  handler: async (ctx, a) =>
-    executePhysical(ctx, { kind: "analyzer", request: a }),
+  handler: async (ctx, a) => {
+    const { attemptId: _attempt, ...result } = await executePhysical(ctx, {
+      kind: "analyzer",
+      request: a,
+    });
+    return result;
+  },
 });
 export const executeRouting = internalAction({
   args: { operationId: v.id("jevRoutingOperations") },
   returns: resultContract,
-  handler: async (ctx, a) =>
-    executePhysical(ctx, {
+  handler: async (ctx, a) => {
+    const { attemptId: _attempt, ...result } = await executePhysical(ctx, {
       kind: "intent-routing",
       operationId: a.operationId,
+    });
+    return result;
+  },
+});
+
+export const executeVerification = internalAction({
+  args: { reference: verificationRef },
+  returns: v.object({
+    outcome: v.union(outcome, v.literal("unavailable")),
+    answers: v.union(v.record(v.string(), answer), v.null()),
+    attemptId: v.union(v.id("aiAttempts"), v.null()),
+  }),
+  handler: async (ctx, a) =>
+    executePhysical(ctx, {
+      kind: "output-verification",
+      reference: a.reference,
     }),
 });

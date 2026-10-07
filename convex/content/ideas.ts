@@ -1,5 +1,10 @@
 import { routingProof, routingLoss } from "../ai/jev/routing";
-import { routingIntent } from "../ai/jev/types";
+import { candidateVerification, checkedApplication } from "../ai/jev/verify";
+import {
+  verificationView,
+  checkedVerification,
+  routingIntent,
+} from "../ai/jev/types";
 import { runStyleProof } from "../ai/styleProfiles";
 import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 import { materialWalk, type MaterialWalk } from "../research/pipelineAccess";
@@ -1137,6 +1142,7 @@ export const candidate = workspaceQuery({
   returns: v.union(
     v.null(),
     v.object({
+      verification: v.optional(verificationView),
       versionId: v.id("ideaVersions"),
       ideaId: v.id("ideas"),
       runId: v.union(v.id("agentRuns"), v.null()),
@@ -1155,6 +1161,7 @@ export const candidate = workspaceQuery({
     if (!ver) return null;
     requireReference(ctx.workspace._id, ver);
     const masked = {
+      verification: await candidateVerification(ctx, ver),
       versionId: ver._id,
       ideaId: ver.ideaId,
       runId: ver.runId ?? null,
@@ -1190,6 +1197,7 @@ export const candidate = workspaceQuery({
 });
 export const applyCandidate = workspaceMutation({
   args: {
+    verification: v.optional(checkedVerification),
     versionId: v.id("ideaVersions"),
     contentHash: v.string(),
     operationKey: v.string(),
@@ -1223,6 +1231,14 @@ export const applyCandidate = workspaceMutation({
     await ideaProofUntil(ctx, ver, walk);
     if (!ver.candidate || ver.candidate.contentHash !== a.contentHash)
       throw new ConvexError("IDEA_OUTPUT_CONFLICT");
+    if (a.verification)
+      await checkedApplication(
+        ctx,
+        ctx.workspace._id,
+        ver._id,
+        a.contentHash,
+        a.verification,
+      );
     const idea = (await ctx.db.get(ver.ideaId))!;
     const fingerprint = await sha256(
       JSON.stringify([
@@ -1232,6 +1248,7 @@ export const applyCandidate = workspaceMutation({
         a.intent,
         a.claimsReviewed,
         a.target,
+        ...(a.verification ? [a.verification] : []),
       ]),
     );
     if (idea.handoff) {
@@ -1303,6 +1320,7 @@ export const applyCandidate = workspaceMutation({
         text: "",
         at: Date.now(),
         candidateCommand: {
+          ...(a.verification ? { verification: a.verification } : {}),
           key: a.operationKey,
           fingerprint,
           contentHash: a.contentHash,

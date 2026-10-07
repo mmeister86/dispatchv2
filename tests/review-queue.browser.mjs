@@ -10,8 +10,8 @@ const mocks = {
   "convex/react": `import React from 'react';import {ConvexError} from 'convex/values';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';window.NativeConvexError=ConvexError;
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
 const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';return new Promise((resolve,reject)=>window.pending.push({name,args,resolve,reject}));});return funcs.get(name)};
-export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:async(ref,args)=>{const n=getFunctionName(ref);if(n==='content/ideas:candidate')return window.candidateViews?.[args.versionId]??null;throw new Error('Unconfigured direct fixture query '+n);}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
-export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const n=getFunctionName(ref);if(n==='content/ideas:list')return window.candidateList;if(n==='content/ideas:candidate')return window.candidateViews?.[args.versionId]??null;if(n==='users:current')return window.snapshot;if(n==='team:list')return window.roster;if(n==='editorial:resources')return window.resources;if(n==='editorial:get')return window.bundles.find(b=>b.draft._id===args.draftId)??null;if(n==='editorial/reviews:get')return {...window.review,authId:window.session.user.id,sessionId:window.session.session.id};if(n==='editorial/reviews:policy')return window.policy;if(n==='editorial:calendar')return {rows:[window.calendar],tooDense:false};if(n==='publishing/reconcile:inspect')return {aborted:false,positions:[{position:0,stage:'unsent',errorCode:null,notBefore:null}]};if(n==='planning/plans:context')return {preferenceId:'preference',timezone:'Europe/Berlin'};if(n==='planning/plans:list')return [];if(n==='planning/strategy:get')return {control:null,version:null,styleUntil:null,pillars:[],candidates:[],reason:null,selectedStyleVersionId:null};if(n==='team:preview')return window.invitation;return undefined;};
+export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:async(ref,args)=>{const n=getFunctionName(ref);if(n==='content/ideas:candidate')return window.candidateViews?.[args.versionId]??null;if(n==='ai/jev/verify:get')return window.verificationViews?.[args.reference.contentRequestId];throw new Error('Unconfigured direct fixture query '+n);}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
+export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const n=getFunctionName(ref);if(n==='content/ideas:list')return window.candidateList;if(n==='content/ideas:candidate')return window.candidateViews?.[args.versionId]??null;if(n==='ai/jev/verify:get')return window.verificationViews?.[args.reference.contentRequestId];if(n==='ai/jev/verify:availability')return window.verificationAvailability??{status:'configuration_required'};if(n==='ai/jev/routing:availability')return {status:'configuration_required'};if(n==='ai/jev/access:availability')return {status:'disabled',guidance:'Native fixture default OFF'};if(n==='ai/runs:availability')return {providerConfigured:false,processingApproved:false,pricingApproved:false};if(n==='users:current')return window.snapshot;if(n==='team:list')return window.roster;if(n==='editorial:resources')return window.resources;if(n==='editorial:get')return window.bundles.find(b=>b.draft._id===args.draftId)??null;if(n==='editorial/reviews:get')return {...window.review,authId:window.session.user.id,sessionId:window.session.session.id};if(n==='editorial/reviews:policy')return window.policy;if(n==='editorial:calendar')return {rows:[window.calendar],tooDense:false};if(n==='publishing/reconcile:inspect')return {aborted:false,positions:[{position:0,stage:'unsent',errorCode:null,notBefore:null}]};if(n==='planning/plans:context')return {preferenceId:'preference',timezone:'Europe/Berlin'};if(n==='planning/plans:list')return [];if(n==='planning/strategy:get')return {control:null,version:null,styleUntil:null,pillars:[],candidates:[],reason:null,selectedStyleVersionId:null};if(n==='team:preview')return window.invitation;return undefined;};
 export const usePaginatedQuery=(ref,args,opts)=>{tick();const n=getFunctionName(ref);if(args==='skip')return {results:[],status:'Exhausted',loadMore:()=>{}};if(n==='editorial:list')return {results:window.bundles.slice(0,window.loaded),status:window.loaded<window.bundles.length?'CanLoadMore':'Exhausted',loadMore:()=>window.update({loaded:window.bundles.length})};if(n==='editorial/notices:list')return {results:window.notices,status:'CanLoadMore',loadMore:()=>{}};return {results:[],status:'Exhausted',loadMore:()=>{}};};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
 };
@@ -1385,6 +1385,318 @@ try {
           .length,
     ),
   ).toBe(3);
+  // Actual shared Composer consumer, retained original target/buffer/CAS assertions above.
+  await page.evaluate(() => {
+    window.candidateViews["native-candidate"].sourceUntil = null;
+    const reference = {
+      contentRequestId: "composer-verification-request",
+      candidateVersionId: "native-candidate",
+      contentHash: "native-candidate-hash",
+      commandFingerprint: "composer-verification-command",
+    };
+    window.verificationViews = {
+      [reference.contentRequestId]: {
+        reference,
+        applicability: "current",
+        sourceUntil: null,
+        deadline: Date.now() + 5000,
+        state: "finished",
+        stickyRisk: null,
+        usage: {
+          attemptId: "composer-verification-attempt",
+          state: "settled",
+          heldMicros: 0,
+          estimatedMicros: 110,
+          currency: "EUR",
+        },
+        result: {
+          candidateVersionId: "native-candidate",
+          contentHash: "native-candidate-hash",
+          provenanceHash: "native-provenance",
+          questionVersion: "jev-output-verification-v1",
+          normalizationVersion: "jev-verification-normalization-v1",
+          thresholdVersion: "jev-verification-hypotheses-v1",
+          model: "synthetic-verifier-1",
+          decision: "accept_with_warning",
+          reasonKeys: [],
+          resultFingerprint: "composer-checked-original",
+          criteria: Object.fromEntries(
+            [
+              "meaningPreserved",
+              "intentPreserved",
+              "newStrongClaim",
+              "unwantedPromotion",
+              "toneFits",
+              "ctaFits",
+              "networkFits",
+            ].map((k) => [
+              k,
+              {
+                probability:
+                  k === "newStrongClaim" || k === "unwantedPromotion"
+                    ? 0.05
+                    : 0.95,
+                applicability:
+                  k === "toneFits" || k === "ctaFits"
+                    ? "unspecified"
+                    : "specified",
+              },
+            ]),
+          ),
+        },
+      },
+    };
+    window.candidateViews["native-candidate"].verification =
+      window.verificationViews[reference.contentRequestId];
+    window.update({});
+  });
+  const verifiedAck = page.getByRole("checkbox", {
+    name: "Exaktes Prüfergebnis bei der Übernahme vermerken · weiterhin unfreigegeben.",
+  });
+  await expect(verifiedAck).toBeVisible();
+  await verifiedAck.check();
+  await expect(candidateAck).not.toBeChecked();
+  await candidateIntent.fill(
+    "Human confirms exact selected optional result for opened target",
+  );
+  await candidateAck.check();
+  await page
+    .getByLabel("Text Beitrag 1", { exact: true })
+    .fill("Dirty checked working buffer");
+  await expect(verifiedAck).not.toBeChecked();
+  await expect(candidateApply).toBeDisabled();
+  await page
+    .getByLabel("Text Beitrag 1", { exact: true })
+    .fill("  Candidate original first  ");
+  await verifiedAck.check();
+  await candidateIntent.fill("Clean opened target with exact checked receipt");
+  await candidateAck.check();
+  await candidateApply.click();
+  const checkedWhole = await page.evaluate(
+    () =>
+      window.pending.filter((c) => c.name === "content/ideas:applyCandidate")[3]
+        .args,
+  );
+  expect(checkedWhole).toMatchObject({
+    target: {
+      draftId: "draft-0",
+      versionId: "candidate-draft-version",
+      revision: 2,
+    },
+    verification: {
+      reference: {
+        contentRequestId: "composer-verification-request",
+        candidateVersionId: "native-candidate",
+        contentHash: "native-candidate-hash",
+        commandFingerprint: "composer-verification-command",
+      },
+      resultFingerprint: "composer-checked-original",
+    },
+  });
+  await page.evaluate(() =>
+    window.pending
+      .filter((c) => c.name === "content/ideas:applyCandidate")[3]
+      .reject(new Error("checked Composer ACK lost")),
+  );
+  await page
+    .getByRole("button", { name: "Denselben Übernahmeauftrag wiederholen" })
+    .click();
+  expect(
+    await page.evaluate(
+      () =>
+        window.pending.filter(
+          (c) => c.name === "content/ideas:applyCandidate",
+        )[4].args,
+    ),
+  ).toEqual(checkedWhole);
+  await page.evaluate(() =>
+    window.pending
+      .filter((c) => c.name === "content/ideas:applyCandidate")[4]
+      .resolve({
+        draftId: "draft-0",
+        versionId: "candidate-draft-version",
+        ideaVersionId: "native-candidate",
+      }),
+  );
+  async function verifierPicture(name, marker) {
+    await expect(marker).toBeVisible();
+    await page.evaluate(async () => {
+      await document.fonts.ready;
+      await Promise.allSettled(
+        document
+          .getAnimations()
+          .filter(
+            (a) =>
+              Number.isFinite(a.effect?.getComputedTiming().iterations) &&
+              a.playState === "running",
+          )
+          .map((a) => a.finished),
+      );
+      await new Promise((r) =>
+        requestAnimationFrame(() => requestAnimationFrame(r)),
+      );
+    });
+    expect(
+      await page.locator("main").evaluate((el) => getComputedStyle(el).opacity),
+    ).toBe("1");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+    await page.screenshot({
+      path: `${evidence}/${name}.png`,
+      fullPage: true,
+      animations: "disabled",
+    });
+  }
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await verifierPicture(
+    "verification-composer-1280",
+    page.getByText("Prüfung mit Hinweis", { exact: false }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await verifierPicture(
+    "verification-composer-390",
+    page.getByText("Prüfung mit Hinweis", { exact: false }),
+  );
+  await verifiedAck.check();
+  await candidateIntent.fill("Original own horizon expires");
+  await candidateAck.check();
+  await page.evaluate(() => {
+    window.verificationViews["composer-verification-request"].sourceUntil =
+      Date.now() + 1000;
+    window.update({});
+  });
+  await page.clock.fastForward(1100);
+  await expect(verifiedAck).toHaveCount(0);
+  await expect(candidateAck).not.toBeChecked();
+  await expect(candidateApply).toBeDisabled();
+  await expect(
+    page.getByText("Social-Post-Kandidat · ungeprüft", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Text Beitrag 1", { exact: true })).toHaveValue(
+    "  Candidate original first  ",
+  );
+  expect(
+    await page.evaluate(
+      () =>
+        window.commands.filter((c) => c.name === "ai/jev/verify:check").length,
+    ),
+  ).toBe(0);
+  // Full App Settings uses truthful availability, unconditional own-purpose withdrawal, exact retry and unmount fences.
+  await page.goto("http://127.0.0.1:5184/settings/integrations");
+  await page
+    .getByLabel("Aktiver Account", { exact: true })
+    .selectOption("account-native");
+  await expect(
+    page.getByText("Kandidatenprüfung benötigt Konfiguration.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  const withdraw = page.getByRole("button", {
+    name: "Prüf-Zugang für Account entziehen",
+    exact: true,
+  });
+  await withdraw.click();
+  const withdrawArgs = await page.evaluate(
+    () => window.pending.find((c) => c.name === "ai/jev/verify:disable").args,
+  );
+  expect(withdrawArgs).toEqual({
+    workspaceId: "workspace-native",
+    accountId: "account-native",
+  });
+  await page.evaluate(() =>
+    window.pending
+      .find((c) => c.name === "ai/jev/verify:disable")
+      .reject(new Error("withdraw ACK uncertain")),
+  );
+  await page
+    .getByRole("button", {
+      name: "Denselben Prüf-Entzug wiederholen",
+      exact: true,
+    })
+    .click();
+  expect(
+    await page.evaluate(
+      () =>
+        window.pending.filter((c) => c.name === "ai/jev/verify:disable")[1]
+          .args,
+    ),
+  ).toEqual(withdrawArgs);
+  await page.evaluate(() =>
+    window.pending
+      .filter((c) => c.name === "ai/jev/verify:disable")[1]
+      .resolve(null),
+  );
+  await expect(
+    page.getByText("Prüf-Zugang für diesen Account ausdrücklich entzogen.", {
+      exact: true,
+    }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await verifierPicture(
+    "verification-settings-1280",
+    page.getByText("Kandidatenprüfung benötigt Konfiguration.", {
+      exact: true,
+    }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await verifierPicture(
+    "verification-settings-390",
+    page.getByText("Kandidatenprüfung benötigt Konfiguration.", {
+      exact: true,
+    }),
+  );
+  await page.evaluate(() => {
+    window.verificationAvailability = { status: "ready" };
+    window.update({});
+  });
+  await expect(
+    page.getByText(
+      "Kandidatenprüfung ist konfiguriert. Jede Anfrage prüft ihre aktuellen Freigaben.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    window.snapshot.workspaces[0].role = "Editor";
+    window.update({});
+  });
+  await expect(withdraw).toHaveCount(0);
+  await page.evaluate(() => {
+    window.snapshot.workspaces[0].role = "Owner";
+    window.update({});
+  });
+  await page
+    .getByLabel("Aktiver Account", { exact: true })
+    .selectOption("account-native");
+  await expect(withdraw).toBeEnabled();
+  await withdraw.click();
+  await page.getByRole("link", { name: "Mein Profil", exact: true }).click();
+  await expect(withdraw).toHaveCount(0);
+  await page.evaluate(() =>
+    window.pending
+      .filter((c) => c.name === "ai/jev/verify:disable")[2]
+      .resolve(null),
+  );
+  await expect(
+    page.getByText("Prüf-Zugang für diesen Account ausdrücklich entzogen.", {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  console.log(
+    JSON.stringify({
+      standaloneVerificationComposerAndSettings: "PASS",
+      exactOptionalReferenceAndTargetCAS: true,
+      dirtyClearsSelection: true,
+      immutableCheckedRetry: true,
+      clockOnlyOwnExpiryKeepsGeneration: true,
+      defaultOFF: true,
+      exactWithdrawRetry: true,
+      unmountLateACK: true,
+      providerCalls: 0,
+    }),
+  );
   await page.addInitScript(() => {
     window.demo = new URLSearchParams(location.search).get("demo") === "1";
   });
@@ -1445,6 +1757,30 @@ try {
     fullPage: true,
     animations: "disabled",
   });
+  await expect(page.getByLabel("Text Beitrag 1", { exact: true })).toHaveCount(
+    1,
+  );
+  await expect(page.getByLabel("Text Beitrag 1", { exact: true })).toHaveValue(
+    demoText,
+  );
+  await page
+    .getByLabel("Text Beitrag 1", { exact: true })
+    .scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: `${evidence}/verification-demo-composer-390-viewport.png`,
+    fullPage: false,
+    animations: "disabled",
+  });
+  expect(
+    await page.evaluate(
+      () =>
+        window.commands.filter(
+          (c) =>
+            c.name.startsWith("ai/jev/verify:") ||
+            c.name === "content/ideas:applyCandidate",
+        ).length,
+    ),
+  ).toBe(0);
   console.log(
     JSON.stringify({
       candidateConsumer: "PASS",

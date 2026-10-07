@@ -411,6 +411,10 @@ export const candidateRun = internalMutation({
   args: { runId: v.id("agentRuns"), cursor: v.union(v.string(), v.null()) },
   returns: v.null(),
   handler: async (ctx, a) => {
+    if (a.cursor === null)
+      await ctx.scheduler.runAfter(0, internal.ai.jev.verify.purgeProducer, {
+        runId: a.runId,
+      });
     const page = await ctx.db
       .query("ideaVersions")
       .withIndex("by_runId", (q) => q.eq("runId", a.runId))
@@ -445,6 +449,11 @@ export const candidateCopies = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    if (a.cursor === null && a.phase === "references")
+      await ctx.scheduler.runAfter(0, internal.ai.jev.verify.purgeCandidate, {
+        versionId: a.versionId,
+        cursor: null,
+      });
     const ver = await ctx.db.get(a.versionId);
     if (ver && !ver.sourceUnavailable && !ver.sourceCleanupState) {
       try {

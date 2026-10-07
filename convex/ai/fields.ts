@@ -49,6 +49,7 @@ export const budgetFields = {
       v.literal("native-search"),
       v.literal("analyzer"),
       v.literal("intent-routing"),
+      v.literal("output-verification"),
       v.literal("own-metrics"),
       v.literal("own-history"),
       v.literal("own-content-embedding"),

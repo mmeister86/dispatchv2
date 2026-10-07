@@ -26,13 +26,12 @@ import {
   type MaterialWalk,
 } from "../../research/pipelineAccess";
 import { currentContext } from "../../integrations/github/contextAccess";
-import { excerpt } from "../../integrations/github/contextFields";
 import { captureStyle, scopedStyleProof } from "../styleProfiles";
-import { payload as stylePayload } from "../styleFields";
 import { changeLiability } from "../accounting";
 import { estimate } from "./access";
 import {
   routingIntent,
+  routingStateContract as stateContract,
   routingResult,
   routingPolicyFields,
   routingControlFields,
@@ -244,19 +243,6 @@ async function configuration(
   }
   return { p, c, budgetIds, authorityUntil };
 }
-const stateContract = v.object({
-  input: v.object({
-    title: v.string(),
-    originalFacts: v.array(v.string()),
-    userClaims: v.string(),
-    previousPerspective: v.string(),
-    interpretationRationale: v.string(),
-    questions: v.array(v.string()),
-    approvedPatchEvidence: v.array(excerpt),
-  }),
-  intent: routingIntent,
-  style: v.union(stylePayload, v.null()),
-});
 export const contextContract = v.object({
   state: stateContract,
   deadline: v.number(),
@@ -276,7 +262,7 @@ export const contextContract = v.object({
   budgetIds: v.array(v.id("aiBudgets")),
 });
 type Context = Infer<typeof contextContract>;
-async function source(
+export async function routingSourceProof(
   ctx: Ctx,
   o: SourcePin,
   current = false,
@@ -453,6 +439,7 @@ async function semantic(
     }),
   );
 }
+const source = routingSourceProof;
 async function retained(
   ctx: Ctx,
   o: Operation,
@@ -1306,6 +1293,15 @@ export const purge = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
+    if (a.cursor === null)
+      await ctx.scheduler.runAfter(0, internal.ai.jev.verify.purge, {
+        ...(a.actorId ? { actorId: a.actorId } : {}),
+        ...(a.workspaceId && a.accountId
+          ? { workspaceId: a.workspaceId, accountId: a.accountId }
+          : {}),
+        cursor: null,
+        force: false,
+      });
     const query = ctx.db.query("jevRoutingOperations");
     const rows = a.inputVersionId
       ? query.withIndex("by_input", (q) =>

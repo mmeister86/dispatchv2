@@ -1,3 +1,5 @@
+import { excerpt } from "../../integrations/github/contextFields";
+import { payload as stylePayload } from "../styleFields";
 import { v } from "convex/values";
 import { mediaReference, mediaChecksums } from "../../lib/editorialFields";
 export const outcome = v.union(
@@ -214,6 +216,19 @@ export const routingIntent = v.object({
   tone: v.union(v.string(), v.null()),
   cta: v.union(v.string(), v.null()),
 });
+export const routingStateContract = v.object({
+  input: v.object({
+    title: v.string(),
+    originalFacts: v.array(v.string()),
+    userClaims: v.string(),
+    previousPerspective: v.string(),
+    interpretationRationale: v.string(),
+    questions: v.array(v.string()),
+    approvedPatchEvidence: v.array(excerpt),
+  }),
+  intent: routingIntent,
+  style: v.union(stylePayload, v.null()),
+});
 export const routingPolicyFields = {
   ...policyFields,
   purpose: v.literal("intent-routing"),
@@ -329,3 +344,155 @@ export const routingAttemptFields = {
   researchOrderId: v.optional(v.id("researchOrders")),
   logicalIntent: v.optional(v.string()),
 };
+
+export const verificationRef = v.object({
+  contentRequestId: v.id("contentRequests"),
+  candidateVersionId: v.id("ideaVersions"),
+  contentHash: v.string(),
+  commandFingerprint: v.string(),
+});
+export const verificationPolicyFields = {
+  ...routingPolicyFields,
+  purpose: v.literal("output-verification"),
+  questionVersion: v.literal("jev-output-verification-v1"),
+  normalizationVersion: v.literal("jev-verification-normalization-v1"),
+  thresholdVersion: v.literal("jev-verification-hypotheses-v1"),
+};
+export const verificationControlFields = {
+  ...controlFields,
+  purpose: v.literal("output-verification"),
+  analyzer: v.literal(false),
+  verification: v.boolean(),
+  withdrawn: v.optional(v.boolean()),
+};
+export const verificationCriterionKey = v.union(
+  ...(
+    [
+      "meaningPreserved",
+      "intentPreserved",
+      "newStrongClaim",
+      "unwantedPromotion",
+      "toneFits",
+      "ctaFits",
+      "networkFits",
+    ] as const
+  ).map(v.literal),
+);
+const verificationCriterion = v.object({
+  probability: v.number(),
+  applicability: v.union(v.literal("specified"), v.literal("unspecified")),
+});
+export const verificationResult = v.object({
+  candidateVersionId: v.id("ideaVersions"),
+  contentHash: v.string(),
+  provenanceHash: v.string(),
+  questionVersion: verificationPolicyFields.questionVersion,
+  normalizationVersion: verificationPolicyFields.normalizationVersion,
+  thresholdVersion: verificationPolicyFields.thresholdVersion,
+  model: v.string(),
+  decision: v.union(
+    v.literal("manual_review"),
+    v.literal("repairable"),
+    v.literal("accept_with_warning"),
+    v.literal("accept"),
+  ),
+  criteria: v.object({
+    meaningPreserved: verificationCriterion,
+    intentPreserved: verificationCriterion,
+    newStrongClaim: verificationCriterion,
+    unwantedPromotion: verificationCriterion,
+    toneFits: verificationCriterion,
+    ctaFits: verificationCriterion,
+    networkFits: verificationCriterion,
+  }),
+  reasonKeys: v.array(verificationCriterionKey),
+  resultFingerprint: v.string(),
+});
+export const verificationRisk = v.object({
+  candidateVersionId: v.id("ideaVersions"),
+  contentHash: v.string(),
+  reasonKeys: v.array(verificationCriterionKey),
+});
+export const verificationSlot = v.object({
+  kind: v.literal("standalone-verification-v1"),
+  candidateVersionId: v.id("ideaVersions"),
+  contentHash: v.string(),
+  provenanceHash: v.string(),
+  operationKey: v.string(),
+  commandFingerprint: v.string(),
+  requestFingerprint: v.string(),
+  actorId: v.id("users"),
+  producerRunId: v.id("agentRuns"),
+  inputVersionId: v.id("ideaVersions"),
+  startedAt: v.number(),
+  deadline: v.number(),
+  sourceUntil: v.union(v.number(), v.null()),
+  policyId: v.id("jevPolicies"),
+  policyFingerprint: v.string(),
+  controlId: v.id("jevControls"),
+  questionVersion: verificationPolicyFields.questionVersion,
+  normalizationVersion: verificationPolicyFields.normalizationVersion,
+  thresholdVersion: verificationPolicyFields.thresholdVersion,
+  state: v.union(
+    v.literal("ready"),
+    v.literal("admitted"),
+    v.literal("finished"),
+    v.literal("stopped"),
+  ),
+  attemptId: v.union(v.id("aiAttempts"), v.null()),
+  sourceUnavailable: v.boolean(),
+  result: v.union(verificationResult, v.null()),
+  resultFingerprint: v.union(v.string(), v.null()),
+  stickyRisk: v.union(verificationRisk, v.null()),
+});
+export const verificationAttemptFields = {
+  ...routingAttemptFields,
+  owner: v.literal("jev-output-verifier"),
+  purpose: v.literal("output-verification"),
+  routingOperationId: v.optional(v.id("jevRoutingOperations")),
+  contentRequestId: v.id("contentRequests"),
+  candidateVersionId: v.id("ideaVersions"),
+  contentHash: v.string(),
+  provenanceHash: v.string(),
+  producerRunId: v.id("agentRuns"),
+  commandFingerprint: v.string(),
+  questionVersion: verificationPolicyFields.questionVersion,
+  normalizationVersion: verificationPolicyFields.normalizationVersion,
+  thresholdVersion: verificationPolicyFields.thresholdVersion,
+};
+export const checkedVerification = v.object({
+  reference: verificationRef,
+  resultFingerprint: v.string(),
+});
+export const verificationView = v.object({
+  reference: verificationRef,
+  applicability: v.union(
+    v.literal("current"),
+    v.literal("historical"),
+    v.literal("unavailable"),
+  ),
+  sourceUntil: v.union(v.number(), v.null()),
+  deadline: v.number(),
+  state: v.union(
+    v.literal("ready"),
+    v.literal("admitted"),
+    v.literal("finished"),
+    v.literal("stopped"),
+  ),
+  result: v.union(verificationResult, v.null()),
+  stickyRisk: v.union(verificationRisk, v.null()),
+  usage: v.union(
+    v.null(),
+    v.object({
+      attemptId: v.id("aiAttempts"),
+      state: v.union(
+        v.literal("sent"),
+        v.literal("unknown"),
+        v.literal("settled"),
+      ),
+      heldMicros: v.number(),
+      estimatedMicros: v.union(v.number(), v.null()),
+      currency: v.string(),
+    }),
+  ),
+});

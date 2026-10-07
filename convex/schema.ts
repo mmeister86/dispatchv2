@@ -68,6 +68,9 @@ import {
   routingControlFields,
   routingOperationFields,
   routingAttemptFields,
+  verificationPolicyFields,
+  verificationControlFields,
+  verificationAttemptFields,
 } from "./ai/jev/types";
 import {
   sourceUpdateFields,
@@ -694,6 +697,20 @@ export default defineSchema({
 
     .index("by_ideaId", ["ideaId"]),
   contentRequests: defineTable(requestFields)
+    .index("by_verification_candidate", ["verification.candidateVersionId"])
+    .index("by_verification_actor", [
+      "verification.actorId",
+      "verification.sourceUnavailable",
+    ])
+    .index("by_verification_scope", [
+      "workspaceId",
+      "accountId",
+      "verification.sourceUnavailable",
+    ])
+    .index("by_verification_source", [
+      "verification.sourceUnavailable",
+      "verification.sourceUntil",
+    ])
     .index("by_routingOperationId", ["routingOperationId"])
     .index("by_inputVersionId", ["inputVersionId"])
     .index("by_runId", ["runId"])
@@ -712,10 +729,18 @@ export default defineSchema({
     .index("by_scope", ["workspaceId", "accountId", "sourceUnavailable"])
     .index("by_source", ["sourceUnavailable", "sourceUntil"]),
   jevPolicies: defineTable(
-    v.union(v.object(jevPolicyFields), v.object(routingPolicyFields)),
+    v.union(
+      v.object(jevPolicyFields),
+      v.object(routingPolicyFields),
+      v.object(verificationPolicyFields),
+    ),
   ).index("by_scope", ["workspaceId", "accountId"]),
   jevControls: defineTable(
-    v.union(v.object(jevControlFields), v.object(routingControlFields)),
+    v.union(
+      v.object(jevControlFields),
+      v.object(routingControlFields),
+      v.object(verificationControlFields),
+    ),
   ).index("by_key", ["key"]),
   aiPolicies: defineTable(policyFields).index("by_key", ["key"]),
   aiBudgets: defineTable(budgetFields).index("by_key", ["key"]),
@@ -728,11 +753,19 @@ export default defineSchema({
       v.object(nativeAttemptFields),
       v.object(jevAttemptFields),
       v.object(routingAttemptFields),
+      v.object(verificationAttemptFields),
       v.object(metricsAttemptFields),
       v.object(historyAttemptFields),
       v.object(embeddingAttemptFields),
     ),
   )
+    .index("by_verification_pending", [
+      "owner",
+      "workspaceId",
+      "accountId",
+      "candidateVersionId",
+      "state",
+    ])
     .index("by_routing_operation", ["owner", "routingOperationId"])
     .index("by_routing_pending", [
       "owner",

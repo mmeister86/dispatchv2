@@ -1,3 +1,4 @@
+import { verificationSlot, checkedVerification } from "../ai/jev/types";
 import { source as agentSource } from "../ai/fields";
 import { v } from "convex/values";
 import { content, mediaChecksums } from "../lib/editorialFields";
@@ -51,6 +52,7 @@ export const ideaFields = {
     v.object({
       candidateCommand: v.optional(
         v.object({
+          verification: v.optional(checkedVerification),
           key: v.string(),
           fingerprint: v.string(),
           contentHash: v.string(),
@@ -106,6 +108,7 @@ export const feedbackFields = {
   resultingVersionId: v.optional(v.id("ideaVersions")),
 };
 export const requestFields = {
+  verification: v.optional(verificationSlot),
   routingOperationId: v.optional(v.id("jevRoutingOperations")),
   outputKind: v.optional(v.literal("social-post-candidate")),
   routingCommandFingerprint: v.optional(v.string()),

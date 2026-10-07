@@ -61,6 +61,9 @@ export function ModelConfiguration() {
       <RoutingConfiguration
         key={`routing:${state.activeWorkspaceId}:${state.activeAccountId}`}
       />
+      <VerificationConfiguration
+        key={`verification:${state.activeWorkspaceId}:${state.activeAccountId}`}
+      />
       <ModelRuns key={state.activeWorkspaceId} />
     </>
   );
@@ -298,6 +301,92 @@ function RoutingConfiguration() {
       {command.conflict && (
         <Button variant="outline" onClick={command.reviewCurrent}>
           Aktuellen Routing-Zugang prüfen
+        </Button>
+      )}
+      {message && <p role="status">{message}</p>}
+    </Section>
+  );
+}
+
+function VerificationConfiguration() {
+  const { state, nativeScope } = useStore();
+  const account = state.accounts.find(
+    (a) =>
+      a.id === state.activeAccountId &&
+      a.workspaceId === state.activeWorkspaceId,
+  );
+  const availability = useQuery(
+    api.ai.jev.verify.availability,
+    account
+      ? {
+          workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+          accountId: account.id as Id<"socialAccounts">,
+        }
+      : "skip",
+  );
+  const disable = useMutation(api.ai.jev.verify.disable);
+  const command = useNativeCommand(`${nativeScope}:${account?.id}`);
+  const admin = ["Owner", "Admin"].includes(state.role);
+  const [message, setMessage] = useState("");
+  useEffect(() => setMessage(""), [nativeScope, account?.id]);
+  async function withdraw(call?: () => Promise<unknown>) {
+    if (!account || !admin) return;
+    const args = {
+      workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+      accountId: account.id as Id<"socialAccounts">,
+    };
+    if (await command.execute(call ?? (() => disable(args))))
+      setMessage("Prüf-Zugang für diesen Account ausdrücklich entzogen.");
+  }
+  return (
+    <Section
+      title="Kandidatenprüfung"
+      description="Prüft einen exakten ganzen Kandidaten; Generation und Publishing bleiben getrennt."
+    >
+      {!account ? (
+        <p>Account auswählen, um Kandidatenprüfung zu prüfen.</p>
+      ) : !availability ? (
+        <p role="status">Prüf-Konfiguration wird geladen …</p>
+      ) : (
+        <div className="stack text-sm">
+          <p role="status">
+            {availability.status === "ready"
+              ? "Kandidatenprüfung ist konfiguriert. Jede Anfrage prüft ihre aktuellen Freigaben."
+              : "Kandidatenprüfung benötigt Konfiguration."}
+          </p>
+          <p className="muted">
+            Der eigene Verarbeitungszweck ist standardmäßig aus. Fehlende oder
+            unvollständige Freigaben erlauben keinen Modellaufruf. Eine Prüfung
+            belegt keine Fakten und erteilt keine Publishing-Freigabe.
+            Verfügbarkeit und ursprüngliche Kostenbelege werden separat
+            angezeigt.
+          </p>
+          {admin && (
+            <Button
+              variant="outline"
+              disabled={command.locked}
+              onClick={() => void withdraw()}
+            >
+              {command.busy
+                ? "Prüf-Zugang wird entzogen …"
+                : "Prüf-Zugang für Account entziehen"}
+            </Button>
+          )}
+        </div>
+      )}
+      {command.error && <p role="alert">{command.error}</p>}
+      {command.retry && admin && (
+        <Button
+          variant="outline"
+          disabled={command.busy}
+          onClick={() => void withdraw(command.retry!)}
+        >
+          Denselben Prüf-Entzug wiederholen
+        </Button>
+      )}
+      {command.conflict && (
+        <Button variant="outline" onClick={command.reviewCurrent}>
+          Aktuellen Prüf-Zugang prüfen
         </Button>
       )}
       {message && <p role="status">{message}</p>}

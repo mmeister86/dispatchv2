@@ -1318,23 +1318,62 @@ export function CandidateApplication({
     versionId,
   });
   const apply = useMutation(api.content.ideas.applyCandidate);
+  const prepareVerification = useMutation(api.ai.jev.verify.prepare);
+  const checkVerification = useAction(api.ai.jev.verify.check);
+  const convex = useConvex();
+  const [verificationReference, setVerificationReference] =
+    useState<FunctionReturnType<typeof api.ai.jev.verify.prepare>["reference"]>(
+      null,
+    );
+  const preparedReference =
+    useRef<FunctionReturnType<typeof api.ai.jev.verify.prepare>["reference"]>(
+      null,
+    );
+  const liveVerification = useQuery(
+    api.ai.jev.verify.get,
+    verificationReference
+      ? {
+          workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+          reference: verificationReference,
+        }
+      : "skip",
+  );
+  const verification = liveVerification ?? view?.verification;
+  const [checkedResult, setCheckedResult] = useState(false),
+    [verificationMessage, setVerificationMessage] = useState("");
   const resultRef = useRef<FunctionReturnType<
     typeof api.content.ideas.applyCandidate
   > | null>(null);
   const [intent, setIntent] = useState(""),
     [reviewed, setReviewed] = useState(false);
-  const n = Math.min(view?.sourceUntil ?? Infinity, targetUntil ?? Infinity),
+  const n = Math.min(
+      view?.sourceUntil ?? Infinity,
+      targetUntil ?? Infinity,
+      checkedResult ? (verification?.sourceUntil ?? Infinity) : Infinity,
+    ),
     until = Number.isFinite(n) ? n : null;
-  const clock = useGithubSourceProofClock(
-    until === null
+  const clock = useGithubSourceProofClock([
+    ...(verification?.state === "ready"
+      ? [{ authorized: true, proofExpiresAt: verification.deadline }]
+      : []),
+    ...(verification?.sourceUntil !== null &&
+    verification?.sourceUntil !== undefined
+      ? [
+          {
+            authorized: verification.applicability !== "unavailable",
+            proofExpiresAt: verification.sourceUntil,
+          },
+        ]
+      : []),
+    ...(until === null
       ? []
       : [
           {
             authorized: view?.applicability !== "unavailable",
             proofExpiresAt: until,
           },
-        ],
-  );
+        ]),
+  ]);
   const scope = JSON.stringify([
     nativeScope,
     versionId,
@@ -1343,8 +1382,75 @@ export function CandidateApplication({
     disabled,
     view?.applicability,
     view?.candidate?.contentHash,
+    checkedResult ? verification?.result?.resultFingerprint : null,
+    checkedResult,
   ]);
   const op = useNativeCommand(scope, until);
+  const verificationScope = JSON.stringify([
+    nativeScope,
+    versionId,
+    target,
+    bufferScope,
+    disabled,
+    view?.applicability,
+    view?.candidate?.contentHash,
+  ]);
+  const verificationCommand = useNativeCommand(
+    verificationScope,
+    view?.sourceUntil ?? null,
+  );
+  const verificationUsable =
+    verification?.applicability === "current" &&
+    (verification.sourceUntil === null || verification.sourceUntil > clock);
+  const verificationResult = verificationUsable ? verification.result : null;
+  useEffect(() => {
+    setVerificationReference(null);
+    preparedReference.current = null;
+    setVerificationMessage("");
+    setCheckedResult(false);
+  }, [verificationScope]);
+  useEffect(() => {
+    if (!verificationUsable) setCheckedResult(false);
+  }, [verificationUsable]);
+  async function prepareCheck(call?: () => Promise<unknown>) {
+    const args = {
+      workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+      versionId,
+      contentHash: view!.candidate!.contentHash,
+      operationKey: crypto.randomUUID(),
+    };
+    if (
+      await verificationCommand.execute(
+        call ??
+          (async () => {
+            const result = await prepareVerification(args);
+            preparedReference.current = result.reference;
+          }),
+      )
+    ) {
+      setVerificationReference(preparedReference.current);
+      setVerificationMessage(
+        preparedReference.current
+          ? "Prüfbefehl gespeichert. Die einmalige Prüfung kann jetzt ausdrücklich gestartet werden."
+          : "Kandidatenprüfung benötigt Konfiguration · Kandidat bleibt ungeprüft.",
+      );
+    }
+  }
+  async function readCheck() {
+    const reference = verification?.reference ?? verificationReference;
+    if (
+      reference &&
+      (await verificationCommand.execute(() =>
+        convex.query(api.ai.jev.verify.get, {
+          workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+          reference,
+        }),
+      ))
+    )
+      setVerificationMessage(
+        "Ursprünglicher Prüfstatus gelesen · kein neuer Modellaufruf.",
+      );
+  }
   const usable =
     view?.applicability === "current" &&
     !!view.candidate &&
@@ -1366,7 +1472,10 @@ export function CandidateApplication({
     );
   return (
     <div className="stack text-sm">
-      <Status>Social-Post-Kandidat · ungeprüft</Status>
+      <Status>
+        Social-Post-Kandidat ·{" "}
+        {verificationResult ? "mit Prüfergebnis · unfreigegeben" : "ungeprüft"}
+      </Status>
       <p>
         Prüfe Angaben, Reihenfolge und Medien. Die Übernahme erzeugt eine
         Arbeitsversion; Freigabe und Veröffentlichung bleiben separate Schritte.
@@ -1383,6 +1492,166 @@ export function CandidateApplication({
           Medium {i + 1} · Alternativtext: {m.alt || "Noch zu prüfen"}
         </p>
       ))}
+      <div
+        className="stack rounded-lg border p-3"
+        aria-label="Kandidatenprüfung"
+      >
+        <p className="font-medium">Einmalige Kandidatenprüfung</p>
+        <p className="muted">
+          Standardmäßig aus. Alle sieben Kriterien beziehen sich auf den ganzen
+          geordneten Kandidaten und seine ursprüngliche Quelle.
+          Noul-Wahrscheinlichkeit ist keine Confidence und kein Faktennachweis;
+          Schwellen sind unkalibrierte Hypothesen. Freigabe bleibt separat.
+        </p>
+        {verification?.usage && (
+          <p role="status">
+            Prüfung:{" "}
+            {verification.usage.state === "settled"
+              ? verification.usage.estimatedMicros === null
+                ? "Kostenbetrag nicht verfügbar; keine Reservierung"
+                : `${(verification.usage.estimatedMicros / 1e6).toFixed(6)} ${verification.usage.currency} geschätzt`
+              : `Kosten ${verification.usage.state === "unknown" ? "ungewiss" : "noch offen"} · ${(verification.usage.heldMicros / 1e6).toFixed(6)} ${verification.usage.currency} reserviert`}
+            . Ein ursprünglicher Kostenbeleg, keine drei separaten Gebühren.
+          </p>
+        )}
+        {verification && !verificationUsable && (
+          <p role="status">
+            Prüfergebnis{" "}
+            {verification.applicability === "historical"
+              ? "historisch"
+              : "nicht verfügbar"}{" "}
+            · aktuell ungeprüft.
+          </p>
+        )}
+        {verificationResult && (
+          <>
+            <p role="status">
+              {verificationResult.decision === "manual_review"
+                ? "Manuelle Prüfung erforderlich · ursprüngliches Claim-/Bedeutungs-/Intentrisiko bleibt sichtbar."
+                : verificationResult.decision === "repairable"
+                  ? "Risikoarmer Fit-Hinweis · keine automatische Nachbesserung."
+                  : verificationResult.decision === "accept_with_warning"
+                    ? "Prüfung mit Hinweis · fehlende Präferenzen bleiben unspezifiziert."
+                    : "Prüfung ohne markierte Abweichung · keine Freigabe."}
+            </p>
+            <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {Object.entries(verificationResult.criteria).map(
+                ([key, value]) => (
+                  <div key={key}>
+                    <dt className="font-medium">
+                      {
+                        {
+                          meaningPreserved: "Bedeutung erhalten",
+                          intentPreserved: "Intention erhalten",
+                          newStrongClaim: "Neuer starker Claim",
+                          unwantedPromotion: "Unerwünschte Promotion",
+                          toneFits: "Ton passend",
+                          ctaFits: "CTA passend",
+                          networkFits: "Netzwerk passend",
+                        }[key]
+                      }
+                    </dt>
+                    <dd>
+                      {value.applicability === "unspecified"
+                        ? "Unspezifiziert"
+                        : `${(value.probability * 100).toFixed(1)} % Wahrscheinlichkeit`}
+                    </dd>
+                  </div>
+                ),
+              )}
+            </dl>
+            {verification?.stickyRisk && (
+              <p role="alert">
+                Ursprünglicher Kandidat benötigt manuelle Prüfung. Ein späterer
+                Fehler oder eine andere Ansicht beseitigt dieses Risiko nicht.
+              </p>
+            )}
+            <label className="flex gap-2">
+              <input
+                type="checkbox"
+                checked={checkedResult}
+                disabled={disabled || op.locked || verificationCommand.busy}
+                onChange={(e) => setCheckedResult(e.target.checked)}
+              />
+              Exaktes Prüfergebnis bei der Übernahme vermerken · weiterhin
+              unfreigegeben.
+            </label>
+          </>
+        )}
+        {verificationUsable &&
+          !verificationResult &&
+          verification?.state === "finished" && (
+            <p role="status">
+              Prüfung ohne gültiges Ergebnis · ungeprüft. Keine erneute bezahlte
+              Prüfung.
+            </p>
+          )}
+        {!verification && !verificationReference && (
+          <Button
+            variant="outline"
+            disabled={
+              disabled ||
+              state.role === "Viewer" ||
+              verificationCommand.locked ||
+              op.busy
+            }
+            onClick={() => void prepareCheck()}
+          >
+            Prüfbefehl vorbereiten
+          </Button>
+        )}
+        {verificationUsable &&
+          verification?.state === "ready" &&
+          !verification.usage &&
+          verification.deadline > clock && (
+            <Button
+              variant="outline"
+              disabled={
+                disabled ||
+                state.role === "Viewer" ||
+                verificationCommand.locked ||
+                op.busy
+              }
+              onClick={() => {
+                const args = {
+                  workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+                  reference: verification.reference,
+                };
+                void verificationCommand.execute(() => checkVerification(args));
+              }}
+            >
+              Gespeicherte Prüfung einmalig starten
+            </Button>
+          )}
+        {verification?.state === "ready" && verification.deadline <= clock && (
+          <p role="status">
+            Ursprünglicher Prüfzeitraum abgelaufen · ungeprüft, kein neuer
+            Prüfbefehl.
+          </p>
+        )}
+        {verificationMessage && <p role="status">{verificationMessage}</p>}
+        {verificationCommand.error && (
+          <p role="alert">{verificationCommand.error}</p>
+        )}
+        {verificationCommand.retry && !verification?.usage && (
+          <Button
+            variant="outline"
+            disabled={disabled || verificationCommand.busy}
+            onClick={() => void prepareCheck(verificationCommand.retry!)}
+          >
+            Denselben Prüfauftrag wiederholen
+          </Button>
+        )}
+        {(verification?.usage || verificationCommand.conflict) && (
+          <Button
+            variant="outline"
+            disabled={disabled || verificationCommand.busy}
+            onClick={() => void readCheck()}
+          >
+            Ursprünglichen Prüfstatus lesen
+          </Button>
+        )}
+      </div>
       <label>
         <span className="field-label">Absicht der Kandidatenübernahme</span>
         <Textarea
@@ -1425,6 +1694,14 @@ export function CandidateApplication({
             intent,
             claimsReviewed: reviewed,
             target: structuredClone(target),
+            ...(checkedResult && verificationResult
+              ? {
+                  verification: {
+                    reference: verification!.reference,
+                    resultFingerprint: verificationResult.resultFingerprint,
+                  },
+                }
+              : {}),
           };
           void op
             .execute(async () => {

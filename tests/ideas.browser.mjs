@@ -9,8 +9,8 @@ import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';import {ConvexError} from 'convex/values';
-const read=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='content/ideas:list')return window.list;if(name==='content/ideas:get')return window.linked??null;if(name==='content/ideas:candidate')return window.candidateViews?.[args.versionId]??null;if(name==='content/performance:context')return {entries:[],configuration:null};if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};if(name==='content/ideas:generationStatus')return window.runs;if(name==='ai/styleProfiles:get')return window.style??{control:null,versions:[],proposals:[],usable:false};if(name==='ai/styleProfiles:version')return window.styleVersion??null;if(name==='ai/jev/routing:get')return window.routingViews[args.operationId];return {page:[],isDone:true,continueCursor:''};};export const useQuery=read;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore(){}});export const useConvex=()=>({query:async(ref,args)=>read(ref,args)});
-export const useAction=ref=>async args=>{window.routingActions.push({name:getFunctionName(ref),args});if(window.classifyDeferred)return new Promise((resolve,reject)=>window.classifyCommands.push({args,resolve,reject}));window.routingViews[args.operationId]={...window.routingViews[args.operationId],result:{status:'routed',generatorKind:'generic',effectiveStrategy:'generic',category:'educational',suggestion:'educational',choiceConfidence:.75,score:75,noulProbability:null,thresholdVersion:'jev-routing-hypotheses-v1'},usage:{state:'settled',heldMicros:0,estimatedMicros:30,currency:'USD'}};};
+const read=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='content/ideas:list')return window.list;if(name==='content/ideas:get')return window.linked??null;if(name==='content/ideas:candidate')return window.candidateViews?.[args.versionId]??null;if(name==='content/performance:context')return {entries:[],configuration:null};if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};if(name==='content/ideas:generationStatus')return window.runs;if(name==='ai/styleProfiles:get')return window.style??{control:null,versions:[],proposals:[],usable:false};if(name==='ai/styleProfiles:version')return window.styleVersion??null;if(name==='ai/jev/verify:get')return window.verificationViews?.[args.reference.contentRequestId];if(name==='ai/jev/routing:get')return window.routingViews[args.operationId];return {page:[],isDone:true,continueCursor:''};};export const useQuery=read;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore(){}});export const useConvex=()=>({query:async(ref,args)=>read(ref,args)});
+export const useAction=ref=>async args=>{if(getFunctionName(ref)==='ai/jev/verify:check')return new Promise((resolve,reject)=>(window.verificationActions??=[]).push({args,resolve,reject}));window.routingActions.push({name:getFunctionName(ref),args});if(window.classifyDeferred)return new Promise((resolve,reject)=>window.classifyCommands.push({args,resolve,reject}));window.routingViews[args.operationId]={...window.routingViews[args.operationId],result:{status:'routed',generatorKind:'generic',effectiveStrategy:'generic',category:'educational',suggestion:'educational',choiceConfidence:.75,score:75,noulProbability:null,thresholdVersion:'jev-routing-hypotheses-v1'},usage:{state:'settled',heldMicros:0,estimatedMicros:30,currency:'USD'}};};
 export const useMutation=ref=>args=>{const name=getFunctionName(ref);if(name==='ai/jev/routing:prepare'){window.routingCommands.push({name,args});const prior=window.preparedIds[args.operationKey];const id=prior??'routing-'+window.routingCommands.length;window.preparedIds[args.operationKey]=id;if(!prior)window.routingViews[id]=window.nextRouting??{applicability:'current',sourceUntil:null,deadline:Date.now()+5000,usage:null,result:{status:args.intent.strategy?'human_choice':'configuration_required',generatorKind:'generic',effectiveStrategy:args.intent.strategy??'generic',category:null,suggestion:null,choiceConfidence:null,score:null,noulProbability:null,thresholdVersion:'jev-routing-hypotheses-v1'}};if(window.prepareDeferred)return new Promise((resolve,reject)=>window.prepareCommands.push({args,id,resolve,reject}));return Promise.resolve(id);}return new Promise((resolve,reject)=>window.commands.push({name,args,resolve,reject:error=>reject(error.message.startsWith('MODEL_')||error.message.startsWith('STYLE_')?new ConvexError(error.message):error)}));};`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';export const authClient={useSession:()=>({data:{session:{id:window.session},user:{id:'native-auth-user'}}})};`,
   "@/lib/store": `import {useState} from "react"; export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>({nativeScope:JSON.stringify(['native-auth-user',window.session,window.workspace,window.account,window.role]),state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role:window.role,accounts:[{id:'account-one',workspaceId:window.workspace,name:'Synthetic',channel:'X'}],ideas:window.demoIdeas??[],drafts:[],media:window.media??[]},setState:fn=>{window.demoIdeas=fn({ideas:window.demoIdeas??[]}).ideas;window.render();}});`,
@@ -1212,6 +1212,311 @@ try {
   await picture(
     "candidate-source-expired-390",
     page.getByText("Social-Post-Kandidat nicht verfügbar", { exact: true }),
+  );
+  // Additive standalone verifier transport DTOs; every earlier assertion remains.
+  await page.evaluate(() => {
+    window.candidateViews["native-candidate"].sourceUntil = null;
+    window.verificationViews = {};
+    window.verificationActions = [];
+    window.commands = [];
+    window.render();
+  });
+  const prepareVerifier = page.getByRole("button", {
+    name: "Prüfbefehl vorbereiten",
+    exact: true,
+  });
+  await prepareVerifier.click();
+  expect(await page.evaluate(() => window.commands[0].name)).toBe(
+    "ai/jev/verify:prepare",
+  );
+  await page.evaluate(() =>
+    window.commands[0].resolve({
+      status: "configuration_required",
+      reference: null,
+    }),
+  );
+  await expect(
+    page.getByText(
+      "Kandidatenprüfung benötigt Konfiguration · Kandidat bleibt ungeprüft.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.verificationActions.length)).toBe(0);
+  await prepareVerifier.click();
+  const prepareArgs = await page.evaluate(() => window.commands[1].args);
+  expect(prepareArgs).toMatchObject({
+    workspaceId: "workspace-one",
+    versionId: "native-candidate",
+    contentHash: "original-native-hash",
+  });
+  await page.evaluate(() =>
+    window.commands[1].reject(new Error("original prepare ACK lost")),
+  );
+  await page
+    .getByRole("button", {
+      name: "Denselben Prüfauftrag wiederholen",
+      exact: true,
+    })
+    .click();
+  expect(await page.evaluate(() => window.commands[2].args)).toEqual(
+    prepareArgs,
+  );
+  await page.evaluate(() => {
+    const reference = {
+      contentRequestId: "verification-original-request",
+      candidateVersionId: "native-candidate",
+      contentHash: "original-native-hash",
+      commandFingerprint: "verification-whole-original",
+    };
+    window.verificationViews[reference.contentRequestId] = {
+      reference,
+      applicability: "current",
+      sourceUntil: null,
+      deadline: Date.now() + 5000,
+      state: "ready",
+      result: null,
+      stickyRisk: null,
+      usage: null,
+    };
+    window.commands[2].resolve({ status: "ready", reference });
+    window.render();
+  });
+  const startVerifier = page.getByRole("button", {
+    name: "Gespeicherte Prüfung einmalig starten",
+    exact: true,
+  });
+  await expect(startVerifier).toBeEnabled();
+  await startVerifier.click();
+  const checkArgs = await page.evaluate(
+    () => window.verificationActions[0].args,
+  );
+  expect(checkArgs.reference.contentRequestId).toBe(
+    "verification-original-request",
+  );
+  await page.evaluate(() => {
+    const v = window.verificationViews["verification-original-request"];
+    v.state = "finished";
+    v.usage = {
+      attemptId: "verification-original-attempt",
+      state: "unknown",
+      heldMicros: 17000,
+      estimatedMicros: null,
+      currency: "EUR",
+    };
+    window.verificationActions[0].reject(
+      new Error("entered check ACK uncertain"),
+    );
+    window.render();
+  });
+  await expect(startVerifier).toHaveCount(0);
+  await expect(
+    page.getByRole("button", {
+      name: "Denselben Prüfauftrag wiederholen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByText("Prüfung: Kosten ungewiss", { exact: false }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: "Ursprünglichen Prüfstatus lesen",
+      exact: true,
+    })
+    .click();
+  expect(await page.evaluate(() => window.verificationActions.length)).toBe(1);
+  await picture(
+    "verification-original-unknown-390",
+    page.getByText("Prüfung: Kosten ungewiss", { exact: false }),
+  );
+  await page.evaluate(() => {
+    const v = window.verificationViews["verification-original-request"];
+    v.usage = {
+      ...v.usage,
+      state: "settled",
+      heldMicros: 0,
+      estimatedMicros: 110,
+    };
+    v.result = {
+      candidateVersionId: "native-candidate",
+      contentHash: "original-native-hash",
+      provenanceHash: "original-provenance",
+      questionVersion: "jev-output-verification-v1",
+      normalizationVersion: "jev-verification-normalization-v1",
+      thresholdVersion: "jev-verification-hypotheses-v1",
+      model: "synthetic-verifier-1",
+      decision: "manual_review",
+      reasonKeys: ["newStrongClaim"],
+      resultFingerprint: "original-checked-fingerprint",
+      criteria: Object.fromEntries(
+        [
+          "meaningPreserved",
+          "intentPreserved",
+          "newStrongClaim",
+          "unwantedPromotion",
+          "toneFits",
+          "ctaFits",
+          "networkFits",
+        ].map((k) => [
+          k,
+          {
+            probability: k === "newStrongClaim" ? 0.8 : 0.95,
+            applicability:
+              k === "toneFits" || k === "ctaFits" ? "unspecified" : "specified",
+          },
+        ]),
+      ),
+    };
+    v.stickyRisk = {
+      candidateVersionId: "native-candidate",
+      contentHash: "original-native-hash",
+      reasonKeys: ["newStrongClaim"],
+    };
+    window.render();
+  });
+  const checkedAck = page.getByRole("checkbox", {
+    name: "Exaktes Prüfergebnis bei der Übernahme vermerken · weiterhin unfreigegeben.",
+  });
+  await expect(
+    page.getByText("Manuelle Prüfung erforderlich", { exact: false }),
+  ).toBeVisible();
+  await expect(page.getByText("Unspezifiziert", { exact: true })).toHaveCount(
+    2,
+  );
+  expect(await page.getByRole("definition").count()).toBe(7);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await picture(
+    "verification-manual-risk-ideas-1280",
+    page.getByText("Social-Post-Kandidat · mit Prüfergebnis · unfreigegeben", {
+      exact: true,
+    }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await picture(
+    "verification-manual-risk-ideas-390",
+    page.getByText("Social-Post-Kandidat · mit Prüfergebnis · unfreigegeben", {
+      exact: true,
+    }),
+  );
+  await checkedAck.check();
+  await expect(page.getByLabel("Absicht der Kandidatenübernahme")).toHaveValue(
+    "",
+  );
+  await page
+    .getByLabel("Absicht der Kandidatenübernahme")
+    .fill("Human selects exact original verification result");
+  await page
+    .getByRole("checkbox", {
+      name: "Angaben, Posts und Medien geprüft · ungeprüfte Arbeitsversion übernehmen.",
+    })
+    .check();
+  await application.click();
+  const checkedCommand = await page.evaluate(() => window.commands[3].args);
+  expect(checkedCommand.verification).toEqual({
+    reference: checkArgs.reference,
+    resultFingerprint: "original-checked-fingerprint",
+  });
+  await page.evaluate(() =>
+    window.commands[3].reject(new Error("checked application ACK uncertain")),
+  );
+  await page
+    .getByRole("button", { name: "Denselben Übernahmeauftrag wiederholen" })
+    .click();
+  expect(await page.evaluate(() => window.commands[4].args)).toEqual(
+    checkedCommand,
+  );
+  await page.evaluate(() =>
+    window.commands[4].resolve({
+      draftId: "checked-working-draft",
+      versionId: "checked-working-version",
+      ideaVersionId: "native-candidate",
+    }),
+  );
+  await expect(page.getByTestId("route")).toHaveText(
+    "/drafts/checked-working-draft",
+  );
+  await checkedAck.check();
+  await page
+    .getByLabel("Absicht der Kandidatenübernahme")
+    .fill("Expires only the selected verification");
+  await page
+    .getByRole("checkbox", {
+      name: "Angaben, Posts und Medien geprüft · ungeprüfte Arbeitsversion übernehmen.",
+    })
+    .check();
+  await page.evaluate(() => {
+    window.verificationViews["verification-original-request"].sourceUntil =
+      Date.now() + 1000;
+    window.render();
+  });
+  await page.clock.fastForward(1100);
+  await expect(checkedAck).toHaveCount(0);
+  await expect(
+    page.getByRole("checkbox", {
+      name: "Angaben, Posts und Medien geprüft · ungeprüfte Arbeitsversion übernehmen.",
+    }),
+  ).not.toBeChecked();
+  await expect(application).toBeDisabled();
+  await expect(
+    page.getByText("Original first post", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Social-Post-Kandidat · ungeprüft", { exact: true }),
+  ).toBeVisible();
+  expect(await page.evaluate(() => window.commands.length)).toBe(5);
+  await picture(
+    "verification-expired-generation-retained-390",
+    page.getByText("Prüfergebnis nicht verfügbar", { exact: false }),
+  );
+  // Prepare ACK from an observed A→B→A session cannot restore paid dispatch permission.
+  await page.evaluate(() => {
+    window.session = "session-reset";
+    window.render();
+  });
+  await expect(page.getByLabel("Absicht der Kandidatenübernahme")).toHaveValue(
+    "",
+  );
+  await page.evaluate(() => {
+    window.session = "session-one";
+    window.render();
+  });
+  await expect(prepareVerifier).toBeVisible();
+  await prepareVerifier.click();
+  await page.evaluate(() => {
+    window.session = "session-other";
+    window.render();
+  });
+  await expect(prepareVerifier).toBeEnabled();
+  await page.evaluate(() => {
+    window.session = "session-one";
+    window.render();
+  });
+  await expect(prepareVerifier).toBeEnabled();
+  await page.evaluate(() => {
+    const reference =
+      window.verificationViews["verification-original-request"].reference;
+    window.commands[5].resolve({ status: "ready", reference });
+  });
+  await page.evaluate(
+    () =>
+      new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))),
+  );
+  await expect(startVerifier).toHaveCount(0);
+  expect(await page.evaluate(() => window.verificationActions.length)).toBe(1);
+  console.log(
+    JSON.stringify({
+      standaloneVerifier: "PASS",
+      defaultOFF: true,
+      wholePrepareReplay: true,
+      oneCheck: true,
+      unknownStatusOnly: true,
+      sevenCriteria: true,
+      stickyManualRisk: true,
+      humanOptionalWholeReference: true,
+      clockOnlyOwnExpiryKeepsGeneration: true,
+      observedSessionABA: true,
+      automaticApprovalOrPublishing: false,
+    }),
   );
   writeFileSync(
     `${evidence}/facts.json`,
