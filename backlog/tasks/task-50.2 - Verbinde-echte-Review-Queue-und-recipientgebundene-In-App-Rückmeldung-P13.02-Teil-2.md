@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-10-06 16:13'
-updated_date: '2026-10-07 09:03'
+updated_date: '2026-10-07 09:07'
 labels: []
 dependencies:
   - TASK-50.1
@@ -25,15 +25,15 @@ Nach akzeptierter50.1 echte Team/Composer/Plans/Calendar/Drawer Review-Projektio
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Native paginierte Queue/Policy/Stage/Composer-Projektionen zeigen tatsächliche Version/Account/Assignee und current-effective-vs-history Status; echte J10-Kette startet mit öffentlichem Invite.
-- [ ] #2 Assignment/Review-Notices haben tatsächliche abgeleitete Empfänger, occurrenceDedupe und private recipient-bound Readstate, keine Textkopien/Email-Fanout oder Mockreview.
-- [ ] #3 Dirty/immutableRetry/ScopeRoleEpoch/sourceClock, native Actions und styled Desktop/390px/Demo sind geprüft; CommentResolve erzeugt weder Stage noch Approval.
-- [ ] #4 Neue Derivate haben sofortige SourceMasks/indexierte physische Cleanup/33-36Inventory und erhalten irreversible Finanz-/Publishing-Parents; fresh SPEC/QUALITY/rootEU dokumentiert.
+- [x] #1 Native paginierte Queue/Policy/Stage/Composer-Projektionen zeigen tatsächliche Version/Account/Assignee und current-effective-vs-history Status; echte J10-Kette startet mit öffentlichem Invite.
+- [x] #2 Assignment/Review-Notices haben tatsächliche abgeleitete Empfänger, occurrenceDedupe und private recipient-bound Readstate, keine Textkopien/Email-Fanout oder Mockreview.
+- [x] #3 Dirty/immutableRetry/ScopeRoleEpoch/sourceClock, native Actions und styled Desktop/390px/Demo sind geprüft; CommentResolve erzeugt weder Stage noch Approval.
+- [x] #4 Neue Derivate haben sofortige SourceMasks/indexierte physische Cleanup/33-36Inventory und erhalten irreversible Finanz-/Publishing-Parents; fresh SPEC/QUALITY/rootEU dokumentiert.
 <!-- AC:END -->
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind dokumentiert.
+- [x] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind dokumentiert.
 - [ ] #2 Der Nutzer bestätigt nach manueller Prüfung ausdrücklich die Freigabe zum Done-Status.
 <!-- DOD:END -->
 
@@ -99,4 +99,6 @@ Fresh model SPEC PASS STOP report1a9b7066/receipt307dd7c5 accepted exact71ebe8e9
 Fresh distinctQUALITY PASSSTOP1d6b3a82/receipt20d40176 rootaccepted08:48:44UTC on71ebe8e9. Fullreport/new3nativecontrols/all12logs/metadata read;331source+1932protected+84artifacts+25owned=2372refs/bodyguards independently verified, actualchangedDemo pixelviewed with3identical priorviews qualified. Registered145/8+18independent/8+7browser executionsPASS/no fresh runnerFAIL. Root new complete installedVitest --testTimeout15000 nowRUNNING, original resource limits and331sourceSTOP. Fullresult/sourcecommit/exactexistingEUDev/manualDone pending; allACopen.
 
 Root whole-native PASS exact71ebe8e9:1235tests/53files, exit0, UTC08:48:49.716681-09:02:14.994641/805.278s/log3df45d37a3d7227f397d0372ab9d5660f8d57c236e930b632ba36ad482ccb479. Full actual log read/all331source unchanged; two historical canonical full-gate aliases now resolve to immutable originalFAIL copies in354archive, both review protected maps otherwise unchanged. No limit/assertion changes. FreshSPEC/distinctQUALITY/7static accepted. Scoped localmaster sourcecommit and exactexistingEUDev next; manualDone open.
+
+TECHNICALLY_ACCEPTED sourcef364e7279ef579f828452b5cf7f8fe2972c3394d/331freeze71ebe8e9, freshSPEC1a9b7066/distinctQUALITY1d6b3a82/1235tests53files805.278s/7static. ExactexistingEUDev0 UTC09:03:45.149210-09:03:56.404195/logd36a84d0;actual409metadata vs400/exact9new(8notices+request)/75interfaces9modules/5HTTP unchanged/all331source. Acceptance receipt /tmp/dispatch-continuation-50.2-technical-acceptance.json. SoftwareACs+documentedDoD1 checked; manualuserDoD2 andInProgress remain open, no actualprovider/screenreader/full33-36/manual certificate. Continue67.1 underapproved plan.
 <!-- SECTION:NOTES:END -->
