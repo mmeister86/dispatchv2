@@ -71,3 +71,5 @@ User clarification: missing R2 S3 EU-bucket credentials and GitHub App private k
 Initial baseline: 17 domain tests passed and TypeScript passed on 2026-10-05. Repository initially had only master and an uncommitted .env.local ignore entry; a temporary main branch was created before the user corrected the target to master.
 
 - [x] 4a30. TASK-32.2 first failure-notification dedupe/suppression unit at `008b1c9`: fresh SPEC then distinct QUALITY, full1462/57 and seven static gates; exact existing EUDev456, only optional notification-generation return field, five HTTP unchanged. Legacy possible transport effects preserved. Parent32 and manual Done remain open; see `.docs/reviews/task-32.2-validation.md`.
+
+- [x] 4a31. TASK-33.1.1 selected-workspace self-profile JSON at `20d0b68`: fresh SPEC then distinct QUALITY, Root12/2 affected native and7static/codegen/build, actualstyled four-role downloads/ABA/errors; exact existing EUDev457 withonlypublicoperations/export:self, all456oldcontracts/5HTTPunchanged. Wholeexport/retention/deletion/manualDone remainopen; see `.docs/reviews/task-33.1.1-validation.md`.
