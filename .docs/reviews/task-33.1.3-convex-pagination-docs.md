@@ -1,0 +1,11 @@
+# TASK-33.1.3 — current official pagination documentation
+
+Preparation only, not source release or runtime verification. Context7 was called outside the sandbox as required: one library resolution for Convex, then two documentation requests for the same detailed bounded workspace-export question. Chosen official source ID: /llmstxt/convex_dev_llms-full_txt, High reputation, 9253 snippets. No credentials or private project data were sent; no quota error occurred.
+
+The official [pagination documentation](https://docs.convex.dev/database/pagination) uses paginationOptsValidator and native paginate. [Index ranges](https://docs.convex.dev/database/reading-data/indexes) require equality fields in index order before a range on the next field. The actual pinned index declarations also append native creation time; a workspace prefix can therefore bound creation-time selection without a manual timestamp cursor.
+
+[GenericQueryCtx.runQuery](https://docs.convex.dev/api/interfaces/server.GenericQueryCtx) and [GenericMutationCtx.runQuery](https://docs.convex.dev/api/interfaces/server.GenericMutationCtx) use the calling transaction's consistent read snapshot and accept transactionLimits. [GenericActionCtx.runQuery](https://docs.convex.dev/api/interfaces/server.GenericActionCtx) instead starts a separate read transaction. Separate exported pages likewise do not acquire a common atomic snapshot merely by echoing a selection bound.
+
+[Nested transaction limits](https://docs.convex.dev/database/writing-data) apply relative to current consumption. Actual metrics must include outer Auth/scope work and later caller work. A failing read can record overage; a chosen byte ceiling is not an exact pre-read/no-overshoot guarantee. Unexpected resource errors must propagate rather than become partial success.
+
+The current [snapshot timestamp documentation](https://docs.convex.dev/database/advanced/commit-timestamp) distinguishes database commit order from wall-clock creation time. This proposal introduces no commitTs field/API, stored export job, signature or new snapshot abstraction. A creation-time bound excludes ordinary later rows, while payload mutation, deletion, source revocation and clock behavior remain current at each separate page. The exact chosen implementation still needs pinned-source corroboration and registered tests.
