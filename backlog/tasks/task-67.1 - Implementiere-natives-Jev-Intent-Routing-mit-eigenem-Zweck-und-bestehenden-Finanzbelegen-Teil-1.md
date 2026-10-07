@@ -6,7 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-06 22:33'
-updated_date: '2026-10-06 23:57'
+updated_date: '2026-10-07 00:04'
 labels: []
 dependencies:
   - TASK-50.2
@@ -53,4 +53,6 @@ Nach finaler technischer45/46/47/49/50-Reconciliation die bestehenden analyzer-o
 CLI-Vorbereitung unter dem freigegebenen Fortsetzungsvertrag; Status To Do, kein SourceWriter, keine Provideraktivierung oder technische Abnahme. Originaler readonly67/68-Bericht und final akzeptierte45-50-Source müssen vor Implementierung abgeglichen werden.
 
 Neuer unabhängiger ReadonlyPreflight /tmp/dispatch-67-preflight.md voll gelesen/adoptiert in .docs/reviews/task-67-routing-generator-preflight.md+sourceJSON:57stabileFiles/fünf installedAgentQuellhashes unverändert, moving47Schema/Crons/Style ausgenommen. Actual9Strategies≠8AnalyzerContentTypes; NoulprobabilitykeinConfidence; Router.50/.90 braucht eigenekonkreteNormalization ohne Analyzer.7/Score/Rubrikänderung. Alle tatsächlichen5GeneratorCaller/ReceiptOwner/Circuit/Source+Style/AgentCleanup-Kanten aufgelistet; nochkeineTests/SourceFreigabe/Provideraktivierung.
+
+Konkreter zukünftigerSoleWriterBrief /tmp/dispatch-67.1-writer-brief.md auf Basis des vollständig adoptierten neuenNativeCallerPreflights vorbereitet. Backend-native separateRoutingOperation/currentSourceStyle/connectedepoch/eigeneDefaultOFFPurpose-Control-Circuit/actualSDK-rubric/3BudgetLedger/lateFinance/physischepreRunCleanup; Analyzer8Rubrik/.7Score unverändert. KeineSourceFreigabe vor finaltechnischem47.2/49.1/49.2/50.1/50.2; ToDo/ACs ungeprüft, realeConfig/live/manualDone offen.
 <!-- SECTION:NOTES:END -->
