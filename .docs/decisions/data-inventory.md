@@ -276,3 +276,7 @@ Source `0bdd9e4` reuses `publishingNotifications`, introducing no table. Optiona
 ### TASK-31.3 ephemeral GitHub attention (2026-10-08)
 
 Source365ac7e adds only one existing githubRecoveries index[workspaceId,state,leaseUntil]; no table, stored alert/read-marker/derivative or cleanup obligation. At most6 parent facts are projected after current Owner/Admin/source proof, with stored generation and actual local processed-signal resolution. Wire exposes correlated native auth/session/workspace/nonce and row IDs only, with finite observation/source deadlines and unknown coverage. No raw provider/repository/GUID/payload or private source copies. Ephemeral mounted read renewal changes no operational facts. Existing104 native-table/component inventory and full export/erase/retention remain open.
+
+## TASK-33.1.3 accepted shared-version export
+
+Source169fdd1 adds exactly one draftVersions[workspaceId] index and one public bounded versions query, no table/component/copy. The104 native table inventory remains unchanged. Nativecursor/finite creation selection exports at most one authorized already-shared business version per current transaction and real64KiB Settings download, after Root/account/original retained proof; author/source/media/private archive fields excluded. It does not export private source archives, notification settings/recipient slots, all other families/components or promise full/atomic export. Metadata471 and validation task-33.1.3-validation.md document exact EUDev/source evidence; manual Done remains open.
