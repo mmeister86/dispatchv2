@@ -178,7 +178,7 @@ export const eventFields = {
   code: v.string(),
   createdAt: v.number(),
 };
-export const notificationFields = {
+export const notificationTransportFields = {
   workspaceId: v.id("workspaces"),
   scheduleId: v.id("schedules"),
   generation: v.optional(v.number()),
@@ -186,6 +186,24 @@ export const notificationFields = {
   state: v.union(v.literal("pending"), v.literal("sent"), v.literal("blocked")),
   errorCode: v.union(v.string(), v.null()),
   createdAt: v.number(),
+};
+
+export const publishingPresentation = v.object({
+  draftId: v.id("drafts"),
+  versionId: v.id("draftVersions"),
+  accountId: v.id("socialAccounts"),
+  approvalId: v.id("approvals"),
+  approvalActorId: v.id("users"),
+  purpose,
+  reviewPin,
+  sourceUntil: v.union(v.number(), v.null()),
+  readAt: v.union(v.number(), v.null()),
+  dismissedAt: v.union(v.number(), v.null()),
+});
+export const notificationFields = {
+  ...notificationTransportFields,
+  presentation: v.optional(publishingPresentation),
+  presentationUnavailable: v.optional(v.boolean()),
 };
 
 export const commentFields = {

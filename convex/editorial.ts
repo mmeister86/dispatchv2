@@ -38,7 +38,7 @@ import {
   approvalFields,
   scheduleFields,
   eventFields,
-  notificationFields,
+  notificationTransportFields,
   commentFields,
 } from "./lib/editorialFields";
 import { internal } from "./_generated/api";
@@ -359,7 +359,7 @@ export const resources = workspaceQuery({
       v.object({
         _id: v.id("publishingNotifications"),
         _creationTime: v.number(),
-        ...notificationFields,
+        ...notificationTransportFields,
       }),
     ),
   }),
@@ -427,6 +427,17 @@ export const resources = workspaceQuery({
       ...(a.xEvidence ? { xEvidence: a.xEvidence } : {}),
     }));
     result.assets = result.assets.slice(0, 100);
+    result.notifications = result.notifications.map((n) => ({
+      _id: n._id,
+      _creationTime: n._creationTime,
+      workspaceId: n.workspaceId,
+      scheduleId: n.scheduleId,
+      ...(n.generation === undefined ? {} : { generation: n.generation }),
+      recipientId: n.recipientId,
+      state: n.state,
+      errorCode: n.errorCode,
+      createdAt: n.createdAt,
+    }));
     return result;
   },
 });

@@ -10,10 +10,10 @@ const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import React from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
-const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';if(name==='preferences:saveNotifications')return new Promise((resolve,reject)=>window.preferenceSaves.push({args,sessionId:window.session.session.id,resolve,reject}));throw new Error('No domain writes in health fixture');});return funcs.get(name)};
+const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';if(name==='publishing/notices:read'||name==='publishing/notices:dismiss')return new Promise((resolve,reject)=>window.publishingCommands.push({name,args,sessionId:window.session.session.id,resolve,reject}));if(name==='preferences:saveNotifications')return new Promise((resolve,reject)=>window.preferenceSaves.push({args,sessionId:window.session.session.id,resolve,reject}));throw new Error('No domain writes in health fixture');});return funcs.get(name)};
 export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(name!=='operations/export:self')throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
 export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='preferences:notifications'){if(window.preferenceError)throw Error('PRIVATE_PROVIDER_ERROR');return window.preferenceByKey[args.requestKey];}if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
-export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
+export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});if(name==='publishing/notices:list'){if(window.publishingError)throw Error('PRIVATE_PROVIDER_ERROR');return {results:window.publishingNotices.map(n=>({...n,requestKey:n.requestKey??args.requestKey})),status:window.publishingStatus,loadMore(){window.publishingLoads++}}}return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
 };
 const server = await createServer({
@@ -113,6 +113,10 @@ try {
       return setItem.call(this, key, value);
     };
     window.notices = [];
+    window.publishingNotices = [];
+    window.publishingCommands = [];
+    window.publishingStatus = "Exhausted";
+    window.publishingLoads = 0;
     window.queries = [];
     window.session = {
       user: {
@@ -1651,10 +1655,467 @@ try {
   expect(errors.filter((e) => !e.includes("PRIVATE_PROVIDER_ERROR"))).toEqual(
     [],
   );
+  // TASK-32.4: the same mounted drawer, a separately bounded personal family.
+  await page.goto("http://127.0.0.1:5189/overview");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page
+    .getByRole("button", { name: "Benachrichtigungen öffnen", exact: true })
+    .click();
+  const publishingInbox = page.getByTestId("publishing-inbox");
+  await page.evaluate(() =>
+    window.update({ publishingStatus: "LoadingFirstPage" }),
+  );
+  await expect(publishingInbox).toContainText(
+    "Publishing-Hinweise werden geladen",
+  );
+  await page.evaluate(() =>
+    window.update({
+      publishingStatus: "CanLoadMore",
+      publishingNotices: [
+        {
+          family: "publishing",
+          id: "publishing-own",
+          authId: "auth-owner",
+          sessionId: "session-owner",
+          workspaceId: "workspace-native",
+          draftId: "draft-publishing",
+          versionId: "version-publishing",
+          accountId: "account-native",
+          createdAt: Date.now(),
+          sourceUntil: null,
+          readAt: null,
+          dismissedAt: null,
+        },
+      ],
+    }),
+  );
+  await expect(publishingInbox).toContainText(
+    "1 ungelesene Publishing-Hinweise in 1 geladenen Einträgen",
+  );
+  await expect(publishingInbox).toContainText("weitere Anzahl unbekannt");
+  await expect(
+    page.getByRole("button", {
+      name: /^(Alle als gelesen markieren|Lokale Publishing-Ausgänge als gelesen markieren)$/,
+    }),
+  ).toHaveCount(0);
+  await expect(publishingInbox.getByRole("link")).toHaveAttribute(
+    "href",
+    "/drafts/draft-publishing",
+  );
+  expect(await publishingInbox.innerText()).not.toMatch(
+    /ungesendet|zugestellt|safe retry|PRIVATE/,
+  );
+  await publishingInbox
+    .getByRole("button", { name: "Weitere Publishing-Seite laden" })
+    .click();
+  expect(await page.evaluate(() => window.publishingLoads)).toBe(1);
+  await publishingInbox
+    .getByRole("button", {
+      name: "Publishing-Hinweis als gelesen markieren",
+      exact: true,
+    })
+    .focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    publishingInbox.getByRole("button", {
+      name: "Publishing-Hinweis als gelesen markieren",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await page.evaluate(() => {
+    const r = window.publishingCommands.at(-1);
+    r.resolve({
+      authId: r.args.expectedAuthId,
+      sessionId: r.sessionId,
+      requestKey: r.args.requestKey,
+    });
+    window.update({
+      publishingNotices: window.publishingNotices.map((n) => ({
+        ...n,
+        readAt: Date.now(),
+      })),
+    });
+  });
+  await expect(publishingInbox).toContainText(
+    "0 ungelesene Publishing-Hinweise in 1 geladenen Einträgen",
+  );
+  await publishingInbox
+    .getByRole("button", { name: "Publishing-Hinweis ausblenden", exact: true })
+    .click();
+  await page.evaluate(() => {
+    const r = window.publishingCommands.at(-1);
+    r.resolve({
+      authId: r.args.expectedAuthId,
+      sessionId: r.sessionId,
+      requestKey: r.args.requestKey,
+    });
+    window.update({ publishingNotices: [] });
+  });
+  await expect(publishingInbox).toContainText("Keine Publishing-Hinweise");
+  await page.evaluate(() =>
+    window.update({
+      publishingStatus: "Exhausted",
+      publishingNotices: [
+        {
+          family: "publishing",
+          id: "publishing-own",
+          authId: "auth-owner",
+          sessionId: "session-owner",
+          workspaceId: "workspace-native",
+          draftId: "draft-publishing",
+          versionId: "version-publishing",
+          accountId: "account-native",
+          createdAt: Date.now(),
+          sourceUntil: null,
+          readAt: null,
+          dismissedAt: null,
+        },
+      ],
+    }),
+  );
+  // Wrong correlation is an unconfirmed command, never a successful read claim.
+  await publishingInbox
+    .getByRole("button", {
+      name: "Publishing-Hinweis als gelesen markieren",
+      exact: true,
+    })
+    .click();
+  await page.evaluate(() => {
+    const r = window.publishingCommands.at(-1);
+    r.resolve({
+      authId: r.args.expectedAuthId,
+      sessionId: r.sessionId,
+      requestKey: "foreign-key",
+    });
+  });
+  await expect(publishingInbox.getByRole("alert")).toBeVisible();
+  expect(await publishingInbox.innerText()).not.toContain("NOTICE_UNAVAILABLE");
+  await publishingInbox
+    .getByRole("button", { name: "Denselben Auftrag wiederholen", exact: true })
+    .click();
+  await page.evaluate(() => {
+    const r = window.publishingCommands.at(-1);
+    r.resolve({
+      authId: r.args.expectedAuthId,
+      sessionId: r.sessionId,
+      requestKey: r.args.requestKey,
+    });
+  });
+  await expect(publishingInbox.getByRole("alert")).toHaveCount(0);
+  // Observed session and role ABA remount the family; old errors are discarded.
+  for (const dimension of ["session", "role", "workspace", "account"]) {
+    await publishingInbox
+      .getByRole("button", {
+        name: "Publishing-Hinweis als gelesen markieren",
+        exact: true,
+      })
+      .click();
+    const oldCommand = await page.evaluate(
+      () => window.publishingCommands.length - 1,
+    );
+    if (dimension === "session") {
+      await page.evaluate(() =>
+        window.update({
+          session: { ...window.session, session: { id: "session-other" } },
+        }),
+      );
+      await expect(
+        page.getByRole("heading", { name: "Dein Posteingang", exact: true }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Benachrichtigungen öffnen", exact: true })
+        .click();
+      await expect(publishingInbox.getByRole("link")).toHaveCount(0);
+      await page.evaluate(() =>
+        window.update({
+          session: { ...window.session, session: { id: "session-owner" } },
+        }),
+      );
+    } else if (dimension === "role") {
+      await page.evaluate(() =>
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role: "Admin" }],
+          },
+        }),
+      );
+      await expect(
+        page.getByRole("heading", { name: "Dein Posteingang", exact: true }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Benachrichtigungen öffnen", exact: true })
+        .click();
+      await expect(
+        publishingInbox.getByRole("button", {
+          name: "Publishing-Hinweis als gelesen markieren",
+          exact: true,
+        }),
+      ).toBeEnabled();
+      await page.evaluate(() =>
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role: "Owner" }],
+          },
+        }),
+      );
+    } else if (dimension === "workspace") {
+      await page.evaluate(() =>
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            activeWorkspaceId: "workspace-other",
+            workspaces: [
+              { ...window.snapshot.workspaces[0], id: "workspace-other" },
+            ],
+          },
+          roster: { ...window.roster, workspaceId: "workspace-other" },
+        }),
+      );
+      await expect(
+        page.getByRole("heading", { name: "Dein Posteingang", exact: true }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Benachrichtigungen öffnen", exact: true })
+        .click();
+      await expect(publishingInbox.getByRole("link")).toHaveCount(0);
+      await page.evaluate(() =>
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            activeWorkspaceId: "workspace-native",
+            workspaces: [
+              { ...window.snapshot.workspaces[0], id: "workspace-native" },
+            ],
+          },
+          roster: { ...window.roster, workspaceId: "workspace-native" },
+        }),
+      );
+    } else {
+      await page.evaluate(() =>
+        window.update({
+          resources: {
+            ...window.resources,
+            accounts: [
+              window.resources.accounts[0],
+              {
+                ...window.resources.accounts[0],
+                _id: "account-other",
+                name: "Other X",
+                handle: "@other",
+              },
+            ],
+          },
+        }),
+      );
+      await page
+        .locator('select[aria-label="Aktiver Account"]')
+        .selectOption("account-other", { force: true });
+      await expect(
+        publishingInbox.getByRole("button", {
+          name: "Publishing-Hinweis als gelesen markieren",
+          exact: true,
+        }),
+      ).toBeEnabled();
+      await page
+        .locator('select[aria-label="Aktiver Account"]')
+        .selectOption("account-native", { force: true });
+    }
+    if (dimension !== "account") {
+      await expect(
+        page.getByRole("heading", { name: "Dein Posteingang", exact: true }),
+      ).toHaveCount(0);
+      await page
+        .getByRole("button", { name: "Benachrichtigungen öffnen", exact: true })
+        .click();
+    }
+    await expect(
+      publishingInbox.getByRole("button", {
+        name: "Publishing-Hinweis als gelesen markieren",
+        exact: true,
+      }),
+    ).toBeEnabled();
+    await page.evaluate(
+      (index) =>
+        window.publishingCommands[index].reject(
+          Error("PRIVATE_PUBLISHING_LATE_ERROR"),
+        ),
+      oldCommand,
+    );
+    await expect(publishingInbox.getByRole("alert")).toHaveCount(0);
+  }
+  await page.evaluate(() =>
+    window.update({
+      publishingNotices: window.publishingNotices.map((n) => ({
+        ...n,
+        sourceUntil: Date.now() + 500,
+      })),
+    }),
+  );
+  await expect(publishingInbox.getByRole("link")).toHaveCount(1);
+  await publishingInbox
+    .getByRole("button", {
+      name: "Publishing-Hinweis als gelesen markieren",
+      exact: true,
+    })
+    .click();
+  const expiredPendingCommand = await page.evaluate(
+    () => window.publishingCommands.length - 1,
+  );
+  await page.clock.runFor(501);
+  await expect(publishingInbox.getByRole("link")).toHaveCount(0);
+  await page.evaluate(() =>
+    window.update({
+      publishingNotices: window.publishingNotices.map((n) => ({
+        ...n,
+        id: "publishing-next-episode",
+        versionId: "version-next-episode",
+        sourceUntil: Date.now() + 60000,
+      })),
+    }),
+  );
+  await expect(
+    publishingInbox.getByRole("button", {
+      name: "Publishing-Hinweis als gelesen markieren",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await publishingInbox
+    .getByRole("button", {
+      name: "Publishing-Hinweis als gelesen markieren",
+      exact: true,
+    })
+    .click();
+  const replacementCommand = await page.evaluate(
+    () => window.publishingCommands.length - 1,
+  );
+  await page.evaluate((index) => {
+    const command = window.publishingCommands[index];
+    command.resolve({
+      authId: command.args.expectedAuthId,
+      sessionId: command.sessionId,
+      requestKey: command.args.requestKey,
+    });
+  }, expiredPendingCommand);
+  await expect(
+    publishingInbox.getByRole("button", {
+      name: "Publishing-Hinweis als gelesen markieren",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await page.evaluate((index) => {
+    const command = window.publishingCommands[index];
+    command.resolve({
+      authId: command.args.expectedAuthId,
+      sessionId: command.sessionId,
+      requestKey: command.args.requestKey,
+    });
+  }, replacementCommand);
+  await expect(
+    publishingInbox.getByRole("button", {
+      name: "Publishing-Hinweis als gelesen markieren",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await expect(publishingInbox.getByRole("alert")).toHaveCount(0);
+  const entropyBeforePublishing = await page.evaluate(
+    () => window.publishingCommands.length,
+  );
+  await page.evaluate(() => {
+    window.realPublishingUUID = crypto.randomUUID.bind(crypto);
+    crypto.randomUUID = () => {
+      throw Error("PRIVATE_ENTROPY");
+    };
+  });
+  await publishingInbox
+    .getByRole("button", {
+      name: "Publishing-Hinweis als gelesen markieren",
+      exact: true,
+    })
+    .click();
+  await expect(publishingInbox.getByRole("alert")).toBeVisible();
+  expect(await page.evaluate(() => window.publishingCommands.length)).toBe(
+    entropyBeforePublishing,
+  );
+  await page.evaluate(() => {
+    crypto.randomUUID = window.realPublishingUUID;
+  });
+  await publishingInbox
+    .getByRole("button", { name: "Denselben Auftrag wiederholen", exact: true })
+    .click();
+  await page.evaluate(() => {
+    const r = window.publishingCommands.at(-1);
+    r.resolve({
+      authId: r.args.expectedAuthId,
+      sessionId: r.sessionId,
+      requestKey: r.args.requestKey,
+    });
+  });
+  await expect(publishingInbox.getByRole("alert")).toHaveCount(0);
+  await page.evaluate(() => window.update({ publishingError: true }));
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "Publishing-Hinweise sind derzeit nicht verfügbar" }),
+  ).toBeVisible();
+  expect(await page.locator("main").innerText()).not.toContain(
+    "PRIVATE_PROVIDER_ERROR",
+  );
+  await page.evaluate(() => window.update({ publishingError: false }));
+  await page
+    .getByRole("button", {
+      name: "Publishing-Hinweise erneut laden",
+      exact: true,
+    })
+    .click();
+  await expect(publishingInbox.getByRole("link")).toHaveCount(1);
+  await page.screenshot({
+    path: `${evidence}/publishing-inbox-1280.png`,
+    fullPage: false,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await publishingInbox.evaluate((element) => {
+      const bounds = element.getBoundingClientRect();
+      return [...element.querySelectorAll("button")].every((button) => {
+        const rect = button.getBoundingClientRect();
+        return (
+          rect.left >= bounds.left - 1 &&
+          rect.right <= bounds.right + 1 &&
+          button.scrollWidth <= button.clientWidth + 1
+        );
+      });
+    }),
+  ).toBe(true);
+  await page.screenshot({
+    path: `${evidence}/publishing-inbox-390.png`,
+    fullPage: false,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth + 1,
+    ),
+  ).toBe(true);
+  expect(await page.evaluate(() => window.storageWrites)).toEqual([]);
+  expect(provider).toEqual([]);
+  expect(errors.filter((e) => !e.includes("PRIVATE_PROVIDER_ERROR"))).toEqual(
+    [],
+  );
   writeFileSync(
     `${evidence}/receipt.json`,
     JSON.stringify(
       {
+        publishingInbox: {
+          sameDrawer: true,
+          ownCommands: true,
+          loadedOnly: true,
+          nativeExpiry: true,
+          sessionRoleWorkspaceAccountABA: true,
+          lateErrorsDiscarded: true,
+          entropyAndRetry: true,
+          safeError: true,
+        },
         actualApp: true,
         actualStore: true,
         productionCss: true,

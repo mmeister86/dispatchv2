@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Component, type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
@@ -17,7 +17,7 @@ export function useNativeCommand(scope: string, until: number | null = null) {
   const mounted = useRef(false),
     epoch = useRef(0),
     lastScope = useRef(scope),
-    ticket = useRef<object | null>(null),
+    ticket = useRef<{ until: number | null } | null>(null),
     latestUntil = useRef(until);
   if (lastScope.current !== scope) {
     lastScope.current = scope;
@@ -43,25 +43,35 @@ export function useNativeCommand(scope: string, until: number | null = null) {
     setRetry(null);
     setConflict(false);
   }, [scope]);
-  const expired = until !== null && until <= Date.now();
+  const pendingUntil = ticket.current?.until ?? null,
+    clock = useGithubSourceProofClock(
+      pendingUntil === null
+        ? []
+        : [{ authorized: true, proofExpiresAt: pendingUntil }],
+    ),
+    expired = until !== null && until <= clock,
+    pendingExpired = pendingUntil !== null && pendingUntil <= clock;
   useEffect(() => {
-    if (expired) {
+    if (expired || pendingExpired) {
       epoch.current++;
       ticket.current = null;
       setBusy(false);
       setRetry(null);
       setError("");
+      setConflict(false);
     }
-  }, [expired]);
+  }, [expired, pendingExpired]);
   async function execute(call: () => Promise<unknown>) {
     if (ticket.current || !mounted.current || expired) return false;
-    const owner = {},
+    const owner = { until },
       generation = epoch.current,
       originalUntil = until;
-    const valid = () =>
+    const owned = () =>
       mounted.current &&
       ticket.current === owner &&
-      epoch.current === generation &&
+      epoch.current === generation;
+    const valid = () =>
+      owned() &&
       (originalUntil === null || originalUntil > Date.now()) &&
       (latestUntil.current === null || latestUntil.current > Date.now());
     ticket.current = owner;
@@ -85,7 +95,7 @@ export function useNativeCommand(scope: string, until: number | null = null) {
       }
       return false;
     } finally {
-      if (valid()) {
+      if (owned()) {
         ticket.current = null;
         setBusy(false);
       }
@@ -617,104 +627,114 @@ export function NativeNoticeInbox({
     );
   const unread = rows.filter((n) => n.readAt === null);
   if (indicator)
-    return unread.length ? (
-      <span
-        className="absolute right-2 top-2 size-1.5 rounded-full bg-primary"
-        aria-label="Ungelesene Hinweise in geladenen Einträgen"
-      />
-    ) : null;
+    return (
+      <>
+        {unread.length ? (
+          <span
+            className="absolute right-2 top-2 size-1.5 rounded-full bg-primary"
+            aria-label="Ungelesene Hinweise in geladenen Einträgen"
+          />
+        ) : null}
+        <PublishingInbox key={nativeScope} indicator />
+      </>
+    );
   return (
-    <section className="stack" aria-label="Persönliche native Hinweise">
-      <p className="text-xs muted">
-        {unread.length} ungelesene Hinweise in {rows.length} geladenen Einträgen
-        ·{" "}
-        {list.status === "Exhausted" ? "geladenes Ende" : "begrenzte Übersicht"}
-      </p>
-      {list.status === "LoadingFirstPage" && (
-        <p role="status">Persönliche Hinweise werden geladen …</p>
-      )}
-      {rows.map((n) => (
-        <div className="border-b pb-4 stack text-sm" key={n.id}>
-          <strong>
-            {n.parent.kind === "assignment"
-              ? "Entwurf zugewiesen"
-              : n.parent.kind === "request"
-                ? "Review angefordert"
-                : n.parent.kind === "decision"
-                  ? n.parent.withdrawn
-                    ? "Review zurückgezogen"
-                    : "Review bestätigt"
-                  : n.parent.revoked
-                    ? "Freigabe widerrufen"
-                    : "Version freigegeben"}
-          </strong>
-          <p className="text-xs muted break-all">
-            Exakte Version {n.versionId} · Account{" "}
-            {n.accountId ?? "nicht gewählt"} ·{" "}
-            {n.readAt === null ? "Neu" : "Gelesen"}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" asChild>
-              <Link to={`/drafts/${n.draftId}`} onClick={onOpen}>
-                Entwurf prüfen
-              </Link>
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={op.locked || n.readAt !== null}
-              onClick={() => {
-                const args = {
-                  workspaceId: state.activeWorkspaceId as Id<"workspaces">,
-                  noticeIds: [n.id],
-                };
-                void op.execute(() => read(args));
-              }}
-            >
-              Als gelesen markieren
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={op.locked}
-              onClick={() => {
-                const args = {
-                  workspaceId: state.activeWorkspaceId as Id<"workspaces">,
-                  noticeIds: [n.id],
-                };
-                void op.execute(() => dismiss(args));
-              }}
-            >
-              Ausblenden
-            </Button>
+    <>
+      <section className="stack" aria-label="Persönliche native Hinweise">
+        <p className="text-xs muted">
+          {unread.length} ungelesene Hinweise in {rows.length} geladenen
+          Einträgen ·{" "}
+          {list.status === "Exhausted"
+            ? "geladenes Ende"
+            : "begrenzte Übersicht"}
+        </p>
+        {list.status === "LoadingFirstPage" && (
+          <p role="status">Persönliche Hinweise werden geladen …</p>
+        )}
+        {rows.map((n) => (
+          <div className="border-b pb-4 stack text-sm" key={n.id}>
+            <strong>
+              {n.parent.kind === "assignment"
+                ? "Entwurf zugewiesen"
+                : n.parent.kind === "request"
+                  ? "Review angefordert"
+                  : n.parent.kind === "decision"
+                    ? n.parent.withdrawn
+                      ? "Review zurückgezogen"
+                      : "Review bestätigt"
+                    : n.parent.revoked
+                      ? "Freigabe widerrufen"
+                      : "Version freigegeben"}
+            </strong>
+            <p className="text-xs muted break-all">
+              Exakte Version {n.versionId} · Account{" "}
+              {n.accountId ?? "nicht gewählt"} ·{" "}
+              {n.readAt === null ? "Neu" : "Gelesen"}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button size="sm" variant="outline" asChild>
+                <Link to={`/drafts/${n.draftId}`} onClick={onOpen}>
+                  Entwurf prüfen
+                </Link>
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={op.locked || n.readAt !== null}
+                onClick={() => {
+                  const args = {
+                    workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+                    noticeIds: [n.id],
+                  };
+                  void op.execute(() => read(args));
+                }}
+              >
+                Als gelesen markieren
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={op.locked}
+                onClick={() => {
+                  const args = {
+                    workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+                    noticeIds: [n.id],
+                  };
+                  void op.execute(() => dismiss(args));
+                }}
+              >
+                Ausblenden
+              </Button>
+            </div>
           </div>
-        </div>
-      ))}
-      {!rows.length && list.status !== "LoadingFirstPage" && (
-        <p>Keine persönlichen Hinweise auf den geladenen Seiten.</p>
-      )}
-      {!!unread.length && (
-        <Button
-          variant="ghost"
-          disabled={op.locked}
-          onClick={() => {
-            const args = {
-              workspaceId: state.activeWorkspaceId as Id<"workspaces">,
-              noticeIds: unread.slice(0, 25).map((n) => n.id),
-            };
-            void op.execute(() => read(args));
-          }}
-        >
-          Geladene Hinweise als gelesen markieren (max. 25)
-        </Button>
-      )}
-      {list.status === "CanLoadMore" && (
-        <Button variant="outline" onClick={() => list.loadMore(25)}>
-          Weitere Hinweise laden
-        </Button>
-      )}
-      <CommandFeedback operation={op} />
-    </section>
+        ))}
+        {!rows.length && list.status !== "LoadingFirstPage" && (
+          <p>Keine persönlichen Hinweise auf den geladenen Seiten.</p>
+        )}
+        {!!unread.length && (
+          <Button
+            variant="ghost"
+            disabled={op.locked}
+            onClick={() => {
+              const args = {
+                workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+                noticeIds: unread.slice(0, 25).map((n) => n.id),
+              };
+              void op.execute(() => read(args));
+            }}
+          >
+            Geladene Hinweise als gelesen markieren (max. 25)
+          </Button>
+        )}
+        {list.status === "CanLoadMore" && (
+          <Button variant="outline" onClick={() => list.loadMore(25)}>
+            Weitere Hinweise laden
+          </Button>
+        )}
+        <CommandFeedback operation={op} />
+      </section>
+      <PublishingInbox key={nativeScope} onOpen={onOpen} />
+    </>
   );
 }
 
@@ -768,5 +788,212 @@ export function NativeCommentResolution({
       </Button>
       <CommandFeedback operation={op} />
     </div>
+  );
+}
+
+class PublishingInboxBoundary extends Component<
+  { children: ReactNode; retry: () => void; indicator: boolean },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      this.props.indicator ? null : (
+        <section aria-label="Publishing-Hinweise" className="stack">
+          <p role="alert">Publishing-Hinweise sind derzeit nicht verfügbar.</p>
+          <Button variant="outline" onClick={this.props.retry}>
+            Publishing-Hinweise erneut laden
+          </Button>
+        </section>
+      )
+    ) : (
+      this.props.children
+    );
+  }
+}
+function PublishingInbox({
+  indicator = false,
+  onOpen,
+}: {
+  indicator?: boolean;
+  onOpen?: () => void;
+}) {
+  const fresh = () => {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      return null;
+    }
+  };
+  const [key, setKey] = useState<string | null>(fresh);
+  if (!key)
+    return indicator ? null : (
+      <section aria-label="Publishing-Hinweise" className="stack">
+        <p role="alert">Publishing-Hinweise sind derzeit nicht verfügbar.</p>
+        <Button variant="outline" onClick={() => setKey(fresh())}>
+          Publishing-Hinweise erneut laden
+        </Button>
+      </section>
+    );
+  return (
+    <PublishingInboxBoundary
+      key={key}
+      retry={() => setKey(fresh())}
+      indicator={indicator}
+    >
+      <PublishingInboxPage
+        requestKey={key}
+        indicator={indicator}
+        onOpen={onOpen}
+      />
+    </PublishingInboxBoundary>
+  );
+}
+function PublishingInboxPage({
+  requestKey,
+  indicator,
+  onOpen,
+}: {
+  requestKey: string;
+  indicator: boolean;
+  onOpen?: () => void;
+}) {
+  const { state, nativeScope } = useStore(),
+    { data: session } = authClient.useSession();
+  const authId = session?.user.id ?? "",
+    sessionId = session?.session.id ?? "";
+  const list = usePaginatedQuery(
+    api.publishing.notices.list,
+    {
+      workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+      expectedAuthId: authId,
+      requestKey,
+    },
+    { initialNumItems: 25 },
+  );
+  const read = useMutation(api.publishing.notices.read),
+    dismiss = useMutation(api.publishing.notices.dismiss);
+  const clock = useGithubSourceProofClock(
+    list.results.flatMap((n) =>
+      n.sourceUntil === null
+        ? []
+        : [{ authorized: true, proofExpiresAt: n.sourceUntil }],
+    ),
+  );
+  const rows = list.results.filter(
+    (n) =>
+      n.authId === authId &&
+      n.sessionId === sessionId &&
+      n.workspaceId === state.activeWorkspaceId &&
+      n.requestKey === requestKey &&
+      n.dismissedAt === null &&
+      (n.sourceUntil === null || n.sourceUntil > clock),
+  );
+  const until = Math.min(...rows.map((n) => n.sourceUntil ?? Infinity));
+  const op = useNativeCommand(
+      nativeScope,
+      Number.isFinite(until) ? until : null,
+    ),
+    unread = rows.filter((n) => n.readAt === null);
+  function change(ids: Id<"publishingNotifications">[], hide: boolean) {
+    void op.execute(async () => {
+      const key = crypto.randomUUID();
+      const args = {
+        workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+        expectedAuthId: authId,
+        requestKey: key,
+        noticeIds: ids,
+      };
+      const result = await (hide ? dismiss(args) : read(args));
+      if (
+        result.authId !== authId ||
+        result.sessionId !== sessionId ||
+        result.requestKey !== key
+      )
+        throw Error("NOTICE_UNAVAILABLE");
+    });
+  }
+  if (indicator)
+    return unread.length ? (
+      <span
+        className="absolute right-2 top-2 size-1.5 rounded-full bg-primary"
+        aria-label="Ungelesene Publishing-Hinweise in geladenen Einträgen"
+      />
+    ) : null;
+  return (
+    <section
+      className="stack"
+      aria-label="Publishing-Hinweise"
+      data-testid="publishing-inbox"
+    >
+      <p className="text-xs muted">
+        {unread.length} ungelesene Publishing-Hinweise in {rows.length}{" "}
+        geladenen Einträgen. Nur geladene berechtigte Einträge; weitere Anzahl
+        unbekannt.
+      </p>
+      {list.status === "LoadingFirstPage" && (
+        <p role="status">Publishing-Hinweise werden geladen …</p>
+      )}
+      {rows.map((n) => (
+        <div key={n.id} className="border-b pb-4 stack text-sm">
+          <strong>Publishing-Hinweis: benötigt Aufmerksamkeit</strong>
+          <p className="text-xs muted">
+            {n.readAt === null ? "Neu" : "Gelesen"}
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" asChild>
+              <Link to={`/drafts/${n.draftId}`} onClick={onOpen}>
+                Publishing-Entwurf prüfen
+              </Link>
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={op.locked || n.readAt !== null}
+              className="h-auto max-w-full whitespace-normal py-2"
+              onClick={() => change([n.id], false)}
+            >
+              Publishing-Hinweis als gelesen markieren
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={op.locked}
+              onClick={() => change([n.id], true)}
+              className="h-auto max-w-full whitespace-normal py-2"
+            >
+              Publishing-Hinweis ausblenden
+            </Button>
+          </div>
+        </div>
+      ))}
+      {!rows.length && list.status !== "LoadingFirstPage" && (
+        <p>Keine Publishing-Hinweise auf den geladenen Seiten.</p>
+      )}
+      {!!unread.length && (
+        <Button
+          variant="ghost"
+          disabled={op.locked}
+          className="h-auto max-w-full whitespace-normal py-2"
+          onClick={() =>
+            change(
+              unread.slice(0, 25).map((n) => n.id),
+              false,
+            )
+          }
+        >
+          Geladene Publishing-Hinweise als gelesen markieren (max. 25)
+        </Button>
+      )}
+      {list.status === "CanLoadMore" && (
+        <Button variant="outline" onClick={() => list.loadMore(25)}>
+          Weitere Publishing-Seite laden
+        </Button>
+      )}
+      <CommandFeedback operation={op} />
+    </section>
   );
 }

@@ -123,6 +123,7 @@ import type * as publishing from "../publishing.js";
 import type * as publishing_attempts from "../publishing/attempts.js";
 import type * as publishing_media from "../publishing/media.js";
 import type * as publishing_mediaFields from "../publishing/mediaFields.js";
+import type * as publishing_notices from "../publishing/notices.js";
 import type * as publishing_postFields from "../publishing/postFields.js";
 import type * as publishing_reconcile from "../publishing/reconcile.js";
 import type * as publishing_workflows from "../publishing/workflows.js";
@@ -277,6 +278,7 @@ declare const fullApi: ApiFromModules<{
   "publishing/attempts": typeof publishing_attempts;
   "publishing/media": typeof publishing_media;
   "publishing/mediaFields": typeof publishing_mediaFields;
+  "publishing/notices": typeof publishing_notices;
   "publishing/postFields": typeof publishing_postFields;
   "publishing/reconcile": typeof publishing_reconcile;
   "publishing/workflows": typeof publishing_workflows;

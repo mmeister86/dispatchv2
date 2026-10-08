@@ -14,6 +14,7 @@ import {
 import { content } from "./lib/editorialFields";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
+import { capture } from "./publishing/notices";
 const job = { scheduleId: v.id("schedules"), generation: v.number() };
 export async function preflight(ctx: QueryCtx, s: Doc<"schedules">) {
   const actor = await ctx.db
@@ -71,6 +72,7 @@ export async function failure(
     state: "blocked",
     errorCode: "OPTIONAL_EMAIL_UNAVAILABLE",
     createdAt: Date.now(),
+    ...(await capture(ctx, s)),
   });
 }
 export const claim = internalMutation({

@@ -716,13 +716,17 @@ export function AppShell() {
             {demoMode && !issues.length && (
               <p className="text-sm muted">Alle Abläufe sind ruhig.</p>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setRead(issues.map((s) => s.id))}
-            >
-              Alle als gelesen markieren
-            </Button>
+            {(demoMode || issues.length > 0) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setRead(issues.map((s) => s.id))}
+              >
+                {demoMode
+                  ? "Alle als gelesen markieren"
+                  : "Lokale Publishing-Ausgänge als gelesen markieren"}
+              </Button>
+            )}
             <Button variant="outline" size="sm" asChild>
               <Link
                 to="/settings/notifications"

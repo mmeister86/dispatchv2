@@ -326,6 +326,12 @@ export const purgeVersion = internalMutation({
         internal.editorial.notices.purgeVersion,
         a,
       );
+    if (rows.length < 50)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.publishing.notices.cleanupVersion,
+        { versionId: a.versionId, cursor: null },
+      );
     return null;
   },
 });
@@ -365,6 +371,12 @@ export const purgeActor = internalMutation({
         phase: page.isDone ? "recipient" : (a.phase ?? "actor"),
         cursor: page.isDone ? null : page.continueCursor,
       });
+    if (page.isDone && a.phase === "recipient")
+      await ctx.scheduler.runAfter(0, internal.publishing.notices.purgeActor, {
+        actorId: a.actorId,
+        phase: "recipient",
+        cursor: null,
+      });
     return null;
   },
 });
@@ -393,6 +405,12 @@ export const cleanupVersion = internalMutation({
         internal.editorial.notices.cleanupVersion,
         { ...a, cursor: page.continueCursor },
       );
+    if (page.isDone)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.publishing.notices.cleanupVersion,
+        { versionId: a.versionId, cursor: null },
+      );
     return null;
   },
 });
@@ -415,6 +433,10 @@ export const sweep = internalMutation({
     if (!page.isDone)
       await ctx.scheduler.runAfter(0, internal.editorial.notices.sweep, {
         cursor: page.continueCursor,
+      });
+    if (page.isDone)
+      await ctx.scheduler.runAfter(0, internal.publishing.notices.sweep, {
+        cursor: null,
       });
     return null;
   },

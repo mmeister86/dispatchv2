@@ -1140,6 +1140,28 @@ export default defineSchema({
       "scheduleId",
       "generation",
       "recipientId",
+    ])
+    .index("by_personal_presentation", [
+      "workspaceId",
+      "recipientId",
+      "presentationUnavailable",
+      "createdAt",
+    ])
+    .index("by_presentation_version", [
+      "presentation.versionId",
+      "presentationUnavailable",
+    ])
+    .index("by_presentation_recipient", [
+      "recipientId",
+      "presentationUnavailable",
+    ])
+    .index("by_presentation_approver", [
+      "presentation.approvalActorId",
+      "presentationUnavailable",
+    ])
+    .index("by_presentation_horizon", [
+      "presentationUnavailable",
+      "presentation.sourceUntil",
     ]),
   teamInvitations: defineTable({
     workspaceId: v.id("workspaces"),
