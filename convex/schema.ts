@@ -892,6 +892,11 @@ export default defineSchema({
     .index("by_workspaceId_and_eventKey", ["workspaceId", "eventKey"])
     .index("by_workspaceId_and_receivedAt", ["workspaceId", "receivedAt"]),
   githubRecoveries: defineTable(recoveryFields)
+    .index("by_workspaceId_and_state_and_leaseUntil", [
+      "workspaceId",
+      "state",
+      "leaseUntil",
+    ])
     .index("by_workspaceId_and_guid", ["workspaceId", "guid"])
     .index("by_guid_and_notBefore", ["guid", "notBefore"])
     .index("by_guid_and_attempts", ["guid", "attempts"])

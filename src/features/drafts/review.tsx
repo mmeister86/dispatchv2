@@ -636,6 +636,7 @@ export function NativeNoticeInbox({
           />
         ) : null}
         <PublishingInbox key={nativeScope} indicator />
+        <GithubAttention key={`github:${nativeScope}`} indicator />
       </>
     );
   return (
@@ -734,6 +735,7 @@ export function NativeNoticeInbox({
         <CommandFeedback operation={op} />
       </section>
       <PublishingInbox key={nativeScope} onOpen={onOpen} />
+      <GithubAttention key={`github:${nativeScope}`} onOpen={onOpen} />
     </>
   );
 }
@@ -994,6 +996,178 @@ function PublishingInboxPage({
         </Button>
       )}
       <CommandFeedback operation={op} />
+    </section>
+  );
+}
+
+class GithubAttentionBoundary extends Component<
+  { children: ReactNode; retry: () => void; indicator: boolean },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      <GithubAttentionUnavailable
+        indicator={this.props.indicator}
+        retry={this.props.retry}
+      />
+    ) : (
+      this.props.children
+    );
+  }
+}
+function GithubAttentionUnavailable({
+  indicator,
+  retry,
+}: {
+  indicator: boolean;
+  retry: () => void;
+}) {
+  return indicator ? null : (
+    <section className="stack" aria-label="GitHub-Aufmerksamkeit">
+      <p role="alert">GitHub-Hinweise sind derzeit nicht verfügbar.</p>
+      <Button variant="outline" onClick={retry}>
+        GitHub-Hinweise erneut laden
+      </Button>
+    </section>
+  );
+}
+function GithubAttention({
+  indicator = false,
+  onOpen,
+}: {
+  indicator?: boolean;
+  onOpen?: () => void;
+}) {
+  const { state, nativeScope } = useStore(),
+    { data: session } = authClient.useSession();
+  const scope = `${nativeScope}:${session?.user.id}:${session?.session.id}:${state.activeWorkspaceId}:${state.role}`;
+  if (
+    demoMode ||
+    !nativeScope ||
+    nativeScope === "unavailable" ||
+    nativeScope === "demo" ||
+    !session?.user.id ||
+    !session?.session.id ||
+    !["Owner", "Admin"].includes(state.role)
+  )
+    return null;
+  return (
+    <GithubAttentionRequest key={scope} indicator={indicator} onOpen={onOpen} />
+  );
+}
+function GithubAttentionRequest({
+  indicator,
+  onOpen,
+}: {
+  indicator: boolean;
+  onOpen?: () => void;
+}) {
+  const fresh = () => {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      return null;
+    }
+  };
+  const [key, setKey] = useState<string | null>(fresh);
+  const retry = () => setKey(fresh());
+  if (!key)
+    return <GithubAttentionUnavailable indicator={indicator} retry={retry} />;
+  return (
+    <GithubAttentionBoundary key={key} retry={retry} indicator={indicator}>
+      <GithubAttentionPage
+        refreshKey={key}
+        renew={retry}
+        indicator={indicator}
+        onOpen={onOpen}
+      />
+    </GithubAttentionBoundary>
+  );
+}
+function GithubAttentionPage({
+  refreshKey,
+  renew,
+  indicator,
+  onOpen,
+}: {
+  refreshKey: string;
+  renew: () => void;
+  indicator: boolean;
+  onOpen?: () => void;
+}) {
+  const { state } = useStore(),
+    { data: session } = authClient.useSession();
+  const response = useQuery(api.operations.githubAlerts.get, {
+    workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+    expectedAuthId: session!.user.id,
+    refreshKey,
+  });
+  const clock = useGithubSourceProofClock(
+    response
+      ? [{ authorized: true, proofExpiresAt: response.data.validUntil }]
+      : [],
+  );
+  useEffect(() => {
+    const deadline = response?.data.validUntil,
+      now = Date.now();
+    const timer = setTimeout(
+      renew,
+      typeof deadline === "number" &&
+        Number.isFinite(deadline) &&
+        deadline > now
+        ? Math.min(30000, deadline - now)
+        : 30000,
+    );
+    return () => clearTimeout(timer);
+  }, [refreshKey, response?.data.validUntil]);
+  const data =
+    response &&
+    response.authId === session?.user.id &&
+    response.sessionId === session?.session.id &&
+    response.workspaceId === state.activeWorkspaceId &&
+    response.refreshKey === refreshKey &&
+    Number.isFinite(response.data.observedAt) &&
+    response.data.observedAt <= clock &&
+    Number.isFinite(response.data.validUntil) &&
+    response.data.validUntil > clock &&
+    response.data.validUntil <= response.data.observedAt + 30000
+      ? response.data
+      : null;
+  if (indicator)
+    return data?.rows.length ? (
+      <span
+        className="absolute right-2 top-2 size-1.5 rounded-full bg-primary"
+        aria-label="GitHub benötigt Aufmerksamkeit in geladenen Einträgen"
+      />
+    ) : null;
+  return (
+    <section
+      className="stack"
+      aria-label="GitHub-Aufmerksamkeit"
+      data-testid="github-attention"
+    >
+      <p className="text-xs muted">
+        {data?.rows.length ?? 0} geladene GitHub-Hinweise; weitere Anzahl
+        unbekannt.
+      </p>
+      {!data && <p role="status">GitHub-Hinweise werden geladen …</p>}
+      {data?.rows.map((row) => (
+        <div key={row.id} className="border-b pb-4 stack text-sm">
+          <strong>GitHub benötigt Aufmerksamkeit</strong>
+          <p>
+            Die lokale Verarbeitung einer GitHub-Lieferung ist nicht belegt.
+          </p>
+          <Button size="sm" variant="outline" asChild>
+            <Link to="/signals" onClick={onOpen}>
+              GitHub-Signale prüfen
+            </Link>
+          </Button>
+        </div>
+      ))}
     </section>
   );
 }

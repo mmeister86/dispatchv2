@@ -12,7 +12,7 @@ const mocks = {
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
 const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';if(name==='publishing/notices:read'||name==='publishing/notices:dismiss')return new Promise((resolve,reject)=>window.publishingCommands.push({name,args,sessionId:window.session.session.id,resolve,reject}));if(name==='preferences:saveNotifications')return new Promise((resolve,reject)=>window.preferenceSaves.push({args,sessionId:window.session.session.id,resolve,reject}));throw new Error('No domain writes in health fixture');});return funcs.get(name)};
 export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(name!=='operations/export:self')throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
-export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='preferences:notifications'){if(window.preferenceError)throw Error('PRIVATE_PROVIDER_ERROR');return window.preferenceByKey[args.requestKey];}if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
+export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='preferences:notifications'){if(window.preferenceError)throw Error('PRIVATE_PROVIDER_ERROR');return window.preferenceByKey[args.requestKey];}if(name==='operations/githubAlerts:get'){if(window.githubError)throw Error('PRIVATE_PROVIDER_ERROR');return window.githubByKey[args.refreshKey];}if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
 export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});if(name==='publishing/notices:list'){if(window.publishingError)throw Error('PRIVATE_PROVIDER_ERROR');return {results:window.publishingNotices.map(n=>({...n,requestKey:n.requestKey??args.requestKey})),status:window.publishingStatus,loadMore(){window.publishingLoads++}}}return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
 };
@@ -113,6 +113,27 @@ try {
       return setItem.call(this, key, value);
     };
     window.notices = [];
+    window.githubByKey = {};
+    window.publishGithub = (patch = {}) => {
+      for (const q of window.queries.filter(
+        (q) => q.name === "operations/githubAlerts:get",
+      )) {
+        window.githubByKey[q.args.refreshKey] = {
+          authId: window.session.user.id,
+          sessionId: window.session.session.id,
+          workspaceId: q.args.workspaceId,
+          refreshKey: q.args.refreshKey,
+          data: {
+            observedAt: Date.now(),
+            validUntil: Date.now() + 30000,
+            coverage: { partial: true, parentLimit: 6, remainder: "unknown" },
+            rows: [{ id: "private-recovery-id" }],
+          },
+          ...patch,
+        };
+      }
+      window.update({});
+    };
     window.publishingNotices = [];
     window.publishingCommands = [];
     window.publishingStatus = "Exhausted";
@@ -2102,10 +2123,284 @@ try {
   expect(errors.filter((e) => !e.includes("PRIVATE_PROVIDER_ERROR"))).toEqual(
     [],
   );
+  // TASK-31.3: independent attention projection in the existing styled Bell/Drawer.
+  await page.evaluate(() =>
+    window.update({ publishingNotices: [], notices: [] }),
+  );
+  await page.evaluate(() => window.publishGithub());
+  const githubInbox = page.getByTestId("github-attention");
+  await expect(githubInbox).toContainText(
+    "1 geladene GitHub-Hinweise; weitere Anzahl unbekannt",
+  );
+  await expect(publishingInbox).toContainText(
+    "0 ungelesene Publishing-Hinweise",
+  );
+  await expect(
+    page.getByLabel("GitHub benötigt Aufmerksamkeit in geladenen Einträgen", {
+      exact: true,
+    }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByLabel("Ungelesene Hinweise in geladenen Einträgen", {
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  expect(await githubInbox.innerText()).not.toMatch(
+    /private-recovery-id|PRIVATE_PROVIDER_ERROR|gelesen|Ausblenden/,
+  );
+  await expect(githubInbox.getByRole("link")).toHaveAttribute(
+    "href",
+    "/signals",
+  );
+  for (const width of [1280, 390]) {
+    await page.setViewportSize({ width, height: 844 });
+    await page.screenshot({
+      path: `${evidence}/github-attention-${width}.png`,
+    });
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+  }
+  await page.evaluate(() => window.publishGithub({ sessionId: "old-session" }));
+  await expect(githubInbox.getByRole("link")).toHaveCount(0);
+  await page.evaluate(() => window.publishGithub({ authId: "old-auth" }));
+  await expect(githubInbox.getByRole("link")).toHaveCount(0);
+  await page.evaluate(() =>
+    window.publishGithub({ workspaceId: "old-workspace" }),
+  );
+  await expect(githubInbox.getByRole("link")).toHaveCount(0);
+  await page.evaluate(() => window.publishGithub({ refreshKey: "old-nonce" }));
+  await expect(githubInbox.getByRole("link")).toHaveCount(0);
+  await page.evaluate(() =>
+    window.publishGithub({
+      data: {
+        observedAt: Date.now(),
+        validUntil: Date.now() + 500,
+        coverage: { partial: true, parentLimit: 6, remainder: "unknown" },
+        rows: [{ id: "expired" }],
+      },
+    }),
+  );
+  await expect(githubInbox.getByRole("link")).toHaveCount(1);
+  await page.clock.runFor(500);
+  await expect(githubInbox.getByRole("link")).toHaveCount(0);
+  const githubKey = await page.evaluate(
+    () =>
+      window.queries
+        .filter((q) => q.name === "operations/githubAlerts:get")
+        .at(-1).args.refreshKey,
+  );
+  await page.clock.runFor(30000);
+  expect(
+    await page.evaluate(
+      (key) =>
+        window.queries
+          .filter((q) => q.name === "operations/githubAlerts:get")
+          .at(-1).args.refreshKey !== key,
+      githubKey,
+    ),
+  ).toBe(true);
+  await page.evaluate(() => window.publishGithub());
+  await expect(githubInbox.getByRole("link")).toHaveCount(1);
+  await page.evaluate(() => window.update({ githubError: true }));
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "GitHub-Hinweise sind derzeit nicht verfügbar" }),
+  ).toBeVisible();
+  await expect(publishingInbox).toContainText(
+    "0 ungelesene Publishing-Hinweise",
+  );
+  await page.evaluate(() => window.update({ githubError: false }));
+  await page
+    .getByRole("button", { name: "GitHub-Hinweise erneut laden", exact: true })
+    .click();
+  await page.evaluate(() => window.publishGithub());
+  await expect(githubInbox.getByRole("link")).toHaveCount(1);
+  await githubInbox.getByRole("link").click();
+  await expect(
+    page.getByRole("heading", { name: "Dein Posteingang", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", {
+      name: "Benachrichtigungen schließen",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Benachrichtigungen öffnen", exact: true })
+    .click();
+  await page.evaluate(() => window.publishGithub());
+  await expect(githubInbox.getByRole("link")).toHaveCount(1);
+  for (const role of ["Editor", "Viewer", "Admin", "Owner"]) {
+    const before = await page.evaluate(
+      () =>
+        window.queries.filter((q) => q.name === "operations/githubAlerts:get")
+          .length,
+    );
+    await page.evaluate(
+      (role) =>
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role }],
+          },
+        }),
+      role,
+    );
+    await page
+      .getByRole("button", { name: "Benachrichtigungen öffnen", exact: true })
+      .click();
+    if (["Editor", "Viewer"].includes(role)) {
+      await expect(githubInbox).toHaveCount(0);
+      expect(
+        await page.evaluate(
+          () =>
+            window.queries.filter(
+              (q) => q.name === "operations/githubAlerts:get",
+            ).length,
+        ),
+      ).toBe(before);
+      await expect(publishingInbox).toBeVisible();
+    } else {
+      await page.evaluate(() => window.publishGithub());
+      await expect(githubInbox.getByRole("link")).toHaveCount(1);
+    }
+  }
+  for (const dimension of ["session", "workspace", "account"]) {
+    const old = await page.evaluate(() => {
+      window.githubOldSnapshot = structuredClone(window.snapshot);
+      window.githubOldSession = structuredClone(window.session);
+      window.githubOldResources = structuredClone(window.resources);
+      const q = window.queries
+        .filter((q) => q.name === "operations/githubAlerts:get")
+        .at(-1);
+      return {
+        key: q.args.refreshKey,
+        value: window.githubByKey[q.args.refreshKey],
+      };
+    });
+    await page.evaluate((dimension) => {
+      if (dimension === "session")
+        window.update({
+          session: {
+            ...window.session,
+            session: { id: "github-session-other" },
+          },
+        });
+      else if (dimension === "workspace")
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            activeWorkspaceId: "workspace-other",
+            workspaces: [
+              { ...window.snapshot.workspaces[0], id: "workspace-other" },
+            ],
+          },
+          roster: { ...window.roster, workspaceId: "workspace-other" },
+        });
+      else
+        window.update({
+          resources: {
+            ...window.resources,
+            accounts: [
+              window.resources.accounts[0],
+              {
+                ...window.resources.accounts[0],
+                _id: "account-other",
+                name: "Other X",
+                handle: "@other",
+              },
+            ],
+          },
+        });
+    }, dimension);
+    if (dimension === "account")
+      await page
+        .locator('select[aria-label="Aktiver Account"]')
+        .selectOption("account-other", { force: true });
+    else
+      await page
+        .getByRole("button", { name: "Benachrichtigungen öffnen", exact: true })
+        .click();
+    await expect(githubInbox.getByRole("link")).toHaveCount(0);
+    await page.evaluate(() =>
+      window.update({
+        snapshot: window.githubOldSnapshot,
+        session: window.githubOldSession,
+        resources: window.githubOldResources,
+        roster: { ...window.roster, workspaceId: "workspace-native" },
+      }),
+    );
+    if (dimension === "account")
+      await page
+        .locator('select[aria-label="Aktiver Account"]')
+        .selectOption("account-native", { force: true });
+    else
+      await page
+        .getByRole("button", { name: "Benachrichtigungen öffnen", exact: true })
+        .click();
+    await page.evaluate((old) => {
+      window.githubByKey[old.key] = old.value;
+      window.update({});
+    }, old);
+    await expect(githubInbox.getByRole("link")).toHaveCount(0);
+    await page.evaluate(() => window.publishGithub());
+    await expect(githubInbox.getByRole("link")).toHaveCount(1);
+  }
+  await page.evaluate(() => {
+    window.githubUUID = crypto.randomUUID;
+    crypto.randomUUID = () => {
+      throw Error("ENTROPY_PRIVATE");
+    };
+  });
+  await page.clock.runFor(30001);
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "GitHub-Hinweise sind derzeit nicht verfügbar" }),
+  ).toBeVisible();
+  await page.evaluate(() => {
+    crypto.randomUUID = window.githubUUID;
+  });
+  await page
+    .getByRole("button", { name: "GitHub-Hinweise erneut laden", exact: true })
+    .click();
+  await page.evaluate(() => window.publishGithub());
+  await expect(githubInbox.getByRole("link")).toHaveCount(1);
+  expect(
+    await page.evaluate(() =>
+      window.commands
+        .filter((c) => c.args.noticeIds)
+        .every((c) => !c.args.noticeIds.includes("private-recovery-id")),
+    ),
+  ).toBe(true);
+  expect(provider).toEqual([]);
+  expect(
+    errors.filter((error) => !error.includes("PRIVATE_PROVIDER_ERROR")),
+  ).toEqual([]);
+  expect(await page.evaluate(() => window.storageWrites)).toEqual([]);
   writeFileSync(
     `${evidence}/receipt.json`,
     JSON.stringify(
       {
+        githubAttention: {
+          sameDrawer: true,
+          attentionOnly: true,
+          personalUnreadUnchanged: true,
+          exactExpiry: true,
+          renewal: true,
+          correlation: true,
+          independentErrorRetry: true,
+          safeLink: true,
+          roles: ["Owner", "Admin", "Editor", "Viewer"],
+          subscriptionSkip: true,
+          nativeScopeSessionWorkspaceAccountABA: true,
+          entropyFailureExplicitRetry: true,
+          personalActionsExcludeRecoveryIds: true,
+        },
         publishingInbox: {
           sameDrawer: true,
           ownCommands: true,
