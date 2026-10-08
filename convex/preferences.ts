@@ -104,7 +104,7 @@ function validateIntent(s: Intent) {
   )
     throw new ConvexError("INVALID_NOTIFICATION_SETTINGS");
 }
-async function ownNotificationRow(
+export async function ownNotificationRow(
   ctx: (QueryCtx | MutationCtx) & {
     user: Doc<"users">;
     workspace: Doc<"workspaces">;
@@ -380,7 +380,7 @@ export async function admitResearchCompletion(
     },
   ]);
 }
-async function retainedEntry(
+export async function retainedEntry(
   ctx: QueryCtx | MutationCtx,
   p: Doc<"preferences">,
   r: Entry,

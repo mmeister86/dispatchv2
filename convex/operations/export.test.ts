@@ -896,3 +896,295 @@ test("shared account current existence and exact workspace bind fail closed whil
     [],
   );
 });
+
+const preferencesExport = makeFunctionReference<"query">(
+  "operations/export:preferences",
+);
+async function preferenceFixture() {
+  const f = await fixture();
+  const identity = await f.signed.run((ctx) => ctx.auth.getUserIdentity());
+  return {
+    ...f,
+    args: { ...f.args, expectedSessionId: identity!.sessionId as string },
+  };
+}
+test("preferences export preserves absent versus stored OFF notifications for every own role", async () => {
+  const f = await preferenceFixture();
+  const p = (await f.t.run((ctx) => ctx.db.query("preferences").first()))!;
+  for (const role of ["Owner", "Admin", "Editor", "Viewer"] as const) {
+    await f.t.run(async (ctx) => {
+      const m = (await ctx.db.query("memberships").first())!;
+      await ctx.db.patch(m._id, { role });
+    });
+    const r = await f.signed.query(preferencesExport, f.args);
+    expect(r.data.format).toBe("dispatch-self-preferences");
+    expect(r.data.notifications).toBeNull();
+    expect(r.data.researchSummaries).toEqual([]);
+    expect(r.data.coverage.complete).toBe(false);
+    expect(r.sessionId).toBe(f.args.expectedSessionId);
+    expect(r.workspaceId).toBe(f.workspaceId);
+    expect(r.proofValidUntil).toBeGreaterThan(r.observedAt);
+    expect(JSON.stringify(r.data)).not.toMatch(
+      /authId|sessionId|requestKey|summaryEpoch|activeSummary|expiryJob|"job"|token/,
+    );
+  }
+  const notifications = {
+    revision: 2,
+    email: false,
+    weekly: false,
+    research: false,
+    inAppSummaries: false,
+    timezone: "UTC",
+    quiet: null,
+  };
+  await f.t.run((ctx) => ctx.db.patch(p._id, { notifications }));
+  expect(
+    (await f.signed.query(preferencesExport, f.args)).data.notifications,
+  ).toEqual(notifications);
+});
+test("preferences export rejects wrong session scope selectors and invalid wire", async () => {
+  const f = await preferenceFixture();
+  await expect(
+    f.signed.query(preferencesExport, {
+      ...f.args,
+      expectedSessionId: "foreign",
+    }),
+  ).rejects.toThrow("EXPORT_SCOPE_CHANGED");
+  await expect(
+    f.signed.query(preferencesExport, { ...f.args, expectedAuthId: "foreign" }),
+  ).rejects.toThrow();
+  await expect(
+    f.signed.query(preferencesExport, { ...f.args, userId: f.userId }),
+  ).rejects.toThrow();
+  const p = (await f.t.run((ctx) => ctx.db.query("preferences").first()))!;
+  for (const onboardingStep of [NaN, Infinity, -Infinity, -0]) {
+    await f.t.run((ctx) => ctx.db.patch(p._id, { onboardingStep }));
+    await expect(f.signed.query(preferencesExport, f.args)).rejects.toThrow(
+      "EXPORT_DATA_UNAVAILABLE",
+    );
+  }
+  await f.t.run((ctx) =>
+    ctx.db.patch(p._id, { onboardingStep: 1, topics: "🧭".repeat(20000) }),
+  );
+  await expect(f.signed.query(preferencesExport, f.args)).rejects.toThrow(
+    "EXPORT_DATA_UNAVAILABLE",
+  );
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.workspaceId, { lifecycle: "deleting" }),
+  );
+  await expect(f.signed.query(preferencesExport, f.args)).rejects.toThrow(
+    "WORKSPACE_INACTIVE",
+  );
+});
+
+import { fixture as researchFixture } from "../../tests/research-fixture";
+import { internal } from "../_generated/api";
+import { ConvexError } from "convex/values";
+import * as sourceAccess from "../research/providerAccess";
+async function summaryExportFixture() {
+  vi.useFakeTimers();
+  const f = await researchFixture(["web-search"]);
+  const p = (await f.t.run((ctx) => ctx.db.query("preferences").first()))!;
+  await f.t.run((ctx) =>
+    ctx.db.patch(p._id, {
+      notifications: {
+        revision: 1,
+        email: false,
+        weekly: false,
+        research: true,
+        inAppSummaries: true,
+        timezone: "UTC",
+        quiet: null,
+      },
+    }),
+  );
+  const orderId = await f.start();
+  await f.t.mutation(internal.research.native.finish, {
+    orderId,
+    generation: 1,
+  });
+  const user = (await f.t.run((ctx) => ctx.db.get(f.userId)))!;
+  const identity = (await f.signed.run((ctx) => ctx.auth.getUserIdentity()))!;
+  return {
+    ...f,
+    p: (await f.t.run((ctx) => ctx.db.get(p._id)))!,
+    orderId,
+    args: {
+      workspaceId: f.workspaceId,
+      expectedAuthId: user.authId,
+      expectedSessionId: identity.sessionId as string,
+      requestKey: "summary-export",
+    },
+  };
+}
+test("preferences export includes only exact own producer summary metadata with current proof and bounded read-only wire", async () => {
+  const f = await summaryExportFixture();
+  const forbidden = vi
+    .spyOn(globalThis, "fetch")
+    .mockRejectedValue(Error("No provider IO"));
+  const r = await f.signed.run(async (ctx) => ({
+    result: await ctx.runQuery(preferencesExport, f.args),
+    metrics: await ctx.meta.getTransactionMetrics(),
+  }));
+  const { job, expiryJob, ...stored } = f.p.researchSummaries![0];
+  expect(r.result.data.researchSummaries).toEqual([
+    { ...stored, proofValidUntil: expect.any(Number) },
+  ]);
+  expect(r.result.proofValidUntil).toBeLessThanOrEqual(
+    r.result.data.researchSummaries[0].proofValidUntil,
+  );
+  expect(JSON.stringify(r.result.data)).not.toContain(job);
+  expect(JSON.stringify(r.result.data)).not.toContain(expiryJob);
+  expect(r.metrics.documentsWritten.used).toBe(0);
+  expect(r.metrics.functionsScheduled.used).toBe(0);
+  expect(r.metrics.documentsRead.used).toBeLessThan(1000);
+  expect(forbidden).not.toHaveBeenCalled();
+  const foreign = await f.t.run((ctx) =>
+    ctx.db.insert("users", {
+      authId: "another",
+      defaultWorkspaceId: f.workspaceId,
+      activeWorkspaceId: f.workspaceId,
+    }),
+  );
+  await f.t.run((ctx) => ctx.db.patch(f.orderId, { actorId: foreign }));
+  expect(
+    (await f.signed.query(preferencesExport, f.args)).data.researchSummaries,
+  ).toEqual([]);
+});
+test("preferences export rejects oversized legacy producer lists and invalid original clocks without truncation", async () => {
+  const f = await summaryExportFixture(),
+    r = f.p.researchSummaries![0];
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.p._id, { researchSummaries: Array(6).fill(r) }),
+  );
+  await expect(f.signed.query(preferencesExport, f.args)).rejects.toThrow(
+    "EXPORT_DATA_UNAVAILABLE",
+  );
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.p._id, {
+      researchSummaries: [{ ...r, finishedAt: Infinity }],
+    }),
+  );
+  await expect(f.signed.query(preferencesExport, f.args)).rejects.toThrow(
+    "RESEARCH_SUMMARY_CLOCK_INVALID",
+  );
+});
+test.each([
+  new Error("database resource failure"),
+  new ConvexError("RESEARCH_PROOF_ANCESTRY_LIMIT"),
+  new ConvexError("STYLE_ANCESTRY_LIMIT"),
+])(
+  "preferences export propagates unexpected proof failures %s",
+  async (failure) => {
+    const f = await summaryExportFixture();
+    vi.spyOn(sourceAccess, "sourceAuthority").mockRejectedValue(failure);
+    await expect(f.signed.query(preferencesExport, f.args)).rejects.toThrow(
+      failure.message,
+    );
+  },
+);
+test("preferences export omits lost source proof without skeleton or counts and checks session before proof access", async () => {
+  const f = await summaryExportFixture();
+  const proof = vi
+    .spyOn(sourceAccess, "sourceAuthority")
+    .mockRejectedValue(new ConvexError("RESEARCH_SOURCE_CHANGED"));
+  await expect(
+    f.signed.query(preferencesExport, {
+      ...f.args,
+      expectedSessionId: "obsolete",
+    }),
+  ).rejects.toThrow("EXPORT_SCOPE_CHANGED");
+  expect(proof).not.toHaveBeenCalled();
+  const r = await f.signed.query(preferencesExport, f.args);
+  expect(r.data.researchSummaries).toEqual([]);
+  expect(r.data).not.toHaveProperty("summaryCount");
+  proof.mockRestore();
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.p._id, {
+      researchSummaries: [
+        {
+          ...f.p.researchSummaries![0],
+          sourceUntil: Date.now() - 1,
+          deadline: Date.now() - 1,
+        },
+      ],
+    }),
+  );
+  expect(
+    (await f.signed.query(preferencesExport, f.args)).data.researchSummaries,
+  ).toEqual([]);
+});
+
+test("preferences export refuses a foreign or unselected workspace and validates stored settings", async () => {
+  const f = await preferenceFixture();
+  const other = await f.t.run((ctx) =>
+    ctx.db.insert("workspaces", { name: "Other", description: "" }),
+  );
+  await expect(
+    f.signed.query(preferencesExport, { ...f.args, workspaceId: other }),
+  ).rejects.toThrow("WORKSPACE_ACCESS_DENIED");
+  await f.t.run((ctx) =>
+    ctx.db.insert("memberships", {
+      userId: f.userId,
+      workspaceId: other,
+      role: "Viewer",
+    }),
+  );
+  await expect(
+    f.signed.query(preferencesExport, { ...f.args, workspaceId: other }),
+  ).rejects.toThrow("EXPORT_SCOPE_CHANGED");
+  const p = (await f.t.run((ctx) => ctx.db.query("preferences").first()))!;
+  await f.t.run((ctx) =>
+    ctx.db.patch(p._id, {
+      notifications: {
+        revision: Infinity,
+        email: false,
+        weekly: false,
+        research: false,
+        inAppSummaries: false,
+        timezone: "UTC",
+        quiet: null,
+      },
+    }),
+  );
+  await expect(f.signed.query(preferencesExport, f.args)).rejects.toThrow(
+    "NOTIFICATION_REVISION_INVALID",
+  );
+  await f.t.run((ctx) => ctx.db.delete(p._id));
+  await expect(f.signed.query(preferencesExport, f.args)).rejects.toThrow(
+    "NOTIFICATION_PROFILE_UNAVAILABLE",
+  );
+});
+test("five genuine producer summaries remain bounded and omit changed source authority", async () => {
+  const f = await summaryExportFixture();
+  for (let i = 1; i < 5; i++) {
+    const orderId = await f.start(`export-${i}`);
+    await f.t.mutation(internal.research.native.finish, {
+      orderId,
+      generation: 1,
+    });
+  }
+  const r = await f.signed.run(async (ctx) => ({
+    value: await ctx.runQuery(preferencesExport, f.args),
+    metrics: await ctx.meta.getTransactionMetrics(),
+  }));
+  expect(r.value.data.researchSummaries).toHaveLength(5);
+  expect(
+    r.value.data.researchSummaries.every(
+      (row: { proofValidUntil: number }) =>
+        row.proofValidUntil >= r.value.proofValidUntil,
+    ),
+  ).toBe(true);
+  expect(r.metrics.documentsRead.used).toBeLessThan(1000);
+  expect(r.metrics.documentsWritten.used).toBe(0);
+  expect(r.metrics.functionsScheduled.used).toBe(0);
+  expect(
+    new TextEncoder().encode(JSON.stringify(r.value)).length,
+  ).toBeLessThanOrEqual(64 * 1024);
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.policies[0], { lifecycleValidUntil: Date.now() + 1000 }),
+  );
+  expect(
+    (await f.signed.query(preferencesExport, f.args)).data.researchSummaries,
+  ).toEqual([]);
+});

@@ -266,3 +266,154 @@ export const versions = workspaceQuery({
     return result;
   },
 });
+
+import { ownNotificationRow, retainedEntry } from "../preferences";
+import { personalNotificationSettings } from "../schema";
+const exportedSummary = v.object({
+  orderId: v.id("researchOrders"),
+  generation: v.number(),
+  accountId: v.id("socialAccounts"),
+  profileId: v.id("researchProfiles"),
+  profileVersionId: v.id("researchProfileVersions"),
+  finishedAt: v.number(),
+  deadline: v.number(),
+  sourceUntil: v.number(),
+  availableAt: v.number(),
+  proofValidUntil: v.number(),
+});
+export const preferences = workspaceQuery({
+  args: {
+    expectedAuthId: v.string(),
+    expectedSessionId: v.string(),
+    requestKey: v.string(),
+  },
+  returns: v.object({
+    authId: v.string(),
+    sessionId: v.string(),
+    requestKey: v.string(),
+    workspaceId: v.id("workspaces"),
+    observedAt: v.number(),
+    proofValidUntil: v.number(),
+    data: v.object({
+      format: v.literal("dispatch-self-preferences"),
+      version: v.literal(1),
+      workspaceId: v.id("workspaces"),
+      observedAt: v.number(),
+      profile,
+      notifications: v.union(v.null(), personalNotificationSettings),
+      researchSummaries: v.array(exportedSummary),
+      coverage: v.object({
+        kind: v.literal("selected_workspace_self_preferences"),
+        complete: v.literal(false),
+        included: v.array(v.string()),
+        unsupported: v.array(v.string()),
+      }),
+    }),
+  }),
+  handler: async (ctx, a) => {
+    // Reject an obsolete browser session before reading its preferences or source proofs.
+    const sessionId = (await ctx.auth.getUserIdentity())?.sessionId;
+    if (typeof sessionId !== "string" || !sessionId)
+      throw new ConvexError("Unauthenticated");
+    if (
+      !a.expectedSessionId ||
+      a.expectedSessionId.length > 256 ||
+      !a.expectedAuthId ||
+      a.expectedAuthId.length > 256 ||
+      !a.requestKey ||
+      a.requestKey.length > 64
+    )
+      throw new ConvexError("EXPORT_REQUEST_INVALID");
+    if (
+      sessionId !== a.expectedSessionId ||
+      a.expectedAuthId !== ctx.user.authId ||
+      ctx.user.activeWorkspaceId !== ctx.workspace._id
+    )
+      throw new ConvexError("EXPORT_SCOPE_CHANGED");
+    const { p, settings } = await ownNotificationRow(ctx, a);
+    const observedAt = Date.now();
+    let proofValidUntil = observedAt + 30_000;
+    const summaries = p.researchSummaries ?? [];
+    if (summaries.length > 5) throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
+    const researchSummaries = [];
+    for (const r of summaries) {
+      const proof = await retainedEntry(ctx, p, r);
+      if (!proof || proof.until <= observedAt) continue;
+      proofValidUntil = Math.min(proofValidUntil, proof.until);
+      researchSummaries.push({
+        orderId: r.orderId,
+        generation: r.generation,
+        accountId: r.accountId,
+        profileId: r.profileId,
+        profileVersionId: r.profileVersionId,
+        finishedAt: r.finishedAt,
+        deadline: r.deadline,
+        sourceUntil: r.sourceUntil,
+        availableAt: r.availableAt,
+        proofValidUntil: proof.until,
+      });
+    }
+    const result = {
+      authId: ctx.user.authId,
+      sessionId,
+      requestKey: a.requestKey,
+      workspaceId: ctx.workspace._id,
+      observedAt,
+      proofValidUntil,
+      data: {
+        format: "dispatch-self-preferences" as const,
+        version: 1 as const,
+        workspaceId: ctx.workspace._id,
+        observedAt,
+        profile: {
+          name: p.name,
+          audience: p.audience,
+          tone: p.tone,
+          topics: p.topics,
+          timezone: p.timezone,
+          language: p.language,
+          onboardingDone: p.onboardingDone,
+          onboardingStep: p.onboardingStep,
+        },
+        notifications: p.notifications ? settings : null,
+        researchSummaries,
+        coverage: {
+          kind: "selected_workspace_self_preferences" as const,
+          complete: false as const,
+          included: [
+            "own_profile",
+            "stored_own_notification_settings",
+            "currently_authorized_own_research_summary_metadata",
+          ],
+          unsupported: [
+            "other_workspaces_and_people",
+            "full_personal_or_workspace_archive",
+            "private_content_and_components",
+            "research_source_bytes",
+            "auth_records_and_provider_copies",
+          ],
+        },
+      },
+    };
+    if (
+      ![
+        observedAt,
+        proofValidUntil,
+        p.onboardingStep,
+        ...(p.notifications ? [settings.revision] : []),
+        ...researchSummaries.flatMap((r) => [
+          r.generation,
+          r.finishedAt,
+          r.deadline,
+          r.sourceUntil,
+          r.availableAt,
+          r.proofValidUntil,
+        ]),
+      ].every((n) => Number.isFinite(n) && !Object.is(n, -0)) ||
+      proofValidUntil <= Date.now() ||
+      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024
+    )
+      throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
+    return result;
+  },
+});

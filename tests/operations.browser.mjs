@@ -11,7 +11,7 @@ const mocks = {
   "convex/react": `import React from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
 const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';if(name==='preferences:dismissResearchSummaries')return new Promise((resolve,reject)=>window.summaryCommands.push({args,resolve,reject}));if(name==='publishing/notices:read'||name==='publishing/notices:dismiss')return new Promise((resolve,reject)=>window.publishingCommands.push({name,args,sessionId:window.session.session.id,resolve,reject}));if(name==='preferences:saveNotifications')return new Promise((resolve,reject)=>window.preferenceSaves.push({args,sessionId:window.session.session.id,resolve,reject}));throw new Error('No domain writes in health fixture');});return funcs.get(name)};
-export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(!['operations/export:self','operations/export:versions'].includes(name))throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>name==='operations/export:versions'?window.versionRequests.push({args,resolve,reject}):window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
+export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(!['operations/export:self','operations/export:versions','operations/export:preferences'].includes(name))throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>name==='operations/export:versions'?window.versionRequests.push({args,resolve,reject}):name==='operations/export:preferences'?window.preferencesExportRequests.push({args,resolve,reject}):window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
 export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='preferences:researchSummaries'){if(window.summaryError)throw Error('PRIVATE_PROVIDER_ERROR');return window.summaryByKey[args.requestKey];}if(name==='preferences:notifications'){if(window.preferenceError)throw Error('PRIVATE_PROVIDER_ERROR');return window.preferenceByKey[args.requestKey];}if(name==='operations/githubAlerts:get'){if(window.githubError)throw Error('PRIVATE_PROVIDER_ERROR');return window.githubByKey[args.refreshKey];}if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
 export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});if(name==='publishing/notices:list'){if(window.publishingError)throw Error('PRIVATE_PROVIDER_ERROR');return {results:window.publishingNotices.map(n=>({...n,requestKey:n.requestKey??args.requestKey})),status:window.publishingStatus,loadMore(){window.publishingLoads++}}}return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
@@ -74,6 +74,7 @@ try {
     };
     window.commands = [];
     window.exportRequests = [];
+    window.preferencesExportRequests = [];
     window.versionRequests = [];
     window.preferenceSaves = [];
     window.summaryCommands = [];
@@ -670,7 +671,9 @@ try {
       { patch, index },
     );
   expect(await page.evaluate(() => window.exportRequests.length)).toBe(0);
-  await expect(page.getByText(/Dies ist ein Teil-Export/)).toBeVisible();
+  await expect(
+    page.getByText(/Dies ist ein Teil-Export/).first(),
+  ).toBeVisible();
   const beforeEntropy = await page.evaluate(() => window.exportRequests.length);
   await page.evaluate(() => {
     window.realUUID = crypto.randomUUID.bind(crypto);
@@ -861,6 +864,261 @@ try {
     ),
   ).toEqual([]);
   expect(await page.evaluate(() => window.storageWrites)).toEqual([]);
+
+  // TASK-33.1 unit 1: actual mounted native Settings preferences download with mocked transport.
+  await page.goto("http://127.0.0.1:5189/settings/data");
+  const preferencesExportButton = page.getByRole("button", {
+    name: "Eigene Einstellungen als JSON herunterladen",
+    exact: true,
+  });
+  const resolvePreferencesExport = (patch = {}, index = -1, dataPatch = {}) =>
+    page.evaluate(
+      ({ patch, index, dataPatch }) => {
+        const request = window.preferencesExportRequests.at(index),
+          observedAt = Date.now();
+        request.resolve({
+          authId: request.args.expectedAuthId,
+          sessionId: request.args.expectedSessionId,
+          requestKey: request.args.requestKey,
+          workspaceId: request.args.workspaceId,
+          observedAt,
+          proofValidUntil: observedAt + 10000,
+          data: {
+            format: "dispatch-self-preferences",
+            version: 1,
+            observedAt,
+            workspaceId: request.args.workspaceId,
+            profile: structuredClone(window.snapshot.preferences),
+            notifications: null,
+            researchSummaries: [
+              {
+                orderId: "own-original-order",
+                generation: 1,
+                accountId: "account-native",
+                profileId: "own-research-profile",
+                profileVersionId: "own-profile-version",
+                finishedAt: observedAt - 1000,
+                deadline: observedAt + 20000,
+                sourceUntil: observedAt + 20000,
+                availableAt: observedAt - 1000,
+                proofValidUntil: observedAt + 10000,
+              },
+            ],
+            coverage: {
+              kind: "selected_workspace_self_preferences",
+              complete: false,
+              included: [
+                "own_profile",
+                "stored_own_notification_settings",
+                "currently_authorized_own_research_summary_metadata",
+              ],
+              unsupported: [
+                "full_personal_or_workspace_archive",
+                "private_content_and_components",
+              ],
+            },
+            ...dataPatch,
+          },
+          ...patch,
+        });
+      },
+      { patch, index, dataPatch },
+    );
+  await expect(preferencesExportButton).toBeVisible();
+  const preferencesExportFiles = [];
+  for (const role of ["Owner", "Admin", "Editor", "Viewer"]) {
+    await page.evaluate(
+      (role) =>
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role }],
+          },
+        }),
+      role,
+    );
+    await expect(preferencesExportButton).toBeEnabled();
+    await preferencesExportButton.click();
+    await expect(preferencesExportButton).toBeDisabled();
+    const delivered = page.waitForEvent("download");
+    await resolvePreferencesExport(
+      {},
+      -1,
+      role === "Viewer"
+        ? {
+            notifications: {
+              revision: 3,
+              email: false,
+              weekly: false,
+              research: false,
+              inAppSummaries: false,
+              timezone: "UTC",
+              quiet: null,
+            },
+          }
+        : {},
+    );
+    const download = await delivered;
+    expect(download.suggestedFilename()).toBe("dispatch-self-preferences.json");
+    const data = JSON.parse(readFileSync(await download.path(), "utf8"));
+    preferencesExportFiles.push(data);
+    expect(data.profile.name).toBe("Native Owner");
+    expect(data.coverage.complete).toBe(false);
+    expect(data.researchSummaries[0].orderId).toBe("own-original-order");
+    expect(Object.keys(data.researchSummaries[0]).sort()).toEqual(
+      [
+        "accountId",
+        "availableAt",
+        "deadline",
+        "finishedAt",
+        "generation",
+        "orderId",
+        "profileId",
+        "profileVersionId",
+        "proofValidUntil",
+        "sourceUntil",
+      ].sort(),
+    );
+    expect(data.notifications).toEqual(
+      role === "Viewer"
+        ? {
+            revision: 3,
+            email: false,
+            weekly: false,
+            research: false,
+            inAppSummaries: false,
+            timezone: "UTC",
+            quiet: null,
+          }
+        : null,
+    );
+    expect(JSON.stringify(data)).not.toMatch(
+      /authId|sessionId|requestKey|token|summaryEpoch|activeSummary|expiryJob|"job"|localStorage/,
+    );
+    await expect(preferencesExportButton).toBeEnabled();
+    await page.clock.runFor(1001);
+  }
+  const preferencesDownloads = downloadEvents.length;
+  for (const mismatch of [
+    { sessionId: "foreign" },
+    { authId: "foreign" },
+    { workspaceId: "foreign" },
+    { requestKey: "foreign" },
+    { proofValidUntil: 0 },
+  ]) {
+    await preferencesExportButton.click();
+    await resolvePreferencesExport(mismatch);
+    await expect(page.getByRole("alert")).toContainText(
+      "Anmeldung oder Auswahl hat sich geändert",
+    );
+    await expect(preferencesExportButton).toBeEnabled();
+  }
+  await preferencesExportButton.click();
+  const largeProfile = await page.evaluate(() => ({
+    ...window.snapshot.preferences,
+    topics: "🧭".repeat(20000),
+  }));
+  await resolvePreferencesExport({}, -1, { profile: largeProfile });
+  await expect(page.getByRole("alert")).toContainText(
+    "Anmeldung oder Auswahl hat sich geändert",
+  );
+  expect(downloadEvents.length).toBe(preferencesDownloads);
+  for (const dimension of ["session", "workspace"]) {
+    await preferencesExportButton.click();
+    const old = await page.evaluate(
+      () => window.preferencesExportRequests.length - 1,
+    );
+    await page.evaluate((dimension) => {
+      window.preferencesOldSession = structuredClone(window.session);
+      window.preferencesOldSnapshot = structuredClone(window.snapshot);
+      window.preferencesOldRoster = structuredClone(window.roster);
+      if (dimension === "session")
+        window.update({
+          session: { ...window.session, session: { id: "other-session" } },
+        });
+      else
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            activeWorkspaceId: "workspace-other",
+            workspaces: [
+              { ...window.snapshot.workspaces[0], id: "workspace-other" },
+            ],
+          },
+          roster: { ...window.roster, workspaceId: "workspace-other" },
+        });
+    }, dimension);
+    await expect(preferencesExportButton).toBeEnabled();
+    await page.evaluate(() =>
+      window.update({
+        session: window.preferencesOldSession,
+        snapshot: window.preferencesOldSnapshot,
+        roster: window.preferencesOldRoster,
+      }),
+    );
+    await expect(preferencesExportButton).toBeEnabled();
+    await resolvePreferencesExport({}, old);
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  }
+  expect(downloadEvents.length).toBe(preferencesDownloads);
+  const preferenceRevokeBefore = await page.evaluate(
+    () => window.urlRevocations.length,
+  );
+  await page.evaluate(() => {
+    window.preferencesAnchorClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = () => {
+      throw Error("PRIVATE_PREFERENCES_HANDOFF_FAILURE");
+    };
+  });
+  await preferencesExportButton.click();
+  await resolvePreferencesExport();
+  await expect(page.getByRole("alert")).toContainText(
+    "Einstellungs-Export konnte nicht erstellt werden",
+  );
+  expect(await page.evaluate(() => window.urlRevocations.length)).toBe(
+    preferenceRevokeBefore + 1,
+  );
+  await page.evaluate(() => {
+    HTMLAnchorElement.prototype.click = window.preferencesAnchorClick;
+  });
+  await preferencesExportButton.click();
+  await page.evaluate(() => {
+    window.preferencesCreateURL = URL.createObjectURL;
+    window.preferencesNow = Date.now;
+    URL.createObjectURL = (blob) => {
+      const url = window.preferencesCreateURL(blob);
+      Date.now = () => window.preferencesNow() + 60000;
+      return url;
+    };
+  });
+  await resolvePreferencesExport();
+  await expect(page.getByRole("alert")).toContainText(
+    "Einstellungs-Export konnte nicht erstellt werden",
+  );
+  expect(await page.evaluate(() => window.urlRevocations.length)).toBe(
+    preferenceRevokeBefore + 2,
+  );
+  await page.evaluate(() => {
+    URL.createObjectURL = window.preferencesCreateURL;
+    Date.now = window.preferencesNow;
+  });
+  expect(downloadEvents.length).toBe(preferencesDownloads);
+  await preferencesExportButton.click();
+  const unmountedPreferences = await page.evaluate(
+    () => window.preferencesExportRequests.length - 1,
+  );
+  await page.getByRole("link", { name: "Mein Profil", exact: true }).click();
+  await resolvePreferencesExport({}, unmountedPreferences);
+  expect(downloadEvents.length).toBe(preferencesDownloads);
+  expect(await page.evaluate(() => window.storageWrites)).toEqual([]);
+  expect(
+    await page.evaluate(() =>
+      window.commands.filter((command) => command.name !== "users:bootstrap"),
+    ),
+  ).toEqual([]);
+  expect(await page.locator("main").innerText()).not.toContain(
+    "PRIVATE_PREFERENCES_HANDOFF_FAILURE",
+  );
 
   // TASK-33.1.3: additive shared-version consumer controls.
   await page.goto("http://127.0.0.1:5189/settings/data");
@@ -2987,6 +3245,19 @@ try {
         existingRecipientInbox: true,
         unresolvedTransportCopy: true,
         demoPreferencePersistenceAndViewer: true,
+        nativePreferencesDownload: {
+          mockedTransport: true,
+          actualAppStoreCss: true,
+          allFourRoles: true,
+          nullableStoredNotifications: true,
+          exactCorrelation: true,
+          sessionWorkspaceABA: true,
+          sourceHandoffExpiry: true,
+          oversizedWire: true,
+          failedHandoffRevokesURL: true,
+          noPrivateDownloadFields: true,
+          fileCount: preferencesExportFiles.length,
+        },
         nativeSelfProfileDownload: true,
         exportRoles: ["Owner", "Admin", "Editor", "Viewer"],
         exportFreshKeys: true,

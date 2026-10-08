@@ -1,6 +1,7 @@
 import { NativeNotificationSettings } from "@/features/settings/notifications";
 import {
   NativeProfileExport,
+  NativePreferencesExport,
   WorkspaceVersionsExport,
 } from "@/features/settings/data-export";
 import { ContentStrategy } from "@/features/settings/content-strategy";
@@ -170,6 +171,7 @@ export function SettingsPage() {
           ) : !demoMode && tab === "data" ? (
             <>
               <NativeProfileExport key={nativeScope} />
+              <NativePreferencesExport key={`preferences:${nativeScope}`} />
               {admin && (
                 <WorkspaceVersionsExport key={`versions:${nativeScope}`} />
               )}

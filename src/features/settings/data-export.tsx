@@ -132,6 +132,185 @@ export function NativeProfileExport() {
   );
 }
 
+export function NativePreferencesExport() {
+  const { state, nativeScope } = useStore();
+  const { data: session } = authClient.useSession();
+  const convex = useConvex();
+  const authId = session?.user.id,
+    sessionId = session?.session.id;
+  const workspaceId = state.activeWorkspaceId;
+  const scopeKey = `${nativeScope}:${authId}:${sessionId}:${workspaceId}`;
+  const current = useRef({ scopeKey, epoch: 0 });
+  if (current.current.scopeKey !== scopeKey)
+    current.current = { scopeKey, epoch: current.current.epoch + 1 };
+  const ticket = useRef(0),
+    alive = useRef(true),
+    inFlight = useRef(false);
+  const objectURL = useRef<string | null>(null);
+  const revokeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [handedOff, setHandedOff] = useState(false);
+  const revoke = () => {
+    if (revokeTimer.current) clearTimeout(revokeTimer.current);
+    if (objectURL.current) URL.revokeObjectURL(objectURL.current);
+    objectURL.current = null;
+    revokeTimer.current = null;
+  };
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+      ticket.current++;
+      revoke();
+    };
+  }, []);
+  useEffect(() => {
+    ticket.current++;
+    inFlight.current = false;
+    setBusy(false);
+    setError("");
+    setHandedOff(false);
+    revoke();
+  }, [nativeScope, authId, sessionId, workspaceId]);
+  const download = async () => {
+    if (inFlight.current || !authId || !sessionId) return;
+    inFlight.current = true;
+    const ownTicket = ++ticket.current;
+    const scope = current.current;
+    const stillCurrent = () =>
+      alive.current &&
+      ticket.current === ownTicket &&
+      current.current.scopeKey === scope.scopeKey &&
+      current.current.epoch === scope.epoch;
+    setBusy(true);
+    setError("");
+    setHandedOff(false);
+    try {
+      const requestKey = crypto.randomUUID();
+      const result = await convex.query(api.operations.export.preferences, {
+        workspaceId: workspaceId as Id<"workspaces">,
+        expectedAuthId: authId,
+        expectedSessionId: sessionId,
+        requestKey,
+      });
+      if (!stillCurrent()) return;
+      const now = Date.now();
+      if (
+        !Number.isFinite(now) ||
+        Object.is(now, -0) ||
+        result.requestKey !== requestKey ||
+        result.authId !== authId ||
+        result.sessionId !== sessionId ||
+        result.workspaceId !== workspaceId ||
+        result.data.workspaceId !== workspaceId ||
+        result.data.format !== "dispatch-self-preferences" ||
+        result.data.version !== 1 ||
+        result.data.researchSummaries.length > 5 ||
+        ![
+          result.observedAt,
+          result.data.observedAt,
+          result.proofValidUntil,
+          result.data.profile.onboardingStep,
+          ...(result.data.notifications
+            ? [result.data.notifications.revision]
+            : []),
+          ...result.data.researchSummaries.flatMap((r) => [
+            r.generation,
+            r.finishedAt,
+            r.deadline,
+            r.sourceUntil,
+            r.availableAt,
+            r.proofValidUntil,
+          ]),
+        ].every((n) => Number.isFinite(n) && !Object.is(n, -0)) ||
+        result.data.observedAt !== result.observedAt ||
+        result.observedAt > now ||
+        result.proofValidUntil <= now ||
+        result.proofValidUntil > result.observedAt + 30_000 ||
+        result.data.researchSummaries.some(
+          (r) =>
+            r.proofValidUntil <= now ||
+            r.proofValidUntil > r.sourceUntil ||
+            r.proofValidUntil > r.deadline ||
+            result.proofValidUntil > r.proofValidUntil,
+        ) ||
+        new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024
+      ) {
+        setError(
+          "Anmeldung oder Auswahl hat sich geändert. Bitte erneut herunterladen.",
+        );
+        return;
+      }
+      revoke();
+      const url = URL.createObjectURL(
+        new Blob([JSON.stringify(result.data, null, 2)], {
+          type: "application/json",
+        }),
+      );
+      objectURL.current = url;
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "dispatch-self-preferences.json";
+      const handoffAt = Date.now();
+      if (
+        !stillCurrent() ||
+        !Number.isFinite(handoffAt) ||
+        Object.is(handoffAt, -0) ||
+        handoffAt >= result.proofValidUntil
+      ) {
+        revoke();
+        throw new Error("EXPORT_SOURCE_EXPIRED");
+      }
+      link.click();
+      revokeTimer.current = setTimeout(revoke, 1000);
+      setHandedOff(true);
+    } catch {
+      if (stillCurrent()) {
+        revoke();
+        setError(
+          "Einstellungs-Export konnte nicht erstellt werden. Bitte erneut versuchen.",
+        );
+      }
+    } finally {
+      if (stillCurrent()) {
+        inFlight.current = false;
+        setBusy(false);
+      }
+    }
+  };
+  return (
+    <Section
+      title="Eigene Einstellungen exportieren"
+      description="Lade dein Profil, gespeicherte Benachrichtigungseinstellungen und aktuell erlaubte Metadaten eigener Research-Zusammenfassungen herunter. Dies ist ein Teil-Export des ausgewählten Workspaces; Inhalte, Quellen, andere Personen und Auth-Datensätze sind nicht enthalten."
+    >
+      <Button
+        variant="outline"
+        disabled={busy || !authId || !sessionId}
+        onClick={download}
+      >
+        <Download size={15} />
+        Eigene Einstellungen als JSON herunterladen
+      </Button>
+      {busy && (
+        <p role="status" className="muted text-sm mt-3">
+          Einstellungen werden geladen …
+        </p>
+      )}
+      {error && (
+        <p role="alert" className="text-sm mt-3">
+          {error}
+        </p>
+      )}
+      {handedOff && (
+        <p role="status" className="muted text-sm mt-3">
+          Einstellungs-JSON wurde zum Download übergeben.
+        </p>
+      )}
+    </Section>
+  );
+}
+
 export function WorkspaceVersionsExport() {
   const { state, nativeScope } = useStore();
   const { data: session } = authClient.useSession();
