@@ -1,3 +1,4 @@
+import { admitResearchCompletion } from "../preferences";
 import { conversationAccess } from "../ai/conversationAccess";
 import { orderLiability } from "./pipelineAccess";
 import { materialHash } from "./evidence";
@@ -264,7 +265,9 @@ export const finish = internalMutation({
       (o.state !== "queued" && o.state !== "running")
     )
       return null;
-    await ctx.db.patch(o._id, { state: "completed", finishedAt: Date.now() });
+    const finishedAt = Date.now();
+    await admitResearchCompletion(ctx, o, finishedAt);
+    await ctx.db.patch(o._id, { state: "completed", finishedAt });
     const p = await ctx.db.get(o.profileId);
     if (p?.activeOrderId === o._id)
       await ctx.db.patch(p._id, { activeOrderId: null });

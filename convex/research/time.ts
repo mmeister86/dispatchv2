@@ -50,3 +50,86 @@ export function nextOccurrence(
   }
   throw new ConvexError("RESEARCH_TIME_INVALID");
 }
+
+// Notifications use their own IANA zone; repeated end clocks use the later instant.
+export function quietWindow(
+  s: { timezone: string; quiet: { start: string; end: string } | null },
+  now: number,
+) {
+  if (!s.quiet) return { availableAt: now, boundary: null };
+  validateClock({ timeZone: s.timezone, clock: s.quiet.start, weekday: 0 });
+  validateClock({ timeZone: s.timezone, clock: s.quiet.end, weekday: 0 });
+  if (s.quiet.start === s.quiet.end)
+    throw new ConvexError("RESEARCH_TIME_INVALID");
+  const local = new Intl.DateTimeFormat("en-CA", {
+    timeZone: s.timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts = Object.fromEntries(
+    local.formatToParts(now).map((p) => [p.type, p.value]),
+  );
+  const date = `${parts.year}-${parts.month}-${parts.day}`,
+    clock = `${parts.hour}:${parts.minute}`;
+  const { start, end } = s.quiet;
+  const overnight = start > end;
+  const inside = overnight
+    ? clock >= start || clock < end
+    : clock >= start && clock < end;
+  const endDay = overnight && clock >= start ? addCivilDays(date, 1) : date;
+  const matches = resolveLocalTime(`${endDay}T${end}`, s.timezone);
+  const startDay = overnight && clock < start ? addCivilDays(date, -1) : date;
+  const firstStart = resolveLocalTime(`${startDay}T${start}`, s.timezone)[0];
+  const repeatedEnd =
+    matches.length > 1 &&
+    !!firstStart &&
+    Date.parse(firstStart) <= now &&
+    now < Date.parse(matches.at(-1)!);
+  if (inside || repeatedEnd) {
+    if (matches.length)
+      return { availableAt: Date.parse(matches.at(-1)!), boundary: null };
+    // A skipped end resumes at the first real post-quiet minute, preserving seconds precision outside gaps.
+    for (
+      let at = Math.floor(now / 60000) * 60000 + 60000;
+      at <= now + 26 * 3600000;
+      at += 60000
+    ) {
+      const p = Object.fromEntries(
+        local.formatToParts(at).map((p) => [p.type, p.value]),
+      );
+      const c = `${p.hour}:${p.minute}`;
+      if (!(overnight ? c >= start || c < end : c >= start && c < end))
+        return { availableAt: at, boundary: null };
+    }
+    throw new ConvexError("RESEARCH_TIME_INVALID");
+  }
+  // A missing start clock enters quiet at the first real minute after the DST gap.
+  if (!resolveLocalTime(`${date}T${start}`, s.timezone).length) {
+    for (
+      let at = Math.floor(now / 60000) * 60000 + 60000;
+      at <= now + 26 * 3600000;
+      at += 60000
+    ) {
+      const p = Object.fromEntries(
+        local.formatToParts(at).map((p) => [p.type, p.value]),
+      );
+      const c = `${p.hour}:${p.minute}`;
+      if (overnight ? c >= start || c < end : c >= start && c < end)
+        return { availableAt: now, boundary: at };
+    }
+  }
+  for (let day = 0; day < 3; day++) {
+    const next = resolveLocalTime(
+      `${addCivilDays(date, day)}T${start}`,
+      s.timezone,
+    )
+      .map(Date.parse)
+      .find((at) => at > now);
+    if (next !== undefined) return { availableAt: now, boundary: next };
+  }
+  throw new ConvexError("RESEARCH_TIME_INVALID");
+}

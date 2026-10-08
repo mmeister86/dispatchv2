@@ -10,9 +10,9 @@ const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import React from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
-const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';if(name==='publishing/notices:read'||name==='publishing/notices:dismiss')return new Promise((resolve,reject)=>window.publishingCommands.push({name,args,sessionId:window.session.session.id,resolve,reject}));if(name==='preferences:saveNotifications')return new Promise((resolve,reject)=>window.preferenceSaves.push({args,sessionId:window.session.session.id,resolve,reject}));throw new Error('No domain writes in health fixture');});return funcs.get(name)};
+const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';if(name==='preferences:dismissResearchSummaries')return new Promise((resolve,reject)=>window.summaryCommands.push({args,resolve,reject}));if(name==='publishing/notices:read'||name==='publishing/notices:dismiss')return new Promise((resolve,reject)=>window.publishingCommands.push({name,args,sessionId:window.session.session.id,resolve,reject}));if(name==='preferences:saveNotifications')return new Promise((resolve,reject)=>window.preferenceSaves.push({args,sessionId:window.session.session.id,resolve,reject}));throw new Error('No domain writes in health fixture');});return funcs.get(name)};
 export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(!['operations/export:self','operations/export:versions'].includes(name))throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>name==='operations/export:versions'?window.versionRequests.push({args,resolve,reject}):window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
-export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='preferences:notifications'){if(window.preferenceError)throw Error('PRIVATE_PROVIDER_ERROR');return window.preferenceByKey[args.requestKey];}if(name==='operations/githubAlerts:get'){if(window.githubError)throw Error('PRIVATE_PROVIDER_ERROR');return window.githubByKey[args.refreshKey];}if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
+export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='preferences:researchSummaries'){if(window.summaryError)throw Error('PRIVATE_PROVIDER_ERROR');return window.summaryByKey[args.requestKey];}if(name==='preferences:notifications'){if(window.preferenceError)throw Error('PRIVATE_PROVIDER_ERROR');return window.preferenceByKey[args.requestKey];}if(name==='operations/githubAlerts:get'){if(window.githubError)throw Error('PRIVATE_PROVIDER_ERROR');return window.githubByKey[args.refreshKey];}if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
 export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});if(name==='publishing/notices:list'){if(window.publishingError)throw Error('PRIVATE_PROVIDER_ERROR');return {results:window.publishingNotices.map(n=>({...n,requestKey:n.requestKey??args.requestKey})),status:window.publishingStatus,loadMore(){window.publishingLoads++}}}return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
 };
@@ -76,6 +76,8 @@ try {
     window.exportRequests = [];
     window.versionRequests = [];
     window.preferenceSaves = [];
+    window.summaryCommands = [];
+    window.summaryByKey = {};
     window.preferenceStored = {
       revision: 0,
       email: false,
@@ -1208,7 +1210,7 @@ try {
   }
   await expect(
     page.getByText(
-      "E-Mail und In-App-/Wochen-/Research-Zusammenfassungen sowie die Ausführung von Ruhezeiten sind noch nicht verfügbar. Speichern aktiviert keine Zustellung.",
+      "Eigene Research-Abschlüsse erscheinen bei aktivierten In-App- und Research-Zusammenfassungen nach deinen Ruhezeiten. Die Auswahl ist auf fünf ursprüngliche Abschlüsse begrenzt; weitere Abdeckung bleibt unbekannt. E-Mail und Wochenüberblick sind noch nicht verfügbar.",
     ),
   ).toBeVisible();
   for (const role of ["Owner", "Admin", "Editor", "Viewer"]) {
@@ -1239,7 +1241,7 @@ try {
     await resolvePreference();
     await expect(
       page.getByText(
-        "Benachrichtigungswünsche gespeichert. Keine Zustellung aktiviert.",
+        "Benachrichtigungswünsche gespeichert. Eigene Research-Abschlüsse richten sich nach deinen In-App- und Research-Wünschen.",
         { exact: true },
       ),
     ).toBeVisible();
@@ -1333,7 +1335,7 @@ try {
     ).toBeVisible();
     await expect(
       page.getByText(
-        "Benachrichtigungswünsche gespeichert. Keine Zustellung aktiviert.",
+        "Benachrichtigungswünsche gespeichert. Eigene Research-Abschlüsse richten sich nach deinen In-App- und Research-Wünschen.",
         { exact: true },
       ),
     ).toHaveCount(0);
@@ -1368,7 +1370,7 @@ try {
   await resolvePreference();
   await expect(
     page.getByText(
-      "Benachrichtigungswünsche gespeichert. Keine Zustellung aktiviert.",
+      "Benachrichtigungswünsche gespeichert. Eigene Research-Abschlüsse richten sich nach deinen In-App- und Research-Wünschen.",
       { exact: true },
     ),
   ).toBeVisible();
@@ -1466,7 +1468,7 @@ try {
     await resolvePreference({}, old);
     await expect(
       page.getByText(
-        "Benachrichtigungswünsche gespeichert. Keine Zustellung aktiviert.",
+        "Benachrichtigungswünsche gespeichert. Eigene Research-Abschlüsse richten sich nach deinen In-App- und Research-Wünschen.",
         { exact: true },
       ),
     ).toHaveCount(0);
@@ -2675,6 +2677,245 @@ try {
         .every((c) => !c.args.noticeIds.includes("private-recovery-id")),
     ),
   ).toBe(true);
+  // TASK-32.5: real styled Drawer family, exact correlation, finite clocks, observed dismissal.
+  const summaryInbox = page.getByRole("region", {
+    name: "Eigene Research-Abschlüsse",
+    exact: true,
+  });
+  await page.evaluate(() => {
+    const q = window.queries
+      .filter((q) => q.name === "preferences:researchSummaries")
+      .at(-1);
+    if (!q) throw Error("Missing own summary query");
+    window.summaryArgs = q.args;
+    const result = {
+      authId: q.args.expectedAuthId,
+      sessionId: q.args.expectedSessionId,
+      workspaceId: q.args.workspaceId,
+      requestKey: q.args.requestKey,
+      coverage: "bounded_unknown",
+      rows: [
+        {
+          orderId: "own-completed",
+          generation: 1,
+          finishedAt: Date.now() - 1000,
+          accountId: "account-native",
+          outcome: "empty",
+          proofUntil: Date.now() + 10000,
+        },
+      ],
+    };
+    window.summaryResult = result;
+    window.update({ summaryByKey: { [q.args.requestKey]: result } });
+  });
+  await expect(summaryInbox).toContainText("Research ohne Material");
+  await expect(summaryInbox).toContainText("Weitere Abdeckung unbekannt");
+  await page.evaluate(() => {
+    window.summaryResult = {
+      ...window.summaryResult,
+      rows: window.summaryResult.rows.map((r) => ({
+        ...r,
+        outcome: "partial",
+      })),
+    };
+    window.update({
+      summaryByKey: { [window.summaryArgs.requestKey]: window.summaryResult },
+    });
+  });
+  await expect(summaryInbox).toContainText("Research teilweise abgeschlossen");
+  await page.evaluate(() => {
+    window.summaryResult = {
+      ...window.summaryResult,
+      rows: window.summaryResult.rows.map((r) => ({
+        ...r,
+        outcome: "completed",
+      })),
+    };
+    window.update({
+      summaryByKey: { [window.summaryArgs.requestKey]: window.summaryResult },
+    });
+  });
+  await expect(summaryInbox).toContainText("Research abgeschlossen");
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
+  });
+  await expect(summaryInbox).toBeVisible();
+  await page.screenshot({
+    path: `${evidence}/research-summary-success-1280.png`,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(resolve)),
+    );
+  });
+  await expect(
+    summaryInbox.getByRole("button", {
+      name: "Abschluss ausblenden",
+      exact: true,
+    }),
+  ).toBeVisible();
+  const summaryBounds = await summaryInbox.boundingBox();
+  expect(summaryBounds.x + summaryBounds.width).toBeLessThanOrEqual(391);
+  await page.screenshot({
+    path: `${evidence}/research-summary-success-390.png`,
+  });
+  await page.evaluate(() => {
+    window.summaryResult = {
+      ...window.summaryResult,
+      rows: window.summaryResult.rows.map((r) => ({ ...r, outcome: "empty" })),
+    };
+    window.update({
+      summaryByKey: { [window.summaryArgs.requestKey]: window.summaryResult },
+    });
+  });
+  await expect(summaryInbox).toContainText("Research ohne Material");
+
+  await summaryInbox
+    .getByRole("button", { name: "Abschluss ausblenden", exact: true })
+    .focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    summaryInbox.getByRole("button", {
+      name: "Abschluss ausblenden",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  expect(
+    await page.evaluate(() => window.summaryCommands.at(-1).args.observed),
+  ).toEqual([
+    {
+      orderId: "own-completed",
+      generation: 1,
+      finishedAt: await page.evaluate(
+        () => window.summaryResult.rows[0].finishedAt,
+      ),
+    },
+  ]);
+  await page.evaluate(() => window.summaryCommands.at(-1).resolve(null));
+  await expect(
+    summaryInbox.getByRole("button", {
+      name: "Abschluss ausblenden",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  for (const field of ["authId", "sessionId", "workspaceId", "requestKey"]) {
+    await page.evaluate(
+      (field) =>
+        window.update({
+          summaryByKey: {
+            [window.summaryArgs.requestKey]: {
+              ...window.summaryResult,
+              [field]: "wrong",
+            },
+          },
+        }),
+      field,
+    );
+    await expect(summaryInbox).not.toContainText("Research ohne Material");
+  }
+  await page.evaluate(() =>
+    window.update({
+      summaryByKey: { [window.summaryArgs.requestKey]: window.summaryResult },
+    }),
+  );
+  // The native quiet-start mutation invalidates the projection; the quiet-end mutation
+  // supplies fresh server proof for the same original, without browser renewal.
+  await summaryInbox
+    .getByRole("button", { name: "Abschluss ausblenden", exact: true })
+    .click();
+  const preQuietCommand = await page.evaluate(
+    () => window.summaryCommands.length - 1,
+  );
+  await page.clock.runFor(10001);
+  await expect(summaryInbox).not.toContainText("Research ohne Material");
+  await page.evaluate(() =>
+    window.update({
+      summaryByKey: {
+        [window.summaryArgs.requestKey]: { ...window.summaryResult, rows: [] },
+      },
+    }),
+  );
+  await expect(
+    summaryInbox.getByRole("button", {
+      name: "Abschluss ausblenden",
+      exact: true,
+    }),
+  ).toHaveCount(0);
+  await page.clock.runFor(1001);
+  await page.evaluate(() => {
+    window.summaryResult = {
+      ...window.summaryResult,
+      rows: window.summaryResult.rows.map((r) => ({
+        ...r,
+        proofUntil: Date.now() + 10000,
+      })),
+    };
+    window.update({
+      summaryByKey: { [window.summaryArgs.requestKey]: window.summaryResult },
+    });
+  });
+  await expect(summaryInbox).toContainText("Research ohne Material");
+  await expect(
+    summaryInbox.getByRole("button", {
+      name: "Abschluss ausblenden",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await summaryInbox
+    .getByRole("button", { name: "Abschluss ausblenden", exact: true })
+    .click();
+  const afterQuietCommand = await page.evaluate(
+    () => window.summaryCommands.length - 1,
+  );
+  expect(
+    await page.evaluate(
+      ([oldIndex, newIndex]) =>
+        JSON.stringify(window.summaryCommands[oldIndex].args.observed) ===
+        JSON.stringify(window.summaryCommands[newIndex].args.observed),
+      [preQuietCommand, afterQuietCommand],
+    ),
+  ).toBe(true);
+  await page.evaluate(
+    (index) =>
+      window.summaryCommands[index].reject(Error("PRIVATE_LATE_QUIET_COMMAND")),
+    preQuietCommand,
+  );
+  await expect(
+    summaryInbox.getByRole("button", {
+      name: "Abschluss ausblenden",
+      exact: true,
+    }),
+  ).toBeDisabled();
+  await expect(summaryInbox.getByRole("alert")).toHaveCount(0);
+  await page.evaluate(
+    (index) => window.summaryCommands[index].resolve(null),
+    afterQuietCommand,
+  );
+  await expect(
+    summaryInbox.getByRole("button", {
+      name: "Abschluss ausblenden",
+      exact: true,
+    }),
+  ).toBeEnabled();
+  await page.evaluate(() => window.update({ summaryError: true }));
+  await expect(
+    page
+      .getByRole("alert")
+      .filter({ hasText: "Research-Abschlüsse sind derzeit nicht verfügbar" }),
+  ).toBeVisible();
+  await expect(githubInbox).toBeVisible();
+  expect(await page.locator("main").innerText()).not.toContain(
+    "PRIVATE_PROVIDER_ERROR",
+  );
+  await page.screenshot({
+    path: `${evidence}/research-summary-error.png`,
+  });
   expect(provider).toEqual([]);
   expect(
     errors.filter((error) => !error.includes("PRIVATE_PROVIDER_ERROR")),
@@ -2684,6 +2925,21 @@ try {
     `${evidence}/receipt.json`,
     JSON.stringify(
       {
+        researchCompletionSummary: {
+          styledDrawer: true,
+          successViewports: [1280, 390],
+          successImages: [
+            "research-summary-success-1280.png",
+            "research-summary-success-390.png",
+          ],
+          errorImage: "research-summary-error.png",
+          observedOnlyDismiss: true,
+          exactScope: true,
+          clockExpiry: true,
+          nativeQuietTransitionRecovery: true,
+          quietLateCommandTicketFence: true,
+          privateIndependentError: true,
+        },
         githubAttention: {
           sameDrawer: true,
           attentionOnly: true,
@@ -2724,7 +2980,7 @@ try {
         cloudNotificationDefaultOff: true,
         cloudNativePreferencesPersisted: true,
         cloudNotificationDirtyCASCorrelationABA: true,
-        cloudNotificationDeliveryUnavailable: true,
+        cloudWeeklyEmailUnavailable: true,
         cloudNotificationRoles: ["Owner", "Admin", "Editor", "Viewer"],
         cloudNoAppLocalPreferenceStorage: true,
         cloudOnlyOwnPreferenceSetter: true,

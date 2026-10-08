@@ -45,9 +45,10 @@ export function NativeNotificationSettings() {
       description="Deine eigenen gespeicherten Wünsche im ausgewählten Workspace."
     >
       <p className="muted text-sm">
-        E-Mail und In-App-/Wochen-/Research-Zusammenfassungen sowie die
-        Ausführung von Ruhezeiten sind noch nicht verfügbar. Speichern aktiviert
-        keine Zustellung.
+        Eigene Research-Abschlüsse erscheinen bei aktivierten In-App- und
+        Research-Zusammenfassungen nach deinen Ruhezeiten. Die Auswahl ist auf
+        fünf ursprüngliche Abschlüsse begrenzt; weitere Abdeckung bleibt
+        unbekannt. E-Mail und Wochenüberblick sind noch nicht verfügbar.
       </p>
       <p className="muted text-sm">
         Pflichtmeldungen bleiben im persönlichen App-Posteingang. Angeforderte
@@ -287,8 +288,8 @@ function PreferenceForm({ requestKey }: { requestKey: string }) {
         </div>
       )}
       <p className="muted text-sm">
-        Auch über Mitternacht möglich. Die gespeicherte Ruhezeit wird derzeit
-        nicht ausgeführt; Pflichtmeldungen sind davon ausgenommen.
+        Auch über Mitternacht möglich. Ruhezeiten gelten für optionale
+        Research-Abschlüsse; Pflichtmeldungen sind davon ausgenommen.
       </p>
       {dirty && <p role="status">Ungespeicherte Änderungen.</p>}
       {dirty && data.settings.revision !== draft.revision && (
@@ -303,7 +304,8 @@ function PreferenceForm({ requestKey }: { requestKey: string }) {
       {busy && <p role="status">Wünsche werden gespeichert …</p>}
       {saved && (
         <p role="status">
-          Benachrichtigungswünsche gespeichert. Keine Zustellung aktiviert.
+          Benachrichtigungswünsche gespeichert. Eigene Research-Abschlüsse
+          richten sich nach deinen In-App- und Research-Wünschen.
         </p>
       )}
       {error && <p role="alert">{error}</p>}

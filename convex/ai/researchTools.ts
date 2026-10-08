@@ -1,3 +1,4 @@
+import { admitResearchCompletion } from "../preferences";
 import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 import { captureHistory } from "./contentCopies";
 import { registerResearchCopies } from "../research/contentCleanup";
@@ -948,9 +949,11 @@ export const finish = internalMutation({
                 ? "partial"
                 : "empty";
     const p = await ctx.db.get(o.profileId);
+    const finishedAt = Date.now();
+    await admitResearchCompletion(ctx, o, finishedAt);
     await ctx.db.patch(o._id, {
       state: "completed",
-      finishedAt: Date.now(),
+      finishedAt,
       reason: `RESEARCH_${outcome.toUpperCase()}`,
       pipeline: {
         ...o.pipeline!,

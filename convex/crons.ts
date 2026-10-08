@@ -115,4 +115,10 @@ crons.interval(
   internal.ai.jev.routing.purge,
   { cursor: null, force: false },
 );
+crons.interval(
+  "Own research summary cleanup",
+  { minutes: 15 },
+  internal.preferences.sweepResearchSummaries,
+  { cursor: null },
+);
 export default crons;

@@ -1242,5 +1242,29 @@ export default defineSchema({
     workspaceId: v.id("workspaces"),
     ...profileFields,
     notifications: v.optional(personalNotificationSettings),
-  }).index("by_userId_and_workspaceId", ["userId", "workspaceId"]),
+    activeSummary: v.optional(v.boolean()),
+    summaryEpoch: v.optional(v.number()),
+    researchSummaries: v.optional(
+      v.array(
+        v.object({
+          orderId: v.id("researchOrders"),
+          generation: v.number(),
+          accountId: v.id("socialAccounts"),
+          profileId: v.id("researchProfiles"),
+          profileVersionId: v.id("researchProfileVersions"),
+          finishedAt: v.number(),
+          deadline: v.number(),
+          sourceUntil: v.number(),
+          availableAt: v.number(),
+          job: v.id("_scheduled_functions"),
+          expiryJob: v.id("_scheduled_functions"),
+        }),
+      ),
+    ),
+  })
+    .index("by_userId_and_workspaceId", ["userId", "workspaceId"])
+    .index("by_workspaceId_and_activeSummary", [
+      "workspaceId",
+      "activeSummary",
+    ]),
 });

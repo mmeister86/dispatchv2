@@ -651,6 +651,12 @@ export const purgeActor = internalMutation({
   returns: v.null(),
   handler: async (ctx, a) => {
     if (!a.phase)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.preferences.scrubActorResearchSummaries,
+        { actorId: a.actorId, cursor: null },
+      );
+    if (!a.phase)
       await ctx.scheduler.runAfter(0, internal.ai.jev.routing.purge, {
         actorId: a.actorId,
         cursor: null,

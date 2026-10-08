@@ -635,6 +635,7 @@ export function NativeNoticeInbox({
             aria-label="Ungelesene Hinweise in geladenen Einträgen"
           />
         ) : null}
+        <ResearchSummaryInbox key={`research:${nativeScope}`} indicator />
         <PublishingInbox key={nativeScope} indicator />
         <GithubAttention key={`github:${nativeScope}`} indicator />
       </>
@@ -734,6 +735,7 @@ export function NativeNoticeInbox({
         )}
         <CommandFeedback operation={op} />
       </section>
+      <ResearchSummaryInbox key={`research:${nativeScope}`} />
       <PublishingInbox key={nativeScope} onOpen={onOpen} />
       <GithubAttention key={`github:${nativeScope}`} onOpen={onOpen} />
     </>
@@ -1168,6 +1170,165 @@ function GithubAttentionPage({
           </Button>
         </div>
       ))}
+    </section>
+  );
+}
+
+class ResearchSummaryBoundary extends Component<
+  { children: ReactNode; indicator: boolean },
+  { failed: boolean }
+> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? (
+      this.props.indicator ? null : (
+        <p role="alert">Research-Abschlüsse sind derzeit nicht verfügbar.</p>
+      )
+    ) : (
+      this.props.children
+    );
+  }
+}
+function ResearchSummaryInbox({ indicator = false }: { indicator?: boolean }) {
+  const { nativeScope } = useStore();
+  const [requestKey] = useState(() => {
+    try {
+      return crypto.randomUUID();
+    } catch {
+      return null;
+    }
+  });
+  if (!requestKey)
+    return indicator ? null : (
+      <p role="alert">Research-Abschlüsse sind derzeit nicht verfügbar.</p>
+    );
+  return (
+    <ResearchSummaryBoundary
+      key={`${nativeScope}:${requestKey}`}
+      indicator={indicator}
+    >
+      <ResearchSummaryRows requestKey={requestKey} indicator={indicator} />
+    </ResearchSummaryBoundary>
+  );
+}
+function ResearchSummaryRows({
+  requestKey,
+  indicator,
+}: {
+  requestKey: string;
+  indicator: boolean;
+}) {
+  const { state, nativeScope } = useStore(),
+    session = authClient.useSession(),
+    authId = session.data?.user.id,
+    sessionId = session.data?.session.id;
+  const workspaceId = state.activeWorkspaceId as Id<"workspaces">;
+  const data = useQuery(
+    api.preferences.researchSummaries,
+    !demoMode && !session.isPending && authId && sessionId
+      ? {
+          workspaceId,
+          expectedAuthId: authId,
+          expectedSessionId: sessionId,
+          requestKey,
+        }
+      : "skip",
+  );
+  const dismiss = useMutation(api.preferences.dismissResearchSummaries);
+  const valid =
+    !!data &&
+    data.authId === authId &&
+    data.sessionId === sessionId &&
+    data.workspaceId === workspaceId &&
+    data.requestKey === requestKey &&
+    nativeScope ===
+      `${authId}:${sessionId}:${workspaceId}:${state.activeAccountId}:${state.role}`;
+  const clock = useGithubSourceProofClock(
+    valid
+      ? data.rows.map((r) => ({
+          authorized: true,
+          proofExpiresAt: r.proofUntil,
+        }))
+      : [],
+  );
+  const rows = valid ? data.rows.filter((r) => r.proofUntil > clock) : [];
+  const until = rows.length ? Math.min(...rows.map((r) => r.proofUntil)) : null;
+  const op = useNativeCommand(`${nativeScope}:${requestKey}`, until);
+  if (indicator)
+    return rows.length ? (
+      <span
+        className="absolute right-2 top-2 size-1.5 rounded-full bg-primary"
+        aria-label="Eigene Research-Abschlüsse in begrenzter Auswahl"
+      />
+    ) : null;
+  return (
+    <section
+      className="stack mt-4 border-t pt-4"
+      aria-label="Eigene Research-Abschlüsse"
+    >
+      <strong>Eigene Research-Abschlüsse</strong>
+      <p className="text-xs muted">
+        Höchstens fünf ursprüngliche Abschlüsse. Weitere Abdeckung unbekannt.
+      </p>
+      {rows.map((r) => (
+        <div
+          className="stack border-b pb-4 text-sm"
+          key={`${r.orderId}:${r.generation}:${r.finishedAt}`}
+        >
+          <strong>
+            {r.outcome === "completed"
+              ? "Research abgeschlossen"
+              : r.outcome === "partial"
+                ? "Research teilweise abgeschlossen"
+                : r.outcome === "empty"
+                  ? "Research ohne Material"
+                  : r.outcome === "configuration_required"
+                    ? "Research benötigt Konfiguration"
+                    : r.outcome === "budget_exhausted"
+                      ? "Research-Budget ausgeschöpft"
+                      : "Research ohne erfolgreichen Materialabschluss"}
+          </strong>
+          <p className="text-xs muted break-all">
+            Account {r.accountId} ·{" "}
+            {new Date(r.finishedAt).toLocaleString("de-DE")}
+          </p>
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={op.locked}
+            onClick={() => {
+              if (!authId) return;
+              const args = {
+                workspaceId,
+                expectedAuthId: authId,
+                expectedSessionId: sessionId!,
+                requestKey,
+                observed: [
+                  {
+                    orderId: r.orderId,
+                    generation: r.generation,
+                    finishedAt: r.finishedAt,
+                  },
+                ],
+              };
+              void op.execute(() => dismiss(args));
+            }}
+          >
+            Abschluss ausblenden
+          </Button>
+        </div>
+      ))}
+      {!rows.length && (
+        <p role="status">
+          {data
+            ? "Keine eigenen Research-Abschlüsse in der aktuellen Auswahl."
+            : "Eigene Research-Abschlüsse werden geladen …"}
+        </p>
+      )}
+      <CommandFeedback operation={op} />
     </section>
   );
 }
