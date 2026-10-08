@@ -4,7 +4,7 @@ title: Exportiere berechtigte Workspace-Versionsinhalte in begrenzten Seiten
 status: To Do
 assignee: []
 created_date: '2026-10-07 23:23'
-updated_date: '2026-10-07 23:23'
+updated_date: '2026-10-08 05:53'
 labels: []
 dependencies: []
 parent_task_id: TASK-33.1
@@ -39,4 +39,8 @@ Ergänze den tatsächlichen Workspace-Export um paginierte gemeinsame Draft-Vers
 
 <!-- SECTION:NOTES:BEGIN -->
 Read-only Vorbereitung /tmp/dispatch-33.1-workspace-export-next-audit.md und /tmp/dispatch-33.1-workspace-export-index-clarification.md auf immutable cb5f5ef. Root bevorzugt direkte Workspace-Version-Pagination statt temporärem Named-Draft-Endpoint. Bekannte Verluste dürfen nur unter explizit freigegebener tenant-business-progress-Grenze ohne Payload/Skeleton/Auslassungszahl übersprungen werden; keine strict-hidden-count-invariance behaupten. Native Geschichte zeigt bereits redigierte gemeinsame Versionsmetadaten, Rootless-Inhalte benötigen trotzdem expliziten Rootbeweis. Aktuelle offizielle Convex-Dokumentation per Context7 library +2docs eingeholt: Indexreihenfolge und QueryCtx/MutationCtx same snapshot; ActionCtx und separate Seiten haben separate Transaktionen. Creation-Time-Auswahlgrenze ist kein Commit-Order-Snapshot. Noch keine Sourcefreigabe oder Umsetzung.
+
+Root liest immutable Reader-Privacy-Audit195b3e und konkretisiert geplanten Scope: bereits gemeinsam gespeicherte Draft-Versionstexte mit bestehenden retained Source-Minima, zusätzlichem aktuellem verifiziertem Owner/Admin/Session/ausgewähltem Workspace sowie explizitem Root/Account-Beweis. Keine private Archive-Rechte aus Owner/Admin ableiten; keine raw Chat/targeted Research/Provenienz/Personen/Medien/Secrets, keine Behauptung frei von privat abgeleitetem gemeinsamem Text. Eigene private Archive später je tatsächlichem Reader-Grant. .docs/reviews/task-33.1.3-shared-content-policy.md ist Planung, keine Sourcefreigabe; konkrete Budgets/Consumer erst nach akzeptierter32.4 messen/freigeben.
+
+Root read-only Page-Budget-Preflight cbd6cd55 vollständig gelesen: .docs/reviews/task-33.1.3-page-budget-preflight.md. Vier Kandidaten/sharedwalk32 kann einzeln gültige Ancestry zusammen ablehnen; sogar ein gültiger Kontext-/Run-Graph kann128 Reads überschreiten. Geplant kleinster Page1/Walk32 ohne neue Cache/Walker; keine universelle128/512KiB-Garantie. Positive bekannte Flags/Root-/Accountverluste separat, mehrdeutige helper Errors/Foreign/Ancestry/Ressourcen ganzeSeite fail. Konkrete native Limits und Producer-Controls vor Sourcefreigabe; kein runtime-/Export-Abnahmebeleg aus statischem Audit.
 <!-- SECTION:NOTES:END -->
