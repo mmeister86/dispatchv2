@@ -1,5 +1,8 @@
 import { NativeNotificationSettings } from "@/features/settings/notifications";
-import { NativeProfileExport } from "@/features/settings/data-export";
+import {
+  NativeProfileExport,
+  WorkspaceVersionsExport,
+} from "@/features/settings/data-export";
 import { ContentStrategy } from "@/features/settings/content-strategy";
 import { IntelligenceProfiles } from "@/features/intelligence/profiles";
 import { GithubSources } from "@/features/settings/github";
@@ -165,7 +168,12 @@ export function SettingsPage() {
           ) : !demoMode && tab === "notifications" ? (
             <CloudNotificationSettings />
           ) : !demoMode && tab === "data" ? (
-            <NativeProfileExport key={nativeScope} />
+            <>
+              <NativeProfileExport key={nativeScope} />
+              {admin && (
+                <WorkspaceVersionsExport key={`versions:${nativeScope}`} />
+              )}
+            </>
           ) : !demoMode && !["profile", "workspaces"].includes(tab) ? (
             <EmptyState
               title="Dieser Bereich wird noch angebunden"

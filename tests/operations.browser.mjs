@@ -11,7 +11,7 @@ const mocks = {
   "convex/react": `import React from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
 const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';if(name==='publishing/notices:read'||name==='publishing/notices:dismiss')return new Promise((resolve,reject)=>window.publishingCommands.push({name,args,sessionId:window.session.session.id,resolve,reject}));if(name==='preferences:saveNotifications')return new Promise((resolve,reject)=>window.preferenceSaves.push({args,sessionId:window.session.session.id,resolve,reject}));throw new Error('No domain writes in health fixture');});return funcs.get(name)};
-export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(name!=='operations/export:self')throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
+export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(!['operations/export:self','operations/export:versions'].includes(name))throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>name==='operations/export:versions'?window.versionRequests.push({args,resolve,reject}):window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
 export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='preferences:notifications'){if(window.preferenceError)throw Error('PRIVATE_PROVIDER_ERROR');return window.preferenceByKey[args.requestKey];}if(name==='operations/githubAlerts:get'){if(window.githubError)throw Error('PRIVATE_PROVIDER_ERROR');return window.githubByKey[args.refreshKey];}if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
 export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});if(name==='publishing/notices:list'){if(window.publishingError)throw Error('PRIVATE_PROVIDER_ERROR');return {results:window.publishingNotices.map(n=>({...n,requestKey:n.requestKey??args.requestKey})),status:window.publishingStatus,loadMore(){window.publishingLoads++}}}return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
@@ -74,6 +74,7 @@ try {
     };
     window.commands = [];
     window.exportRequests = [];
+    window.versionRequests = [];
     window.preferenceSaves = [];
     window.preferenceStored = {
       revision: 0,
@@ -858,6 +859,303 @@ try {
     ),
   ).toEqual([]);
   expect(await page.evaluate(() => window.storageWrites)).toEqual([]);
+
+  // TASK-33.1.3: additive shared-version consumer controls.
+  await page.goto("http://127.0.0.1:5189/settings/data");
+  const versionButton = page.getByRole("button", {
+    name: /Versionsseite herunterladen/,
+  });
+  const resolveVersion = (patch = {}, index = -1) =>
+    page.evaluate(
+      ({ patch, index }) => {
+        const r = window.versionRequests.at(index),
+          observedAt = Date.now();
+        r.resolve({
+          requestKey: r.args.requestKey,
+          authId: r.args.expectedAuthId,
+          sessionId: window.session.session.id,
+          workspaceId: r.args.workspaceId,
+          role: window.snapshot.workspaces[0].role,
+          creationUpperBound: r.args.creationUpperBound ?? observedAt,
+          cursor: "native-next",
+          isDone: false,
+          observedAt,
+          proofValidUntil: observedAt + 30000,
+          data: {
+            format: "dispatch-workspace-draft-versions",
+            version: 1,
+            workspaceId: r.args.workspaceId,
+            versions: [
+              {
+                versionId: "version-shared",
+                draftId: "draft-shared",
+                versionNumber: 1,
+                createdAt: 1,
+                title: "Shared",
+                text: ["First", "Second"],
+                accountId: null,
+                pillar: "Pillar",
+                strategy: "Strategy",
+                reason: "Saved",
+              },
+            ],
+          },
+          ...patch,
+        });
+      },
+      { patch, index },
+    );
+  await expect(versionButton).toBeVisible();
+  await expect(
+    page.getByText(/Jede Seite prüft die aktuellen Quellen erneut/),
+  ).toBeVisible();
+  await versionButton.click();
+  await expect(versionButton).toBeDisabled();
+  const versionDownload = page.waitForEvent("download");
+  await resolveVersion();
+  const sharedDownload = await versionDownload;
+  const sharedFile = JSON.parse(
+    readFileSync(await sharedDownload.path(), "utf8"),
+  );
+  expect(sharedFile.versions[0].text).toEqual(["First", "Second"]);
+  expect(JSON.stringify(sharedFile)).not.toMatch(
+    /cursor|authId|sessionId|requestKey|media|author/,
+  );
+  await expect(versionButton).toBeEnabled();
+  await versionButton.click();
+  const continuation = await page.evaluate(
+    () => window.versionRequests.at(-1).args,
+  );
+  expect(continuation.cursor).toBe("native-next");
+  expect(Number.isFinite(continuation.creationUpperBound)).toBe(true);
+  await resolveVersion({
+    cursor: "native-empty",
+    data: {
+      format: "dispatch-workspace-draft-versions",
+      version: 1,
+      workspaceId: continuation.workspaceId,
+      versions: [],
+    },
+  });
+  await expect(
+    page.getByText(/Diese Seite enthält keine freigegebenen Versionsinhalte/),
+  ).toBeVisible();
+  await versionButton.click();
+  expect(
+    await page.evaluate(() => window.versionRequests.at(-1).args.cursor),
+  ).toBe("native-empty");
+  await resolveVersion({ proofValidUntil: 1 });
+  await expect(page.getByRole("alert")).toContainText(
+    "Versions-Export konnte nicht erstellt werden",
+  );
+  await expect(versionButton).toBeEnabled();
+  await versionButton.click();
+  expect(
+    await page.evaluate(() => window.versionRequests.at(-1).args.cursor),
+  ).toBe("native-empty");
+  await resolveVersion({ requestKey: "foreign" });
+  await expect(versionButton).toBeEnabled();
+  await versionButton.click();
+  await resolveVersion({
+    isDone: true,
+    cursor: "native-end",
+    data: {
+      format: "dispatch-workspace-draft-versions",
+      version: 1,
+      workspaceId: continuation.workspaceId,
+      versions: [],
+    },
+  });
+  const restartVersion = page.getByRole("button", {
+    name: "Neue Versionsauswahl beginnen",
+    exact: true,
+  });
+  await expect(restartVersion).toBeEnabled();
+  await restartVersion.click();
+  expect(
+    await page.evaluate(() => window.versionRequests.at(-1).args.cursor),
+  ).toBeNull();
+  expect(
+    await page.evaluate(
+      () => window.versionRequests.at(-1).args.creationUpperBound,
+    ),
+  ).toBeNull();
+  await page.evaluate(() =>
+    window.versionRequests
+      .at(-1)
+      .reject(Error("PRIVATE_NATIVE_RESOURCE_FAILURE")),
+  );
+  await expect(versionButton).toBeEnabled();
+  for (const target of ["session", "workspace", "role"]) {
+    await versionButton.click();
+    const old = await page.evaluate(() => window.versionRequests.length - 1);
+    const downloadsBefore = downloadEvents.length;
+    await page.evaluate((target) => {
+      if (target === "session")
+        window.update({
+          session: { ...window.session, session: { id: "session-other" } },
+        });
+      if (target === "workspace")
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            activeWorkspaceId: "workspace-other",
+            workspaces: [
+              { ...window.snapshot.workspaces[0], id: "workspace-other" },
+            ],
+          },
+          roster: { ...window.roster, workspaceId: "workspace-other" },
+        });
+      if (target === "role")
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role: "Viewer" }],
+          },
+        });
+    }, target);
+    if (target === "role") await expect(versionButton).toHaveCount(0);
+    else await expect(versionButton).toBeEnabled();
+    await page.evaluate((target) => {
+      if (target === "session")
+        window.update({
+          session: { ...window.session, session: { id: "session-owner" } },
+        });
+      if (target === "workspace")
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            activeWorkspaceId: "workspace-native",
+            workspaces: [
+              { ...window.snapshot.workspaces[0], id: "workspace-native" },
+            ],
+          },
+          roster: { ...window.roster, workspaceId: "workspace-native" },
+        });
+      if (target === "role")
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: [{ ...window.snapshot.workspaces[0], role: "Admin" }],
+          },
+        });
+    }, target);
+    await expect(versionButton).toBeEnabled();
+    await resolveVersion({}, old);
+    expect(downloadEvents.length).toBe(downloadsBefore);
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  }
+  await versionButton.click();
+  const accountABA = await page.evaluate(
+    () => window.versionRequests.length - 1,
+  );
+  const accountDownloads = downloadEvents.length;
+  await page
+    .getByRole("combobox", { name: "Aktiver Account", exact: true })
+    .selectOption("account-native");
+  await expect(versionButton).toBeEnabled();
+  await page
+    .getByRole("combobox", { name: "Aktiver Account", exact: true })
+    .selectOption("");
+  await expect(versionButton).toBeEnabled();
+  await resolveVersion({}, accountABA);
+  expect(downloadEvents.length).toBe(accountDownloads);
+  const revokeCount = await page.evaluate(() => window.urlRevocations.length);
+  await page.evaluate(() => {
+    HTMLAnchorElement.prototype.click = () => {
+      throw Error("PRIVATE_HANDOFF_FAILURE");
+    };
+  });
+  await versionButton.click();
+  await resolveVersion();
+  await expect(page.getByRole("alert")).toContainText(
+    "Versions-Export konnte nicht erstellt werden",
+  );
+  await expect(versionButton).toBeEnabled();
+  expect(await page.evaluate(() => window.urlRevocations.length)).toBe(
+    revokeCount + 1,
+  );
+  await page.evaluate(() => {
+    HTMLAnchorElement.prototype.click = window.realAnchorClick;
+  });
+  await versionButton.click();
+  expect(
+    await page.evaluate(() => window.versionRequests.at(-1).args.cursor),
+  ).toBeNull();
+  const expiryDownloads = downloadEvents.length;
+  await page.evaluate(() => {
+    window.realCreateURL = URL.createObjectURL.bind(URL);
+    window.realNow = Date.now;
+    URL.createObjectURL = (blob) => {
+      const url = window.realCreateURL(blob);
+      Date.now = () => window.realNow() + 60000;
+      return url;
+    };
+  });
+  await resolveVersion();
+  await expect(page.getByRole("alert")).toContainText(
+    "Versions-Export konnte nicht erstellt werden",
+  );
+  expect(downloadEvents.length).toBe(expiryDownloads);
+  await page.evaluate(() => {
+    URL.createObjectURL = window.realCreateURL;
+    Date.now = window.realNow;
+  });
+  await expect(versionButton).toBeEnabled();
+  expect(
+    await page.evaluate(() => window.urlRevocations.length),
+  ).toBeGreaterThan(0);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      ),
+  );
+  await page.waitForTimeout(500);
+  await page.screenshot({
+    path: `${evidence}/workspace-versions-1280.png`,
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.evaluate(
+    () =>
+      new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      ),
+  );
+  await page.waitForTimeout(500);
+  await page.screenshot({
+    path: `${evidence}/workspace-versions-390.png`,
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.setViewportSize({ width: 1280, height: 900 });
+  await page.evaluate(() => {
+    crypto.randomUUID = () => {
+      throw Error("PRIVATE_ENTROPY");
+    };
+  });
+  const versionCount = await page.evaluate(() => window.versionRequests.length);
+  await versionButton.click();
+  await expect(versionButton).toBeEnabled();
+  expect(await page.evaluate(() => window.versionRequests.length)).toBe(
+    versionCount,
+  );
+  await page.evaluate(() => {
+    crypto.randomUUID = window.realUUID;
+  });
+  await versionButton.click();
+  const lateVersion = await page.evaluate(
+    () => window.versionRequests.length - 1,
+  );
+  await page.getByRole("link", { name: "Mein Profil", exact: true }).click();
+  await resolveVersion({}, lateVersion);
+  await expect(page.getByRole("alert")).toHaveCount(0);
 
   // TASK-32.3 supersedes only Cloud-all-disabled/no-own-setter controls.
   await page.goto("http://127.0.0.1:5189/settings/notifications");

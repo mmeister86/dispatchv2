@@ -1103,6 +1103,7 @@ export default defineSchema({
     "updatedAt",
   ]),
   draftVersions: defineTable(versionFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_candidateVersionId", ["candidateVersionId"])
     .index("by_ideaVersionId", ["ideaVersionId"])
     .index("by_ideaVersionId_and_researchCleanupPending", [

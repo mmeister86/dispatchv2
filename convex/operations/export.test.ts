@@ -318,3 +318,581 @@ test("complete native wire boundary includes correlation overhead and preserves 
     "EXPORT_DATA_UNAVAILABLE",
   );
 });
+
+const versions = makeFunctionReference<"query">("operations/export:versions");
+async function versionFixture() {
+  vi.useFakeTimers();
+  vi.setSystemTime(1800000000000);
+  const f = await fixture();
+  const { api } = await import("../_generated/api");
+  const draftId = await f.signed.mutation(api.editorial.create, {
+    workspaceId: f.workspaceId,
+    content: {
+      title: "Shared 🧭",
+      text: ["First", "Second"],
+      media: [],
+      accountId: null,
+      pillar: "Pillar",
+      strategy: "Strategy",
+    },
+    source: "PRIVATE_PROVENANCE",
+  });
+  const version = (await f.t.run((ctx) =>
+    ctx.db
+      .query("draftVersions")
+      .withIndex("by_draftId_and_number", (q) => q.eq("draftId", draftId))
+      .first(),
+  ))!;
+  vi.setSystemTime(1800000000100);
+  return {
+    ...f,
+    draftId,
+    version,
+    pageArgs: { ...f.args, cursor: null, creationUpperBound: null },
+  };
+}
+test("registered shared version export allows only business fields and measures actual whole transaction", async () => {
+  const f = await versionFixture();
+  const r = await f.signed.query(versions, f.pageArgs);
+  expect(r.data.versions).toHaveLength(1);
+  expect(r.data.versions[0]).toEqual({
+    versionId: f.version._id,
+    draftId: f.draftId,
+    versionNumber: 1,
+    createdAt: f.version.createdAt,
+    title: "Shared 🧭",
+    text: ["First", "Second"],
+    accountId: null,
+    pillar: "Pillar",
+    strategy: "Strategy",
+    reason: "Erster Entwurf",
+  });
+  expect(JSON.stringify(r.data)).not.toMatch(
+    /author|source|media|requestKey|session|PRIVATE_PROVENANCE/,
+  );
+  expect(r.proofValidUntil - r.observedAt).toBe(30000);
+  const measured = await f.signed.run(async (ctx) => ({
+    value: await ctx.runQuery(versions, f.pageArgs),
+    metrics: await ctx.meta.getTransactionMetrics(),
+  }));
+  console.info(
+    "native-workspace-version-proof-cost",
+    JSON.stringify(measured.metrics),
+  );
+  expect(measured.metrics.documentsWritten.used).toBe(0);
+  expect(measured.metrics.functionsScheduled.used).toBe(0);
+});
+test("registered versions rejects role identity selectors and preserves all original self roles", async () => {
+  const f = await versionFixture();
+  for (const role of ["Owner", "Admin", "Editor", "Viewer"] as const) {
+    await f.t.run(async (ctx) => {
+      const m = (await ctx.db.query("memberships").first())!;
+      await ctx.db.patch(m._id, { role });
+    });
+    if (role === "Owner" || role === "Admin")
+      expect((await f.signed.query(versions, f.pageArgs)).role).toBe(role);
+    else
+      await expect(f.signed.query(versions, f.pageArgs)).rejects.toThrow(
+        "ROLE_ACCESS_DENIED",
+      );
+  }
+  await f.t.run(async (ctx) => {
+    const m = (await ctx.db.query("memberships").first())!;
+    await ctx.db.patch(m._id, { role: "Owner" });
+  });
+  await expect(
+    f.signed.query(versions, { ...f.pageArgs, expectedAuthId: "foreign" }),
+  ).rejects.toThrow("EXPORT_SCOPE_CHANGED");
+  for (const patch of [
+    { requestKey: "x".repeat(65) },
+    { expectedAuthId: "x".repeat(257) },
+    { cursor: "" },
+    { cursor: "bad", creationUpperBound: Date.now() },
+    { creationUpperBound: Infinity },
+    { creationUpperBound: Date.now() + 10000 },
+    { creationUpperBound: 1 },
+  ])
+    await expect(
+      f.signed.query(versions, { ...f.pageArgs, ...patch }),
+    ).rejects.toThrow();
+});
+test("registered versions omits whole missing withdrawn expired rows but foreign binding and ambiguous proof errors fail the page", async () => {
+  const f = await versionFixture();
+  for (const patch of [
+    { sourceUnavailable: true },
+    { sourceUnavailable: false, researchProofUntil: Date.now() - 1 },
+  ]) {
+    await f.t.run((ctx) => ctx.db.patch(f.version._id, patch));
+    expect((await f.signed.query(versions, f.pageArgs)).data.versions).toEqual(
+      [],
+    );
+  }
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.version._id, { researchProofUntil: undefined }),
+  );
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.version._id, { researchCleanupPending: true }),
+  );
+  await expect(f.signed.query(versions, f.pageArgs)).rejects.toThrow(
+    "RESEARCH_CONTENT_SOURCE_CHANGED",
+  );
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.version._id, { researchCleanupPending: undefined }),
+  );
+  const other = await f.t.run((ctx) =>
+    ctx.db.insert("workspaces", { name: "Foreign", description: "" }),
+  );
+  await f.t.run((ctx) => ctx.db.patch(f.draftId, { workspaceId: other }));
+  await expect(f.signed.query(versions, f.pageArgs)).rejects.toThrow(
+    "REFERENCE_ACCESS_DENIED",
+  );
+  await f.t.run((ctx) => ctx.db.delete(f.draftId));
+  const absent = await f.signed.query(versions, f.pageArgs);
+  expect(absent.data.versions).toEqual([]);
+  expect(Object.keys(absent.data).sort()).toEqual([
+    "format",
+    "version",
+    "versions",
+    "workspaceId",
+  ]);
+});
+test("native cursor advances one raw candidate including empty pages, excludes later insertions, and propagates native resource failure", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1800000000000);
+  const f = await versionFixture();
+  await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...v } = f.version;
+    await ctx.db.insert("draftVersions", {
+      ...v,
+      number: 2,
+      sourceUnavailable: true,
+    });
+    await ctx.db.insert("draftVersions", { ...v, number: 3 });
+  });
+  vi.setSystemTime(1800000000200);
+  const first = await f.signed.query(versions, f.pageArgs);
+  vi.setSystemTime(1800000001000);
+  await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...v } = f.version;
+    await ctx.db.insert("draftVersions", { ...v, number: 4 });
+  });
+  const second = await f.signed.query(versions, {
+    ...f.pageArgs,
+    cursor: first.cursor,
+    creationUpperBound: first.creationUpperBound,
+  });
+  expect(second.data.versions).toEqual([]);
+  expect(second.isDone).toBe(false);
+  const third = await f.signed.query(versions, {
+    ...f.pageArgs,
+    cursor: second.cursor,
+    creationUpperBound: first.creationUpperBound,
+  });
+  expect(third.data.versions[0].versionNumber).toBe(3);
+  expect(third.isDone).toBe(true);
+  await expect(
+    f.signed.run((ctx) =>
+      ctx.runQuery(versions, f.pageArgs, {
+        transactionLimits: { databaseQueries: 1 },
+      }),
+    ),
+  ).rejects.toThrow();
+});
+test("shared versions rejects nonfinite legacy numbers and entire oversized UTF8 wire without truncation", async () => {
+  const f = await versionFixture();
+  for (const number of [NaN, Infinity, -Infinity, -0]) {
+    await f.t.run((ctx) => ctx.db.patch(f.version._id, { number }));
+    await expect(f.signed.query(versions, f.pageArgs)).rejects.toThrow(
+      "EXPORT_DATA_UNAVAILABLE",
+    );
+  }
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.version._id, { number: 1, reason: "🧭".repeat(20000) }),
+  );
+  await expect(f.signed.query(versions, f.pageArgs)).rejects.toThrow(
+    "EXPORT_DATA_UNAVAILABLE",
+  );
+});
+
+test("registered shared export measures twelve retained run-input edges through the standard 32-node walker (injected retained graph)", async () => {
+  const f = await versionFixture();
+  const { captureRunInputs } = await import("../ai/contentCopies");
+  const { draftResearchProof } = await import("../research/contentProof");
+  const { materialWalk } = await import("../research/pipelineAccess");
+  const graph = await f.t.run(async (ctx) => {
+    const accountId = await ctx.db.insert("socialAccounts", {
+      workspaceId: f.workspaceId,
+      provider: "X",
+      providerIdentity: "synthetic",
+      name: "Synthetic",
+      handle: "synthetic",
+      connection: "connected",
+      capability: {
+        maxText: 25000,
+        maxThread: 100,
+        maxMedia: 4,
+        mediaTypes: [],
+        publish: false,
+      },
+    });
+    let parent:
+      import("../_generated/dataModel").Id<"ideaVersions"> | undefined;
+    for (let i = 0; i <= 12; i++) {
+      const ideaId = await ctx.db.insert("ideas", {
+        workspaceId: f.workspaceId,
+        actorId: f.userId,
+        operationKey: `native-graph-${i}`,
+        fingerprint: "synthetic",
+        revision: 1,
+        currentVersionId: null,
+        status: "accepted",
+        updatedAt: Date.now(),
+      });
+      let runId: import("../_generated/dataModel").Id<"agentRuns"> | undefined;
+      if (parent) {
+        runId = await ctx.db.insert("agentRuns", {
+          workspaceId: f.workspaceId,
+          accountId,
+          actorId: f.userId,
+          purpose: "draft",
+          policyVersion: "synthetic",
+          promptVersion: "synthetic",
+          policyFingerprint: "synthetic",
+          accountConnectionSequence: 0,
+          sources: [],
+          threadId: "synthetic",
+          promptMessageId: "synthetic",
+          generation: 1,
+          state: "completed",
+          executionKey: null,
+          deadline: Date.now() + 60000,
+          attempts: 1,
+          toolSteps: 0,
+          budgetIds: [],
+          createdAt: Date.now(),
+          errorCode: null,
+        });
+        // The existing producer's capture helper creates the concrete retained edge; run completion is synthetic.
+        await captureRunInputs(ctx, runId, [parent]);
+      }
+      parent = await ctx.db.insert("ideaVersions", {
+        workspaceId: f.workspaceId,
+        ideaId,
+        number: 1,
+        actorId: f.userId,
+        createdAt: Date.now(),
+        title: "Inherited",
+        note: "PRIVATE_NOTE",
+        perspective: "",
+        priority: "normal",
+        source: { kind: "note" },
+        originals: [],
+        rationale: "",
+        questions: [],
+        ...(parent ? { inputVersionId: parent } : {}),
+        ...(runId ? { runId } : {}),
+      });
+      await ctx.db.patch(ideaId, { currentVersionId: parent });
+    }
+    await ctx.db.patch(f.version._id, {
+      ideaVersionId: parent,
+      content: { ...f.version.content, accountId },
+    });
+    return { accountId, parent };
+  });
+  const walk = materialWalk();
+  await f.t.run(async (ctx) =>
+    draftResearchProof(ctx, (await ctx.db.get(f.version._id))!, walk),
+  );
+  expect(walk.budget.counted.size).toBeLessThanOrEqual(32);
+  const measured = await f.signed.run(async (ctx) => ({
+    value: await ctx.runQuery(versions, f.pageArgs),
+    metrics: await ctx.meta.getTransactionMetrics(),
+  }));
+  expect(measured.value.data.versions).toHaveLength(1);
+  expect(measured.value.data.versions[0].accountId).toBe(graph.accountId);
+  expect(measured.metrics.databaseQueries.used).toBeGreaterThan(128);
+  expect(measured.metrics.documentsWritten.used).toBe(0);
+  expect(measured.metrics.functionsScheduled.used).toBe(0);
+  const { writeFileSync } = await import("node:fs");
+  writeFileSync(
+    "/tmp/dispatch-33.1.3-native-graph-cost.json",
+    JSON.stringify(
+      {
+        fixture:
+          "Injected completed runs and generated idea lineage with actual captureRunInputs producer helper; not a full generation producer run",
+        nodes: walk.budget.counted.size,
+        metrics: measured.metrics,
+        wireBytes: new TextEncoder().encode(JSON.stringify(measured.value))
+          .length,
+      },
+      null,
+      2,
+    ),
+  );
+  await f.t.run((ctx) =>
+    ctx.db.patch(graph.parent!, { inputVersionId: graph.parent }),
+  );
+  await expect(f.signed.query(versions, f.pageArgs)).rejects.toThrow(
+    "STYLE_ANCESTRY_LIMIT",
+  );
+});
+
+test("actual editorial producer max text snapshot stays within the export wire and rejects nonfinite proof clocks", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1800000000000);
+  const f = await fixture();
+  const { api } = await import("../_generated/api");
+  const draftId = await f.signed.mutation(api.editorial.create, {
+    workspaceId: f.workspaceId,
+    content: {
+      title: "T".repeat(200),
+      text: ["a".repeat(25000), "b".repeat(7000)],
+      media: [],
+      accountId: null,
+      pillar: "p".repeat(200),
+      strategy: "s".repeat(100),
+    },
+    source: "producer",
+  });
+  const ver = (await f.t.run((ctx) =>
+    ctx.db
+      .query("draftVersions")
+      .withIndex("by_draftId_and_number", (q) => q.eq("draftId", draftId))
+      .first(),
+  ))!;
+  vi.setSystemTime(1800000000100);
+  const r = await f.signed.query(versions, {
+    ...f.args,
+    cursor: null,
+    creationUpperBound: null,
+  });
+  expect(r.data.versions[0].text).toEqual(ver.content.text);
+  expect(
+    new TextEncoder().encode(JSON.stringify(r)).length,
+  ).toBeLessThanOrEqual(64 * 1024);
+  for (const researchProofUntil of [NaN, Infinity, -0]) {
+    await f.t.run((ctx) => ctx.db.patch(ver._id, { researchProofUntil }));
+    await expect(
+      f.signed.query(versions, {
+        ...f.args,
+        cursor: null,
+        creationUpperBound: null,
+      }),
+    ).rejects.toThrow("EXPORT_DATA_UNAVAILABLE");
+  }
+});
+
+test("actual native Idea generation commit and handoff produce twelve legal run-input links exceeding 128 query reads", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1800000000000);
+  vi.stubEnv("REQUESTY_API_KEY", "synthetic-key");
+  const { modelFixture } = await import("../../tests/model-fixture");
+  const { api, internal } = await import("../_generated/api");
+  const { draftResearchProof } = await import("../research/contentProof");
+  const { materialWalk } = await import("../research/pipelineAccess");
+  const f = await modelFixture();
+  await f.t.run(async (ctx) => {
+    for (const b of await ctx.db.query("aiBudgets").collect())
+      await ctx.db.patch(b._id, { limitMicros: 100000000 });
+  });
+  let ideaId = await f.signed.mutation(api.content.ideas.create, {
+    workspaceId: f.workspaceId,
+    title: "Synthetic idea",
+    note: "Own unverified account",
+    perspective: "Why?",
+    priority: "normal",
+    source: { kind: "note" },
+    operationKey: "export-native-origin",
+  });
+  const physical = vi.fn();
+  vi.stubGlobal("fetch", physical);
+  for (let i = 0; i < 12; i++) {
+    const runId = await f.signed.mutation(api.content.ideas.generate, {
+      workspaceId: f.workspaceId,
+      ideaId,
+      expectedRevision: 1,
+      accountId: f.accountId,
+      intent: "Prepare a perspective",
+      operationKey: `export-native-generation-${i}`,
+    });
+    const executionKey = `export-native-output-${i}`;
+    await f.t.mutation(internal.ai.runs.claim, { runId, executionKey });
+    const next = await f.t.mutation(internal.content.ideas.commitProposal, {
+      runId,
+      executionKey,
+      output: JSON.stringify({
+        title: "Possible perspective",
+        perspective: "Question?",
+        rationale: "Unproven",
+        questions: ["What changed?"],
+      }),
+    });
+    expect(next).not.toBeNull();
+    ideaId = next!;
+    await f.t.mutation(internal.ai.runs.finish, {
+      runId,
+      generation: 1,
+      executionKey,
+      failed: false,
+    });
+  }
+  const handed = await f.signed.mutation(api.content.ideas.handoff, {
+    workspaceId: f.workspaceId,
+    ideaId,
+    expectedRevision: 1,
+    accountId: f.accountId,
+    intent: "Prepare editable draft",
+    clarificationConfirmed: true,
+    draftText: "Synthetic draft",
+  });
+  const walk = materialWalk();
+  await f.t.run(async (ctx) =>
+    draftResearchProof(ctx, (await ctx.db.get(handed.versionId))!, walk),
+  );
+  expect(walk.budget.counted.size).toBe(25);
+  vi.setSystemTime(1800000000100);
+  const user = (await f.t.run((ctx) => ctx.db.get(f.userId)))!;
+  const args = {
+    workspaceId: f.workspaceId,
+    expectedAuthId: user.authId,
+    requestKey: crypto.randomUUID(),
+    cursor: null,
+    creationUpperBound: null,
+  };
+  const measured = await f.signed.run(async (ctx) => ({
+    value: await ctx.runQuery(versions, args),
+    metrics: await ctx.meta.getTransactionMetrics(),
+  }));
+  expect(measured.value.data.versions).toHaveLength(1);
+  expect(measured.metrics.databaseQueries.used).toBeGreaterThan(128);
+  expect(measured.metrics.documentsWritten.used).toBe(0);
+  expect(measured.metrics.functionsScheduled.used).toBe(0);
+  expect(physical).not.toHaveBeenCalled();
+  const finalIdea = (await f.t.run((ctx) => ctx.db.get(ideaId)))!;
+  const sourceDeadline = Date.now() + 5000;
+  await f.t.run((ctx) =>
+    ctx.db.patch(finalIdea.currentVersionId!, {
+      researchProofUntil: sourceDeadline,
+    }),
+  );
+  expect((await f.signed.query(versions, args)).proofValidUntil).toBe(
+    sourceDeadline,
+  );
+  const { writeFileSync } = await import("node:fs");
+  writeFileSync(
+    "/tmp/dispatch-33.1.3-native-producer-cost.json",
+    JSON.stringify(
+      {
+        fixture:
+          "Actual create + 12 generate/claim/commitProposal/finish + handoff; synthetic initial policy/account/budgets and synthetic validated model output; scheduled provider functions not executed",
+        nodes: walk.budget.counted.size,
+        metrics: measured.metrics,
+        wireBytes: new TextEncoder().encode(JSON.stringify(measured.value))
+          .length,
+      },
+      null,
+      2,
+    ),
+  );
+});
+
+test("registered version role and identity gates perform only native auth workspace reads and no source proof", async () => {
+  const f = await versionFixture();
+  const { requireWorkspace } = await import("../lib/authorization");
+  const proof = vi.spyOn(
+    await import("../research/contentProof"),
+    "draftResearchProof",
+  );
+  const baseline = await f.signed.run(async (ctx) => {
+    await requireWorkspace(ctx, f.workspaceId);
+    return ctx.meta.getTransactionMetrics();
+  });
+  const outcomes = [];
+  for (const kind of ["role", "identity"] as const) {
+    await f.t.run(async (ctx) => {
+      const m = (await ctx.db.query("memberships").first())!;
+      await ctx.db.patch(m._id, { role: kind === "role" ? "Viewer" : "Owner" });
+    });
+    const denied = await f.signed.run(async (ctx) => {
+      let error = "";
+      try {
+        await ctx.runQuery(versions, {
+          ...f.pageArgs,
+          expectedAuthId:
+            kind === "identity" ? "foreign" : f.args.expectedAuthId,
+        });
+      } catch (e) {
+        error = String(e);
+      }
+      return { error, metrics: await ctx.meta.getTransactionMetrics() };
+    });
+    expect(denied.error).toContain(
+      kind === "role" ? "ROLE_ACCESS_DENIED" : "EXPORT_SCOPE_CHANGED",
+    );
+    expect(denied.metrics.databaseQueries.used).toBe(
+      baseline.databaseQueries.used,
+    );
+    expect(denied.metrics.documentsRead.used).toBe(baseline.documentsRead.used);
+    expect(denied.metrics.documentsWritten.used).toBe(0);
+    outcomes.push({ kind, ...denied });
+  }
+  expect(proof).not.toHaveBeenCalled();
+  const { writeFileSync } = await import("node:fs");
+  writeFileSync(
+    "/tmp/dispatch-33.1.3-native-denial-cost.json",
+    JSON.stringify({ baseline, outcomes }, null, 2),
+  );
+});
+
+test("shared account current existence and exact workspace bind fail closed while unrelated tenant versions do not change envelope", async () => {
+  const f = await versionFixture();
+  const before = await f.signed.query(versions, f.pageArgs);
+  const other = await f.t.run(async (ctx) => {
+    const workspaceId = await ctx.db.insert("workspaces", {
+      name: "Private",
+      description: "",
+    });
+    const { _id, _creationTime, ...version } = f.version;
+    await ctx.db.insert("draftVersions", {
+      ...version,
+      workspaceId,
+      content: { ...version.content, title: "PRIVATE_FOREIGN" },
+    });
+    return workspaceId;
+  });
+  expect(await f.signed.query(versions, f.pageArgs)).toEqual(before);
+  const accountId = await f.t.run((ctx) =>
+    ctx.db.insert("socialAccounts", {
+      workspaceId: f.workspaceId,
+      provider: "X",
+      providerIdentity: "synthetic",
+      name: "Synthetic",
+      handle: "Synthetic",
+      connection: "disconnected",
+      capability: {
+        maxText: 280,
+        maxThread: 10,
+        maxMedia: 4,
+        mediaTypes: [],
+        publish: false,
+      },
+    }),
+  );
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.version._id, {
+      content: { ...f.version.content, accountId },
+    }),
+  );
+  expect(
+    (await f.signed.query(versions, f.pageArgs)).data.versions[0].accountId,
+  ).toBe(accountId);
+  await f.t.run((ctx) => ctx.db.patch(accountId, { workspaceId: other }));
+  await expect(f.signed.query(versions, f.pageArgs)).rejects.toThrow(
+    "REFERENCE_ACCESS_DENIED",
+  );
+  await f.t.run((ctx) => ctx.db.delete(accountId));
+  expect((await f.signed.query(versions, f.pageArgs)).data.versions).toEqual(
+    [],
+  );
+});
