@@ -1,6 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query, type MutationCtx } from "./_generated/server";
-import { requireIdentity } from "./lib/authorization";
+import { requireIdentity, requireActiveUser } from "./lib/authorization";
 import { profile, role } from "./schema";
 
 export const defaultProfile = (name: string) => ({
@@ -22,7 +22,10 @@ export async function provisionUser(
     .query("users")
     .withIndex("by_authId", (q) => q.eq("authId", authId))
     .unique();
-  if (existing) return existing._id;
+  if (existing) {
+    requireActiveUser(existing);
+    return existing._id;
+  }
   const workspaceId = await ctx.db.insert("workspaces", {
     name: "Mein Workspace",
     description: "",
@@ -68,6 +71,7 @@ export const current = query({
     }),
     v.object({
       state: v.union(
+        v.literal("inactive"),
         v.literal("recovery"),
         v.literal("no-workspaces"),
         v.literal("uninitialized"),
@@ -91,6 +95,16 @@ export const current = query({
         state: "uninitialized" as const,
         authId: identity._id,
         userId: null,
+        activeWorkspaceId: null,
+        workspaces: [],
+        preferences: null,
+        repairWorkspaceId: null,
+      };
+    if (user.lifecycle && user.lifecycle !== "active")
+      return {
+        state: "inactive" as const,
+        authId: identity._id,
+        userId: user._id,
         activeWorkspaceId: null,
         workspaces: [],
         preferences: null,

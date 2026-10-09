@@ -26,6 +26,7 @@ export async function requireUser(ctx: QueryCtx | MutationCtx) {
     .withIndex("by_authId", (q) => q.eq("authId", identity._id))
     .unique();
   if (!user) throw new ConvexError("PROFILE_NOT_INITIALIZED");
+  requireActiveUser(user);
   return user;
 }
 export async function requireWorkspace(
@@ -33,7 +34,10 @@ export async function requireWorkspace(
   workspaceId: Id<"workspaces">,
   user?: Doc<"users">,
 ) {
-  const currentUser = user ?? (await requireUser(ctx));
+  const currentUser = user
+    ? await ctx.db.get(user._id)
+    : await requireUser(ctx);
+  requireActiveUser(currentUser);
   const membership = await ctx.db
     .query("memberships")
     .withIndex("by_userId_and_workspaceId", (q) =>
@@ -93,3 +97,10 @@ export const workspaceInternalQuery = customQuery(
   internalQuery,
   workspaceInput,
 );
+
+export function requireActiveUser(
+  user: Doc<"users"> | null,
+): asserts user is Doc<"users"> {
+  if (!user || (user.lifecycle && user.lifecycle !== "active"))
+    throw new ConvexError("ACCOUNT_INACTIVE");
+}

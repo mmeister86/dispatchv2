@@ -11,6 +11,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { internal } from "./_generated/api";
 import {
   requireIdentity,
+  requireActiveUser,
   requireRole,
   workspaceMutation,
   workspaceQuery,
@@ -88,7 +89,13 @@ async function currentInviter(
     return false;
   const user = await ctx.db.get(i.createdBy),
     w = await ctx.db.get(i.workspaceId);
-  if (!user || !w || (w.lifecycle && w.lifecycle !== "active")) return false;
+  if (
+    !user ||
+    (user.lifecycle && user.lifecycle !== "active") ||
+    !w ||
+    (w.lifecycle && w.lifecycle !== "active")
+  )
+    return false;
   const m = await ctx.db
     .query("memberships")
     .withIndex("by_userId_and_workspaceId", (q) =>
@@ -112,6 +119,7 @@ async function recipient(
     .query("users")
     .withIndex("by_authId", (q) => q.eq("authId", identity._id))
     .unique();
+  if (user?.lifecycle && user.lifecycle !== "active") return null;
   if (i.status === "accepted") {
     if (!user || user._id !== i.acceptedUserId) return null;
     const w = await ctx.db.get(i.workspaceId);
@@ -454,14 +462,23 @@ export const change = workspaceMutation({
       result.disposition = "revoked";
     } else {
       if (!target) throw new ConvexError("TEAM_REFERENCE_DENIED");
+      const activeOwners = [];
+      for (const member of roster) {
+        if (member.role !== "Owner") continue;
+        const owner = await ctx.db.get(member.userId);
+        if (owner && (!owner.lifecycle || owner.lifecycle === "active"))
+          activeOwners.push(member._id);
+      }
       if (
         (x.kind === "remove" ||
           x.kind === "leave" ||
           (x.kind === "role" && x.role !== "Owner")) &&
-        target.role === "Owner" &&
-        roster.filter((m) => m.role === "Owner").length <= 1
+        activeOwners.includes(target._id) &&
+        activeOwners.length <= 1
       )
         throw new ConvexError("LAST_OWNER_REQUIRED");
+      if (x.kind === "transfer" || (x.kind === "role" && x.role === "Owner"))
+        requireActiveUser(await ctx.db.get(target.userId));
       if (x.kind === "transfer") {
         if (target._id === actor._id)
           throw new ConvexError("TEAM_TRANSFER_TARGET_INVALID");

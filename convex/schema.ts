@@ -1242,7 +1242,50 @@ export default defineSchema({
     ])
     .index("by_actorId_and_sourceUnavailable", ["actorId", "sourceUnavailable"])
     .index("by_cleanAfter", ["cleanAfter"]),
+  deletionJobs: defineTable({
+    scope: v.union(v.literal("account"), v.literal("workspace")),
+    actorId: v.id("users"),
+    authId: v.string(),
+    workspaceId: v.optional(v.id("workspaces")),
+    userId: v.optional(v.id("users")),
+    deleteWorkspaces: v.array(
+      v.object({
+        workspaceId: v.id("workspaces"),
+        expectedTeamRevision: v.number(),
+      }),
+    ),
+    commandKey: v.string(),
+    intent: v.string(),
+    state: v.union(
+      v.literal("running"),
+      v.literal("waiting"),
+      v.literal("blocked"),
+      v.literal("complete"),
+    ),
+    phase: v.union(
+      v.literal("fence"),
+      v.literal("stop"),
+      v.literal("components"),
+      v.literal("objects"),
+      v.literal("rows"),
+      v.literal("auth"),
+      v.literal("verify"),
+      v.literal("complete"),
+    ),
+    processed: v.number(),
+    revision: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    retentionUntil: v.number(),
+  })
+    .index("by_actorId_and_commandKey", ["actorId", "commandKey"])
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_userId", ["userId"])
+    .index("by_state_and_updatedAt", ["state", "updatedAt"]),
   users: defineTable({
+    lifecycle: v.optional(
+      v.union(v.literal("active"), v.literal("deleting"), v.literal("deleted")),
+    ),
     authId: v.string(),
     defaultWorkspaceId: v.id("workspaces"),
     activeWorkspaceId: v.id("workspaces"),

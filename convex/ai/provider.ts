@@ -223,6 +223,7 @@ async function boundedAgent(
           ? { entered: false, attemptId, proofError: undefined as unknown }
           : null;
         if (fetchScope) fetchScope.current = physical;
+        let settled = false;
         try {
           // This original receipt also settles if known usage arrives after the local timeout.
           const generated = doGenerate().then(async (result) => {
@@ -233,10 +234,13 @@ async function boundedAgent(
               ...metadataCost(result.providerMetadata),
               errorCode: null,
             });
+            settled = true;
             return result;
           });
           const result = await beforeDeadline(generated, run.deadline);
           await authorize();
+          if (result.content.some((part) => part.type === "file"))
+            throw safeError();
           if (
             new TextEncoder().encode(JSON.stringify(result.content)).length >
             64000
@@ -270,12 +274,13 @@ async function boundedAgent(
             providerMetadata: undefined,
           };
         } catch {
-          await ctx.runMutation(internal.ai.runs.settle, {
-            attemptId,
-            inputTokens: physical && !physical.entered ? 0 : null,
-            outputTokens: physical && !physical.entered ? 0 : null,
-            errorCode: "MODEL_PROVIDER_UNAVAILABLE",
-          });
+          if (!settled)
+            await ctx.runMutation(internal.ai.runs.settle, {
+              attemptId,
+              inputTokens: physical && !physical.entered ? 0 : null,
+              outputTokens: physical && !physical.entered ? 0 : null,
+              errorCode: "MODEL_PROVIDER_UNAVAILABLE",
+            });
           if (physical?.proofError) throw physical.proofError;
           throw safeError();
         }
@@ -301,12 +306,14 @@ async function boundedAgent(
             finished = false,
             text = "";
           const unknown = () =>
-            ctx.runMutation(internal.ai.runs.settle, {
-              attemptId,
-              inputTokens: null,
-              outputTokens: null,
-              errorCode: "MODEL_STREAM_INCOMPLETE",
-            });
+            finished
+              ? Promise.resolve(null)
+              : ctx.runMutation(internal.ai.runs.settle, {
+                  attemptId,
+                  inputTokens: null,
+                  outputTokens: null,
+                  errorCode: "MODEL_STREAM_INCOMPLETE",
+                });
           return {
             ...result,
             request: undefined,
@@ -328,6 +335,7 @@ async function boundedAgent(
                       return;
                     }
                     const part = next.value;
+                    if (part.type === "file") throw safeError();
                     bytes += new TextEncoder().encode(
                       JSON.stringify(part),
                     ).length;

@@ -744,3 +744,99 @@ test.each([true, false])(
     expect(run!.attempts).toBe(malformed ? 1 : 3);
   },
 );
+
+test.each([new Uint8Array([83, 69, 67, 82, 69, 84]), "U0VDUkVU"])(
+  "native generated files are rejected before Agent history while known usage stays settled (%s)",
+  async (data) => {
+    const f = await claimed();
+    const model = new MockLanguageModelV3({
+      doGenerate: async () => ({
+        ...response(),
+        content: [
+          ...response().content,
+          { type: "file" as const, mediaType: "image/png", data },
+        ],
+      }),
+    });
+    await expect(
+      f.t.action((ctx) => generateForRun(ctx, f.runId, f.executionKey, model)),
+    ).rejects.toThrow("MODEL_PROVIDER_UNAVAILABLE");
+    const attempts = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(attempts).toHaveLength(1);
+    expect(attempts[0]).toMatchObject({
+      state: "settled",
+      estimatedMicros: 30,
+    });
+    const messages = await f.t.query(
+      components.agent.messages.listMessagesByThreadId,
+      {
+        threadId: f.run.threadId,
+        order: "desc",
+        paginationOpts: { numItems: 10, cursor: null },
+      },
+    );
+    expect(JSON.stringify(messages)).not.toMatch(/U0VDUkVU|image\/png/);
+  },
+);
+test.each([false, true])(
+  "native streamed file cancels before serialization and preserves observed usage (finish=%s)",
+  async (finish) => {
+    const f = await claimed();
+    let cancelled = false;
+    const chunks: StreamPart[] = [
+      { type: "stream-start", warnings: [] },
+      { type: "text-start", id: "text" },
+      {
+        type: "text-delta",
+        id: "text",
+        delta: JSON.stringify({ text: "Valid streamed text" }),
+      },
+      { type: "text-end", id: "text" },
+      ...(finish
+        ? [
+            {
+              type: "finish" as const,
+              usage,
+              finishReason: { unified: "stop" as const, raw: "stop" },
+            },
+          ]
+        : []),
+      { type: "file", mediaType: "image/png", data: "U0VDUkVU" },
+    ];
+    const model = new MockLanguageModelV3({
+      doStream: async () => ({
+        stream: new ReadableStream<StreamPart>({
+          pull(controller) {
+            const next = chunks.shift();
+            if (next) controller.enqueue(next);
+          },
+          cancel() {
+            cancelled = true;
+          },
+        }),
+      }),
+    });
+    await expect(
+      f.t.action((ctx) =>
+        generateForRun(ctx, f.runId, f.executionKey, model, true),
+      ),
+    ).rejects.toThrow();
+    expect(cancelled).toBe(true);
+    const [attempt] = await f.t.run((ctx) =>
+      ctx.db.query("aiAttempts").collect(),
+    );
+    expect(attempt.state).toBe(finish ? "settled" : "unknown");
+    if (finish) expect(attempt.estimatedMicros).toBe(30);
+    const messages = await f.t.query(
+      components.agent.messages.listMessagesByThreadId,
+      {
+        threadId: f.run.threadId,
+        order: "desc",
+        paginationOpts: { numItems: 10, cursor: null },
+      },
+    );
+    expect(JSON.stringify(messages)).not.toMatch(/U0VDUkVU|image\/png/);
+  },
+);
