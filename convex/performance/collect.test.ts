@@ -1,9 +1,8 @@
+import { historyFixture as fixture } from "../../tests/performance-export-fixture";
 import { afterEach, expect, test, vi } from "vitest";
 import { mediaFixture } from "../../tests/media-fixture";
 import { jevFixture } from "../../tests/jev-fixture";
 import { api, internal } from "../_generated/api";
-import { seal } from "../lib/crypto";
-import { association } from "../integrations/x/fields";
 import { normalizePage } from "./historyNormalize";
 import { aggregate } from "./metricDefinitions";
 import type { Doc } from "../_generated/dataModel";
@@ -13,118 +12,6 @@ afterEach(() => {
   vi.unstubAllEnvs();
   vi.restoreAllMocks();
 });
-async function fixture(limit = 1000, maxResults = 5) {
-  vi.useFakeTimers();
-  vi.setSystemTime(new Date("2026-10-06T12:00Z"));
-  vi.stubEnv(
-    "INTEGRATION_ENCRYPTION_KEY",
-    Buffer.alloc(32, 1).toString("base64"),
-  );
-  vi.stubEnv("INTEGRATION_ENCRYPTION_KEY_ID", "synthetic");
-  const f = await mediaFixture();
-  const accountId = await f.t.run(async (ctx) => {
-    const accountId = await ctx.db.insert("socialAccounts", {
-      workspaceId: f.workspaceId,
-      provider: "X",
-      providerIdentity: "123",
-      name: "Own fixture",
-      handle: "fixture",
-      connection: "connected",
-      capability: {
-        maxText: 280,
-        maxThread: 10,
-        maxMedia: 4,
-        mediaTypes: ["image"],
-        publish: true,
-      },
-      xEvidence: {
-        scopes: ["tweet.read", "users.read", "tweet.write"],
-        identityVerifiedAt: Date.now(),
-        connectionSequence: 1,
-        textScopeEligible: true,
-        mediaScopeEligible: false,
-        liveWrite: "verified",
-      },
-    });
-    await ctx.db.insert("xBindings", {
-      workspaceId: f.workspaceId,
-      accountId,
-      providerIdentity: "123",
-      changedAt: Date.now(),
-    });
-    await ctx.db.insert("xCredentials", {
-      workspaceId: f.workspaceId,
-      accountId,
-      generation: 1,
-      envelope: await seal(
-        { accessToken: "synthetic-only" },
-        association(f.workspaceId, accountId),
-      ),
-      scopes: ["tweet.read", "users.read", "tweet.write"],
-      expiresAt: Date.now() + 86400000,
-      leaseUntil: 0,
-      cleanAfter: Number.MAX_SAFE_INTEGER,
-    });
-    return accountId;
-  });
-  const args = { workspaceId: f.workspaceId, accountId };
-  const policyId = await f.t.mutation(internal.performance.history.configure, {
-    ...args,
-    version: "history-test-v1",
-    approvedBy: f.userId,
-    expiresAt: Date.now() + 86400000,
-    purpose: "own-history-analytics-context-v1",
-    dialect: "post-fields-repost-v2",
-    providerIdentity: "123",
-    connectionSequence: 1,
-    accessEvidence: "Synthetic only",
-    rightsEvidence: "Synthetic own context permission",
-    pricingEvidence: "Synthetic returned-resource unit, no discount inference",
-    protocolEvidence: "Synthetic exact dialect",
-    allocationEvidence: "Synthetic only",
-    unit: "returned-post-resource",
-    unitMicros: 10,
-    currency: "USD",
-    allocatedProviderLimitMicros: limit,
-    retentionMs: 86400000,
-    maxResults,
-  });
-  await f.t.run(async (ctx) => {
-    for (const [i, scope] of (
-      ["provider", "workspace", "account"] as const
-    ).entries())
-      await ctx.db.insert("aiBudgets", {
-        key: [
-          "history:x",
-          `history:workspace:${f.workspaceId}`,
-          `history:account:${accountId}`,
-        ][i],
-        scope,
-        ...(i ? { workspaceId: f.workspaceId, approvedBy: f.userId } : {}),
-        ...(i === 2 ? { accountId } : {}),
-        policyVersion: "history-test-v1",
-        currency: "USD",
-        purposes: ["own-history"],
-        expiresAt: Date.now() + 86400000,
-        limitMicros: limit,
-        heldMicros: 0,
-        spentMicros: 0,
-      });
-  });
-  const start = async () => {
-    const acknowledged = (
-      await f.signed.query(api.performance.history.overview, args)
-    ).policy!;
-    return f.signed.mutation(api.performance.history.start, {
-      ...args,
-      policyId: acknowledged.id,
-      policyFingerprint: acknowledged.fingerprint,
-      purpose: "own-history-analytics-context-v1",
-      consent: true,
-    });
-  };
-  return { ...f, args, accountId, policyId, start };
-}
 const row = (id = "101", extra = {}) => ({
   id,
   author_id: "123",

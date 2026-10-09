@@ -1,3 +1,19 @@
+import { retainedHorizon } from "../performance/history";
+import { retainedSnapshotHorizon } from "../performance/snapshots";
+import { retainedPin, retainedPinHash } from "../performance/models";
+import {
+  historyPolicyFields,
+  historyControlFields,
+  historyJobFields,
+  historyPostFields,
+} from "../performance/historyFields";
+import {
+  policyFields as performancePolicyFields,
+  controlFields as performanceControlFields,
+  snapshotFields,
+  knowledgeFields,
+} from "../performance/fields";
+import { projection as savedProjection } from "../performance/modelFields";
 import { sha256 } from "../lib/crypto";
 import { ConvexError, v, type Infer } from "convex/values";
 import type { Doc, Id, TableNames } from "../_generated/dataModel";
@@ -309,7 +325,209 @@ const updateKind = v.union(
   v.literal("proposal"),
   v.literal("evaluation"),
 );
+const historyPostKeys = [
+  "accountId",
+  "jobId",
+  "generation",
+  "externalId",
+  "network",
+  "origin",
+  "providerCreatedAt",
+  "observedAt",
+  "sourceUntil",
+  "text",
+  "contentType",
+  "mediaType",
+  "replyTo",
+  "accountSize",
+  "postAttemptId",
+  "versionId",
+  "thenKnowledgeId",
+  "historicalAnalysisId",
+  "metricsStatus",
+  "removed",
+] as const;
+const historyJobKeys = [
+  "accountId",
+  "actorId",
+  "generation",
+  "policyId",
+  "sourceUntil",
+  "state",
+  "pages",
+  "imported",
+  "rejected",
+  "createdAt",
+  "updatedAt",
+  "reason",
+  "checkpointUntil",
+  "attemptId",
+] as const;
+const historyPolicyKeys = [
+  "accountId",
+  "version",
+  "approvedBy",
+  "expiresAt",
+  "purpose",
+  "dialect",
+  "accessEvidence",
+  "rightsEvidence",
+  "pricingEvidence",
+  "protocolEvidence",
+  "allocationEvidence",
+  "unit",
+  "unitMicros",
+  "currency",
+  "allocatedProviderLimitMicros",
+  "retentionMs",
+  "maxResults",
+] as const;
+const historyControlKeys = [
+  "accountId",
+  "generation",
+  "deletedThroughGeneration",
+  "updatedAt",
+] as const;
+const performancePolicyKeys = [
+  "accountId",
+  "windows",
+  "windowsEvidence",
+  "version",
+  "approvedBy",
+  "expiresAt",
+  "purpose",
+  "dialect",
+  "accessEvidence",
+  "rightsEvidence",
+  "pricingEvidence",
+  "protocolEvidence",
+  "allocationEvidence",
+  "fields",
+  "unit",
+  "unitMicros",
+  "currency",
+  "retentionMs",
+  "allocatedProviderLimitMicros",
+] as const;
+const performanceControlKeys = [
+  "accountId",
+  "contentPolicyId",
+  "contentApprovedBy",
+  "deletedThroughGeneration",
+  "enabled",
+  "deleted",
+  "generation",
+  "actorId",
+  "updatedAt",
+] as const;
+const snapshotKeys = [
+  "accountId",
+  "postAttemptId",
+  "scheduleId",
+  "versionId",
+  "externalId",
+  "position",
+  "confirmedAt",
+  "windowHours",
+  "observedAgeMs",
+  "late",
+  "dueAt",
+  "generation",
+  "state",
+  "attemptId",
+  "requestedAt",
+  "observedAt",
+  "providerCreatedAt",
+  "definitionVersion",
+  "dialect",
+  "reason",
+  "expiresAt",
+] as const;
+const knowledgeKeys = [
+  "accountId",
+  "postAttemptId",
+  "generation",
+  "scheduleId",
+  "versionId",
+  "network",
+  "capturedAt",
+  "assessmentId",
+  "applicable",
+  "reason",
+] as const;
+const projectionKeys = [
+  "version",
+  "state",
+  "score",
+  "reason",
+  "formulaVersion",
+  "thresholdVersion",
+  "proofUntil",
+  "operatingUntil",
+] as const;
+const pinKeys = [
+  "assessmentId",
+  "purposeId",
+  "generation",
+  "decisionId",
+  "candidateId",
+  "evaluationId",
+  "declarationId",
+  "checkId",
+  "capturedAt",
+] as const;
+const pinValidator = savedProjection.fields.pin.members[1];
+const projectionDTO = v.object({
+  ...pick(savedProjection.fields, projectionKeys),
+  pin: v.union(v.null(), v.object(pick(pinValidator.fields, pinKeys))),
+});
 const row = v.union(
+  v.object({
+    id: v.id("historyPosts"),
+    createdInDatabaseAt: v.number(),
+    ...pick(historyPostFields, historyPostKeys),
+    ...availability,
+  }),
+  v.object({
+    id: v.id("historyJobs"),
+    createdInDatabaseAt: v.number(),
+    ...pick(historyJobFields, historyJobKeys),
+  }),
+  v.object({
+    id: v.id("historyPolicies"),
+    createdInDatabaseAt: v.number(),
+    ...pick(historyPolicyFields, historyPolicyKeys),
+  }),
+  v.object({
+    id: v.id("historyControls"),
+    createdInDatabaseAt: v.number(),
+    ...pick(historyControlFields, historyControlKeys),
+  }),
+  v.object({
+    id: v.id("performancePolicies"),
+    createdInDatabaseAt: v.number(),
+    ...pick(performancePolicyFields, performancePolicyKeys),
+  }),
+  v.object({
+    id: v.id("performanceControls"),
+    createdInDatabaseAt: v.number(),
+    ...pick(performanceControlFields, performanceControlKeys),
+  }),
+  v.object({
+    id: v.id("performanceSnapshots"),
+    createdInDatabaseAt: v.number(),
+    ...pick(snapshotFields, snapshotKeys),
+    ...availability,
+    fields: v.union(v.null(), snapshotFields.fields),
+  }),
+  v.object({
+    id: v.id("publicationKnowledge"),
+    createdInDatabaseAt: v.number(),
+    ...pick(knowledgeFields, knowledgeKeys),
+    ...availability,
+    projection: v.optional(v.union(v.null(), projectionDTO)),
+  }),
+
   v.object({
     id: v.id("jevAssessments"),
     ...pick(assessmentFields, assessmentKeys),
@@ -448,6 +666,15 @@ const row = v.union(
   }),
 );
 export const family = v.union(
+  v.literal("historyPosts"),
+  v.literal("historyJobs"),
+  v.literal("historyPolicies"),
+  v.literal("historyControls"),
+  v.literal("performanceSnapshots"),
+  v.literal("performancePolicies"),
+  v.literal("performanceControls"),
+  v.literal("publicationKnowledge"),
+
   v.literal("assessments"),
   v.literal("ownRecommendationReceipts"),
   v.literal("intelligenceSourceUpdates"),
@@ -732,6 +959,503 @@ async function draftReferences(
   binding(ver.draftId === draftId && ver.content.accountId === accountId);
   return ver;
 }
+async function originalAdminLost(
+  ctx: QueryCtx,
+  ws: Id<"workspaces">,
+  actorId: Id<"users">,
+  owner = false,
+) {
+  const user = await ctx.db.get(actorId);
+  const membership = await ctx.db
+    .query("memberships")
+    .withIndex("by_userId_and_workspaceId", (q) =>
+      q.eq("userId", actorId).eq("workspaceId", ws),
+    )
+    .unique();
+  return (
+    !user ||
+    !membership ||
+    !(owner ? ["Owner"] : ["Owner", "Admin"]).includes(membership.role)
+  );
+}
+// Only direct current rights loss is a tombstone; malformed original bindings still fail the page.
+async function measurementRightsLost(
+  ctx: QueryCtx,
+  original: Doc<"historyPolicies"> | Doc<"performancePolicies">,
+  kind: "history" | "metrics",
+) {
+  const { workspaceId: ws, accountId } = original;
+  const account = await scoped(ctx, accountId, ws);
+  const current =
+    kind === "history"
+      ? await ctx.db
+          .query("historyPolicies")
+          .withIndex("by_workspaceId_and_accountId", (q) =>
+            q.eq("workspaceId", ws).eq("accountId", accountId),
+          )
+          .order("desc")
+          .first()
+      : await ctx.db
+          .query("performancePolicies")
+          .withIndex("by_workspaceId_and_accountId", (q) =>
+            q.eq("workspaceId", ws).eq("accountId", accountId),
+          )
+          .order("desc")
+          .first();
+  const cred = await ctx.db
+    .query("xCredentials")
+    .withIndex("by_accountId", (q) => q.eq("accountId", accountId))
+    .unique();
+  if (cred) binding(cred.workspaceId === ws && cred.accountId === accountId);
+  const ownerBinding = await ctx.db
+    .query("xBindings")
+    .withIndex("by_providerIdentity", (q) =>
+      q.eq("providerIdentity", original.providerIdentity),
+    )
+    .unique();
+  if (ownerBinding)
+    binding(
+      ownerBinding.workspaceId === ws && ownerBinding.accountId === accountId,
+    );
+  let lost =
+    original.expiresAt <= Date.now() ||
+    !current ||
+    current.expiresAt <= Date.now() ||
+    account.connection !== "connected" ||
+    original.providerIdentity !== account.providerIdentity ||
+    original.connectionSequence !==
+      (account.xEvidence?.connectionSequence ?? 0) ||
+    !ownerBinding ||
+    !cred ||
+    !cred.envelope ||
+    cred.expiresAt <= Date.now() + 15000 ||
+    !!cred.leaseUntil ||
+    !["tweet.read", "users.read"].every((s) => cred.scopes.includes(s)) ||
+    (await originalAdminLost(ctx, ws, original.approvedBy));
+  if (current) {
+    lost ||= await originalAdminLost(ctx, ws, current.approvedBy);
+    for (const [i, key] of [
+      `${kind}:x`,
+      `${kind}:workspace:${ws}`,
+      `${kind}:account:${accountId}`,
+    ].entries()) {
+      const b = await ctx.db
+        .query("aiBudgets")
+        .withIndex("by_key", (q) => q.eq("key", key))
+        .unique();
+      if (b)
+        binding(
+          b.scope === ["provider", "workspace", "account"][i] &&
+            (i === 0
+              ? b.workspaceId === undefined && b.accountId === undefined
+              : b.workspaceId === ws &&
+                (i === 1
+                  ? b.accountId === undefined
+                  : b.accountId === accountId)),
+        );
+      lost ||=
+        !b ||
+        b.expiresAt <= Date.now() ||
+        !b.purposes.includes(
+          kind === "history" ? "own-history" : "own-metrics",
+        );
+      if (b?.approvedBy)
+        lost ||= await originalAdminLost(ctx, ws, b.approvedBy);
+    }
+  }
+  return { lost, current };
+}
+async function publicationReferences(
+  ctx: QueryCtx,
+  k: Doc<"publicationKnowledge">,
+) {
+  const ws = k.workspaceId,
+    accountId = k.accountId;
+  const attempt = await scoped(ctx, k.postAttemptId, ws, accountId),
+    schedule = await scoped(ctx, k.scheduleId, ws, accountId);
+  binding(
+    attempt.scheduleId === schedule._id &&
+      attempt.versionId === k.versionId &&
+      schedule.versionId === k.versionId &&
+      attempt.generation === k.generation &&
+      attempt.providerIdentity === k.providerIdentity &&
+      attempt.position === 0 &&
+      attempt.requestStartedAt !== undefined &&
+      k.capturedAt <= attempt.requestStartedAt &&
+      (!k.applicable || (k.assessmentId !== null && k.reason === null)),
+  );
+  await draftReferences(ctx, ws, accountId, schedule.draftId, k.versionId);
+  const unique = await ctx.db
+    .query("publicationKnowledge")
+    .withIndex("by_postAttemptId", (q) =>
+      q.eq("postAttemptId", k.postAttemptId),
+    )
+    .unique();
+  binding(unique?._id === k._id);
+  if (k.assessmentId) {
+    const a = await scoped(ctx, k.assessmentId, ws, accountId);
+    binding(
+      a.draftId === schedule.draftId &&
+        a.draftVersionId === k.versionId &&
+        a.createdAt <= k.capturedAt,
+    );
+  }
+  return schedule;
+}
+async function historyReceiptReferences(
+  ctx: QueryCtx,
+  job: Doc<"historyJobs">,
+  policy: Doc<"historyPolicies">,
+) {
+  if (!job.attemptId) return;
+  const ws = job.workspaceId,
+    accountId = job.accountId;
+  const a = await scoped(ctx, job.attemptId, ws, accountId);
+  binding(
+    a.owner === "own-history" &&
+      a.runId === undefined &&
+      a.researchOrderId === undefined &&
+      a.logicalIntent === undefined &&
+      a.historyJobId === job._id &&
+      Number.isSafeInteger(a.generation) &&
+      a.generation >= 1 &&
+      a.generation <= job.generation &&
+      a.policyId === policy._id &&
+      a.policyFingerprint === job.policyFingerprint &&
+      Number.isSafeInteger(a.page) &&
+      a.page >= 0 &&
+      a.page < 3 &&
+      (a.state === "settled" || job.pages === a.page) &&
+      a.policyVersion === policy.version &&
+      a.currency === policy.currency &&
+      a.unitMicros === policy.unitMicros &&
+      a.maxResults === policy.maxResults &&
+      a.reservedMicros === a.maxResults * a.unitMicros,
+  );
+  binding(a.budgetIds.length === 3 && new Set(a.budgetIds).size === 3);
+  for (const [i, id] of a.budgetIds.entries()) {
+    const grant = await scoped(ctx, id, ws, accountId);
+    binding(
+      grant.key ===
+        [
+          "history:x",
+          `history:workspace:${ws}`,
+          `history:account:${accountId}`,
+        ][i] &&
+        grant.scope === ["provider", "workspace", "account"][i] &&
+        grant.currency === a.currency &&
+        (i === 0
+          ? grant.workspaceId === undefined && grant.accountId === undefined
+          : grant.workspaceId === ws &&
+            (i === 1
+              ? grant.accountId === undefined
+              : grant.accountId === accountId)),
+    );
+  }
+}
+async function historyReferences(ctx: QueryCtx, r: Doc<"historyPosts">) {
+  const ws = r.workspaceId,
+    accountId = r.accountId,
+    job = await scoped(ctx, r.jobId, ws, accountId),
+    policy = await scoped(ctx, job.policyId, ws, accountId);
+  const control = await ctx.db
+    .query("historyControls")
+    .withIndex("by_workspaceId_and_accountId", (q) =>
+      q.eq("workspaceId", ws).eq("accountId", accountId),
+    )
+    .unique();
+  binding(
+    control &&
+      Number.isSafeInteger(r.generation) &&
+      r.generation >= 1 &&
+      r.generation <= job.generation &&
+      job.generation <= control.generation &&
+      job.policyFingerprint === (await sha256(JSON.stringify(policy))),
+  );
+  const same = await ctx.db
+    .query("historyPosts")
+    .withIndex("by_workspaceId_and_accountId_and_externalId", (q) =>
+      q
+        .eq("workspaceId", ws)
+        .eq("accountId", accountId)
+        .eq("externalId", r.externalId),
+    )
+    .unique();
+  binding(same?._id === r._id);
+  await historyReceiptReferences(ctx, job, policy);
+  binding((r.postAttemptId === null) === (r.versionId === null));
+  if (r.postAttemptId) {
+    const a = await scoped(ctx, r.postAttemptId, ws, accountId),
+      schedule = await scoped(ctx, a.scheduleId, ws, accountId);
+    binding(
+      a.versionId === r.versionId &&
+        a.externalId === r.externalId &&
+        schedule.versionId === r.versionId,
+    );
+    await draftReferences(ctx, ws, accountId, schedule.draftId, r.versionId!);
+  }
+  if (r.thenKnowledgeId) {
+    const k = await scoped(ctx, r.thenKnowledgeId, ws, accountId);
+    binding(k.postAttemptId === r.postAttemptId && k.versionId === r.versionId);
+    await publicationReferences(ctx, k);
+  }
+  return { job, policy, control };
+}
+async function snapshotReferences(
+  ctx: QueryCtx,
+  r: Doc<"performanceSnapshots">,
+) {
+  const ws = r.workspaceId,
+    accountId = r.accountId,
+    post = await scoped(ctx, r.postAttemptId, ws, accountId),
+    schedule = await scoped(ctx, r.scheduleId, ws, accountId);
+  binding(
+    post.stage === "confirmed" &&
+      post.scheduleId === r.scheduleId &&
+      post.versionId === r.versionId &&
+      post.externalId === r.externalId &&
+      schedule.versionId === r.versionId &&
+      post.position === r.position &&
+      post.confirmedAt === r.confirmedAt &&
+      schedule.externalPosts?.some(
+        (x) =>
+          x.attemptId === post._id &&
+          x.externalId === r.externalId &&
+          x.position === r.position,
+      ),
+  );
+  await draftReferences(ctx, ws, accountId, schedule.draftId, r.versionId);
+  const same = await ctx.db
+    .query("performanceSnapshots")
+    .withIndex("by_postAttemptId_and_windowHours", (q) =>
+      q.eq("postAttemptId", post._id).eq("windowHours", r.windowHours),
+    )
+    .unique();
+  binding(same?._id === r._id);
+  let policy: Doc<"performancePolicies"> | null = null;
+  if (r.attemptId) {
+    const a = await scoped(ctx, r.attemptId, ws, accountId);
+    binding(
+      a.owner === "own-metrics" &&
+        a.runId === undefined &&
+        a.researchOrderId === undefined &&
+        a.logicalIntent === undefined &&
+        a.snapshotId === r._id &&
+        a.generation === r.generation,
+    );
+    binding(a.budgetIds.length === 3 && new Set(a.budgetIds).size === 3);
+    for (const [i, id] of a.budgetIds.entries()) {
+      const grant = await scoped(ctx, id, ws, accountId);
+      binding(
+        grant.key ===
+          [
+            "metrics:x",
+            `metrics:workspace:${ws}`,
+            `metrics:account:${accountId}`,
+          ][i] &&
+          grant.scope === ["provider", "workspace", "account"][i] &&
+          grant.currency === a.currency &&
+          (i === 0
+            ? grant.workspaceId === undefined && grant.accountId === undefined
+            : grant.workspaceId === ws &&
+              (i === 1
+                ? grant.accountId === undefined
+                : grant.accountId === accountId)),
+      );
+    }
+    policy = await scoped(ctx, a.policyId, ws, accountId);
+    binding(
+      a.currency === policy.currency &&
+        a.unitMicros === policy.unitMicros &&
+        a.reservedMicros === a.unitMicros,
+    );
+    binding(
+      a.policyFingerprint === (await sha256(JSON.stringify(policy))) &&
+        a.policyVersion === policy.version &&
+        post.providerIdentity === policy.providerIdentity,
+    );
+    if (r.state === "observed")
+      binding(
+        a.state === "settled" &&
+          policy.version === r.definitionVersion &&
+          policy.dialect === r.dialect,
+      );
+  }
+  if (r.state === "observed")
+    binding(policy && r.observedAt !== null && r.requestedAt !== null);
+  for (const f of r.fields)
+    binding(
+      f.status === "measured"
+        ? f.value !== null && Number.isSafeInteger(f.value) && f.value >= 0
+        : f.value === null,
+    );
+  return policy;
+}
+
+async function knowledgePinLost(ctx: QueryCtx, r: Doc<"publicationKnowledge">) {
+  const p = r.projection!,
+    pin = p.pin!;
+  binding(p.score !== null && p.proofUntil !== null);
+  const ws = r.workspaceId,
+    accountId = r.accountId;
+  const assessment = await scoped(ctx, pin.assessmentId, ws, accountId),
+    purpose = await scoped(ctx, pin.purposeId, ws, accountId),
+    declaration = await scoped(ctx, pin.declarationId, ws, accountId),
+    decision = await scoped(ctx, pin.decisionId, ws, accountId),
+    check = await scoped(ctx, pin.checkId, ws, accountId),
+    candidate = await scoped(ctx, pin.candidateId, ws, accountId),
+    evaluation = await scoped(ctx, pin.evaluationId, ws, accountId);
+  binding(
+    assessment.semanticKey === pin.semanticKey &&
+      (await retainedPinHash(assessment)) === pin.assessmentFingerprint &&
+      (await retainedPinHash(declaration)) === pin.declarationFingerprint &&
+      (await retainedPinHash(decision)) === pin.decisionFingerprint &&
+      (await retainedPinHash(check)) === pin.checkFingerprint,
+  );
+  binding(
+    declaration.kind === "monitoring-declaration" &&
+      decision.kind === "activation-decision" &&
+      decision.payload.action === "activate" &&
+      "expiresAt" in decision &&
+      check.kind === "monitoring-check" &&
+      candidate.kind === "candidate" &&
+      evaluation.kind === "evaluation",
+  );
+  binding(
+    declaration.purposeId === pin.purposeId &&
+      declaration.generation === pin.generation &&
+      declaration.candidateId === pin.candidateId &&
+      declaration.payload.evaluationId === pin.evaluationId &&
+      decision.declarationId === declaration._id &&
+      decision.payload.candidateId === candidate._id &&
+      decision.payload.evaluationId === evaluation._id &&
+      check.declarationId === declaration._id &&
+      check.payload.status === "pass" &&
+      candidate.purposeId === pin.purposeId &&
+      candidate.generation === pin.generation &&
+      evaluation.payload.candidateId === candidate._id &&
+      evaluation.purposeId === pin.purposeId &&
+      evaluation.generation === pin.generation,
+  );
+  const spec = await scoped(ctx, declaration.specId, ws, accountId),
+    experiment = await scoped(ctx, declaration.experimentId!, ws, accountId),
+    checkSnapshot = await scoped(ctx, check.payload.snapshotId, ws, accountId),
+    trainSnapshot = await scoped(
+      ctx,
+      candidate.payload.trainSnapshotId,
+      ws,
+      accountId,
+    ),
+    evaluationSnapshot = await scoped(
+      ctx,
+      evaluation.payload.snapshotId,
+      ws,
+      accountId,
+    );
+  binding(
+    experiment.kind === "experiment" &&
+      spec.kind === "spec" &&
+      checkSnapshot.kind === "snapshot" &&
+      trainSnapshot.kind === "snapshot" &&
+      evaluationSnapshot.kind === "snapshot",
+  );
+  const originalSpec = await scoped(ctx, experiment.specId, ws, accountId);
+  binding(originalSpec.kind === "spec");
+  if (
+    !evaluation.payload.evidenceQualified ||
+    experiment.payload.mode !== "prospective" ||
+    candidate.payload.transfer === null ||
+    candidate.payload.transfer === 0
+  )
+    throw new ConvexError("CALIBRATION_PROSPECTIVE_CANDIDATE_REQUIRED");
+  if (
+    (await retainedPinHash(experiment.payload.policy)) !==
+    experiment.payload.policyFingerprint
+  )
+    throw new ConvexError("CALIBRATION_POLICY_CHANGED");
+  binding(
+    experiment.payload.specFingerprint ===
+      (await retainedPinHash(originalSpec)) &&
+      experiment.payload.purposeFingerprint === purpose.fingerprint &&
+      declaration.payload.purposeFingerprint === purpose.fingerprint &&
+      evaluation.payload.specFingerprint ===
+        experiment.payload.specFingerprint &&
+      evaluation.payload.policyFingerprint ===
+        experiment.payload.policyFingerprint &&
+      candidate.specId === originalSpec._id &&
+      evaluation.specId === originalSpec._id &&
+      trainSnapshot.specId === originalSpec._id &&
+      evaluationSnapshot.specId === originalSpec._id &&
+      checkSnapshot.specId === spec._id &&
+      originalSpec.purposeId === purpose._id &&
+      originalSpec.generation === pin.generation &&
+      [trainSnapshot, evaluationSnapshot, checkSnapshot].every(
+        (snapshot) =>
+          snapshot.purposeId === purpose._id &&
+          snapshot.generation === pin.generation,
+      ) &&
+      (await retainedPinHash(spec.payload.compatibility)) ===
+        (await retainedPinHash(experiment.payload.compatibility)) &&
+      (await retainedPinHash(declaration.payload.compatibility)) ===
+        (await retainedPinHash(experiment.payload.compatibility)),
+  );
+  binding(
+    declaration.payload.candidateFingerprint ===
+      (await retainedPinHash(candidate)) &&
+      declaration.payload.evaluationFingerprint ===
+        (await retainedPinHash(evaluation)) &&
+      declaration.payload.specFingerprint === (await retainedPinHash(spec)) &&
+      declaration.payload.policyFingerprint ===
+        (await retainedPinHash(declaration.payload.policy)) &&
+      evaluation.payload.candidateFingerprint ===
+        (await retainedPinHash(candidate)) &&
+      evaluation.payload.snapshotFingerprint ===
+        (await retainedPinHash(evaluationSnapshot)) &&
+      candidate.payload.trainSnapshotFingerprint ===
+        (await retainedPinHash(trainSnapshot)) &&
+      check.payload.snapshotFingerprint ===
+        (await retainedPinHash(checkSnapshot)) &&
+      check.payload.declarationFingerprint ===
+        (await retainedPinHash(declaration)) &&
+      candidate.experimentId === experiment._id &&
+      evaluation.experimentId === experiment._id &&
+      experiment.purposeId === purpose._id &&
+      experiment.generation === pin.generation &&
+      check.specId === spec._id &&
+      check.purposeId === purpose._id &&
+      check.generation === pin.generation &&
+      spec.purposeId === purpose._id &&
+      spec.generation === pin.generation,
+  );
+  const version = await scoped(ctx, r.versionId, ws);
+  return (
+    p.proofUntil! <= Date.now() ||
+    experiment.expiresAt <= Date.now() ||
+    originalSpec.expiresAt <= Date.now() ||
+    trainSnapshot.expiresAt <= Date.now() ||
+    evaluationSnapshot.expiresAt <= Date.now() ||
+    (experiment.payload.policy !== null &&
+      experiment.payload.policy.reviewUntil <= Date.now()) ||
+    decision.expiresAt <= Date.now() ||
+    declaration.expiresAt <= Date.now() ||
+    check.expiresAt <= Date.now() ||
+    candidate.expiresAt <= Date.now() ||
+    evaluation.expiresAt <= Date.now() ||
+    spec.expiresAt <= Date.now() ||
+    checkSnapshot.expiresAt <= Date.now() ||
+    declaration.payload.policy.reviewUntil <= Date.now() ||
+    purpose.expiresAt <= Date.now() ||
+    !!purpose.withdrawal ||
+    (assessment.sourceUntil !== null && assessment.sourceUntil <= Date.now()) ||
+    !!version.sourceUnavailable ||
+    (await originalAdminLost(ctx, ws, decision.actorId, true)) ||
+    (await originalAdminLost(ctx, ws, declaration.actorId, true)) ||
+    (await originalAdminLost(ctx, ws, check.actorId)) ||
+    (experiment.payload.policy !== null &&
+      (await originalAdminLost(ctx, ws, experiment.payload.policy.reviewerId)))
+  );
+}
+
 export const page = workspaceQuery({
   args: {
     expectedAuthId: v.string(),
@@ -821,6 +1545,234 @@ export const page = workspaceQuery({
     const rows: Infer<typeof row>[] = [];
     const opts = { numItems: 1, cursor: a.cursor };
     switch (a.family) {
+      case "historyPosts":
+      case "historyJobs":
+      case "historyPolicies":
+      case "historyControls":
+      case "performanceSnapshots":
+      case "performancePolicies":
+      case "performanceControls":
+      case "publicationKnowledge": {
+        const p = await ctx.db
+          .query(a.family)
+          .withIndex("by_workspaceId_and_accountId", (q) =>
+            q
+              .eq("workspaceId", ws)
+              .eq("accountId", a.accountId!)
+              .lte("_creationTime", creationUpperBound),
+          )
+          .paginate(opts);
+        selected = p;
+        for (const value of p.page) {
+          binding(value.workspaceId === ws && value.accountId === a.accountId);
+          for (const key of [
+            "generation",
+            "deletedThroughGeneration",
+            "position",
+            "pages",
+            "imported",
+            "rejected",
+            "unitMicros",
+            "allocatedProviderLimitMicros",
+            "maxResults",
+          ] as const) {
+            if (key in value) {
+              const n = value[key as keyof typeof value];
+              binding(
+                n === undefined ||
+                  (typeof n === "number" && Number.isSafeInteger(n) && n >= 0),
+              );
+            }
+          }
+          if (
+            "reason" in value &&
+            value.reason !== null &&
+            !/^[A-Z][A-Z0-9_]{0,199}$/.test(value.reason)
+          )
+            throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
+          const base = {
+            id: value._id,
+            createdInDatabaseAt: value._creationTime,
+          };
+          switch (a.family) {
+            case "historyPolicies": {
+              const r = value as Doc<"historyPolicies">;
+              for (const n of [
+                r.unitMicros,
+                r.allocatedProviderLimitMicros,
+                r.retentionMs,
+                r.maxResults,
+              ])
+                binding(Number.isSafeInteger(n) && n >= 0);
+              rows.push({ ...base, id: r._id, ...pick(r, historyPolicyKeys) });
+              break;
+            }
+            case "historyControls": {
+              const r = value as Doc<"historyControls">;
+              rows.push({ ...base, id: r._id, ...pick(r, historyControlKeys) });
+              break;
+            }
+            case "historyJobs": {
+              const r = value as Doc<"historyJobs">,
+                policy = await scoped(ctx, r.policyId, ws, r.accountId),
+                control = await ctx.db
+                  .query("historyControls")
+                  .withIndex("by_workspaceId_and_accountId", (q) =>
+                    q.eq("workspaceId", ws).eq("accountId", r.accountId),
+                  )
+                  .unique();
+              binding(
+                control &&
+                  Number.isSafeInteger(r.generation) &&
+                  r.generation >= 1 &&
+                  r.generation <= control.generation,
+              );
+              binding(
+                r.policyFingerprint === (await sha256(JSON.stringify(policy))),
+              );
+              await historyReceiptReferences(ctx, r, policy);
+              for (const n of [r.pages, r.imported, r.rejected])
+                binding(Number.isSafeInteger(n) && n >= 0);
+              rows.push({ ...base, id: r._id, ...pick(r, historyJobKeys) });
+              break;
+            }
+            case "historyPosts": {
+              const r = value as Doc<"historyPosts">,
+                { job, policy, control } = await historyReferences(ctx, r);
+              const rights = await measurementRightsLost(
+                ctx,
+                policy,
+                "history",
+              );
+              const lost =
+                r.removed ||
+                r.text === null ||
+                r.sourceUntil <= observedAt ||
+                job.sourceUntil <= observedAt ||
+                r.generation < job.generation ||
+                control.deletedThroughGeneration >= r.generation ||
+                rights.lost ||
+                (rights.current !== null &&
+                  job.createdAt + rights.current.retentionMs <= observedAt) ||
+                (await originalAdminLost(ctx, ws, job.actorId));
+              if (!lost) horizon(await retainedHorizon(ctx, r));
+              rows.push({
+                ...base,
+                id: r._id,
+                ...pick(r, historyPostKeys),
+                text: lost ? null : r.text,
+                materialAvailability: lost ? "unavailable" : "retained",
+              });
+              break;
+            }
+            case "performancePolicies": {
+              const r = value as Doc<"performancePolicies">;
+              for (const n of [
+                r.unitMicros,
+                r.allocatedProviderLimitMicros,
+                r.retentionMs,
+              ])
+                binding(Number.isSafeInteger(n) && n >= 0);
+              rows.push({
+                ...base,
+                id: r._id,
+                ...pick(r, performancePolicyKeys),
+              });
+              break;
+            }
+            case "performanceControls": {
+              const r = value as Doc<"performanceControls">;
+              if (r.contentPolicyId)
+                await scoped(ctx, r.contentPolicyId, ws, r.accountId);
+              rows.push({
+                ...base,
+                id: r._id,
+                ...pick(r, performanceControlKeys),
+              });
+              break;
+            }
+            case "performanceSnapshots": {
+              const r = value as Doc<"performanceSnapshots">,
+                policy = await snapshotReferences(ctx, r);
+              const c = await ctx.db
+                .query("performanceControls")
+                .withIndex("by_workspaceId_and_accountId", (q) =>
+                  q.eq("workspaceId", ws).eq("accountId", r.accountId),
+                )
+                .unique();
+              const rights = policy
+                ? await measurementRightsLost(ctx, policy, "metrics")
+                : null;
+              const lost =
+                r.state !== "observed" ||
+                r.expiresAt <= observedAt ||
+                !c ||
+                c.deleted ||
+                r.generation <= (c.deletedThroughGeneration ?? -1) ||
+                rights?.lost ||
+                (c && (await originalAdminLost(ctx, ws, c.actorId)));
+              if (!lost) horizon(await retainedSnapshotHorizon(ctx, r));
+              rows.push({
+                ...base,
+                id: r._id,
+                ...pick(r, snapshotKeys),
+                fields: lost
+                  ? null
+                  : r.fields.map((f) =>
+                      pick(f, [
+                        "name",
+                        "rawField",
+                        "definition",
+                        "status",
+                        "value",
+                      ]),
+                    ),
+                materialAvailability: lost ? "unavailable" : "retained",
+              });
+              break;
+            }
+            case "publicationKnowledge": {
+              const r = value as Doc<"publicationKnowledge">;
+              await publicationReferences(ctx, r);
+              let lost = false;
+              if (r.projection?.state === "candidate") {
+                binding(
+                  r.projection.pin &&
+                    r.applicable &&
+                    r.projection.pin.assessmentId === r.assessmentId &&
+                    r.projection.pin.capturedAt <= r.capturedAt,
+                );
+                lost = await knowledgePinLost(ctx, r);
+                if (!lost) horizon(await retainedPin(ctx, r, r.projection));
+              } else if (r.projection)
+                binding(
+                  r.projection.score === null && r.projection.pin === null,
+                );
+              rows.push({
+                ...base,
+                id: r._id,
+                ...pick(r, knowledgeKeys),
+                materialAvailability: lost ? "unavailable" : "retained",
+                ...(r.projection === undefined
+                  ? {}
+                  : {
+                      projection: lost
+                        ? null
+                        : {
+                            ...pick(r.projection, projectionKeys),
+                            pin: r.projection.pin
+                              ? pick(r.projection.pin, pinKeys)
+                              : null,
+                          },
+                    }),
+              });
+              break;
+            }
+          }
+        }
+        break;
+      }
+
       case "assessments": {
         await scoped(ctx, a.draftId!, ws);
         const p = await ctx.db

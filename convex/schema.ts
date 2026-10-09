@@ -432,6 +432,7 @@ export default defineSchema({
     ["workspaceId", "accountId"],
   ),
   publicationKnowledge: defineTable(knowledgeFields)
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
     .index("by_postAttemptId", ["postAttemptId"])
     .index("by_projection_pin_purposeId", ["projection.pin.purposeId"])
     .index("by_projection_proofUntil", ["projection.proofUntil"]),

@@ -204,6 +204,280 @@ async function intelligenceArchiveBrowser(page, evidence) {
       },
       { patch, index },
     );
+  await page
+    .getByRole("combobox", { name: "Aktiver Account", exact: true })
+    .selectOption("account-native");
+  const nativeRows = {
+    historyPosts: {
+      id: "history-post",
+      createdInDatabaseAt: 1,
+      accountId: "account-native",
+      jobId: "history-job",
+      generation: 1,
+      externalId: "101",
+      network: "x",
+      origin: "own-history-import",
+      providerCreatedAt: 1,
+      observedAt: 2,
+      sourceUntil: 3000000000000,
+      text: "Original imported text",
+      contentType: "original",
+      mediaType: "unknown",
+      replyTo: null,
+      accountSize: null,
+      postAttemptId: null,
+      versionId: null,
+      thenKnowledgeId: null,
+      historicalAnalysisId: null,
+      metricsStatus: "not-observed",
+      removed: false,
+      materialAvailability: "retained",
+    },
+    historyJobs: {
+      id: "history-job",
+      createdInDatabaseAt: 1,
+      accountId: "account-native",
+      actorId: "user-owner",
+      generation: 1,
+      policyId: "history-policy",
+      sourceUntil: 3000000000000,
+      state: "paused",
+      pages: 3,
+      imported: 75,
+      rejected: 0,
+      createdAt: 1,
+      updatedAt: 2,
+      reason: null,
+      checkpointUntil: 3000000000000,
+      attemptId: null,
+    },
+    historyPolicies: {
+      id: "history-policy",
+      createdInDatabaseAt: 1,
+      accountId: "account-native",
+      version: "history-v1",
+      approvedBy: "user-owner",
+      expiresAt: 1,
+      purpose: "own-history-analytics-context-v1",
+      dialect: "post-fields-repost-v2",
+      accessEvidence: "Original access",
+      rightsEvidence: "Original rights",
+      pricingEvidence: "Original price",
+      protocolEvidence: "Original protocol",
+      allocationEvidence: "Original allocation",
+      unit: "returned-post-resource",
+      unitMicros: 10,
+      currency: "USD",
+      allocatedProviderLimitMicros: 1000,
+      retentionMs: 86400000,
+      maxResults: 100,
+    },
+    historyControls: {
+      id: "history-control",
+      createdInDatabaseAt: 1,
+      accountId: "account-native",
+      generation: 3,
+      deletedThroughGeneration: 2,
+      updatedAt: 2,
+    },
+    performanceSnapshots: {
+      id: "snapshot",
+      createdInDatabaseAt: 1,
+      accountId: "account-native",
+      postAttemptId: "first-send",
+      scheduleId: "schedule",
+      versionId: "version-original",
+      externalId: "101",
+      position: 0,
+      confirmedAt: 1,
+      windowHours: 0.25,
+      dueAt: 900001,
+      generation: 1,
+      state: "observed",
+      attemptId: "metric-receipt",
+      requestedAt: 900001,
+      observedAt: 900002,
+      providerCreatedAt: 1,
+      definitionVersion: "metrics-v1",
+      dialect: "post-fields-repost-v2",
+      reason: null,
+      expiresAt: 3000000000000,
+      materialAvailability: "retained",
+      fields: [
+        {
+          name: "impressions",
+          rawField: "public_metrics.impression_count",
+          definition: "Observed cumulative impressions",
+          status: "measured",
+          value: 0,
+        },
+        {
+          name: "url_clicks",
+          rawField: "non_public_metrics.url_link_clicks",
+          definition: "Observed cumulative clicks",
+          status: "missing",
+          value: null,
+        },
+      ],
+    },
+    performancePolicies: {
+      id: "metric-policy",
+      createdInDatabaseAt: 1,
+      accountId: "account-native",
+      windows: [0.25, 1, 6, 24, 48],
+      windowsEvidence: "Explicit five windows",
+      version: "metrics-v1",
+      approvedBy: "user-owner",
+      expiresAt: 1,
+      purpose: "own-post-descriptive-editorial-v1",
+      dialect: "post-fields-repost-v2",
+      accessEvidence: "Original access",
+      rightsEvidence: "Original rights",
+      pricingEvidence: "Original price",
+      protocolEvidence: "Original protocol",
+      allocationEvidence: "Original allocation",
+      fields: ["impressions", "url_clicks"],
+      unit: "single-post-request",
+      unitMicros: 10,
+      currency: "USD",
+      allocatedProviderLimitMicros: 1000,
+      retentionMs: 86400000,
+    },
+    performanceControls: {
+      id: "metric-control",
+      createdInDatabaseAt: 1,
+      accountId: "account-native",
+      enabled: false,
+      deleted: true,
+      generation: 2,
+      actorId: "user-owner",
+      updatedAt: 2,
+      deletedThroughGeneration: 1,
+    },
+    publicationKnowledge: {
+      id: "knowledge-first-send",
+      createdInDatabaseAt: 1,
+      accountId: "account-native",
+      postAttemptId: "first-send",
+      generation: 1,
+      scheduleId: "schedule",
+      versionId: "version-original",
+      network: "x",
+      capturedAt: 1,
+      assessmentId: "assessment-original",
+      applicable: true,
+      reason: null,
+      materialAvailability: "retained",
+      projection: {
+        version: "prospective-calibration-v1",
+        state: "static",
+        score: null,
+        reason: "CALIBRATION_NO_ACTIVE_CANDIDATE",
+        formulaVersion: "dispatch-score-v1",
+        thresholdVersion: "jev-confidence-startup-v1",
+        proofUntil: null,
+        operatingUntil: null,
+        pin: null,
+      },
+    },
+  };
+  for (const [family, nativeRow] of Object.entries(nativeRows)) {
+    await selector.selectOption(family);
+    await button.click();
+    const request = await page.evaluate(
+      () => window.intelligenceArchiveRequests.at(-1).args,
+    );
+    expect(request).toMatchObject({ family, accountId: "account-native" });
+    expect(request).not.toHaveProperty("kind");
+    expect(request).not.toHaveProperty("draftId");
+    const downloaded = page.waitForEvent("download");
+    await resolve({
+      isDone: true,
+      data: {
+        format: "dispatch-workspace-intelligence",
+        version: 1,
+        workspaceId: request.workspaceId,
+        selection: {
+          family,
+          rows: [
+            {
+              ...nativeRow,
+              providerIdentity: "SECRET_PROVIDER",
+              policyFingerprint: "SECRET_HASH",
+              jobSchedulerId: "SECRET_SCHEDULER",
+            },
+          ],
+        },
+      },
+    });
+    const json = JSON.parse(
+      readFileSync(await (await downloaded).path(), "utf8"),
+    );
+    expect(json.selection.rows[0]).toEqual(nativeRow);
+    // Chromium throttles more than ten downloads per second, even from separate explicit clicks.
+    await page.waitForTimeout(150);
+    expect(JSON.stringify(json)).not.toMatch(
+      /SECRET_|providerIdentity|policyFingerprint|jobSchedulerId/,
+    );
+  }
+  await selector.selectOption("historyPosts");
+  await selector.selectOption("publicationKnowledge");
+  await button.click();
+  const candidateRequest = await page.evaluate(
+    () => window.intelligenceArchiveRequests.at(-1).args,
+  );
+  const candidate = {
+    ...nativeRows.publicationKnowledge,
+    projection: {
+      ...nativeRows.publicationKnowledge.projection,
+      state: "candidate",
+      score: 0,
+      proofUntil: 3000000000000,
+      operatingUntil: 1,
+      pin: {
+        assessmentId: "assessment-original",
+        purposeId: "purpose-original",
+        generation: 1,
+        decisionId: "decision-original",
+        candidateId: "candidate-original",
+        evaluationId: "evaluation-original",
+        declarationId: "declaration-original",
+        checkId: "check-original",
+        capturedAt: 1,
+      },
+    },
+  };
+  const candidateDownload = page.waitForEvent("download");
+  await resolve({
+    isDone: true,
+    data: {
+      format: "dispatch-workspace-intelligence",
+      version: 1,
+      workspaceId: candidateRequest.workspaceId,
+      selection: {
+        family: "publicationKnowledge",
+        rows: [
+          {
+            ...candidate,
+            projection: {
+              ...candidate.projection,
+              pin: {
+                ...candidate.projection.pin,
+                semanticKey: "SECRET_SEMANTIC",
+                assessmentFingerprint: "SECRET_ASSESSMENT",
+              },
+            },
+          },
+        ],
+      },
+    },
+  });
+  expect(
+    JSON.parse(readFileSync(await (await candidateDownload).path(), "utf8"))
+      .selection.rows[0],
+  ).toEqual(candidate);
+
+  await page.waitForTimeout(1100);
   for (const family of ["ownRoutingOperations", "ownStandaloneVerifications"]) {
     await selector.selectOption(family, { timeout: 1000 });
     await button.click();
@@ -445,6 +719,10 @@ async function intelligenceArchiveBrowser(page, evidence) {
     await expect(
       page.locator('#archive-family option[value="algorithmProfiles"]'),
     ).toHaveCount(0);
+    for (const family of Object.keys(nativeRows))
+      await expect(
+        page.locator(`#archive-family option[value="${family}"]`),
+      ).toHaveCount(0);
     await button.click();
     const d = page.waitForEvent("download");
     await resolve();
@@ -472,6 +750,8 @@ async function intelligenceArchiveBrowser(page, evidence) {
       {
         transport: "MOCKED; native backend proofs tested separately",
         actualRoutingAndVerificationJSON: true,
+        allEightMeasurementFamiliesNativeShapedDTOs: true,
+        originalStaticNullAndCandidatePinPreserved: true,
         normalizedAssessmentNineAnswersZeroAndNull: true,
         originalRoutingModelPolicyAndNoAttemptProvenance: true,
         secretFieldsStripped: true,

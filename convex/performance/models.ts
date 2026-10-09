@@ -69,6 +69,7 @@ const hash = (value: unknown) =>
         : item,
     ),
   );
+export { hash as retainedPinHash };
 const scopeArgs = { accountId: v.id("socialAccounts") };
 export function orderingLoss(rows: Feature[], transfer: number) {
   let twiceLoss = 0,
@@ -1862,7 +1863,7 @@ export const projection = internalQuery({
     }
   },
 });
-async function retainedPin(ctx: Ctx, s: Scope, p: Projection) {
+export async function retainedPin(ctx: Ctx, s: Scope, p: Projection) {
   const pin = p.pin;
   if (
     !pin ||

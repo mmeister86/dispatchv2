@@ -13,6 +13,15 @@ import { Section } from "@/components/shared";
 
 type Archive = FunctionReturnType<typeof api.operations.exportShared.shared>;
 const intelligenceFamilies: Record<IntelligenceFamily, string> = {
+  historyPosts: "Importierte Posts",
+  historyJobs: "Historienimporte",
+  historyPolicies: "Historienrichtlinien",
+  historyControls: "Historiensteuerung",
+  performanceSnapshots: "Leistungsmessungen",
+  performancePolicies: "Messrichtlinien",
+  performanceControls: "Messsteuerung",
+  publicationKnowledge: "Wissen beim ersten Senden",
+
   assessments: "Jev-Bewertungen",
   ownAssessmentRequests: "Eigene Bewertungsanfragen",
   ownRecommendationReceipts: "Eigene Übernahmebelege",
@@ -33,6 +42,23 @@ type IntelligenceArchive = FunctionReturnType<
   typeof api.operations.exportIntelligence.page
 >;
 const intelligenceFields: Record<IntelligenceFamily, string> = {
+  historyPosts:
+    "id createdInDatabaseAt accountId jobId generation externalId network origin providerCreatedAt observedAt sourceUntil text contentType mediaType replyTo accountSize postAttemptId versionId thenKnowledgeId historicalAnalysisId metricsStatus removed materialAvailability",
+  historyJobs:
+    "id createdInDatabaseAt accountId actorId generation policyId sourceUntil state pages imported rejected createdAt updatedAt reason checkpointUntil attemptId",
+  historyPolicies:
+    "id createdInDatabaseAt accountId version approvedBy expiresAt purpose dialect accessEvidence rightsEvidence pricingEvidence protocolEvidence allocationEvidence unit unitMicros currency allocatedProviderLimitMicros retentionMs maxResults",
+  historyControls:
+    "id createdInDatabaseAt accountId generation deletedThroughGeneration updatedAt",
+  performanceSnapshots:
+    "id createdInDatabaseAt accountId postAttemptId scheduleId versionId externalId position confirmedAt windowHours observedAgeMs late dueAt generation state attemptId requestedAt observedAt providerCreatedAt definitionVersion dialect reason expiresAt materialAvailability fields",
+  performancePolicies:
+    "id createdInDatabaseAt accountId windows windowsEvidence version approvedBy expiresAt purpose dialect accessEvidence rightsEvidence pricingEvidence protocolEvidence allocationEvidence fields unit unitMicros currency retentionMs allocatedProviderLimitMicros",
+  performanceControls:
+    "id createdInDatabaseAt accountId contentPolicyId contentApprovedBy deletedThroughGeneration enabled deleted generation actorId updatedAt",
+  publicationKnowledge:
+    "id createdInDatabaseAt accountId postAttemptId generation scheduleId versionId network capturedAt assessmentId applicable reason materialAvailability projection",
+
   assessments:
     "id accountId draftId draftVersionId versionNumber algorithmId audienceId inputVersion createdAt sourceUntil attemptId provenance result",
   ownAssessmentRequests:
@@ -105,6 +131,22 @@ function intelligenceData(data: IntelligenceArchive["data"]) {
   const rows = data.selection.rows.map((row) => {
     if (family === "ownStandaloneVerifications") return verificationData(row);
     const r = fields(row, intelligenceFields[family]);
+    if (family === "performanceSnapshots" && r.fields !== null)
+      r.fields = items(r.fields, (f) =>
+        fields(f, "name rawField definition status value"),
+      );
+    if (family === "publicationKnowledge" && r.projection) {
+      const projection = fields(
+        r.projection,
+        "version state score reason formulaVersion thresholdVersion proofUntil operatingUntil pin",
+      );
+      if (projection.pin)
+        projection.pin = fields(
+          projection.pin,
+          "assessmentId purposeId generation decisionId candidateId evaluationId declarationId checkId capturedAt",
+        );
+      r.projection = projection;
+    }
     if (r.review) r.review = fields(r.review, "actorId at reason");
     if (r.update) r.update = fields(r.update, "proposalId evaluationId");
     if (r.provenance)
