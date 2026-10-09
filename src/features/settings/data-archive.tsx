@@ -4,6 +4,7 @@ import type { FunctionReturnType } from "convex/server";
 import { Download } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import type { IntelligenceFamily } from "../../../convex/operations/exportIntelligence";
 import type { SharedFamily } from "../../../convex/operations/exportShared";
 import { authClient } from "@/lib/auth-client";
 import { useStore } from "@/lib/store";
@@ -11,6 +12,235 @@ import { Button } from "@/components/ui/button";
 import { Section } from "@/components/shared";
 
 type Archive = FunctionReturnType<typeof api.operations.exportShared.shared>;
+const intelligenceFamilies: Record<IntelligenceFamily, string> = {
+  assessments: "Jev-Bewertungen",
+  ownAssessmentRequests: "Eigene Bewertungsanfragen",
+  ownRecommendationReceipts: "Eigene Übernahmebelege",
+  ownRoutingOperations: "Eigene Routingvorgänge",
+  ownContentRequests: "Eigene Inhaltsanfragen",
+  ownStandaloneVerifications: "Eigene Inhaltsprüfungen",
+  algorithmProfiles: "Algorithmusprofile",
+  audienceProfiles: "Zielgruppenprofile",
+  intelligenceSelections: "Intelligence-Auswahl",
+  intelligenceProfileReceipts: "Intelligence-Änderungen",
+  intelligenceSourceUpdates: "Öffentliche Quellprüfungen",
+  styleVersions: "Stilversionen",
+  styleControls: "Stilauswahl",
+  learningProposals: "Stilvorschläge",
+  styleCommands: "Stiländerungen",
+};
+type IntelligenceArchive = FunctionReturnType<
+  typeof api.operations.exportIntelligence.page
+>;
+const intelligenceFields: Record<IntelligenceFamily, string> = {
+  assessments:
+    "id accountId draftId draftVersionId versionNumber algorithmId audienceId inputVersion createdAt sourceUntil attemptId provenance result",
+  ownAssessmentRequests:
+    "id actorId accountId draftId draftVersionId algorithmId audienceId selectionRevision mode deadline createdAt sourceUntil materialAvailability",
+  ownRecommendationReceipts:
+    "id accountId actorId baseVersionId versionId revision createdAt",
+  ownRoutingOperations:
+    "id accountId actorId ideaId inputVersionId inputRevision createdAt deadline questionVersion normalizationVersion sourceUntil sourceUnavailable status materialAvailability intent result style policyId attemptId provenance",
+  ownContentRequests:
+    "id accountId actorId ideaId inputVersionId inputRevision createdAt runId resultIdeaId outputKind routingOperationId compositeParentId compositeStage materialAvailability sourceUntil intent verification composite",
+  ownStandaloneVerifications:
+    "contentRequestId accountId kind actorId candidateVersionId producerRunId inputVersionId startedAt deadline sourceUntil state sourceUnavailable materialAvailability result stickyRisk",
+  algorithmProfiles:
+    "id accountId network surface createdBy createdAt status review retiredAt update payload",
+  audienceProfiles:
+    "id accountId network surface createdBy createdAt status review retiredAt payload",
+  intelligenceSelections:
+    "id accountId network surface revision algorithmId audienceId selectedBy updatedAt",
+  intelligenceProfileReceipts:
+    "id accountId network surface actorId revision action reason algorithmId audienceId createdAt",
+  intelligenceSourceUpdates:
+    "id accountId network surface kind actorId baseProfileId baseCommit headCommit createdAt expectedPaths full state deadline notBefore finishedAt requests bytes error errorRedacted proposalId observation checkId variant refs interpretation impact rationale fullSourceReview reference",
+  styleVersions:
+    "id accountId createdBy createdAt declaredBy declaredAt selfDeclaration baseVersionId proposalId sourceUntil sourceUnavailable status materialAvailability payload reason",
+  styleControls:
+    "id accountId revision selectedVersionId selectedBy selectionReceiptId updatedAt",
+  learningProposals:
+    "id accountId createdBy createdAt baseVersionId baseSelectionReceiptId feedbackId draftId beforeVersionId resultingVersionId beforeUntil resultUntil sourceUntil ownExamples state decidedBy decidedAt resultVersionId sourceUnavailable materialAvailability preferences reason decisionReason",
+  styleCommands:
+    "id accountId actorId revision action versionId proposalId createdAt sourceUnavailable materialAvailability reason",
+};
+const fields = (value: unknown, keys: string) => pick(value, keys.split(" "));
+function items(value: unknown, project: (v: unknown) => unknown) {
+  if (!Array.isArray(value)) throw Error("EXPORT_DATA_UNAVAILABLE");
+  return value.map(project);
+}
+function verificationData(value: unknown) {
+  const r = fields(value, intelligenceFields.ownStandaloneVerifications);
+  if (r.result) {
+    const result = fields(
+      r.result,
+      "candidateVersionId questionVersion normalizationVersion thresholdVersion model decision criteria reasonKeys",
+    );
+    const criteria = fields(
+      result.criteria,
+      "meaningPreserved intentPreserved newStrongClaim unwantedPromotion toneFits ctaFits networkFits",
+    );
+    result.criteria = Object.fromEntries(
+      Object.entries(criteria).map(([k, v]) => [
+        k,
+        fields(v, "probability applicability"),
+      ]),
+    );
+    r.result = result;
+  }
+  if (r.stickyRisk)
+    r.stickyRisk = fields(r.stickyRisk, "candidateVersionId reasonKeys");
+  return r;
+}
+function styleData(value: unknown) {
+  const r = fields(
+    value,
+    "author experiences tone positioning pillars examples forbidden",
+  );
+  if (r.pillars) r.pillars = items(r.pillars, (p) => fields(p, "name weight"));
+  return r;
+}
+function intelligenceData(data: IntelligenceArchive["data"]) {
+  const family = data.selection.family;
+  const rows = data.selection.rows.map((row) => {
+    if (family === "ownStandaloneVerifications") return verificationData(row);
+    const r = fields(row, intelligenceFields[family]);
+    if (r.review) r.review = fields(r.review, "actorId at reason");
+    if (r.update) r.update = fields(r.update, "proposalId evaluationId");
+    if (r.provenance)
+      r.provenance = fields(
+        r.provenance,
+        "policyId policyVersion requestedModel resolvedModel inputTokens outputTokens sentAt settledAt latencyMs selectionRevision",
+      );
+    if (family === "ownRoutingOperations") {
+      if (r.intent) {
+        r.intent = fields(
+          r.intent,
+          "intent outputKind strategy network objective tone cta media",
+        );
+        const i = r.intent as Record<string, unknown>;
+        if (i.media) i.media = items(i.media, (m) => fields(m, "assetId alt"));
+      }
+      if (r.result)
+        r.result = fields(
+          r.result,
+          "status category choiceConfidence suggestion effectiveStrategy generatorKind thresholdVersion",
+        );
+      if (r.style)
+        r.style = fields(
+          r.style,
+          "versionId selectedBy selectionReceiptId sourceUntil",
+        );
+    }
+    if (family === "ownContentRequests") {
+      if (r.verification) r.verification = verificationData(r.verification);
+      if (r.composite) {
+        const c = fields(
+          r.composite,
+          "kind actorId startedAt deadline sourceUntil sourceUnavailable state currency maxCostMicros maxCalls maxToolSteps repairRequestId repairRunId repairedCandidateVersionId materialAvailability first final stickyRisk",
+        );
+        if (c.first) c.first = verificationData(c.first);
+        if (c.final) c.final = verificationData(c.final);
+        if (c.stickyRisk)
+          c.stickyRisk = fields(c.stickyRisk, "candidateVersionId reasonKeys");
+        r.composite = c;
+      }
+    }
+    if (family === "styleVersions" && r.payload)
+      r.payload = styleData(r.payload);
+    if (r.preferences) r.preferences = styleData(r.preferences);
+    if (family === "audienceProfiles" && r.payload)
+      r.payload = fields(
+        r.payload,
+        "version description source measurement embedding",
+      );
+    if (family === "algorithmProfiles" && r.payload) {
+      const p = fields(
+        r.payload,
+        "version repository commit commitAt observedAt reviewDueAt validityBasis sourceScope productionState scoringInfluence evidence report refs",
+      );
+      p.evidence = items(p.evidence, (e) => fields(e, "path url sha256"));
+      p.refs = fields(
+        p.refs,
+        "formula routing verification questionSet normalization",
+      );
+      r.payload = p;
+    }
+    if (family === "intelligenceSourceUpdates") {
+      if (r.refs)
+        r.refs = fields(
+          r.refs,
+          "formula routing verification questionSet normalization",
+        );
+      if (r.reference) {
+        const ref = fields(r.reference, "version passed outcomes");
+        ref.outcomes = items(ref.outcomes, (o) =>
+          fields(o, "case outcome aggregate"),
+        );
+        r.reference = ref;
+      }
+      if (r.observation) {
+        const o = fields(
+          r.observation,
+          "commit commitAt observedAt reviewDueAt compareUrl complete issues evidence changes",
+        );
+        o.evidence = items(o.evidence, (e) => fields(e, "path url sha256"));
+        o.changes = items(o.changes, (c) =>
+          fields(c, "path status url patch patchState"),
+        );
+        r.observation = o;
+      }
+    }
+    if (family === "assessments" && r.result) {
+      const result = fields(
+        r.result,
+        "outcome answers score deterministic questionVersion normalizationVersion",
+      );
+      if (result.answers && typeof result.answers === "object")
+        result.answers = Object.fromEntries(
+          Object.entries(result.answers).map(([k, a]) => [
+            k,
+            fields(a, "type value confidence probability"),
+          ]),
+        );
+      if (result.score) {
+        const score = fields(
+          result.score,
+          "formulaVersion thresholdVersion thresholdBasis minimumConfidence weights aggregate missing lowConfidence history audienceFit",
+        );
+        score.weights = fields(
+          score.weights,
+          "hookStrength clarity discussionPotential originality naturalCta structure history",
+        );
+        score.history = fields(score.history, "value basis");
+        result.score = score;
+      }
+      if (result.deterministic) {
+        const d = fields(
+          result.deterministic,
+          "version segments media structure",
+        );
+        d.segments = items(d.segments, (s) =>
+          fields(
+            s,
+            "position length lengthValid hashtags mentions links lines questionMarks explicitCtaSigns repeatedParagraphs structure",
+          ),
+        );
+        d.media = fields(d.media, "present count images videos withAlt");
+        result.deterministic = d;
+      }
+      r.result = result;
+    }
+    return r;
+  });
+  return {
+    format: data.format,
+    version: data.version,
+    workspaceId: data.workspaceId,
+    selection: { family, rows },
+  };
+}
+
 const privateFamilies = {
   conversations: "Eigene Unterhaltungen",
   conversationMessages: "Eigene Chatnachrichten",
@@ -24,7 +254,7 @@ const privateFamilies = {
   workflowSteps: "Research-Ablaufschritte",
 };
 type PrivateFamily = keyof typeof privateFamilies;
-type Family = SharedFamily | PrivateFamily;
+type Family = SharedFamily | PrivateFamily | IntelligenceFamily;
 type PrivateArchive = FunctionReturnType<
   (typeof api.operations.exportPrivate)[PrivateFamily]
 >;
@@ -359,6 +589,10 @@ export function NativeArchiveExport() {
   const [family, setFamily] = useState<Family>(
     ["Owner", "Admin"].includes(state.role) ? "drafts" : "conversations",
   );
+  const [draftId, setDraftId] = useState("");
+  const [updateKind, setUpdateKind] = useState<
+    "check" | "proposal" | "evaluation"
+  >("check");
   const [conversationId, setConversationId] = useState("");
   const [profileId, setProfileId] = useState("");
   const [orderId, setOrderId] = useState("");
@@ -367,6 +601,8 @@ export function NativeArchiveExport() {
     "web-search" | "x-recent" | "x-trends"
   >("web-search");
   const privateFamily = family in privateFamilies;
+  const intelligenceFamily = family in intelligenceFamilies;
+  const ownIntelligence = intelligenceFamily && family.startsWith("own");
   const needsConversation = [
     "conversationMessages",
     "conversationOperations",
@@ -379,12 +615,16 @@ export function NativeArchiveExport() {
     "researchMessages",
     "workflowSteps",
   ].includes(family);
-  const allowed = privateFamily
-    ? family !== "publicOrders" || ["Owner", "Admin"].includes(state.role)
-    : ["Owner", "Admin"].includes(state.role);
+  const allowed =
+    ownIntelligence ||
+    (privateFamily
+      ? family !== "publicOrders" || ["Owner", "Admin"].includes(state.role)
+      : ["Owner", "Admin"].includes(state.role));
   const ready =
     allowed &&
-    (!privateFamily || !!state.activeAccountId) &&
+    (!(privateFamily || (intelligenceFamily && !ownIntelligence)) ||
+      !!state.activeAccountId) &&
+    (family !== "assessments" || !!draftId) &&
     (!needsConversation || !!conversationId) &&
     (!needsOrder || !!orderId) &&
     (family !== "publicOrders" || !!profileId) &&
@@ -396,7 +636,7 @@ export function NativeArchiveExport() {
   const workspaceId = state.activeWorkspaceId,
     accountId = state.activeAccountId,
     role = state.role;
-  const scope = `${nativeScope}:${authId}:${sessionId}:${workspaceId}:${accountId}:${role}:${family}:${conversationId}:${profileId}:${orderId}:${operationId}:${operation}`;
+  const scope = `${nativeScope}:${authId}:${sessionId}:${workspaceId}:${accountId}:${role}:${family}:${conversationId}:${profileId}:${orderId}:${operationId}:${operation}:${draftId}:${updateKind}`;
   const current = useRef({ scope, epoch: 0 });
   if (current.current.scope !== scope)
     current.current = { scope, epoch: current.current.epoch + 1 };
@@ -486,7 +726,7 @@ export function NativeArchiveExport() {
         cursor: sent.cursor,
       };
       const offset = sent.cursor === null ? 0 : Number(sent.cursor);
-      let raw: Archive | PrivateArchive;
+      let raw: Archive | PrivateArchive | IntelligenceArchive;
       switch (family) {
         case "conversations":
           raw = await convex.query(api.operations.exportPrivate.conversations, {
@@ -558,12 +798,26 @@ export function NativeArchiveExport() {
           });
           break;
         default:
-          raw = await convex.query(api.operations.exportShared.shared, {
-            ...common,
-            family,
-            cursor: sent.cursor,
-            creationUpperBound: sent.creationUpperBound,
-          });
+          raw = intelligenceFamily
+            ? await convex.query(api.operations.exportIntelligence.page, {
+                ...common,
+                family: family as IntelligenceFamily,
+                ...(ownIntelligence ? {} : { accountId: parent.accountId }),
+                ...(family === "assessments"
+                  ? { draftId: draftId as Id<"drafts"> }
+                  : {}),
+                ...(family === "intelligenceSourceUpdates"
+                  ? { kind: updateKind }
+                  : {}),
+                cursor: sent.cursor,
+                creationUpperBound: sent.creationUpperBound,
+              })
+            : await convex.query(api.operations.exportShared.shared, {
+                ...common,
+                family: family as SharedFamily,
+                cursor: sent.cursor,
+                creationUpperBound: sent.creationUpperBound,
+              });
       }
       const result = {
         ...raw,
@@ -584,9 +838,11 @@ export function NativeArchiveExport() {
         result.data.workspaceId !== workspaceId ||
         result.role !== role ||
         result.data.format !==
-          (privateFamily
-            ? "dispatch-workspace-private"
-            : "dispatch-workspace-shared") ||
+          (intelligenceFamily
+            ? "dispatch-workspace-intelligence"
+            : privateFamily
+              ? "dispatch-workspace-private"
+              : "dispatch-workspace-shared") ||
         result.data.version !== 1 ||
         result.data.selection.family !== family ||
         result.data.selection.rows.length > 1 ||
@@ -602,6 +858,15 @@ export function NativeArchiveExport() {
             Object.is(result.creationUpperBound, -0) ||
             result.creationUpperBound < 0 ||
             result.creationUpperBound > result.observedAt)) ||
+        (intelligenceFamily &&
+          (!("kind" in raw) ||
+            raw.kind !==
+              (family === "intelligenceSourceUpdates" ? updateKind : null) ||
+            !("draftId" in raw) ||
+            raw.draftId !== (family === "assessments" ? draftId : null) ||
+            !("accountId" in raw) ||
+            raw.accountId !== (ownIntelligence ? null : accountId) ||
+            result.creationUpperBound === null)) ||
         (privateFamily &&
           ("accountId" in raw ? raw.accountId !== accountId : true)) ||
         (needsConversation &&
@@ -635,9 +900,11 @@ export function NativeArchiveExport() {
         throw new Error("EXPORT_SCOPE_CHANGED");
       revoke();
       if (result.data.selection.rows.length) {
-        const payload = privateFamily
-          ? privateData(result.data as PrivateArchive["data"])
-          : downloadData(result.data as Archive["data"]);
+        const payload = intelligenceFamily
+          ? intelligenceData(result.data as IntelligenceArchive["data"])
+          : privateFamily
+            ? privateData(result.data as PrivateArchive["data"])
+            : downloadData(result.data as Archive["data"]);
         const serialized = JSON.stringify(payload);
         if (new TextEncoder().encode(serialized).length > 64 * 1024)
           throw Error("EXPORT_DATA_UNAVAILABLE");
@@ -717,6 +984,12 @@ export function NativeArchiveExport() {
         {Object.entries({
           ...(["Owner", "Admin"].includes(role) ? families : {}),
           ...privateFamilies,
+          ...Object.fromEntries(
+            Object.entries(intelligenceFamilies).filter(
+              ([key]) =>
+                key.startsWith("own") || ["Owner", "Admin"].includes(role),
+            ),
+          ),
         })
           .filter(
             ([value]) =>
@@ -734,6 +1007,37 @@ export function NativeArchiveExport() {
           Unterhaltungs-, Vorgangs- oder Research-Archivseiten. Jeder
           übergeordnete Datensatz wird erneut geprüft.
         </p>
+      )}
+      {intelligenceFamily && (
+        <p className="muted text-sm mb-3">
+          Eigene Vorgänge umfassen den Workspace. Gemeinsame Profile und
+          Bewertungen verwenden den aktiven Account. Nicht mehr freigegebene
+          Inhalte sind ausdrücklich als nicht verfügbar gekennzeichnet.
+        </p>
+      )}
+      {family === "assessments" && (
+        <label className="block text-sm mb-3">
+          Entwurf-ID
+          <input
+            className="native-input block"
+            value={draftId}
+            onChange={(e) => setDraftId(e.target.value.trim())}
+          />
+        </label>
+      )}
+      {family === "intelligenceSourceUpdates" && (
+        <label className="block text-sm mb-3">
+          Quellverlauf
+          <select
+            className="native-select block"
+            value={updateKind}
+            onChange={(e) => setUpdateKind(e.target.value as typeof updateKind)}
+          >
+            <option value="check">Prüfungen</option>
+            <option value="proposal">Vorschläge</option>
+            <option value="evaluation">Bewertungen</option>
+          </select>
+        </label>
       )}
       {needsConversation && (
         <label className="block text-sm mb-3">

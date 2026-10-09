@@ -404,7 +404,7 @@ export const fund = internalMutation({
     return attemptId;
   },
 });
-async function receipt(ctx: Ctx, id: Id<"aiAttempts">) {
+export async function analyzerReceipt(ctx: Ctx, id: Id<"aiAttempts">) {
   const t = await ctx.db.get(id);
   if (
     !t ||
@@ -466,7 +466,7 @@ export const settle = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
-    const t = await receipt(ctx, a.attemptId);
+    const t = await analyzerReceipt(ctx, a.attemptId);
     const known =
       a.inputTokens !== null &&
       a.outputTokens !== null &&

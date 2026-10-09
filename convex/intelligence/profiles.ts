@@ -35,6 +35,20 @@ export async function authorized(
 }
 // Legacy profiles have no update provenance and retain their original contract.
 export async function updateProof(ctx: QueryCtx, p: Doc<"algorithmProfiles">) {
+  return profileUpdateProof(ctx, p, true);
+}
+// Archive declarations keep their exact structural provenance after the live review window.
+export async function retainedUpdateProof(
+  ctx: QueryCtx,
+  p: Doc<"algorithmProfiles">,
+) {
+  return profileUpdateProof(ctx, p, false);
+}
+async function profileUpdateProof(
+  ctx: QueryCtx,
+  p: Doc<"algorithmProfiles">,
+  live: boolean,
+) {
   if (!p.update) return true;
   const proposal = await ctx.db.get(p.update.proposalId),
     evaluation = await ctx.db.get(p.update.evaluationId);
@@ -95,7 +109,7 @@ export async function updateProof(ctx: QueryCtx, p: Doc<"algorithmProfiles">) {
     p.payload.commitAt !== proposal.observation.commitAt ||
     p.payload.observedAt !== proposal.observation.observedAt ||
     p.payload.reviewDueAt !== proposal.observation.reviewDueAt ||
-    p.payload.reviewDueAt <= Date.now() ||
+    (live && p.payload.reviewDueAt <= Date.now()) ||
     JSON.stringify(p.payload.evidence) !==
       JSON.stringify(proposal.observation.evidence) ||
     Object.entries(p.payload.refs).some(
@@ -110,7 +124,7 @@ export async function updateProof(ctx: QueryCtx, p: Doc<"algorithmProfiles">) {
     evaluation.createdAt >= proposal.observation.reviewDueAt ||
     !evaluation.reference.passed ||
     evaluation.reference.version !== "source-compatibility-v1" ||
-    !(await authorized(ctx, p.workspaceId, evaluation.actorId))
+    (live && !(await authorized(ctx, p.workspaceId, evaluation.actorId)))
   )
     return false;
   const contract = await sourceReferenceContract(p);

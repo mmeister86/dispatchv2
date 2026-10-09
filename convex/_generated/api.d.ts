@@ -92,6 +92,7 @@ import type * as media_r2 from "../media/r2.js";
 import type * as media_uploads from "../media/uploads.js";
 import type * as media_validation from "../media/validation.js";
 import type * as operations_export from "../operations/export.js";
+import type * as operations_exportIntelligence from "../operations/exportIntelligence.js";
 import type * as operations_exportPrivate from "../operations/exportPrivate.js";
 import type * as operations_exportShared from "../operations/exportShared.js";
 import type * as operations_githubAlerts from "../operations/githubAlerts.js";
@@ -250,6 +251,7 @@ declare const fullApi: ApiFromModules<{
   "media/uploads": typeof media_uploads;
   "media/validation": typeof media_validation;
   "operations/export": typeof operations_export;
+  "operations/exportIntelligence": typeof operations_exportIntelligence;
   "operations/exportPrivate": typeof operations_exportPrivate;
   "operations/exportShared": typeof operations_exportShared;
   "operations/githubAlerts": typeof operations_githubAlerts;

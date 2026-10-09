@@ -440,7 +440,7 @@ async function semantic(
   );
 }
 const source = routingSourceProof;
-async function retained(
+export async function retainedRoutingProof(
   ctx: Ctx,
   o: Operation,
   walk: MaterialWalk = materialWalk(),
@@ -581,7 +581,7 @@ export async function routingProof(
       o.inputRevision !== pin.inputRevision
     )
       fail("ROUTING_RECEIPT_INVALID");
-    const kept = await retained(ctx, o, walk);
+    const kept = await retainedRoutingProof(ctx, o, walk);
     if (
       !o.intent ||
       o.intent.intent !== pin.intent ||
@@ -680,7 +680,7 @@ export const prepare = workspaceMutation({
     if (old) {
       if (old.commandFingerprint !== commandFingerprint)
         fail("ROUTING_OPERATION_CONFLICT");
-      await retained(ctx, old);
+      await retainedRoutingProof(ctx, old);
       await source(ctx, old, true);
       return old._id;
     }
@@ -832,7 +832,9 @@ export const get = workspaceQuery({
   handler: async (ctx, a) => {
     const o = await operation(ctx, a.operationId);
     requireReference(ctx.workspace._id, o);
-    const t = o.attemptId ? await receipt(ctx, o.attemptId, o._id) : null;
+    const t = o.attemptId
+      ? await routingReceipt(ctx, o.attemptId, o._id)
+      : null;
     const money = {
       deadline: o.deadline,
       usage: t
@@ -845,7 +847,7 @@ export const get = workspaceQuery({
         : null,
     };
     try {
-      const x = await retained(ctx, o);
+      const x = await retainedRoutingProof(ctx, o);
       try {
         await source(ctx, o, true);
         if (o.policyId) await current(ctx, o, false);
@@ -968,7 +970,7 @@ export const authorizeFetch = internalQuery({
   handler: async (ctx, a) => {
     const o = await operation(ctx, a.operationId),
       x = await current(ctx, o),
-      t = await receipt(ctx, a.attemptId);
+      t = await routingReceipt(ctx, a.attemptId);
     if (
       o.attemptId !== t._id ||
       t.routingOperationId !== o._id ||
@@ -979,7 +981,7 @@ export const authorizeFetch = internalQuery({
     return null;
   },
 });
-async function receipt(
+export async function routingReceipt(
   ctx: Ctx,
   id: Id<"aiAttempts">,
   expectedOperationId?: Id<"jevRoutingOperations">,
@@ -1073,7 +1075,7 @@ export const settle = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
-    const t = await receipt(ctx, a.attemptId),
+    const t = await routingReceipt(ctx, a.attemptId),
       known =
         a.inputTokens !== null &&
         a.outputTokens !== null &&
@@ -1209,7 +1211,7 @@ export const finish = internalMutation({
       };
     }
     if (o.attemptId) {
-      const t = await receipt(ctx, o.attemptId, o._id);
+      const t = await routingReceipt(ctx, o.attemptId, o._id);
       if (t.outcome !== a.outcome) fail("ROUTING_RECEIPT_INVALID");
     } else if (a.outcome !== "unavailable") fail("ROUTING_RECEIPT_INVALID");
     await ctx.db.patch(o._id, { result });
@@ -1254,7 +1256,7 @@ async function erase(ctx: MutationCtx, o: Operation) {
 async function cleanup(ctx: MutationCtx, o: Operation, force = false) {
   if (force) return erase(ctx, o);
   try {
-    await retained(ctx, o);
+    await retainedRoutingProof(ctx, o);
   } catch (error) {
     routingLoss(error);
     await erase(ctx, o);
@@ -1474,7 +1476,7 @@ export const admitConsumer = workspaceInternalQuery({
     const o = await operation(ctx, a.operationId);
     requireReference(ctx.workspace._id, o);
     if (o.actorId !== ctx.user._id) fail("ROUTING_AUTHORITY_UNAVAILABLE");
-    await retained(ctx, o);
+    await retainedRoutingProof(ctx, o);
     await source(ctx, o, true);
     return null;
   },

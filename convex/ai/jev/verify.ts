@@ -1117,6 +1117,19 @@ export const finish = internalMutation({
     return null;
   },
 });
+export async function retainedVerificationProof(
+  ctx: Ctx,
+  r: Doc<"contentRequests">,
+  s: Slot,
+  walk: MaterialWalk = materialWalk(),
+) {
+  if (s.sourceUnavailable) fail("VERIFICATION_SOURCE_UNAVAILABLE");
+  const kept = await packet(ctx, r, s, false, walk),
+    sourceUntil = minimum(s.sourceUntil, kept.sourceUntil);
+  if (sourceUntil !== null && sourceUntil <= Date.now())
+    fail("VERIFICATION_SOURCE_UNAVAILABLE");
+  return sourceUntil;
+}
 export async function verificationProjection(
   ctx: Ctx,
   ref: Ref,
@@ -1141,11 +1154,7 @@ export async function verificationProjection(
       : null,
   };
   try {
-    if (s.sourceUnavailable) fail("VERIFICATION_SOURCE_UNAVAILABLE");
-    const kept = await packet(ctx, r, s, false),
-      sourceUntil = minimum(s.sourceUntil, kept.sourceUntil);
-    if (sourceUntil !== null && sourceUntil <= Date.now())
-      fail("VERIFICATION_SOURCE_UNAVAILABLE");
+    const sourceUntil = await retainedVerificationProof(ctx, r, s);
     let applicability: "current" | "historical" = "current";
     try {
       await current(ctx, ref, false);

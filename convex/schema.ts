@@ -439,11 +439,15 @@ export default defineSchema({
     .index("by_postAttemptId_and_windowHours", ["postAttemptId", "windowHours"])
     .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
     .index("by_expiresAt", ["expiresAt"]),
-  recommendationReceipts: defineTable(recommendationReceiptFields).index(
-    "by_workspaceId_and_actorId_and_operationKey",
-    ["workspaceId", "actorId", "operationKey"],
-  ),
+  recommendationReceipts: defineTable(recommendationReceiptFields)
+    .index("by_workspaceId_and_actorId", ["workspaceId", "actorId"])
+    .index("by_workspaceId_and_actorId_and_operationKey", [
+      "workspaceId",
+      "actorId",
+      "operationKey",
+    ]),
   jevAssessmentRequests: defineTable(assessmentRequestFields)
+    .index("by_workspaceId_and_actorId", ["workspaceId", "actorId"])
     .index("by_request_draftVersionId", ["request.draftVersionId"])
     .index("by_createdAt", ["createdAt"])
     .index("by_workspaceId_and_actorId_and_operationKey", [
@@ -730,6 +734,11 @@ export default defineSchema({
 
     .index("by_ideaId", ["ideaId"]),
   contentRequests: defineTable(requestFields)
+    .index("by_workspaceId_and_actorId", ["workspaceId", "actorId"])
+    .index("by_workspaceId_and_verification_actorId", [
+      "workspaceId",
+      "verification.actorId",
+    ])
     .index("by_compositeParentId", ["compositeParentId"])
     .index("by_composite_actor", [
       "composite.actorId",
@@ -770,6 +779,7 @@ export default defineSchema({
     ])
     .index("by_ideaId_and_createdAt", ["ideaId", "createdAt"]),
   jevRoutingOperations: defineTable(routingOperationFields)
+    .index("by_workspaceId_and_actorId", ["workspaceId", "actorId"])
     .index("by_command", ["workspaceId", "actorId", "operationKey"])
     .index("by_input", ["inputVersionId", "sourceUnavailable"])
     .index("by_idea", ["ideaId", "sourceUnavailable"])

@@ -275,7 +275,7 @@ export async function versionProof(
     w.active.delete(version._id);
   }
 }
-async function proposalProof(
+export async function proposalProof(
   ctx: QueryCtx,
   p: Doc<"learningProposals">,
   w: Walk = walk(),
@@ -699,23 +699,26 @@ async function projectProposal(
     };
   }
 }
-async function projectCommand(
+export async function commandProof(
   ctx: QueryCtx,
   row: Doc<"styleProfileCommands">,
   reads?: Reads,
 ) {
-  try {
-    if (row.sourceUnavailable)
-      throw new ConvexError("STYLE_SOURCE_UNAVAILABLE");
-    await account(ctx, row.workspaceId, row.accountId, reads);
-    await authorized(ctx, row.workspaceId, row.actorId, reads);
-    if (row.versionId)
+  const w = walk(false, 32, reads),
+    horizons: (number | null)[] = [];
+  if (row.sourceUnavailable) throw new ConvexError("STYLE_SOURCE_UNAVAILABLE");
+  await account(ctx, row.workspaceId, row.accountId, reads);
+  await authorized(ctx, row.workspaceId, row.actorId, reads);
+  if (row.versionId)
+    horizons.push(
       await versionProof(
         ctx,
         await scoped(ctx, row.versionId, row.workspaceId, row.accountId, reads),
-        walk(false, 32, reads),
-      );
-    if (row.proposalId)
+        w,
+      ),
+    );
+  if (row.proposalId)
+    horizons.push(
       await proposalProof(
         ctx,
         await scoped(
@@ -725,8 +728,18 @@ async function projectCommand(
           row.accountId,
           reads,
         ),
-        walk(false, 32, reads),
-      );
+        w,
+      ),
+    );
+  return minimum(...horizons);
+}
+async function projectCommand(
+  ctx: QueryCtx,
+  row: Doc<"styleProfileCommands">,
+  reads?: Reads,
+) {
+  try {
+    await commandProof(ctx, row, reads);
     return row;
   } catch (error) {
     rethrowUnexpectedSourceError(error);
