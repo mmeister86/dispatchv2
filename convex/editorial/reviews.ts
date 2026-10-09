@@ -61,7 +61,7 @@ export function loss(error: unknown) {
     throw error;
   rethrowUnexpectedSourceError(error);
 }
-async function reviewer(
+export async function reviewer(
   ctx: Ctx,
   workspaceId: Id<"workspaces">,
   userId: Id<"users">,
@@ -313,7 +313,10 @@ export function commandInput(key: string, revision: number) {
   )
     throw new ConvexError("REVIEW_COMMAND_INVALID");
 }
-async function commandSource(ctx: Ctx, c: Doc<"editorialReviewCommands">) {
+export async function commandSource(
+  ctx: Ctx,
+  c: Doc<"editorialReviewCommands">,
+) {
   await reviewer(
     ctx,
     c.workspaceId,

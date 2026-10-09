@@ -1,3 +1,4 @@
+import { NativeArchiveExport } from "@/features/settings/data-archive";
 import { NativeNotificationSettings } from "@/features/settings/notifications";
 import {
   NativeProfileExport,
@@ -173,7 +174,10 @@ export function SettingsPage() {
               <NativeProfileExport key={nativeScope} />
               <NativePreferencesExport key={`preferences:${nativeScope}`} />
               {admin && (
-                <WorkspaceVersionsExport key={`versions:${nativeScope}`} />
+                <>
+                  <WorkspaceVersionsExport key={`versions:${nativeScope}`} />
+                  <NativeArchiveExport key={`archive:${nativeScope}`} />
+                </>
               )}
             </>
           ) : !demoMode && !["profile", "workspaces"].includes(tab) ? (

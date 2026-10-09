@@ -11,7 +11,7 @@ const mocks = {
   "convex/react": `import React from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
 const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';if(name==='preferences:dismissResearchSummaries')return new Promise((resolve,reject)=>window.summaryCommands.push({args,resolve,reject}));if(name==='publishing/notices:read'||name==='publishing/notices:dismiss')return new Promise((resolve,reject)=>window.publishingCommands.push({name,args,sessionId:window.session.session.id,resolve,reject}));if(name==='preferences:saveNotifications')return new Promise((resolve,reject)=>window.preferenceSaves.push({args,sessionId:window.session.session.id,resolve,reject}));throw new Error('No domain writes in health fixture');});return funcs.get(name)};
-export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(!['operations/export:self','operations/export:versions','operations/export:preferences'].includes(name))throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>name==='operations/export:versions'?window.versionRequests.push({args,resolve,reject}):name==='operations/export:preferences'?window.preferencesExportRequests.push({args,resolve,reject}):window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
+export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(!['operations/export:self','operations/export:versions','operations/export:preferences','operations/exportShared:shared'].includes(name))throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>name==='operations/exportShared:shared'?window.archiveRequests.push({args,resolve,reject}):name==='operations/export:versions'?window.versionRequests.push({args,resolve,reject}):name==='operations/export:preferences'?window.preferencesExportRequests.push({args,resolve,reject}):window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
 export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='preferences:researchSummaries'){if(window.summaryError)throw Error('PRIVATE_PROVIDER_ERROR');return window.summaryByKey[args.requestKey];}if(name==='preferences:notifications'){if(window.preferenceError)throw Error('PRIVATE_PROVIDER_ERROR');return window.preferenceByKey[args.requestKey];}if(name==='operations/githubAlerts:get'){if(window.githubError)throw Error('PRIVATE_PROVIDER_ERROR');return window.githubByKey[args.refreshKey];}if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
 export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});if(name==='publishing/notices:list'){if(window.publishingError)throw Error('PRIVATE_PROVIDER_ERROR');return {results:window.publishingNotices.map(n=>({...n,requestKey:n.requestKey??args.requestKey})),status:window.publishingStatus,loadMore(){window.publishingLoads++}}}return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
@@ -76,6 +76,7 @@ try {
     window.exportRequests = [];
     window.preferencesExportRequests = [];
     window.versionRequests = [];
+    window.archiveRequests = [];
     window.preferenceSaves = [];
     window.summaryCommands = [];
     window.summaryByKey = {};
@@ -1119,6 +1120,211 @@ try {
   expect(await page.locator("main").innerText()).not.toContain(
     "PRIVATE_PREFERENCES_HANDOFF_FAILURE",
   );
+
+  // TASK-33.1: shared family archive uses the real Settings consumer and download.
+  await page.goto("http://127.0.0.1:5189/settings/data");
+  const archiveButton = page.getByRole("button", {
+    name: /Archivseite herunterladen/,
+  });
+  const resolveArchive = (patch = {}, index = -1) =>
+    page.evaluate(
+      ({ patch, index }) => {
+        const r = window.archiveRequests.at(index),
+          observedAt = Date.now();
+        r.resolve({
+          authId: r.args.expectedAuthId,
+          sessionId: r.args.expectedSessionId,
+          requestKey: r.args.requestKey,
+          workspaceId: r.args.workspaceId,
+          role: window.snapshot.workspaces[0].role,
+          observedAt,
+          proofValidUntil: observedAt + 30000,
+          creationUpperBound: r.args.creationUpperBound ?? observedAt,
+          cursor: "archive-next",
+          isDone: false,
+          data: {
+            format: "dispatch-workspace-shared",
+            version: 1,
+            workspaceId: r.args.workspaceId,
+            selection: {
+              family: r.args.family,
+              rows: [
+                {
+                  privateFingerprint: "PRIVATE_FINGERPRINT",
+                  id: "draft-shared",
+                  createdInDatabaseAt: 1,
+                  revision: 1,
+                  currentVersionId: "version-shared",
+                  authorId: "user-owner",
+                  source: "Manuell",
+                  updatedAt: 1,
+                  content: {
+                    title: "Archivinhalt",
+                    text: ["Original 🧭"],
+                    media: [
+                      {
+                        assetId: "media-reference",
+                        alt: "Alt",
+                        objectKey: "PRIVATE_OBJECT_KEY",
+                        checksum: "PRIVATE_CHECKSUM",
+                      },
+                    ],
+                    accountId: null,
+                    pillar: "Wissen",
+                    strategy: "Teilen",
+                  },
+                },
+              ],
+            },
+          },
+          ...patch,
+        });
+      },
+      { patch, index },
+    );
+  await expect(archiveButton).toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Archivbereich" }),
+  ).toBeVisible();
+  await archiveButton.click();
+  await expect(archiveButton).toBeDisabled();
+  const archiveDownload = page.waitForEvent("download");
+  await resolveArchive();
+  const archiveFile = JSON.parse(
+    readFileSync(await (await archiveDownload).path(), "utf8"),
+  );
+  expect(archiveFile.selection.rows[0].content.text).toEqual(["Original 🧭"]);
+  expect(JSON.stringify(archiveFile)).not.toMatch(
+    /authId|sessionId|requestKey|cursor|fingerprint|objectKey|checksum/,
+  );
+  await expect(archiveButton).toBeEnabled();
+  await archiveButton.click();
+  expect(
+    await page.evaluate(() => window.archiveRequests.at(-1).args.cursor),
+  ).toBe("archive-next");
+  await resolveArchive({ proofValidUntil: 1 });
+  await expect(page.getByRole("alert")).toContainText(
+    "Archiv-Export konnte nicht erstellt werden",
+  );
+  for (const field of ["session", "role", "account", "family", "workspace"]) {
+    await archiveButton.click();
+    const old = await page.evaluate(() => window.archiveRequests.length - 1),
+      before = downloadEvents.length;
+    if (field === "family") {
+      await page
+        .getByRole("combobox", { name: "Archivbereich" })
+        .selectOption("ideas");
+      await page
+        .getByRole("combobox", { name: "Archivbereich" })
+        .selectOption("drafts");
+    } else if (field === "account") {
+      await page
+        .getByRole("combobox", { name: "Aktiver Account", exact: true })
+        .selectOption("account-native");
+      await page
+        .getByRole("combobox", { name: "Aktiver Account", exact: true })
+        .selectOption("");
+    } else if (field === "workspace") {
+      for (const id of ["workspace-other", "workspace-native"]) {
+        await page.evaluate(
+          (id) =>
+            window.update({
+              snapshot: {
+                ...window.snapshot,
+                activeWorkspaceId: id,
+                workspaces: [{ ...window.snapshot.workspaces[0], id }],
+              },
+              roster: { ...window.roster, workspaceId: id },
+            }),
+          id,
+        );
+        await expect(archiveButton).toBeEnabled();
+      }
+    } else {
+      const value = await page.evaluate(
+        (field) =>
+          field === "session"
+            ? window.session.session.id
+            : window.snapshot.workspaces[0].role,
+        field,
+      );
+      for (const next of [
+        field === "session" ? "other-session" : "Admin",
+        value,
+      ]) {
+        await page.evaluate(
+          ({ field, next }) => {
+            if (field === "session")
+              window.update({
+                session: {
+                  ...window.session,
+                  session: { ...window.session.session, id: next },
+                },
+              });
+            else
+              window.update({
+                snapshot: {
+                  ...window.snapshot,
+                  workspaces: window.snapshot.workspaces.map((w) => ({
+                    ...w,
+                    role: next,
+                  })),
+                },
+              });
+          },
+          { field, next },
+        );
+        await expect(archiveButton).toBeEnabled();
+      }
+    }
+    await resolveArchive({}, old);
+    expect(downloadEvents.length).toBe(before);
+    await expect(page.getByRole("alert")).toHaveCount(0);
+  }
+  const archiveRevokes = await page.evaluate(
+    () => window.urlRevocations.length,
+  );
+  await page.evaluate(() => {
+    HTMLAnchorElement.prototype.click = () => {
+      throw Error("PRIVATE_ARCHIVE_HANDOFF_FAILURE");
+    };
+  });
+  await archiveButton.click();
+  await resolveArchive();
+  await expect(page.getByRole("alert")).toContainText(
+    "Archiv-Export konnte nicht erstellt werden",
+  );
+  expect(await page.evaluate(() => window.urlRevocations.length)).toBe(
+    archiveRevokes + 1,
+  );
+  await page.evaluate(() => {
+    HTMLAnchorElement.prototype.click = window.realAnchorClick;
+    window.archiveCreateURL = URL.createObjectURL;
+    window.archiveNow = Date.now;
+    URL.createObjectURL = (blob) => {
+      const url = window.archiveCreateURL(blob);
+      Date.now = () => window.archiveNow() + 60000;
+      return url;
+    };
+  });
+  const archiveBeforeExpiry = downloadEvents.length;
+  await archiveButton.click();
+  await resolveArchive();
+  await expect(page.getByRole("alert")).toContainText(
+    "Archiv-Export konnte nicht erstellt werden",
+  );
+  expect(downloadEvents.length).toBe(archiveBeforeExpiry);
+  await page.evaluate(() => {
+    URL.createObjectURL = window.archiveCreateURL;
+    Date.now = window.archiveNow;
+  });
+  await archiveButton.click();
+  const archiveUnmounted = await page.evaluate(
+    () => window.archiveRequests.length - 1,
+  );
+  await page.getByRole("link", { name: "Mein Profil", exact: true }).click();
+  await resolveArchive({}, archiveUnmounted);
+  expect(downloadEvents.length).toBe(archiveBeforeExpiry);
 
   // TASK-33.1.3: additive shared-version consumer controls.
   await page.goto("http://127.0.0.1:5189/settings/data");
@@ -3259,6 +3465,16 @@ try {
           fileCount: preferencesExportFiles.length,
         },
         nativeSelfProfileDownload: true,
+        sharedArchive: {
+          families: 19,
+          actualDownloadedJSON: true,
+          nextPage: true,
+          sessionRoleAccountFamilyABA: true,
+          workspaceABA: true,
+          unmount: true,
+          finiteHandoff: true,
+          failureCleanup: true,
+        },
         exportRoles: ["Owner", "Admin", "Editor", "Viewer"],
         exportFreshKeys: true,
         exportNativeCorrelationExcludedFromFiles: true,

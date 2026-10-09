@@ -318,15 +318,16 @@ export default defineSchema({
       "sourceUnavailable",
     ])
     .index("by_vectorId_and_fingerprint", ["vectorId", "fingerprint"]),
-  planningSeries: defineTable(seriesControlFields).index(
-    "by_workspaceId_and_accountId",
-    ["workspaceId", "accountId"],
-  ),
+  planningSeries: defineTable(seriesControlFields)
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"]),
   planningSeriesVersions: defineTable(seriesVersionFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_seriesId", ["seriesId"])
     .index("by_style_versionId", ["style.versionId"])
     .index("by_sourceUnavailable", ["sourceUnavailable"]),
   planningSeriesCommands: defineTable(seriesCommandFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_seriesId_and_actorId_and_commandKey", [
       "seriesId",
       "actorId",
@@ -334,9 +335,11 @@ export default defineSchema({
     ])
     .index("by_versionId", ["versionId"]),
   semanticPlanBindings: defineTable(semanticBindingFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_vectorId_and_fingerprint", ["vectorId", "fingerprint"])
     .index("by_planId", ["planId"]),
   contentPlans: defineTable(planFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_workspaceId_and_accountId_and_createdAt", [
       "workspaceId",
       "accountId",
@@ -355,6 +358,7 @@ export default defineSchema({
     .index("by_series_versionId", ["series.versionId"])
     .index("by_series_seriesId", ["series.seriesId"]),
   contentPlanItems: defineTable(itemFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_planId", ["planId"])
     .index("by_versionId", ["versionId"]),
   performanceContentPolicies: defineTable(contentPerformancePolicyFields)
@@ -365,6 +369,7 @@ export default defineSchema({
       "version",
     ]),
   contentFeedback: defineTable(contentFeedbackFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_versionId_and_actorId_and_kind_and_createdAt", [
       "versionId",
       "actorId",
@@ -689,6 +694,7 @@ export default defineSchema({
     ])
     .index("by_conversationId_and_createdAt", ["conversationId", "createdAt"]),
   ideas: defineTable(ideaFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_handoff_ideaVersionId", ["handoff.ideaVersionId"])
     .index("by_handoff_draftId", ["handoff.draftId"])
     .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"])
@@ -698,6 +704,7 @@ export default defineSchema({
       "operationKey",
     ]),
   ideaVersions: defineTable(ideaVersionFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_runId", ["runId"])
     .index("by_inputVersionId", ["inputVersionId"])
     .index("by_source_evidenceId_and_researchCleanupPending", [
@@ -710,6 +717,7 @@ export default defineSchema({
     ])
     .index("by_ideaId_and_number", ["ideaId", "number"]),
   ideaFeedback: defineTable(feedbackFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_versionId_and_researchCleanupPending", [
       "versionId",
       "researchCleanupPending",
@@ -1040,15 +1048,18 @@ export default defineSchema({
       "sourceUnavailable",
       "sourceUntil",
     ]),
-  editorialReviewPolicies: defineTable(reviewPolicyFields).index(
-    "by_workspaceId_and_accountId_and_revision",
-    ["workspaceId", "accountId", "revision"],
-  ),
-  editorialReviewControls: defineTable(reviewControlFields).index(
-    "by_workspaceId_and_accountId",
-    ["workspaceId", "accountId"],
-  ),
+  editorialReviewPolicies: defineTable(reviewPolicyFields)
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_workspaceId_and_accountId_and_revision", [
+      "workspaceId",
+      "accountId",
+      "revision",
+    ]),
+  editorialReviewControls: defineTable(reviewControlFields)
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"]),
   editorialReviewDecisions: defineTable(reviewDecisionFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_versionId_and_policyId_and_stage_and_active", [
       "versionId",
       "policyId",
@@ -1068,6 +1079,7 @@ export default defineSchema({
       "sourceUntil",
     ]),
   editorialReviewCommands: defineTable(reviewCommandFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_workspaceId_and_actorId_and_commandKey", [
       "workspaceId",
       "actorId",
@@ -1083,6 +1095,7 @@ export default defineSchema({
       "sourceUntil",
     ]),
   editorialComments: defineTable(commentFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_versionId_and_researchCleanupPending", [
       "versionId",
       "researchCleanupPending",
@@ -1098,10 +1111,9 @@ export default defineSchema({
   mediaAssets: defineTable(assetFields)
     .index("by_workspaceId", ["workspaceId"])
     .index("by_workspaceId_and_state", ["workspaceId", "state"]),
-  drafts: defineTable(draftFields).index("by_workspaceId_and_updatedAt", [
-    "workspaceId",
-    "updatedAt",
-  ]),
+  drafts: defineTable(draftFields)
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_workspaceId_and_updatedAt", ["workspaceId", "updatedAt"]),
   draftVersions: defineTable(versionFields)
     .index("by_workspaceId", ["workspaceId"])
     .index("by_candidateVersionId", ["candidateVersionId"])
@@ -1113,9 +1125,11 @@ export default defineSchema({
 
     .index("by_draftId_and_number", ["draftId", "number"]),
   approvals: defineTable(approvalFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_versionId_and_accountId", ["versionId", "accountId"])
     .index("by_draftId", ["draftId"]),
   schedules: defineTable(scheduleFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_approvalId", ["approvalId"])
     .index("by_workspaceId_and_accountId_and_state", [
       "workspaceId",
@@ -1136,10 +1150,9 @@ export default defineSchema({
       "at",
       "state",
     ]),
-  editorialEvents: defineTable(eventFields).index(
-    "by_workspaceId_and_createdAt",
-    ["workspaceId", "createdAt"],
-  ),
+  editorialEvents: defineTable(eventFields)
+    .index("by_workspaceId", ["workspaceId"])
+    .index("by_workspaceId_and_createdAt", ["workspaceId", "createdAt"]),
   publishingNotifications: defineTable(notificationFields)
     .index("by_workspaceId_and_createdAt", ["workspaceId", "createdAt"])
     .index("by_scheduleId_and_generation_and_recipientId", [

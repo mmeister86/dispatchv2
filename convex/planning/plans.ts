@@ -86,7 +86,7 @@ function days(a: {
     (_, i) => `${addCivilDays(a.start, i)}T${a.clock}`,
   );
 }
-async function candidate(
+export async function candidate(
   ctx: QueryCtx,
   draft: Doc<"drafts">,
   accountId: Id<"socialAccounts">,
@@ -229,7 +229,7 @@ async function candidate(
     validityUntil: validity,
   };
 }
-async function historyTopic(
+export async function historyTopic(
   ctx: QueryCtx,
   workspaceId: Id<"workspaces">,
   accountId: Id<"socialAccounts">,
