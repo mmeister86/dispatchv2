@@ -416,7 +416,7 @@ const payload = v.union(
   }),
 );
 
-function numeric(value: unknown): void {
+export function numeric(value: unknown): void {
   if (
     typeof value === "number" &&
     (!Number.isFinite(value) || Object.is(value, -0))
@@ -432,7 +432,10 @@ function binding(ok: boolean): asserts ok {
   if (!ok) throw new ConvexError("REFERENCE_ACCESS_DENIED");
 }
 // Original proof helpers may conflate missing and foreign references; enforce tenant boundaries before they interpret any row.
-function proofContext(ctx: QueryCtx, workspaceId: Id<"workspaces">): QueryCtx {
+export function proofContext(
+  ctx: QueryCtx,
+  workspaceId: Id<"workspaces">,
+): QueryCtx {
   const check = (value: unknown) => {
     numeric(value);
     if (

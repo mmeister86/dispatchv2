@@ -173,10 +173,10 @@ export function SettingsPage() {
             <>
               <NativeProfileExport key={nativeScope} />
               <NativePreferencesExport key={`preferences:${nativeScope}`} />
+              <NativeArchiveExport key={`archive:${nativeScope}`} />
               {admin && (
                 <>
                   <WorkspaceVersionsExport key={`versions:${nativeScope}`} />
-                  <NativeArchiveExport key={`archive:${nativeScope}`} />
                 </>
               )}
             </>

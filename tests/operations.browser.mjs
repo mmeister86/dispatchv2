@@ -11,7 +11,7 @@ const mocks = {
   "convex/react": `import React from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';
 const tick=()=>React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);
 const funcs=new Map();const invoke=ref=>{const name=getFunctionName(ref);if(!funcs.has(name))funcs.set(name,async args=>{window.commands.push({name,args});if(name==='users:bootstrap')return 'user-owner';if(name==='preferences:dismissResearchSummaries')return new Promise((resolve,reject)=>window.summaryCommands.push({args,resolve,reject}));if(name==='publishing/notices:read'||name==='publishing/notices:dismiss')return new Promise((resolve,reject)=>window.publishingCommands.push({name,args,sessionId:window.session.session.id,resolve,reject}));if(name==='preferences:saveNotifications')return new Promise((resolve,reject)=>window.preferenceSaves.push({args,sessionId:window.session.session.id,resolve,reject}));throw new Error('No domain writes in health fixture');});return funcs.get(name)};
-export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(!['operations/export:self','operations/export:versions','operations/export:preferences','operations/exportShared:shared'].includes(name))throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>name==='operations/exportShared:shared'?window.archiveRequests.push({args,resolve,reject}):name==='operations/export:versions'?window.versionRequests.push({args,resolve,reject}):name==='operations/export:preferences'?window.preferencesExportRequests.push({args,resolve,reject}):window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
+export const useMutation=invoke;export const useAction=invoke;export const useConvex=()=>({query:(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});if(!name.startsWith('operations/exportPrivate:')&&!['operations/export:self','operations/export:versions','operations/export:preferences','operations/exportShared:shared'].includes(name))throw new Error('Unexpected direct read');return new Promise((resolve,reject)=>name.startsWith('operations/exportPrivate:')?window.privateArchiveRequests.push({name,args,resolve,reject}):name==='operations/exportShared:shared'?window.archiveRequests.push({args,resolve,reject}):name==='operations/export:versions'?window.versionRequests.push({args,resolve,reject}):name==='operations/export:preferences'?window.preferencesExportRequests.push({args,resolve,reject}):window.exportRequests.push({args,resolve,reject}));}});export const useConvexAuth=()=>{tick();return {isAuthenticated:true,isLoading:false}};
 export const useQuery=(ref,args)=>{tick();if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='users:current')return window.snapshot;if(name==='team:list')return window.roster;if(name==='editorial:resources')return window.resources;if(name==='preferences:researchSummaries'){if(window.summaryError)throw Error('PRIVATE_PROVIDER_ERROR');return window.summaryByKey[args.requestKey];}if(name==='preferences:notifications'){if(window.preferenceError)throw Error('PRIVATE_PROVIDER_ERROR');return window.preferenceByKey[args.requestKey];}if(name==='operations/githubAlerts:get'){if(window.githubError)throw Error('PRIVATE_PROVIDER_ERROR');return window.githubByKey[args.refreshKey];}if(name==='operations/pilot:get'){if(window.pilotError)throw Error('PRIVATE_PROVIDER_ERROR');return window.pilotByKey[args.refreshKey];}if(name==='operations/health:get'){if(window.healthError)throw Error('PRIVATE_PROVIDER_ERROR');return window.healthByKey[args.refreshKey];}return undefined;};
 export const usePaginatedQuery=(ref,args)=>{tick();const name=getFunctionName(ref);window.queries.push({name,args});if(name==='publishing/notices:list'){if(window.publishingError)throw Error('PRIVATE_PROVIDER_ERROR');return {results:window.publishingNotices.map(n=>({...n,requestKey:n.requestKey??args.requestKey})),status:window.publishingStatus,loadMore(){window.publishingLoads++}}}return {results:name==='editorial/notices:list'?window.notices:[],status:'Exhausted',loadMore(){}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=window.demo;export const backendConfigured=true;export const convexClientInstance=null;export const ConvexBetterAuthProvider=({children})=>children;export const AuthBoundary=({children})=>children;export {authPath,returnPath} from '/src/lib/navigation.ts';export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}},signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
@@ -77,6 +77,7 @@ try {
     window.preferencesExportRequests = [];
     window.versionRequests = [];
     window.archiveRequests = [];
+    window.privateArchiveRequests = [];
     window.preferenceSaves = [];
     window.summaryCommands = [];
     window.summaryByKey = {};
@@ -1325,6 +1326,220 @@ try {
   await page.getByRole("link", { name: "Mein Profil", exact: true }).click();
   await resolveArchive({}, archiveUnmounted);
   expect(downloadEvents.length).toBe(archiveBeforeExpiry);
+
+  // Private archives use the same native Settings download consumer. Transport is mocked; native proof tests are separate.
+  await page.goto("http://127.0.0.1:5189/settings/data");
+  await page
+    .getByRole("combobox", { name: "Aktiver Account", exact: true })
+    .selectOption("account-native");
+  await page
+    .getByRole("combobox", { name: "Archivbereich" })
+    .selectOption("conversationMessages");
+  await page
+    .getByLabel("Unterhaltung-ID", { exact: true })
+    .fill("conversation-own");
+  const resolvePrivate = (patch = {}, index = -1) =>
+    page.evaluate(
+      ({ patch, index }) => {
+        const r = window.privateArchiveRequests.at(index),
+          now = Date.now(),
+          family = r.name.split(":")[1];
+        r.resolve({
+          authId: r.args.expectedAuthId,
+          sessionId: r.args.expectedSessionId,
+          requestKey: r.args.requestKey,
+          workspaceId: r.args.workspaceId,
+          role: window.snapshot.workspaces[0].role,
+          observedAt: now,
+          proofValidUntil: now + 30000,
+          selectionUpperBound: null,
+          cursor: "private-next",
+          isDone: false,
+          accountId: r.args.accountId ?? "account-native",
+          conversationId: r.args.conversationId,
+          orderId: r.args.orderId,
+          data: {
+            format: "dispatch-workspace-private",
+            version: 1,
+            workspaceId: r.args.workspaceId,
+            selection: {
+              family,
+              rows:
+                family === "workflowSteps"
+                  ? [
+                      {
+                        orderId: r.args.orderId,
+                        stepNumber: 1,
+                        stage: "prepare",
+                        kind: "function",
+                        startedAt: now,
+                        resultKind: "success",
+                        args: "SECRET_ARGS",
+                      },
+                    ]
+                  : family === "orderEvidence"
+                    ? [
+                        {
+                          evidenceId: "evidence-own",
+                          orderId: r.args.orderId,
+                          actorId: "record-author",
+                          annotationActorId: "annotation-author",
+                          inboxActorId: "inbox-actor",
+                          createdAt: now,
+                          sourceId: "source-own",
+                          observedAt: now,
+                          sourceGeneration: 1,
+                          minretentionUntil: now + 30000,
+                          commandKey: "SECRET_COMMAND",
+                        },
+                      ]
+                    : [
+                        {
+                          conversationId: r.args.conversationId,
+                          messageId: "native-message",
+                          _creationTime: now,
+                          order: 0,
+                          stepOrder: 0,
+                          status: "failed",
+                          role: "assistant",
+                          text: "Own retained text",
+                          threadId: "SECRET_THREAD",
+                          provider: "SECRET_PROVIDER",
+                        },
+                      ],
+            },
+          },
+          ...patch,
+        });
+      },
+      { patch, index },
+    );
+  await archiveButton.click();
+  const privateDownload = page.waitForEvent("download");
+  await resolvePrivate();
+  const privateFile = JSON.parse(
+    readFileSync(await (await privateDownload).path(), "utf8"),
+  );
+  expect(privateFile.selection.rows[0].text).toBe("Own retained text");
+  expect(JSON.stringify(privateFile)).not.toMatch(
+    /SECRET_|sessionId|requestKey|threadId/,
+  );
+  const privateBefore = downloadEvents.length;
+  await archiveButton.click();
+  const privateOld = await page.evaluate(
+    () => window.privateArchiveRequests.length - 1,
+  );
+  await page
+    .getByLabel("Unterhaltung-ID", { exact: true })
+    .fill("conversation-other");
+  await page
+    .getByLabel("Unterhaltung-ID", { exact: true })
+    .fill("conversation-own");
+  await resolvePrivate({}, privateOld);
+  expect(downloadEvents.length).toBe(privateBefore);
+  for (const patch of [
+    { conversationId: "foreign" },
+    { accountId: "foreign" },
+    { proofValidUntil: 1 },
+  ]) {
+    await archiveButton.click();
+    await resolvePrivate(patch);
+    await expect(page.getByRole("alert")).toContainText(
+      "Archiv-Export konnte nicht erstellt werden",
+    );
+    expect(downloadEvents.length).toBe(privateBefore);
+  }
+  await page
+    .getByRole("combobox", { name: "Archivbereich" })
+    .selectOption("workflowSteps");
+  await page
+    .getByLabel("Research-Auftrag-ID", { exact: true })
+    .fill("order-own");
+  await archiveButton.click();
+  const journalDownload = page.waitForEvent("download");
+  await resolvePrivate();
+  const journalFile = JSON.parse(
+    readFileSync(await (await journalDownload).path(), "utf8"),
+  );
+  expect(journalFile.selection.rows[0].stage).toBe("prepare");
+  expect(JSON.stringify(journalFile)).not.toContain("SECRET_ARGS");
+  await page
+    .getByRole("combobox", { name: "Archivbereich" })
+    .selectOption("orderEvidence");
+  await archiveButton.click();
+  const evidenceDownload = page.waitForEvent("download");
+  await resolvePrivate();
+  const evidenceFile = JSON.parse(
+    readFileSync(await (await evidenceDownload).path(), "utf8"),
+  );
+  expect(evidenceFile.selection.rows[0]).toMatchObject({
+    actorId: "record-author",
+    annotationActorId: "annotation-author",
+    inboxActorId: "inbox-actor",
+  });
+  expect(JSON.stringify(evidenceFile)).not.toContain("SECRET_COMMAND");
+  for (const role of ["Editor", "Viewer"]) {
+    await page.evaluate(
+      (role) =>
+        window.update({
+          snapshot: {
+            ...window.snapshot,
+            workspaces: window.snapshot.workspaces.map((w) => ({ ...w, role })),
+          },
+        }),
+      role,
+    );
+    await page
+      .getByRole("combobox", { name: "Aktiver Account", exact: true })
+      .selectOption("account-native");
+    await page
+      .getByRole("combobox", { name: "Archivbereich" })
+      .selectOption("conversationMessages");
+    await page
+      .getByLabel("Unterhaltung-ID", { exact: true })
+      .fill("conversation-own");
+    await expect(
+      page.locator('#archive-family option[value="drafts"]'),
+    ).toHaveCount(0);
+    await expect(
+      page.locator('#archive-family option[value="publicOrders"]'),
+    ).toHaveCount(0);
+    await archiveButton.click();
+    const ownRoleDownload = page.waitForEvent("download");
+    await resolvePrivate();
+    expect(
+      JSON.parse(readFileSync(await (await ownRoleDownload).path(), "utf8"))
+        .selection.rows[0].text,
+    ).toBe("Own retained text");
+  }
+  await page.evaluate(() =>
+    window.update({
+      snapshot: {
+        ...window.snapshot,
+        workspaces: window.snapshot.workspaces.map((w) => ({
+          ...w,
+          role: "Owner",
+        })),
+      },
+    }),
+  );
+  await page
+    .getByRole("combobox", { name: "Aktiver Account", exact: true })
+    .selectOption("account-native");
+  await page
+    .getByRole("combobox", { name: "Archivbereich" })
+    .selectOption("conversationMessages");
+  await page
+    .getByLabel("Unterhaltung-ID", { exact: true })
+    .fill("conversation-own");
+  await archiveButton.click();
+  const privateUnmount = await page.evaluate(
+      () => window.privateArchiveRequests.length - 1,
+    ),
+    beforeUnmount = downloadEvents.length;
+  await page.getByRole("link", { name: "Mein Profil", exact: true }).click();
+  await resolvePrivate({}, privateUnmount);
+  expect(downloadEvents.length).toBe(beforeUnmount);
 
   // TASK-33.1.3: additive shared-version consumer controls.
   await page.goto("http://127.0.0.1:5189/settings/data");
@@ -3465,6 +3680,14 @@ try {
           fileCount: preferencesExportFiles.length,
         },
         nativeSelfProfileDownload: true,
+        privateArchive: {
+          transport: "mocked; native authority tested separately",
+          actualMessageAndWorkflowDownloads: true,
+          parentABA: true,
+          accountAndParentCorrelation: true,
+          expiryAndUnmount: true,
+          ownEditorAndViewerDownloads: true,
+        },
         sharedArchive: {
           families: 19,
           actualDownloadedJSON: true,

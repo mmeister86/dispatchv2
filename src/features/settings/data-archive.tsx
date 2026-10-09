@@ -11,6 +11,146 @@ import { Button } from "@/components/ui/button";
 import { Section } from "@/components/shared";
 
 type Archive = FunctionReturnType<typeof api.operations.exportShared.shared>;
+const privateFamilies = {
+  conversations: "Eigene Unterhaltungen",
+  conversationMessages: "Eigene Chatnachrichten",
+  conversationOperations: "Eigene Chatvorgänge",
+  conversationRuns: "Eigene Chatläufe",
+  targetedOrders: "Eigene gezielte Research-Aufträge",
+  publicOrders: "Öffentliche Research-Aufträge",
+  orderSources: "Erhaltene Research-Quellen",
+  orderEvidence: "Erhaltene Research-Belege",
+  researchMessages: "Erhaltene Research-Antworten",
+  workflowSteps: "Research-Ablaufschritte",
+};
+type PrivateFamily = keyof typeof privateFamilies;
+type Family = SharedFamily | PrivateFamily;
+type PrivateArchive = FunctionReturnType<
+  (typeof api.operations.exportPrivate)[PrivateFamily]
+>;
+const privateRowFields: Record<PrivateFamily, string> = {
+  conversations:
+    "conversationId accountId createdAt title revision updatedAt turns state",
+  conversationMessages:
+    "conversationId messageId _creationTime order stepOrder status role text",
+  conversationOperations:
+    "operationId conversationId createdAt allowIdeaCreation inputVersionId resultIdeaId",
+  conversationRuns:
+    "runId operationId purpose state createdAt deadline executionFinishedAt policyVersion promptVersion attempts toolSteps",
+  targetedOrders:
+    "orderId accountId profileId profileVersionId occasion state generation createdAt finishedAt windowStart windowEnd deadline occurrence query topic language operations",
+  publicOrders:
+    "orderId accountId profileId profileVersionId occasion state generation createdAt finishedAt windowStart windowEnd deadline occurrence query language operations",
+  orderSources:
+    "sourceId operation url title text publishedAt count observedAt minusableUntil",
+  orderEvidence:
+    "evidenceId actorId annotationActorId orderId sourceId observedAt sourceGeneration parentEvidenceId createdAt promptVersion policyVersion minretentionUntil inboxRevision inboxDisposition inboxActorId",
+  researchMessages:
+    "orderId messageId _creationTime order stepOrder status role text",
+  workflowSteps:
+    "orderId stepNumber stage kind startedAt completedAt resultKind",
+};
+function privateData(data: PrivateArchive["data"]) {
+  return {
+    format: data.format,
+    version: data.version,
+    workspaceId: data.workspaceId,
+    selection: {
+      family: data.selection.family,
+      rows: data.selection.rows.map((row) => {
+        const r = pick(row, privateRowFields[data.selection.family].split(" "));
+        if ("occurrence" in row && row.occurrence)
+          r.occurrence = pick(row.occurrence, ["generation", "at"]);
+        if ("outcomes" in row && row.outcomes)
+          r.outcomes = row.outcomes.map((o) =>
+            pick(o, ["operation", "state", "cacheHit"]),
+          );
+        if ("reResearch" in row && row.reResearch)
+          r.reResearch = pick(row.reResearch, [
+            "topic",
+            "parentEvidenceId",
+            "parentOrderId",
+            "parentSourceId",
+          ]);
+        if ("automaticHandoff" in row && row.automaticHandoff) {
+          const a = row.automaticHandoff;
+          r.automaticHandoff = {
+            ...pick(a, [
+              "activationGeneration",
+              "profileVersionId",
+              "state",
+              "selection",
+            ]),
+            option: pick(a.option, ["kind", "count", "target", "intent"]),
+            ...(a.results
+              ? {
+                  results: a.results.map((result) =>
+                    pick(result, [
+                      "ideaId",
+                      "ideaVersionId",
+                      "draftId",
+                      "draftVersionId",
+                    ]),
+                  ),
+                }
+              : {}),
+          };
+        }
+        if ("config" in row && row.config) {
+          const config = pick(
+            row.config,
+            "topics project audience languages regions preferredSources exclusions freshnessDays topicCount frequency timeZone clock weekday".split(
+              " ",
+            ),
+          );
+          r.config = {
+            ...config,
+            cap: row.config.cap
+              ? pick(row.config.cap, ["currency", "limitMicros"])
+              : null,
+            autoHandoff: row.config.autoHandoff
+              ? pick(row.config.autoHandoff, [
+                  "kind",
+                  "count",
+                  "target",
+                  "intent",
+                ])
+              : false,
+          };
+        }
+        if ("perspective" in row)
+          r.perspective = pick(row.perspective, [
+            "profileVersionId",
+            "audience",
+            "topics",
+            "project",
+          ]);
+        if ("annotation" in row)
+          r.annotation = pick(
+            row.annotation,
+            "claim consequentialOrContested eventBased quote interpretation gaps relevance novelty uncertainty freshness validityReason".split(
+              " ",
+            ),
+          );
+        if ("model" in row && row.model)
+          r.model = pick(
+            row.model,
+            "eventAt eventQuote title perspective dynamics clusterId historyIds copySourceIds".split(
+              " ",
+            ),
+          );
+        if ("assessment" in row && row.assessment)
+          r.assessment = pick(
+            row.assessment,
+            "reviewerId assessedAt purpose ruleVersion basis maxAgeMs requestedUntil validUntil reason substantiveSupportAttested eventAt eventQuote".split(
+              " ",
+            ),
+          );
+        return r;
+      }),
+    },
+  };
+}
 const families: Record<SharedFamily, string> = {
   drafts: "Entwürfe",
   ideas: "Ideen",
@@ -216,7 +356,39 @@ function downloadData(data: Archive["data"]) {
 }
 export function NativeArchiveExport() {
   const { state, nativeScope } = useStore();
-  const [family, setFamily] = useState<SharedFamily>("drafts");
+  const [family, setFamily] = useState<Family>(
+    ["Owner", "Admin"].includes(state.role) ? "drafts" : "conversations",
+  );
+  const [conversationId, setConversationId] = useState("");
+  const [profileId, setProfileId] = useState("");
+  const [orderId, setOrderId] = useState("");
+  const [operationId, setOperationId] = useState("");
+  const [operation, setOperation] = useState<
+    "web-search" | "x-recent" | "x-trends"
+  >("web-search");
+  const privateFamily = family in privateFamilies;
+  const needsConversation = [
+    "conversationMessages",
+    "conversationOperations",
+    "conversationRuns",
+    "targetedOrders",
+  ].includes(family);
+  const needsOrder = [
+    "orderSources",
+    "orderEvidence",
+    "researchMessages",
+    "workflowSteps",
+  ].includes(family);
+  const allowed = privateFamily
+    ? family !== "publicOrders" || ["Owner", "Admin"].includes(state.role)
+    : ["Owner", "Admin"].includes(state.role);
+  const ready =
+    allowed &&
+    (!privateFamily || !!state.activeAccountId) &&
+    (!needsConversation || !!conversationId) &&
+    (!needsOrder || !!orderId) &&
+    (family !== "publicOrders" || !!profileId) &&
+    (family !== "conversationRuns" || !!operationId);
   const { data: session } = authClient.useSession();
   const convex = useConvex();
   const authId = session?.user.id,
@@ -224,7 +396,7 @@ export function NativeArchiveExport() {
   const workspaceId = state.activeWorkspaceId,
     accountId = state.activeAccountId,
     role = state.role;
-  const scope = `${nativeScope}:${authId}:${sessionId}:${workspaceId}:${accountId}:${role}:${family}`;
+  const scope = `${nativeScope}:${authId}:${sessionId}:${workspaceId}:${accountId}:${role}:${family}:${conversationId}:${profileId}:${orderId}:${operationId}:${operation}`;
   const current = useRef({ scope, epoch: 0 });
   if (current.current.scope !== scope)
     current.current = { scope, epoch: current.current.epoch + 1 };
@@ -272,13 +444,7 @@ export function NativeArchiveExport() {
     revoke();
   }, [scope]);
   const download = async () => {
-    if (
-      inFlight.current ||
-      !authId ||
-      !sessionId ||
-      !["Owner", "Admin"].includes(role)
-    )
-      return;
+    if (inFlight.current || !authId || !sessionId || !ready) return;
     inFlight.current = true;
     if (done) {
       position.current = {
@@ -301,15 +467,111 @@ export function NativeArchiveExport() {
     try {
       const requestKey = crypto.randomUUID();
       const sent = position.current;
-      const result = await convex.query(api.operations.exportShared.shared, {
+      const common = {
         workspaceId: workspaceId as Id<"workspaces">,
         expectedAuthId: authId,
         expectedSessionId: sessionId,
-        family,
         requestKey,
+      };
+      const parent = {
+        accountId: accountId as Id<"socialAccounts">,
+        conversationId: conversationId as Id<"conversations">,
+      };
+      const bounds = {
         cursor: sent.cursor,
-        creationUpperBound: sent.creationUpperBound,
-      });
+        selectionUpperBound: sent.creationUpperBound,
+      };
+      const research = {
+        orderId: orderId as Id<"researchOrders">,
+        cursor: sent.cursor,
+      };
+      const offset = sent.cursor === null ? 0 : Number(sent.cursor);
+      let raw: Archive | PrivateArchive;
+      switch (family) {
+        case "conversations":
+          raw = await convex.query(api.operations.exportPrivate.conversations, {
+            ...common,
+            accountId: parent.accountId,
+            ...bounds,
+          });
+          break;
+        case "conversationMessages":
+          raw = await convex.query(
+            api.operations.exportPrivate.conversationMessages,
+            { ...common, ...parent, cursor: sent.cursor },
+          );
+          break;
+        case "conversationOperations":
+          raw = await convex.query(
+            api.operations.exportPrivate.conversationOperations,
+            { ...common, ...parent, ...bounds },
+          );
+          break;
+        case "conversationRuns":
+          raw = await convex.query(
+            api.operations.exportPrivate.conversationRuns,
+            {
+              ...common,
+              ...parent,
+              operationId: operationId as Id<"chatOperations">,
+              offset,
+            },
+          );
+          break;
+        case "targetedOrders":
+          raw = await convex.query(
+            api.operations.exportPrivate.targetedOrders,
+            { ...common, ...parent, ...bounds },
+          );
+          break;
+        case "publicOrders":
+          raw = await convex.query(api.operations.exportPrivate.publicOrders, {
+            ...common,
+            profileId: profileId as Id<"researchProfiles">,
+            ...bounds,
+          });
+          break;
+        case "orderSources":
+          raw = await convex.query(api.operations.exportPrivate.orderSources, {
+            ...common,
+            orderId: research.orderId,
+            operation,
+            offset,
+          });
+          break;
+        case "orderEvidence":
+          raw = await convex.query(api.operations.exportPrivate.orderEvidence, {
+            ...common,
+            ...research,
+          });
+          break;
+        case "researchMessages":
+          raw = await convex.query(
+            api.operations.exportPrivate.researchMessages,
+            { ...common, ...research },
+          );
+          break;
+        case "workflowSteps":
+          raw = await convex.query(api.operations.exportPrivate.workflowSteps, {
+            ...common,
+            ...research,
+          });
+          break;
+        default:
+          raw = await convex.query(api.operations.exportShared.shared, {
+            ...common,
+            family,
+            cursor: sent.cursor,
+            creationUpperBound: sent.creationUpperBound,
+          });
+      }
+      const result = {
+        ...raw,
+        creationUpperBound:
+          "creationUpperBound" in raw
+            ? raw.creationUpperBound
+            : raw.selectionUpperBound,
+      };
       if (!stillCurrent()) return;
       const now = Date.now();
       if (
@@ -321,21 +583,48 @@ export function NativeArchiveExport() {
         result.workspaceId !== workspaceId ||
         result.data.workspaceId !== workspaceId ||
         result.role !== role ||
-        result.data.format !== "dispatch-workspace-shared" ||
+        result.data.format !==
+          (privateFamily
+            ? "dispatch-workspace-private"
+            : "dispatch-workspace-shared") ||
         result.data.version !== 1 ||
         result.data.selection.family !== family ||
         result.data.selection.rows.length > 1 ||
         typeof result.cursor !== "string" ||
         (!result.isDone && (!result.cursor || result.cursor === sent.cursor)) ||
         typeof result.isDone !== "boolean" ||
-        ![
-          result.creationUpperBound,
-          result.observedAt,
-          result.proofValidUntil,
-        ].every((n) => Number.isFinite(n) && !Object.is(n, -0)) ||
+        ![result.observedAt, result.proofValidUntil].every(
+          (n) => Number.isFinite(n) && !Object.is(n, -0),
+        ) ||
         !numeric(result) ||
-        result.creationUpperBound < 0 ||
-        result.creationUpperBound > result.observedAt ||
+        (result.creationUpperBound !== null &&
+          (!Number.isFinite(result.creationUpperBound) ||
+            Object.is(result.creationUpperBound, -0) ||
+            result.creationUpperBound < 0 ||
+            result.creationUpperBound > result.observedAt)) ||
+        (privateFamily &&
+          ("accountId" in raw ? raw.accountId !== accountId : true)) ||
+        (needsConversation &&
+          (!("conversationId" in raw) ||
+            raw.conversationId !== conversationId)) ||
+        (needsOrder && (!("orderId" in raw) || raw.orderId !== orderId)) ||
+        (family === "publicOrders" &&
+          (!("profileId" in raw) || raw.profileId !== profileId)) ||
+        (family === "conversationRuns" &&
+          (!("operationId" in raw) || raw.operationId !== operationId)) ||
+        (family === "orderSources" &&
+          (!("operation" in raw) || raw.operation !== operation)) ||
+        ([
+          "conversations",
+          "conversationOperations",
+          "targetedOrders",
+          "publicOrders",
+        ].includes(family) &&
+          result.creationUpperBound === null) ||
+        (["conversationRuns", "orderSources"].includes(family) &&
+          (!("nextOffset" in raw) ||
+            raw.nextOffset !== offset + 1 ||
+            raw.cursor !== String(offset + 1))) ||
         result.observedAt > now ||
         result.proofValidUntil <= now ||
         result.proofValidUntil > result.observedAt + 30_000 ||
@@ -346,10 +635,21 @@ export function NativeArchiveExport() {
         throw new Error("EXPORT_SCOPE_CHANGED");
       revoke();
       if (result.data.selection.rows.length) {
-        const payload = downloadData(result.data);
+        const payload = privateFamily
+          ? privateData(result.data as PrivateArchive["data"])
+          : downloadData(result.data as Archive["data"]);
         const serialized = JSON.stringify(payload);
         if (new TextEncoder().encode(serialized).length > 64 * 1024)
           throw Error("EXPORT_DATA_UNAVAILABLE");
+        const beforeURL = Date.now();
+        if (
+          !stillCurrent() ||
+          !Number.isFinite(beforeURL) ||
+          Object.is(beforeURL, -0) ||
+          beforeURL < result.observedAt ||
+          beforeURL >= result.proofValidUntil
+        )
+          throw Error("EXPORT_SOURCE_EXPIRED");
         const url = URL.createObjectURL(
           new Blob([serialized], { type: "application/json" }),
         );
@@ -362,6 +662,7 @@ export function NativeArchiveExport() {
           !stillCurrent() ||
           !Number.isFinite(handoffAt) ||
           Object.is(handoffAt, -0) ||
+          handoffAt < result.observedAt ||
           handoffAt >= result.proofValidUntil
         )
           throw new Error("EXPORT_SOURCE_EXPIRED");
@@ -398,11 +699,11 @@ export function NativeArchiveExport() {
       }
     }
   };
-  if (!["Owner", "Admin"].includes(role)) return null;
+
   return (
     <Section
-      title="Geteilte Inhalte und Planung exportieren"
-      description="Lade die erhaltenen Inhalte eines Archivbereichs seitenweise herunter. Quellen und Berechtigungen werden bei jeder Seite erneut geprüft. Diese Auswahl ist kein Snapshot. Draft-Versionshistorie und eigene Einstellungen haben separate Exporte; private Archive und Medienbytes sind nicht enthalten."
+      title="Inhalte und Verlauf exportieren"
+      description="Lade die erhaltenen Inhalte eines Archivbereichs seitenweise herunter. Quellen und Berechtigungen werden bei jeder Seite erneut geprüft. Diese Auswahl ist kein Snapshot. Draft-Versionshistorie und eigene Einstellungen haben separate Exporte; Chatnachrichten und Ablaufschritte zeigen den erhaltenen Verlauf mit fortlaufender Seitenauswahl. Medienbytes sind nicht enthalten."
     >
       <label htmlFor="archive-family" className="block text-sm mb-2">
         Archivbereich
@@ -411,17 +712,86 @@ export function NativeArchiveExport() {
         id="archive-family"
         className="native-select mb-3"
         value={family}
-        onChange={(e) => setFamily(e.target.value as SharedFamily)}
+        onChange={(e) => setFamily(e.target.value as Family)}
       >
-        {Object.entries(families).map(([value, label]) => (
-          <option key={value} value={value}>
-            {label}
-          </option>
-        ))}
+        {Object.entries({
+          ...(["Owner", "Admin"].includes(role) ? families : {}),
+          ...privateFamilies,
+        })
+          .filter(
+            ([value]) =>
+              value !== "publicOrders" || ["Owner", "Admin"].includes(role),
+          )
+          .map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
       </select>
+      {privateFamily && (
+        <p className="muted text-sm mb-3">
+          Wähle einen aktiven Account. Verwende die nativen IDs aus den
+          Unterhaltungs-, Vorgangs- oder Research-Archivseiten. Jeder
+          übergeordnete Datensatz wird erneut geprüft.
+        </p>
+      )}
+      {needsConversation && (
+        <label className="block text-sm mb-3">
+          Unterhaltung-ID
+          <input
+            className="native-input block"
+            value={conversationId}
+            onChange={(e) => setConversationId(e.target.value.trim())}
+          />
+        </label>
+      )}
+      {family === "publicOrders" && (
+        <label className="block text-sm mb-3">
+          Research-Profil-ID
+          <input
+            className="native-input block"
+            value={profileId}
+            onChange={(e) => setProfileId(e.target.value.trim())}
+          />
+        </label>
+      )}
+      {needsOrder && (
+        <label className="block text-sm mb-3">
+          Research-Auftrag-ID
+          <input
+            className="native-input block"
+            value={orderId}
+            onChange={(e) => setOrderId(e.target.value.trim())}
+          />
+        </label>
+      )}
+      {family === "conversationRuns" && (
+        <label className="block text-sm mb-3">
+          Chatvorgang-ID
+          <input
+            className="native-input block"
+            value={operationId}
+            onChange={(e) => setOperationId(e.target.value.trim())}
+          />
+        </label>
+      )}
+      {family === "orderSources" && (
+        <label className="block text-sm mb-3">
+          Quellenart
+          <select
+            className="native-select block"
+            value={operation}
+            onChange={(e) => setOperation(e.target.value as typeof operation)}
+          >
+            <option value="web-search">Websuche</option>
+            <option value="x-recent">X-Beiträge</option>
+            <option value="x-trends">X-Trends</option>
+          </select>
+        </label>
+      )}
       <Button
         variant="outline"
-        disabled={busy || !authId || !sessionId}
+        disabled={busy || !authId || !sessionId || !ready}
         onClick={download}
       >
         <Download size={15} />

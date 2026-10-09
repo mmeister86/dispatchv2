@@ -662,6 +662,11 @@ export default defineSchema({
     ),
     cleanupAfter: v.number(),
   })
+    .index("by_workspaceId_and_accountId_and_actorId", [
+      "workspaceId",
+      "accountId",
+      "actorId",
+    ])
     .index("by_workspaceId_and_accountId_and_actorId_and_updatedAt", [
       "workspaceId",
       "accountId",
