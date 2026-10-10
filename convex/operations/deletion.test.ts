@@ -287,3 +287,163 @@ test("team leave and transfer cannot rely on an inactive co-owner", async () => 
     }),
   ).rejects.toThrow("ACCOUNT_INACTIVE");
 });
+test("sealed status keeps only original verified native session access after Auth fence; content and bootstrap remain denied", async () => {
+  vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-deletion-guard-secret");
+  const f = await mediaFixture();
+  await f.t.mutation(internal.operations.authAdmission.initialize, {});
+  const job = await f.signed.mutation(account, {
+    commandKey: "auth-last-status",
+    confirmation: "delete-account",
+    deleteWorkspaces: [{ workspaceId: f.workspaceId, expectedTeamRevision: 0 }],
+  });
+  await f.t.mutation(internal.operations.authAdmission.fencePreparedAccount, {
+    jobId: job.id,
+  });
+  expect(await f.signed.query(status, { jobId: job.id })).toEqual(job);
+  await expect(f.signed.mutation(api.users.bootstrap, {})).rejects.toThrow(
+    "AUTH_IDENTITY_INACTIVE",
+  );
+  await expect(f.signed.query(api.users.current, {})).rejects.toThrow(
+    "AUTH_IDENTITY_INACTIVE",
+  );
+  const original = await f.t.run((ctx) => ctx.db.get(f.userId));
+  const foreign = await f.t.mutation(components.betterAuth.adapter.create, {
+    input: {
+      model: "user",
+      data: {
+        name: "Foreign",
+        email: "foreign-status@example.test",
+        emailVerified: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    },
+  });
+  await f.t.mutation(components.betterAuth.adapter.create, {
+    input: {
+      model: "account",
+      data: {
+        userId: foreign._id,
+        accountId: foreign._id,
+        providerId: "credential",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      },
+    },
+  });
+  const session = await f.t.mutation(components.betterAuth.adapter.create, {
+    input: {
+      model: "session",
+      data: {
+        userId: foreign._id,
+        token: "synthetic-foreign-session",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        expiresAt: Date.now() + 60000,
+      },
+    },
+  });
+  await expect(
+    f.t
+      .withIdentity({ subject: foreign._id, sessionId: session._id })
+      .query(status, { jobId: job.id }),
+  ).rejects.toThrow("DELETION_ACCESS_DENIED");
+  await expect(
+    f.t
+      .withIdentity({ subject: original!.authId, sessionId: session._id })
+      .query(status, { jobId: job.id }),
+  ).rejects.toThrow("DELETION_ACCESS_DENIED");
+  const nativeSessions = await f.t.query(
+    components.betterAuth.adapter.findMany,
+    {
+      model: "session",
+      where: [{ field: "userId", value: original!.authId }],
+      paginationOpts: { numItems: 25, cursor: null },
+    },
+  );
+  await f.t.mutation(components.betterAuth.adapter.deleteOne, {
+    input: {
+      model: "session",
+      where: [{ field: "_id", value: nativeSessions.page[0]._id }],
+    },
+  });
+  await expect(f.signed.query(status, { jobId: job.id })).rejects.toThrow();
+});
+test("native erasure primitives capture exact token ownership, use bounded reset-cursor pages, and keep Auth root last", async () => {
+  vi.stubEnv("BETTER_AUTH_SECRET", "synthetic-native-purge-secret");
+  const f = await mediaFixture();
+  await f.t.mutation(internal.operations.authAdmission.initialize, {});
+  const actor = (await f.t.run((ctx) => ctx.db.get(f.userId)))!;
+  const verification = await f.t.mutation(
+    components.betterAuth.adapter.create,
+    {
+      input: {
+        model: "verification",
+        data: {
+          identifier: "reset-password:synthetic-owned-reset",
+          value: actor.authId,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          expiresAt: Date.now() + 60000,
+        },
+      },
+    },
+  );
+  for (let n = 0; n < 30; n++)
+    await f.t.mutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "session",
+        data: {
+          userId: actor.authId,
+          token: `synthetic-purge-${n}`,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          expiresAt: Date.now() + 60000,
+        },
+      },
+    });
+  const job = await f.signed.mutation(account, {
+    commandKey: "native-purge",
+    confirmation: "delete-account",
+    deleteWorkspaces: [{ workspaceId: f.workspaceId, expectedTeamRevision: 0 }],
+  });
+  await f.t.mutation(internal.operations.authAdmission.fencePreparedAccount, {
+    jobId: job.id,
+  });
+  const captured = await f.t.mutation(
+    internal.operations.authAdmission.captureVerificationPage,
+    { jobId: job.id, cursor: null },
+  );
+  expect(captured.targetOwned).toBe(1);
+  await f.t.run((ctx) => ctx.db.patch(job.id, { phase: "auth" }));
+  const purge = (model: "session" | "verification" | "user") =>
+    f.t.mutation(internal.operations.authAdmission.purgeNativePage, {
+      jobId: job.id,
+      model,
+    });
+  await expect(purge("user")).rejects.toThrow("AUTH_ROOT_LAST_REQUIRED");
+  expect((await purge("session")).processed).toBe(25);
+  expect((await purge("session")).processed).toBe(6);
+  expect((await purge("verification")).processed).toBe(1);
+  expect(
+    await f.t.query(components.betterAuth.adapter.findOne, {
+      model: "verification",
+      where: [{ field: "_id", value: verification._id }],
+    }),
+  ).toBeNull();
+  expect(
+    (
+      await f.t.query(internal.operations.authAdmission.nativeErasureProof, {
+        jobId: job.id,
+      })
+    ).ownedAbsent,
+  ).toBe(true);
+  expect((await purge("user")).processed).toBe(1);
+  const proof = await f.t.query(
+    internal.operations.authAdmission.nativeErasureProof,
+    { jobId: job.id },
+  );
+  expect(proof.rootPresent).toBe(false);
+  expect(proof.retainedReplayFences).toBe(true);
+  expect(proof.unownedVerification).toBe("preserved-not-certified");
+});

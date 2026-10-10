@@ -1242,6 +1242,96 @@ export default defineSchema({
     ])
     .index("by_actorId_and_sourceUnavailable", ["actorId", "sourceUnavailable"])
     .index("by_cleanAfter", ["cleanAfter"]),
+  authRoots: defineTable({
+    authId: v.string(),
+    bornAt: v.number(),
+    pendingUntil: v.number(),
+    state: v.union(
+      v.literal("pending"),
+      v.literal("admitted"),
+      v.literal("revoked"),
+    ),
+    neverAdmitted: v.boolean(),
+    generation: v.string(),
+    requiresProof: v.boolean(),
+    proofAfter: v.number(),
+    birthLeaseId: v.optional(v.id("authLeases")),
+  })
+    .index("by_authId", ["authId"])
+    .index("by_state_and_pendingUntil", ["state", "pendingUntil"])
+    .index("by_birthLeaseId", ["birthLeaseId"]),
+  authGuardKey: defineTable({ key: v.string() }),
+  authLeases: defineTable({
+    startedAt: v.number(),
+    originalStartedAt: v.number(),
+    expiresAt: v.number(),
+    path: v.string(),
+    source: v.string(),
+    proven: v.boolean(),
+    generation: v.string(),
+    authId: v.optional(v.string()),
+    state: v.union(
+      v.literal("active"),
+      v.literal("complete"),
+      v.literal("revoked"),
+    ),
+  }).index("by_state_and_expiresAt", ["state", "expiresAt"]),
+  authWritePermits: defineTable({
+    nonce: v.string(),
+    leaseId: v.id("authLeases"),
+    model: v.string(),
+    operation: v.string(),
+    operationDigest: v.string(),
+    targetId: v.optional(v.string()),
+    authId: v.optional(v.string()),
+    verificationFamily: v.optional(v.string()),
+    verificationOwner: v.optional(v.string()),
+    consumed: v.boolean(),
+  })
+    .index("by_nonce", ["nonce"])
+    .index("by_leaseId", ["leaseId"]),
+  authEmailIssuance: defineTable({
+    tokenDigest: v.string(),
+    authId: v.string(),
+    generation: v.string(),
+    issuedAt: v.number(),
+    expiresAt: v.number(),
+    leaseId: v.id("authLeases"),
+  }).index("by_tokenDigest", ["tokenDigest"]),
+  authLeaseSessions: defineTable({
+    leaseId: v.id("authLeases"),
+    authId: v.string(),
+    sessionId: v.string(),
+    generation: v.string(),
+  }).index("by_leaseId", ["leaseId"]),
+  authReplayFences: defineTable({
+    kind: v.union(
+      v.literal("authId"),
+      v.literal("email"),
+      v.literal("provider"),
+    ),
+    digest: v.string(),
+    jobId: v.id("deletionJobs"),
+    createdAt: v.number(),
+  }).index("by_kind_and_digest", ["kind", "digest"]),
+  authVerificationJournal: defineTable({
+    nativeId: v.string(),
+    identifierDigest: v.string(),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    producer: v.union(v.literal("unproven"), v.literal("current")),
+    sessionDigest: v.optional(v.string()),
+    family: v.optional(v.string()),
+    ownerAuthId: v.optional(v.string()),
+    generation: v.optional(v.string()),
+    producerLeaseId: v.optional(v.id("authLeases")),
+    originalStartedAt: v.optional(v.number()),
+    consumed: v.boolean(),
+  })
+    .index("by_nativeId", ["nativeId"])
+    .index("by_identifierDigest", ["identifierDigest"])
+    .index("by_ownerAuthId", ["ownerAuthId"])
+    .index("by_ownerAuthId_and_consumed", ["ownerAuthId", "consumed"]),
   deletionJobs: defineTable({
     scope: v.union(v.literal("account"), v.literal("workspace")),
     actorId: v.id("users"),

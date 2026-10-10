@@ -5,6 +5,8 @@ import {
   type QueryCtx,
   type MutationCtx,
 } from "../_generated/server";
+import { authComponent } from "../auth";
+import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   requireIdentity,
@@ -308,7 +310,26 @@ export const status = query({
   args: { jobId: v.id("deletionJobs") },
   returns: jobStatus,
   handler: async (ctx, a) => {
-    const identity = await requireIdentity(ctx);
+    const identity = await authComponent.getAuthUser(ctx);
+    if (!identity.emailVerified) throw new ConvexError("EMAIL_NOT_VERIFIED");
+    const claims = await ctx.auth.getUserIdentity();
+    if (!claims || typeof claims.sessionId !== "string")
+      throw new ConvexError("DELETION_ACCESS_DENIED");
+    const session = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+      model: "session",
+      where: [{ field: "_id", value: claims.sessionId }],
+    });
+    const admission = await ctx.db
+      .query("authRoots")
+      .withIndex("by_authId", (q) => q.eq("authId", identity._id))
+      .unique();
+    if (
+      !session ||
+      session.userId !== identity._id ||
+      session.expiresAt <= Date.now() ||
+      admission?.neverAdmitted
+    )
+      throw new ConvexError("DELETION_ACCESS_DENIED");
     const job = await ctx.db.get(a.jobId);
     if (!job || job.authId !== identity._id)
       throw new ConvexError("DELETION_ACCESS_DENIED");

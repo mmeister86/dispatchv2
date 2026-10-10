@@ -37,6 +37,7 @@ import type * as ai_sourceAccess from "../ai/sourceAccess.js";
 import type * as ai_styleFields from "../ai/styleFields.js";
 import type * as ai_styleProfiles from "../ai/styleProfiles.js";
 import type * as auth from "../auth.js";
+import type * as operations_authAdmission from "../operations/authAdmission.js";
 import type * as content_feedback from "../content/feedback.js";
 import type * as content_feedbackFields from "../content/feedbackFields.js";
 import type * as content_ideaFields from "../content/ideaFields.js";
@@ -197,6 +198,7 @@ declare const fullApi: ApiFromModules<{
   "ai/styleFields": typeof ai_styleFields;
   "ai/styleProfiles": typeof ai_styleProfiles;
   auth: typeof auth;
+  "operations/authAdmission": typeof operations_authAdmission;
   "content/feedback": typeof content_feedback;
   "content/feedbackFields": typeof content_feedbackFields;
   "content/ideaFields": typeof content_ideaFields;

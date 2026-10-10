@@ -13,9 +13,11 @@ import {
 } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import { authComponent } from "../auth";
+import { requireAdmittedIdentity } from "../operations/authAdmission";
 
 export async function requireIdentity(ctx: QueryCtx | MutationCtx) {
   const identity = await authComponent.getAuthUser(ctx);
+  await requireAdmittedIdentity(ctx, identity._id);
   if (!identity.emailVerified) throw new ConvexError("EMAIL_NOT_VERIFIED");
   return identity;
 }

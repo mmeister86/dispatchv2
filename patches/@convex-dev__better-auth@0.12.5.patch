@@ -1,0 +1,1549 @@
+diff --git a/dist/client/create-api.d.ts b/dist/client/create-api.d.ts
+index 3f54c8920733256558e0eab1275bfb4cc8521b12..7e73f695f0e408576ff8cba646486ff4c18266bd 100644
+--- a/dist/client/create-api.d.ts
++++ b/dist/client/create-api.d.ts
+@@ -1,9 +1,10 @@
+ import type { SchemaDefinition } from "convex/server";
+ import type { TableNames } from "../component/_generated/dataModel.js";
+ import type { BetterAuthOptions } from "better-auth/minimal";
+-export declare const createApi: <Schema extends SchemaDefinition<any, any>>(schema: Schema, createAuthOptions: (ctx: any) => BetterAuthOptions) => {
++export declare const createApi: <Schema extends SchemaDefinition<any, any>>(schema: Schema, createAuthOptions: (ctx: any) => BetterAuthOptions, guard?: (ctx: any, args: { model: string; operation: "create" | "update" | "verificationDelete"; id: string; fields: string[]; previousOwner?: string; approvalNonce?: string }) => Promise<boolean>) => {
+     create: import("convex/server").RegisteredMutation<"public", {
+         onCreateHandle?: string | undefined;
++        approvalNonce?: string | undefined;
+         select?: string[] | undefined;
+         input: {
+             data: {
+@@ -54,6 +55,8 @@ export declare const createApi: <Schema extends SchemaDefinition<any, any>>(sche
+     }, Promise<import("convex/server").PaginationResult<import("convex/server").GenericDocument>>>;
+     updateOne: import("convex/server").RegisteredMutation<"public", {
+         onUpdateHandle?: string | undefined;
++        approvalNonce?: string | undefined;
++        approvalNonces?: { id: string; nonce: string }[] | undefined;
+         input: {
+             where?: {
+                 mode?: "sensitive" | "insensitive" | undefined;
+@@ -72,6 +75,8 @@ export declare const createApi: <Schema extends SchemaDefinition<any, any>>(sche
+     }, Promise<any>>;
+     updateMany: import("convex/server").RegisteredMutation<"public", {
+         onUpdateHandle?: string | undefined;
++        approvalNonce?: string | undefined;
++        approvalNonces?: { id: string; nonce: string }[] | undefined;
+         input: {
+             where?: {
+                 mode?: "sensitive" | "insensitive" | undefined;
+diff --git a/dist/client/create-api.js b/dist/client/create-api.js
+index 35e3bc4fd385b5bd949317a64410cc14a7e6b6ce..5d5544b436847ebdc1d0ddf135cdb638366579d8 100644
+--- a/dist/client/create-api.js
++++ b/dist/client/create-api.js
+@@ -1,217 +1,385 @@
+-import { mutationGeneric, paginationOptsValidator, queryGeneric, } from "convex/server";
++import {
++  mutationGeneric,
++  paginationOptsValidator,
++  queryGeneric
++} from "convex/server";
+ import { v } from "convex/values";
+ import { asyncMap } from "convex-helpers";
+ import { partial } from "convex-helpers/validators";
+-import { adapterWhereValidator, checkUniqueFields, hasUniqueFields, listOne, paginate, selectFields, } from "./adapter-utils.js";
++import {
++  adapterWhereValidator,
++  checkUniqueFields,
++  hasUniqueFields,
++  listOne,
++  paginate,
++  selectFields
++} from "./adapter-utils.js";
+ import { getAuthTables } from "better-auth/db";
+ const whereValidator = (schema, tableName) => v.object({
+-    field: v.union(...Object.keys(schema.tables[tableName].validator.fields).map((field) => v.literal(field)), v.literal("_id")),
+-    operator: v.optional(v.union(v.literal("lt"), v.literal("lte"), v.literal("gt"), v.literal("gte"), v.literal("eq"), v.literal("in"), v.literal("not_in"), v.literal("ne"), v.literal("contains"), v.literal("starts_with"), v.literal("ends_with"))),
+-    value: v.union(v.string(), v.number(), v.boolean(), v.array(v.string()), v.array(v.number()), v.null()),
+-    connector: v.optional(v.union(v.literal("AND"), v.literal("OR"))),
+-    mode: v.optional(v.union(v.literal("sensitive"), v.literal("insensitive"))),
++  field: v.union(
++    ...Object.keys(schema.tables[tableName].validator.fields).map(
++      (field) => v.literal(field)
++    ),
++    v.literal("_id")
++  ),
++  operator: v.optional(
++    v.union(
++      v.literal("lt"),
++      v.literal("lte"),
++      v.literal("gt"),
++      v.literal("gte"),
++      v.literal("eq"),
++      v.literal("in"),
++      v.literal("not_in"),
++      v.literal("ne"),
++      v.literal("contains"),
++      v.literal("starts_with"),
++      v.literal("ends_with")
++    )
++  ),
++  value: v.union(
++    v.string(),
++    v.number(),
++    v.boolean(),
++    v.array(v.string()),
++    v.array(v.number()),
++    v.null()
++  ),
++  connector: v.optional(v.union(v.literal("AND"), v.literal("OR"))),
++  mode: v.optional(v.union(v.literal("sensitive"), v.literal("insensitive")))
+ });
+-export const createApi = (schema, createAuthOptions) => {
+-    const betterAuthSchema = getAuthTables(createAuthOptions({}));
+-    return {
+-        create: mutationGeneric({
+-            args: {
+-                input: v.union(...Object.entries(schema.tables).map(([model, table]) => v.object({
+-                    model: v.literal(model),
+-                    data: v.object(table.validator.fields),
+-                }))),
+-                select: v.optional(v.array(v.string())),
+-                onCreateHandle: v.optional(v.string()),
+-            },
+-            handler: async (ctx, args) => {
+-                await checkUniqueFields(ctx, schema, betterAuthSchema, args.input.model, args.input.data);
+-                const id = await ctx.db.insert(args.input.model, args.input.data);
+-                const doc = await ctx.db.get(args.input.model, id);
+-                if (!doc) {
+-                    throw new Error(`Failed to create ${args.input.model}`);
++const createApi = (schema, createAuthOptions, guard) => {
++  const betterAuthSchema = getAuthTables(createAuthOptions({}));
++  return {
++    create: mutationGeneric({
++      args: {
++        input: v.union(
++          ...Object.entries(schema.tables).map(
++            ([model, table]) => v.object({
++              model: v.literal(model),
++              data: v.object(table.validator.fields)
++            })
++          )
++        ),
++        select: v.optional(v.array(v.string())),
++        onCreateHandle: v.optional(v.string()),
++        approvalNonce: v.optional(v.string())
++      },
++      handler: async (ctx, args) => {
++        await checkUniqueFields(
++          ctx,
++          schema,
++          betterAuthSchema,
++          args.input.model,
++          args.input.data
++        );
++        const id = await ctx.db.insert(
++          args.input.model,
++          args.input.data
++        );
++        const doc = await ctx.db.get(args.input.model, id);
++        if (!doc) {
++          throw new Error(`Failed to create ${args.input.model}`);
++        }
++        if (guard && !await guard(ctx, { model: args.input.model, operation: "create", id, fields: Object.keys(args.input.data), approvalNonce: args.approvalNonce })) {
++          if (await ctx.db.get(args.input.model, id)) await ctx.db.delete(args.input.model, id);
++          return null;
++        }
++        const result = selectFields(doc, args.select);
++        if (args.onCreateHandle) {
++          await ctx.runMutation(
++            args.onCreateHandle,
++            {
++              model: args.input.model,
++              doc
++            }
++          );
++          const updatedDoc = await ctx.db.get(args.input.model, id);
++          if (!updatedDoc) {
++            throw new Error(
++              `Failed to create ${args.input.model} (deleted by onCreate trigger?)`
++            );
++          }
++          return selectFields(updatedDoc, args.select);
++        }
++        return result;
++      }
++    }),
++    findOne: queryGeneric({
++      args: {
++        model: v.union(
++          ...Object.keys(schema.tables).map((model) => v.literal(model))
++        ),
++        where: v.optional(v.array(adapterWhereValidator)),
++        select: v.optional(v.array(v.string())),
++        join: v.optional(v.any())
++      },
++      handler: async (ctx, args) => {
++        return await listOne(ctx, schema, betterAuthSchema, args);
++      }
++    }),
++    findMany: queryGeneric({
++      args: {
++        model: v.union(
++          ...Object.keys(schema.tables).map((model) => v.literal(model))
++        ),
++        where: v.optional(v.array(adapterWhereValidator)),
++        select: v.optional(v.array(v.string())),
++        limit: v.optional(v.number()),
++        sortBy: v.optional(
++          v.object({
++            direction: v.union(v.literal("asc"), v.literal("desc")),
++            field: v.string()
++          })
++        ),
++        offset: v.optional(v.number()),
++        join: v.optional(v.any()),
++        paginationOpts: paginationOptsValidator
++      },
++      handler: async (ctx, args) => {
++        return await paginate(ctx, schema, betterAuthSchema, args);
++      }
++    }),
++    updateOne: mutationGeneric({
++      args: {
++        input: v.union(
++          ...Object.entries(schema.tables).map(
++            ([name, table]) => {
++              const tableName = name;
++              const fields = partial(table.validator.fields);
++              return v.object({
++                model: v.literal(tableName),
++                update: v.object(fields),
++                where: v.optional(v.array(whereValidator(schema, tableName)))
++              });
++            }
++          )
++        ),
++        onUpdateHandle: v.optional(v.string()),
++        approvalNonce: v.optional(v.string()),
++        approvalNonces: v.optional(v.array(v.object({ id: v.string(), nonce: v.string() })))
++      },
++      handler: async (ctx, args) => {
++        const doc = await listOne(ctx, schema, betterAuthSchema, args.input);
++        if (!doc) {
++          throw new Error(`Failed to update ${args.input.model}`);
++        }
++        await checkUniqueFields(
++          ctx,
++          schema,
++          betterAuthSchema,
++          args.input.model,
++          args.input.update,
++          doc
++        );
++        if (args.input.model === "verification" && guard) await guard(ctx, { model: args.input.model, operation: "update", id: doc._id, fields: [] });
++        await ctx.db.patch(
++          args.input.model,
++          doc._id,
++          args.input.update
++        );
++        const updatedDoc = await ctx.db.get(
++          args.input.model,
++          doc._id
++        );
++        if (!updatedDoc) {
++          throw new Error(`Failed to update ${args.input.model}`);
++        }
++        if (guard && !await guard(ctx, { model: args.input.model, operation: "update", id: doc._id, fields: Object.keys(args.input.update), previousOwner: doc.userId, approvalNonce: args.approvalNonces?.find((approval) => approval.id === doc._id)?.nonce ?? args.approvalNonce })) {
++          if (await ctx.db.get(args.input.model, doc._id)) {
++            const { _id, _creationTime, ...original } = doc;
++            await ctx.db.replace(args.input.model, doc._id, original);
++          }
++          return null;
++        }
++        if (args.onUpdateHandle) {
++          await ctx.runMutation(
++            args.onUpdateHandle,
++            {
++              model: args.input.model,
++              newDoc: updatedDoc,
++              oldDoc: doc
++            }
++          );
++          const innerUpdatedDoc = await ctx.db.get(
++            args.input.model,
++            doc._id
++          );
++          if (!innerUpdatedDoc) {
++            throw new Error(
++              `Failed to update ${args.input.model} (deleted by onUpdate trigger?)`
++            );
++          }
++          return innerUpdatedDoc;
++        }
++        return updatedDoc;
++      }
++    }),
++    updateMany: mutationGeneric({
++      args: {
++        input: v.union(
++          ...Object.entries(schema.tables).map(
++            ([name, table]) => {
++              const tableName = name;
++              const fields = partial(table.validator.fields);
++              return v.object({
++                model: v.literal(tableName),
++                update: v.object(fields),
++                where: v.optional(v.array(whereValidator(schema, tableName)))
++              });
++            }
++          )
++        ),
++        paginationOpts: paginationOptsValidator,
++        onUpdateHandle: v.optional(v.string()),
++        approvalNonce: v.optional(v.string()),
++        approvalNonces: v.optional(v.array(v.object({ id: v.string(), nonce: v.string() })))
++      },
++      handler: async (ctx, args) => {
++        const { page, ...result } = await paginate(
++          ctx,
++          schema,
++          betterAuthSchema,
++          {
++            ...args.input,
++            paginationOpts: args.paginationOpts
++          }
++        );
++        if (args.input.update) {
++          if (hasUniqueFields(
++            betterAuthSchema,
++            args.input.model,
++            args.input.update ?? {}
++          ) && page.length > 1) {
++            throw new Error(
++              `Attempted to set unique fields in multiple documents in ${args.input.model} with the same value. Fields: ${Object.keys(args.input.update ?? {}).join(", ")}`
++            );
++          }
++          const allowedIds = [];
++          await asyncMap(page, async (doc) => {
++            await checkUniqueFields(
++              ctx,
++              schema,
++              betterAuthSchema,
++              args.input.model,
++              args.input.update ?? {},
++              doc
++            );
++            if (args.input.model === "verification" && guard) await guard(ctx, { model: args.input.model, operation: "update", id: doc._id, fields: [] });
++            await ctx.db.patch(
++              args.input.model,
++              doc._id,
++              args.input.update
++            );
++            if (guard && !await guard(ctx, { model: args.input.model, operation: "update", id: doc._id, fields: Object.keys(args.input.update), previousOwner: doc.userId, approvalNonce: args.approvalNonces?.find((approval) => approval.id === doc._id)?.nonce ?? args.approvalNonce })) {
++              if (await ctx.db.get(args.input.model, doc._id)) {
++                const { _id, _creationTime, ...original } = doc;
++                await ctx.db.replace(args.input.model, doc._id, original);
++              }
++              return;
++            }
++            allowedIds.push(doc._id);
++            if (args.onUpdateHandle) {
++              await ctx.runMutation(
++                args.onUpdateHandle,
++                {
++                  model: args.input.model,
++                  newDoc: await ctx.db.get(
++                    args.input.model,
++                    doc._id
++                  ),
++                  oldDoc: doc
+                 }
+-                const result = selectFields(doc, args.select);
+-                if (args.onCreateHandle) {
+-                    await ctx.runMutation(args.onCreateHandle, {
+-                        model: args.input.model,
+-                        doc,
+-                    });
+-                    const updatedDoc = await ctx.db.get(args.input.model, id);
+-                    if (!updatedDoc) {
+-                        throw new Error(`Failed to create ${args.input.model} (deleted by onCreate trigger?)`);
+-                    }
+-                    return selectFields(updatedDoc, args.select);
+-                }
+-                return result;
+-            },
+-        }),
+-        findOne: queryGeneric({
+-            args: {
+-                model: v.union(...Object.keys(schema.tables).map((model) => v.literal(model))),
+-                where: v.optional(v.array(adapterWhereValidator)),
+-                select: v.optional(v.array(v.string())),
+-                join: v.optional(v.any()),
+-            },
+-            handler: async (ctx, args) => {
+-                return await listOne(ctx, schema, betterAuthSchema, args);
+-            },
+-        }),
+-        findMany: queryGeneric({
+-            args: {
+-                model: v.union(...Object.keys(schema.tables).map((model) => v.literal(model))),
+-                where: v.optional(v.array(adapterWhereValidator)),
+-                select: v.optional(v.array(v.string())),
+-                limit: v.optional(v.number()),
+-                sortBy: v.optional(v.object({
+-                    direction: v.union(v.literal("asc"), v.literal("desc")),
+-                    field: v.string(),
+-                })),
+-                offset: v.optional(v.number()),
+-                join: v.optional(v.any()),
+-                paginationOpts: paginationOptsValidator,
+-            },
+-            handler: async (ctx, args) => {
+-                return await paginate(ctx, schema, betterAuthSchema, args);
+-            },
+-        }),
+-        updateOne: mutationGeneric({
+-            args: {
+-                input: v.union(...Object.entries(schema.tables).map(([name, table]) => {
+-                    const tableName = name;
+-                    const fields = partial(table.validator.fields);
+-                    return v.object({
+-                        model: v.literal(tableName),
+-                        update: v.object(fields),
+-                        where: v.optional(v.array(whereValidator(schema, tableName))),
+-                    });
+-                })),
+-                onUpdateHandle: v.optional(v.string()),
+-            },
+-            handler: async (ctx, args) => {
+-                const doc = await listOne(ctx, schema, betterAuthSchema, args.input);
+-                if (!doc) {
+-                    throw new Error(`Failed to update ${args.input.model}`);
+-                }
+-                await checkUniqueFields(ctx, schema, betterAuthSchema, args.input.model, args.input.update, doc);
+-                await ctx.db.patch(args.input.model, doc._id, args.input.update);
+-                const updatedDoc = await ctx.db.get(args.input.model, doc._id);
+-                if (!updatedDoc) {
+-                    throw new Error(`Failed to update ${args.input.model}`);
+-                }
+-                if (args.onUpdateHandle) {
+-                    await ctx.runMutation(args.onUpdateHandle, {
+-                        model: args.input.model,
+-                        newDoc: updatedDoc,
+-                        oldDoc: doc,
+-                    });
+-                    const innerUpdatedDoc = await ctx.db.get(args.input.model, doc._id);
+-                    if (!innerUpdatedDoc) {
+-                        throw new Error(`Failed to update ${args.input.model} (deleted by onUpdate trigger?)`);
+-                    }
+-                    return innerUpdatedDoc;
+-                }
+-                return updatedDoc;
+-            },
+-        }),
+-        updateMany: mutationGeneric({
+-            args: {
+-                input: v.union(...Object.entries(schema.tables).map(([name, table]) => {
+-                    const tableName = name;
+-                    const fields = partial(table.validator.fields);
+-                    return v.object({
+-                        model: v.literal(tableName),
+-                        update: v.object(fields),
+-                        where: v.optional(v.array(whereValidator(schema, tableName))),
+-                    });
+-                })),
+-                paginationOpts: paginationOptsValidator,
+-                onUpdateHandle: v.optional(v.string()),
+-            },
+-            handler: async (ctx, args) => {
+-                const { page, ...result } = await paginate(ctx, schema, betterAuthSchema, {
+-                    ...args.input,
+-                    paginationOpts: args.paginationOpts,
+-                });
+-                if (args.input.update) {
+-                    if (hasUniqueFields(betterAuthSchema, args.input.model, args.input.update ?? {}) &&
+-                        page.length > 1) {
+-                        throw new Error(`Attempted to set unique fields in multiple documents in ${args.input.model} with the same value. Fields: ${Object.keys(args.input.update ?? {}).join(", ")}`);
+-                    }
+-                    await asyncMap(page, async (doc) => {
+-                        await checkUniqueFields(ctx, schema, betterAuthSchema, args.input.model, args.input.update ?? {}, doc);
+-                        await ctx.db.patch(args.input.model, doc._id, args.input.update);
+-                        if (args.onUpdateHandle) {
+-                            await ctx.runMutation(args.onUpdateHandle, {
+-                                model: args.input.model,
+-                                newDoc: await ctx.db.get(args.input.model, doc._id),
+-                                oldDoc: doc,
+-                            });
+-                        }
+-                    });
+-                }
+-                return {
+-                    ...result,
+-                    count: page.length,
+-                    ids: page.map((doc) => doc._id),
+-                };
+-            },
+-        }),
+-        deleteOne: mutationGeneric({
+-            args: {
+-                input: v.union(...Object.keys(schema.tables).map((name) => {
+-                    const tableName = name;
+-                    return v.object({
+-                        model: v.literal(tableName),
+-                        where: v.optional(v.array(whereValidator(schema, tableName))),
+-                    });
+-                })),
+-                onDeleteHandle: v.optional(v.string()),
+-            },
+-            handler: async (ctx, args) => {
+-                const doc = await listOne(ctx, schema, betterAuthSchema, args.input);
+-                if (!doc) {
+-                    return;
+-                }
+-                await ctx.db.delete(args.input.model, doc._id);
+-                if (args.onDeleteHandle) {
+-                    await ctx.runMutation(args.onDeleteHandle, { model: args.input.model, doc });
+-                }
+-                return doc;
+-            },
+-        }),
+-        deleteMany: mutationGeneric({
+-            args: {
+-                input: v.union(...Object.keys(schema.tables).map((name) => {
+-                    const tableName = name;
+-                    return v.object({
+-                        model: v.literal(tableName),
+-                        where: v.optional(v.array(whereValidator(schema, tableName))),
+-                    });
+-                })),
+-                paginationOpts: paginationOptsValidator,
+-                onDeleteHandle: v.optional(v.string()),
+-            },
+-            handler: async (ctx, args) => {
+-                const { page, ...result } = await paginate(ctx, schema, betterAuthSchema, {
+-                    ...args.input,
+-                    paginationOpts: args.paginationOpts,
+-                });
+-                await asyncMap(page, async (doc) => {
+-                    if (args.onDeleteHandle) {
+-                        await ctx.runMutation(args.onDeleteHandle, {
+-                            model: args.input.model,
+-                            doc,
+-                        });
+-                    }
+-                    await ctx.db.delete(args.input.model, doc._id);
+-                });
+-                return {
+-                    ...result,
+-                    count: page.length,
+-                    ids: page.map((doc) => doc._id),
+-                };
+-            },
+-        }),
+-    };
++              );
++            }
++          });
++          return { ...result, count: allowedIds.length, ids: allowedIds };
++        }
++        return {
++          ...result,
++          count: page.length,
++          ids: page.map((doc) => doc._id)
++        };
++      }
++    }),
++    deleteOne: mutationGeneric({
++      args: {
++        input: v.union(
++          ...Object.keys(schema.tables).map((name) => {
++            const tableName = name;
++            return v.object({
++              model: v.literal(tableName),
++              where: v.optional(v.array(whereValidator(schema, tableName)))
++            });
++          })
++        ),
++        onDeleteHandle: v.optional(v.string())
++      },
++      handler: async (ctx, args) => {
++        const doc = await listOne(ctx, schema, betterAuthSchema, args.input);
++        if (!doc) {
++          return;
++        }
++        if (args.input.model === "verification" && guard) await guard(ctx, { model: args.input.model, operation: "verificationDelete", id: doc._id, fields: [] });
++        await ctx.db.delete(args.input.model, doc._id);
++        if (args.onDeleteHandle) {
++          await ctx.runMutation(
++            args.onDeleteHandle,
++            { model: args.input.model, doc }
++          );
++        }
++        return doc;
++      }
++    }),
++    deleteMany: mutationGeneric({
++      args: {
++        input: v.union(
++          ...Object.keys(schema.tables).map((name) => {
++            const tableName = name;
++            return v.object({
++              model: v.literal(tableName),
++              where: v.optional(v.array(whereValidator(schema, tableName)))
++            });
++          })
++        ),
++        paginationOpts: paginationOptsValidator,
++        onDeleteHandle: v.optional(v.string())
++      },
++      handler: async (ctx, args) => {
++        const { page, ...result } = await paginate(
++          ctx,
++          schema,
++          betterAuthSchema,
++          {
++            ...args.input,
++            paginationOpts: args.paginationOpts
++          }
++        );
++        await asyncMap(page, async (doc) => {
++          if (args.input.model === "verification" && guard) await guard(ctx, { model: args.input.model, operation: "verificationDelete", id: doc._id, fields: [] });
++          if (args.onDeleteHandle) {
++            await ctx.runMutation(
++              args.onDeleteHandle,
++              {
++                model: args.input.model,
++                doc
++              }
++            );
++          }
++          await ctx.db.delete(
++            args.input.model,
++            doc._id
++          );
++        });
++        return {
++          ...result,
++          count: page.length,
++          ids: page.map((doc) => doc._id)
++        };
++      }
++    })
++  };
++};
++export {
++  createApi
+ };
+-//# sourceMappingURL=create-api.js.map
+\ No newline at end of file
+diff --git a/dist/component/_generated/component.d.ts b/dist/component/_generated/component.d.ts
+index 2ac4afadd012be196264600168f8ddda6f9d4e64..9d5b64a8224e4495c8910d82e4d0135b65bb2b8f 100644
+--- a/dist/component/_generated/component.d.ts
++++ b/dist/component/_generated/component.d.ts
+@@ -19,6 +19,10 @@ import type { FunctionReference } from "convex/server";
+  * ```
+  */
+ export type ComponentApi<Name extends string | undefined = string | undefined> = {
++  guard: {
++    configure: FunctionReference<"mutation", "internal", { create: string; update: string; verificationDelete: string }, null, Name>;
++    health: FunctionReference<"query", "internal", {}, { configured: boolean; revision: string | null; count: number }, Name>;
++  };
+     adapter: {
+         create: FunctionReference<"mutation", "internal", {
+             input: {
+@@ -137,6 +141,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                 model: "rateLimit";
+             };
+             onCreateHandle?: string;
++            approvalNonce?: string;
+             select?: Array<string>;
+         }, any, Name>;
+         deleteMany: FunctionReference<"mutation", "internal", {
+@@ -560,6 +565,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                 }>;
+             };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             paginationOpts: {
+                 cursor: string | null;
+                 endCursor?: string | null;
+@@ -756,6 +763,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                 }>;
+             };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+         }, any, Name>;
+     };
+     testProfiles: {
+@@ -882,6 +891,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     model: "rateLimit";
+                 };
+                 onCreateHandle?: string;
++            approvalNonce?: string;
+                 select?: Array<string>;
+             }, any, Name>;
+             deleteMany: FunctionReference<"mutation", "internal", {
+@@ -1310,6 +1320,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+                 paginationOpts: {
+                     cursor: string | null;
+                     endCursor?: string | null;
+@@ -1511,6 +1523,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             }, any, Name>;
+         };
+         adapterOrganizationJoins: {
+@@ -1751,6 +1765,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     model: "invitation";
+                 };
+                 onCreateHandle?: string;
++            approvalNonce?: string;
+                 select?: Array<string>;
+             }, any, Name>;
+             deleteMany: FunctionReference<"mutation", "internal", {
+@@ -2544,6 +2559,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+                 paginationOpts: {
+                     cursor: string | null;
+                     endCursor?: string | null;
+@@ -2930,6 +2947,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             }, any, Name>;
+         };
+         adapterPluginTable: {
+@@ -3170,6 +3189,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     model: "invitation";
+                 };
+                 onCreateHandle?: string;
++            approvalNonce?: string;
+                 select?: Array<string>;
+             }, any, Name>;
+             deleteMany: FunctionReference<"mutation", "internal", {
+@@ -3963,6 +3983,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+                 paginationOpts: {
+                     cursor: string | null;
+                     endCursor?: string | null;
+@@ -4349,6 +4371,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             }, any, Name>;
+         };
+         adapterRenameField: {
+@@ -4589,6 +4613,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     model: "invitation";
+                 };
+                 onCreateHandle?: string;
++            approvalNonce?: string;
+                 select?: Array<string>;
+             }, any, Name>;
+             deleteMany: FunctionReference<"mutation", "internal", {
+@@ -5382,6 +5407,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+                 paginationOpts: {
+                     cursor: string | null;
+                     endCursor?: string | null;
+@@ -5768,6 +5795,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             }, any, Name>;
+         };
+         adapterRenameUserCustom: {
+@@ -6008,6 +6037,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     model: "invitation";
+                 };
+                 onCreateHandle?: string;
++            approvalNonce?: string;
+                 select?: Array<string>;
+             }, any, Name>;
+             deleteMany: FunctionReference<"mutation", "internal", {
+@@ -6801,6 +6831,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+                 paginationOpts: {
+                     cursor: string | null;
+                     endCursor?: string | null;
+@@ -7187,6 +7219,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             }, any, Name>;
+         };
+         adapterRenameUserTable: {
+@@ -7427,6 +7461,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     model: "invitation";
+                 };
+                 onCreateHandle?: string;
++            approvalNonce?: string;
+                 select?: Array<string>;
+             }, any, Name>;
+             deleteMany: FunctionReference<"mutation", "internal", {
+@@ -8220,6 +8255,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+                 paginationOpts: {
+                     cursor: string | null;
+                     endCursor?: string | null;
+@@ -8606,6 +8643,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                     }>;
+                 };
+                 onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             }, any, Name>;
+         };
+     };
+diff --git a/dist/component/adapter.js b/dist/component/adapter.js
+index 945455af6d486b2e703f11d9a18f2a1a5262766b..2fab092f9df647b3a56258bc393b401fa3be8e9a 100644
+--- a/dist/component/adapter.js
++++ b/dist/component/adapter.js
+@@ -1,5 +1,22 @@
+ import { createApi } from "../client/index.js";
+ import { options } from "../auth-options.js";
+-import schema from "./schema.js";
+-export const { create, findOne, findMany, updateOne, updateMany, deleteOne, deleteMany, } = createApi(schema, () => options);
+-//# sourceMappingURL=adapter.js.map
+\ No newline at end of file
++import { authSchema } from "./schema.js";
++import { check } from "./guard.js";
++const {
++  create,
++  findOne,
++  findMany,
++  updateOne,
++  updateMany,
++  deleteOne,
++  deleteMany
++} = createApi(authSchema, () => options, check);
++export {
++  create,
++  deleteMany,
++  deleteOne,
++  findMany,
++  findOne,
++  updateMany,
++  updateOne
++};
+diff --git a/dist/component/guard.js b/dist/component/guard.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..30d183e7261c132492020ded787c5f242cb21745
+--- /dev/null
++++ b/dist/component/guard.js
+@@ -0,0 +1,28 @@
++import { mutationGeneric, queryGeneric } from "convex/server";
++import { v } from "convex/values";
++const revision = "dispatch-admission-v1";
++const handles = { create: v.string(), update: v.string(), verificationDelete: v.string() };
++const configure = mutationGeneric({ args: handles, handler: async (ctx, args) => {
++  const old = await ctx.db.query("admissionGuard").unique();
++  if (old) {
++    if (old.revision !== revision || Object.keys(args).some((key) => old[key] !== args[key])) throw new Error("AUTH_GUARD_ALREADY_BOUND");
++    return;
++  }
++  await ctx.db.insert("admissionGuard", { revision, ...args });
++} });
++const health = queryGeneric({ args: {}, handler: async (ctx) => {
++  const rows = await ctx.db.query("admissionGuard").take(2);
++  return { configured: rows.length === 1 && rows[0].revision === revision, revision: rows[0]?.revision ?? null, count: rows.length };
++} });
++async function check(ctx, args) {
++  const config = await ctx.db.query("admissionGuard").unique();
++  if (!config) return true;
++  if (config.revision !== revision) throw new Error("AUTH_GUARD_REVISION_MISMATCH");
++  return await ctx.runMutation(config[args.operation], args);
++}
++export {
++  check,
++  configure,
++  health,
++  revision
++};
+diff --git a/dist/component/schema.d.ts b/dist/component/schema.d.ts
+index 2666ea19ac94ad0255380392fb4930c7c7d22a93..c6d3764d4e5cf11d4fe411c842d6dc585f26e3f6 100644
+--- a/dist/component/schema.d.ts
++++ b/dist/component/schema.d.ts
+@@ -222,7 +222,7 @@ export declare const tables: {
+         key: ["key", "_creationTime"];
+     }, {}, {}>;
+ };
+-declare const schema: import("convex/server").SchemaDefinition<{
++export declare const authSchema: import("convex/server").SchemaDefinition<{
+     user: import("convex/server").TableDefinition<import("convex/values").VObject<{
+         image?: string | null | undefined;
+         userId?: string | null | undefined;
+@@ -436,5 +436,15 @@ declare const schema: import("convex/server").SchemaDefinition<{
+         key: ["key", "_creationTime"];
+     }, {}, {}>;
+ }, true>;
++declare const schema: import("convex/server").SchemaDefinition<typeof tables & {
++    admissionGuard: import("convex/server").TableDefinition<import("convex/values").VObject<{
++        revision: string; create: string; update: string; verificationDelete: string;
++    }, {
++        revision: import("convex/values").VString<string, "required">;
++        create: import("convex/values").VString<string, "required">;
++        update: import("convex/values").VString<string, "required">;
++        verificationDelete: import("convex/values").VString<string, "required">;
++    }, "required">, {}, {}, {}>;
++}, true>;
+ export default schema;
+ //# sourceMappingURL=schema.d.ts.map
+\ No newline at end of file
+diff --git a/dist/component/schema.js b/dist/component/schema.js
+index 86516c9cc1e90bfe1ace285a150d2b0eef580bf8..4a051b3e57e160e3c70eb505d7905b3bfc74bc5d 100644
+--- a/dist/component/schema.js
++++ b/dist/component/schema.js
+@@ -1,136 +1,106 @@
+-/**
+- * This file is auto-generated. Do not edit this file manually.
+- * To regenerate the schema, from your project root:
+- *
+- *   npx auth generate --output src/component/schema.ts
+- *
+- * To customize the schema, generate to an alternate file and import
+- * the table definitions to your schema file. See
+- * https://labs.convex.dev/better-auth/features/local-install#adding-custom-indexes.
+- */
+ import { defineSchema, defineTable } from "convex/server";
+ import { v } from "convex/values";
+-export const tables = {
+-    user: defineTable({
+-        name: v.string(),
+-        email: v.string(),
+-        emailVerified: v.boolean(),
+-        image: v.optional(v.union(v.null(), v.string())),
+-        createdAt: v.number(),
+-        updatedAt: v.number(),
+-        twoFactorEnabled: v.optional(v.union(v.null(), v.boolean())),
+-        isAnonymous: v.optional(v.union(v.null(), v.boolean())),
+-        username: v.optional(v.union(v.null(), v.string())),
+-        displayUsername: v.optional(v.union(v.null(), v.string())),
+-        phoneNumber: v.optional(v.union(v.null(), v.string())),
+-        phoneNumberVerified: v.optional(v.union(v.null(), v.boolean())),
+-        userId: v.optional(v.union(v.null(), v.string())),
+-    })
+-        .index("email_name", ["email", "name"])
+-        .index("name", ["name"])
+-        .index("userId", ["userId"])
+-        .index("username", ["username"])
+-        .index("phoneNumber", ["phoneNumber"]),
+-    session: defineTable({
+-        expiresAt: v.number(),
+-        token: v.string(),
+-        createdAt: v.number(),
+-        updatedAt: v.number(),
+-        ipAddress: v.optional(v.union(v.null(), v.string())),
+-        userAgent: v.optional(v.union(v.null(), v.string())),
+-        userId: v.string(),
+-    })
+-        .index("expiresAt", ["expiresAt"])
+-        .index("expiresAt_userId", ["expiresAt", "userId"])
+-        .index("token", ["token"])
+-        .index("userId", ["userId"]),
+-    account: defineTable({
+-        accountId: v.string(),
+-        providerId: v.string(),
+-        userId: v.string(),
+-        accessToken: v.optional(v.union(v.null(), v.string())),
+-        refreshToken: v.optional(v.union(v.null(), v.string())),
+-        idToken: v.optional(v.union(v.null(), v.string())),
+-        accessTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
+-        refreshTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
+-        scope: v.optional(v.union(v.null(), v.string())),
+-        password: v.optional(v.union(v.null(), v.string())),
+-        createdAt: v.number(),
+-        updatedAt: v.number(),
+-    })
+-        .index("accountId", ["accountId"])
+-        .index("accountId_providerId", ["accountId", "providerId"])
+-        .index("providerId_userId", ["providerId", "userId"])
+-        .index("userId", ["userId"]),
+-    verification: defineTable({
+-        identifier: v.string(),
+-        value: v.string(),
+-        expiresAt: v.number(),
+-        createdAt: v.number(),
+-        updatedAt: v.number(),
+-    })
+-        .index("expiresAt", ["expiresAt"])
+-        .index("identifier", ["identifier"]),
+-    twoFactor: defineTable({
+-        secret: v.string(),
+-        backupCodes: v.string(),
+-        userId: v.string(),
+-        verified: v.optional(v.union(v.null(), v.boolean())),
+-    })
+-        .index("userId", ["userId"]),
+-    oauthApplication: defineTable({
+-        name: v.optional(v.union(v.null(), v.string())),
+-        icon: v.optional(v.union(v.null(), v.string())),
+-        metadata: v.optional(v.union(v.null(), v.string())),
+-        clientId: v.optional(v.union(v.null(), v.string())),
+-        clientSecret: v.optional(v.union(v.null(), v.string())),
+-        redirectUrls: v.optional(v.union(v.null(), v.string())),
+-        type: v.optional(v.union(v.null(), v.string())),
+-        disabled: v.optional(v.union(v.null(), v.boolean())),
+-        userId: v.optional(v.union(v.null(), v.string())),
+-        createdAt: v.optional(v.union(v.null(), v.number())),
+-        updatedAt: v.optional(v.union(v.null(), v.number())),
+-    })
+-        .index("clientId", ["clientId"])
+-        .index("userId", ["userId"]),
+-    oauthAccessToken: defineTable({
+-        accessToken: v.optional(v.union(v.null(), v.string())),
+-        refreshToken: v.optional(v.union(v.null(), v.string())),
+-        accessTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
+-        refreshTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
+-        clientId: v.optional(v.union(v.null(), v.string())),
+-        userId: v.optional(v.union(v.null(), v.string())),
+-        scopes: v.optional(v.union(v.null(), v.string())),
+-        createdAt: v.optional(v.union(v.null(), v.number())),
+-        updatedAt: v.optional(v.union(v.null(), v.number())),
+-    })
+-        .index("accessToken", ["accessToken"])
+-        .index("refreshToken", ["refreshToken"])
+-        .index("clientId", ["clientId"])
+-        .index("userId", ["userId"]),
+-    oauthConsent: defineTable({
+-        clientId: v.optional(v.union(v.null(), v.string())),
+-        userId: v.optional(v.union(v.null(), v.string())),
+-        scopes: v.optional(v.union(v.null(), v.string())),
+-        createdAt: v.optional(v.union(v.null(), v.number())),
+-        updatedAt: v.optional(v.union(v.null(), v.number())),
+-        consentGiven: v.optional(v.union(v.null(), v.boolean())),
+-    })
+-        .index("clientId_userId", ["clientId", "userId"])
+-        .index("userId", ["userId"]),
+-    jwks: defineTable({
+-        publicKey: v.string(),
+-        privateKey: v.string(),
+-        createdAt: v.number(),
+-        expiresAt: v.optional(v.union(v.null(), v.number())),
+-    }),
+-    rateLimit: defineTable({
+-        key: v.string(),
+-        count: v.number(),
+-        lastRequest: v.number(),
+-    })
+-        .index("key", ["key"]),
++const tables = {
++  user: defineTable({
++    name: v.string(),
++    email: v.string(),
++    emailVerified: v.boolean(),
++    image: v.optional(v.union(v.null(), v.string())),
++    createdAt: v.number(),
++    updatedAt: v.number(),
++    twoFactorEnabled: v.optional(v.union(v.null(), v.boolean())),
++    isAnonymous: v.optional(v.union(v.null(), v.boolean())),
++    username: v.optional(v.union(v.null(), v.string())),
++    displayUsername: v.optional(v.union(v.null(), v.string())),
++    phoneNumber: v.optional(v.union(v.null(), v.string())),
++    phoneNumberVerified: v.optional(v.union(v.null(), v.boolean())),
++    userId: v.optional(v.union(v.null(), v.string()))
++  }).index("email_name", ["email", "name"]).index("name", ["name"]).index("userId", ["userId"]).index("username", ["username"]).index("phoneNumber", ["phoneNumber"]),
++  session: defineTable({
++    expiresAt: v.number(),
++    token: v.string(),
++    createdAt: v.number(),
++    updatedAt: v.number(),
++    ipAddress: v.optional(v.union(v.null(), v.string())),
++    userAgent: v.optional(v.union(v.null(), v.string())),
++    userId: v.string()
++  }).index("expiresAt", ["expiresAt"]).index("expiresAt_userId", ["expiresAt", "userId"]).index("token", ["token"]).index("userId", ["userId"]),
++  account: defineTable({
++    accountId: v.string(),
++    providerId: v.string(),
++    userId: v.string(),
++    accessToken: v.optional(v.union(v.null(), v.string())),
++    refreshToken: v.optional(v.union(v.null(), v.string())),
++    idToken: v.optional(v.union(v.null(), v.string())),
++    accessTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
++    refreshTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
++    scope: v.optional(v.union(v.null(), v.string())),
++    password: v.optional(v.union(v.null(), v.string())),
++    createdAt: v.number(),
++    updatedAt: v.number()
++  }).index("accountId", ["accountId"]).index("accountId_providerId", ["accountId", "providerId"]).index("providerId_userId", ["providerId", "userId"]).index("userId", ["userId"]),
++  verification: defineTable({
++    identifier: v.string(),
++    value: v.string(),
++    expiresAt: v.number(),
++    createdAt: v.number(),
++    updatedAt: v.number()
++  }).index("expiresAt", ["expiresAt"]).index("identifier", ["identifier"]),
++  twoFactor: defineTable({
++    secret: v.string(),
++    backupCodes: v.string(),
++    userId: v.string(),
++    verified: v.optional(v.union(v.null(), v.boolean()))
++  }).index("userId", ["userId"]),
++  oauthApplication: defineTable({
++    name: v.optional(v.union(v.null(), v.string())),
++    icon: v.optional(v.union(v.null(), v.string())),
++    metadata: v.optional(v.union(v.null(), v.string())),
++    clientId: v.optional(v.union(v.null(), v.string())),
++    clientSecret: v.optional(v.union(v.null(), v.string())),
++    redirectUrls: v.optional(v.union(v.null(), v.string())),
++    type: v.optional(v.union(v.null(), v.string())),
++    disabled: v.optional(v.union(v.null(), v.boolean())),
++    userId: v.optional(v.union(v.null(), v.string())),
++    createdAt: v.optional(v.union(v.null(), v.number())),
++    updatedAt: v.optional(v.union(v.null(), v.number()))
++  }).index("clientId", ["clientId"]).index("userId", ["userId"]),
++  oauthAccessToken: defineTable({
++    accessToken: v.optional(v.union(v.null(), v.string())),
++    refreshToken: v.optional(v.union(v.null(), v.string())),
++    accessTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
++    refreshTokenExpiresAt: v.optional(v.union(v.null(), v.number())),
++    clientId: v.optional(v.union(v.null(), v.string())),
++    userId: v.optional(v.union(v.null(), v.string())),
++    scopes: v.optional(v.union(v.null(), v.string())),
++    createdAt: v.optional(v.union(v.null(), v.number())),
++    updatedAt: v.optional(v.union(v.null(), v.number()))
++  }).index("accessToken", ["accessToken"]).index("refreshToken", ["refreshToken"]).index("clientId", ["clientId"]).index("userId", ["userId"]),
++  oauthConsent: defineTable({
++    clientId: v.optional(v.union(v.null(), v.string())),
++    userId: v.optional(v.union(v.null(), v.string())),
++    scopes: v.optional(v.union(v.null(), v.string())),
++    createdAt: v.optional(v.union(v.null(), v.number())),
++    updatedAt: v.optional(v.union(v.null(), v.number())),
++    consentGiven: v.optional(v.union(v.null(), v.boolean()))
++  }).index("clientId_userId", ["clientId", "userId"]).index("userId", ["userId"]),
++  jwks: defineTable({
++    publicKey: v.string(),
++    privateKey: v.string(),
++    createdAt: v.number(),
++    expiresAt: v.optional(v.union(v.null(), v.number()))
++  }),
++  rateLimit: defineTable({
++    key: v.string(),
++    count: v.number(),
++    lastRequest: v.number()
++  }).index("key", ["key"])
++};
++const authSchema = defineSchema(tables);
++const schema = defineSchema({ ...tables, admissionGuard: defineTable({ revision: v.string(), create: v.string(), update: v.string(), verificationDelete: v.string() }) });
++var stdin_default = schema;
++export {
++  authSchema,
++  stdin_default as default,
++  tables
+ };
+-const schema = defineSchema(tables);
+-export default schema;
+-//# sourceMappingURL=schema.js.map
+\ No newline at end of file
+diff --git a/src/client/create-api.ts b/src/client/create-api.ts
+index 97679db61fadddf96c0d6004b634bf0a14246f5b..4e41769b715d9f6e56a5753ccc90411618f516ce 100644
+--- a/src/client/create-api.ts
++++ b/src/client/create-api.ts
+@@ -60,7 +60,8 @@ const whereValidator = (
+ 
+ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+   schema: Schema,
+-  createAuthOptions: (ctx: any) => BetterAuthOptions
++  createAuthOptions: (ctx: any) => BetterAuthOptions,
++  guard?: (ctx: any, args: { model: string; operation: "create" | "update" | "verificationDelete"; id: string; fields: string[]; previousOwner?: string; approvalNonce?: string }) => Promise<boolean>
+ ) => {
+   const betterAuthSchema = getAuthTables(createAuthOptions({} as any));
+   return {
+@@ -76,6 +77,7 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+         ),
+         select: v.optional(v.array(v.string())),
+         onCreateHandle: v.optional(v.string()),
++        approvalNonce: v.optional(v.string()),
+       },
+       handler: async (ctx, args) => {
+         await checkUniqueFields(
+@@ -93,6 +95,10 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+         if (!doc) {
+           throw new Error(`Failed to create ${args.input.model}`);
+         }
++        if (guard && !await guard(ctx, { model: args.input.model, operation: "create", id, fields: Object.keys(args.input.data), approvalNonce: args.approvalNonce })) {
++          if (await ctx.db.get(args.input.model, id)) await ctx.db.delete(args.input.model, id);
++          return null;
++        }
+         const result = selectFields(doc, args.select);
+         if (args.onCreateHandle) {
+           await ctx.runMutation(
+@@ -164,6 +170,8 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+           )
+         ),
+         onUpdateHandle: v.optional(v.string()),
++        approvalNonce: v.optional(v.string()),
++        approvalNonces: v.optional(v.array(v.object({ id: v.string(), nonce: v.string() }))),
+       },
+       handler: async (ctx, args) => {
+         const doc = await listOne(ctx, schema, betterAuthSchema, args.input);
+@@ -178,6 +186,7 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+           args.input.update,
+           doc
+         );
++        if (args.input.model === "verification" && guard) await guard(ctx, { model: args.input.model, operation: "update", id: doc._id, fields: [] });
+         await ctx.db.patch(
+           args.input.model,
+           doc._id as GenericId<TableNames>,
+@@ -190,6 +199,10 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+         if (!updatedDoc) {
+           throw new Error(`Failed to update ${args.input.model}`);
+         }
++        if (guard && !await guard(ctx, { model: args.input.model, operation: "update", id: doc._id, fields: Object.keys(args.input.update), previousOwner: doc.userId, approvalNonce: args.approvalNonces?.find(approval => approval.id === doc._id)?.nonce ?? args.approvalNonce })) {
++          if (await ctx.db.get(args.input.model, doc._id)) { const { _id, _creationTime, ...original } = doc; await ctx.db.replace(args.input.model, doc._id, original); }
++          return null;
++        }
+         if (args.onUpdateHandle) {
+           await ctx.runMutation(
+             args.onUpdateHandle as FunctionHandle<"mutation">,
+@@ -230,6 +243,8 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+         ),
+         paginationOpts: paginationOptsValidator,
+         onUpdateHandle: v.optional(v.string()),
++        approvalNonce: v.optional(v.string()),
++        approvalNonces: v.optional(v.array(v.object({ id: v.string(), nonce: v.string() }))),
+       },
+       handler: async (ctx, args) => {
+         const { page, ...result } = await paginate(
+@@ -254,6 +269,7 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+               `Attempted to set unique fields in multiple documents in ${args.input.model} with the same value. Fields: ${Object.keys(args.input.update ?? {}).join(", ")}`
+             );
+           }
++          const allowedIds: string[] = [];
+           await asyncMap(page, async (doc) => {
+             await checkUniqueFields(
+               ctx,
+@@ -263,12 +279,18 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+               args.input.update ?? {},
+               doc
+             );
++            if (args.input.model === "verification" && guard) await guard(ctx, { model: args.input.model, operation: "update", id: doc._id, fields: [] });
+             await ctx.db.patch(
+               args.input.model,
+               doc._id as GenericId<TableNames>,
+               args.input.update as any
+             );
+ 
++            if (guard && !await guard(ctx, { model: args.input.model, operation: "update", id: doc._id, fields: Object.keys(args.input.update), previousOwner: doc.userId, approvalNonce: args.approvalNonces?.find(approval => approval.id === doc._id)?.nonce ?? args.approvalNonce })) {
++              if (await ctx.db.get(args.input.model, doc._id)) { const { _id, _creationTime, ...original } = doc; await ctx.db.replace(args.input.model, doc._id, original); }
++              return;
++            }
++            allowedIds.push(doc._id);
+             if (args.onUpdateHandle) {
+               await ctx.runMutation(
+                 args.onUpdateHandle as FunctionHandle<"mutation">,
+@@ -283,6 +305,7 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+               );
+             }
+           });
++          return { ...result, count: allowedIds.length, ids: allowedIds };
+         }
+         return {
+           ...result,
+@@ -309,6 +332,7 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+         if (!doc) {
+           return;
+         }
++        if (args.input.model === "verification" && guard) await guard(ctx, { model: args.input.model, operation: "verificationDelete", id: doc._id, fields: [] });
+         await ctx.db.delete(args.input.model, doc._id as GenericId<TableNames>);
+         if (args.onDeleteHandle) {
+           await ctx.runMutation(
+@@ -344,6 +368,7 @@ export const createApi = <Schema extends SchemaDefinition<any, any>>(
+           }
+         );
+         await asyncMap(page, async (doc) => {
++          if (args.input.model === "verification" && guard) await guard(ctx, { model: args.input.model, operation: "verificationDelete", id: doc._id, fields: [] });
+           if (args.onDeleteHandle) {
+             await ctx.runMutation(
+               args.onDeleteHandle as FunctionHandle<"mutation">,
+diff --git a/src/component/_generated/component.ts b/src/component/_generated/component.ts
+index b7e2767658746ee4b91f73017ce32c1dc7329928..d473e80f495f03f2107a940366ce065a46c38056 100644
+--- a/src/component/_generated/component.ts
++++ b/src/component/_generated/component.ts
+@@ -23,6 +23,10 @@ import type { FunctionReference } from "convex/server";
+  */
+ export type ComponentApi<Name extends string | undefined = string | undefined> =
+   {
++  guard: {
++    configure: FunctionReference<"mutation", "internal", { create: string; update: string; verificationDelete: string }, null, Name>;
++    health: FunctionReference<"query", "internal", {}, { configured: boolean; revision: string | null; count: number }, Name>;
++  };
+     adapter: {
+       create: FunctionReference<
+         "mutation",
+@@ -150,6 +154,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                 model: "rateLimit";
+               };
+           onCreateHandle?: string;
++            approvalNonce?: string;
+           select?: Array<string>;
+         },
+         any,
+@@ -1430,6 +1435,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                 }>;
+               };
+           onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+           paginationOpts: {
+             cursor: string | null;
+             endCursor?: string | null;
+@@ -1888,6 +1895,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                 }>;
+               };
+           onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+         },
+         any,
+         Name
+@@ -2026,6 +2035,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   model: "rateLimit";
+                 };
+             onCreateHandle?: string;
++            approvalNonce?: string;
+             select?: Array<string>;
+           },
+           any,
+@@ -3330,6 +3340,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             paginationOpts: {
+               cursor: string | null;
+               endCursor?: string | null;
+@@ -3802,6 +3814,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+           },
+           any,
+           Name
+@@ -4059,6 +4073,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   model: "invitation";
+                 };
+             onCreateHandle?: string;
++            approvalNonce?: string;
+             select?: Array<string>;
+           },
+           any,
+@@ -6514,6 +6529,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             paginationOpts: {
+               cursor: string | null;
+               endCursor?: string | null;
+@@ -7425,6 +7442,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+           },
+           any,
+           Name
+@@ -7682,6 +7701,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   model: "invitation";
+                 };
+             onCreateHandle?: string;
++            approvalNonce?: string;
+             select?: Array<string>;
+           },
+           any,
+@@ -10137,6 +10157,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             paginationOpts: {
+               cursor: string | null;
+               endCursor?: string | null;
+@@ -11048,6 +11070,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+           },
+           any,
+           Name
+@@ -11305,6 +11329,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   model: "invitation";
+                 };
+             onCreateHandle?: string;
++            approvalNonce?: string;
+             select?: Array<string>;
+           },
+           any,
+@@ -13760,6 +13785,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             paginationOpts: {
+               cursor: string | null;
+               endCursor?: string | null;
+@@ -14671,6 +14698,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+           },
+           any,
+           Name
+@@ -14928,6 +14957,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   model: "invitation";
+                 };
+             onCreateHandle?: string;
++            approvalNonce?: string;
+             select?: Array<string>;
+           },
+           any,
+@@ -17383,6 +17413,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             paginationOpts: {
+               cursor: string | null;
+               endCursor?: string | null;
+@@ -18294,6 +18326,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+           },
+           any,
+           Name
+@@ -18551,6 +18585,7 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   model: "invitation";
+                 };
+             onCreateHandle?: string;
++            approvalNonce?: string;
+             select?: Array<string>;
+           },
+           any,
+@@ -21006,6 +21041,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+             paginationOpts: {
+               cursor: string | null;
+               endCursor?: string | null;
+@@ -21917,6 +21954,8 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+                   }>;
+                 };
+             onUpdateHandle?: string;
++            approvalNonce?: string;
++            approvalNonces?: Array<{ id: string; nonce: string }>;
+           },
+           any,
+           Name
+diff --git a/src/component/adapter.ts b/src/component/adapter.ts
+index 41ee5cbcbf784705138ead21941e4e3273692d37..1d3b122825c6f404b3cc82372c59e4eccaff3dd6 100644
+--- a/src/component/adapter.ts
++++ b/src/component/adapter.ts
+@@ -1,6 +1,7 @@
+ import { createApi } from "../client/index.js";
+ import { options } from "../auth-options.js";
+-import schema from "./schema.js";
++import { authSchema } from "./schema.js";
++import { check } from "./guard.js";
+ 
+ export const {
+   create,
+@@ -10,4 +11,4 @@ export const {
+   updateMany,
+   deleteOne,
+   deleteMany,
+-} = createApi(schema, () => options);
++} = createApi(authSchema, () => options, check);
+diff --git a/src/component/guard.ts b/src/component/guard.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..00350d560ff342b1c6004bb57e29af4641051003
+--- /dev/null
++++ b/src/component/guard.ts
+@@ -0,0 +1,22 @@
++import { mutationGeneric, queryGeneric, type FunctionHandle } from "convex/server";
++import { v } from "convex/values";
++export const revision = "dispatch-admission-v1";
++const handles = { create: v.string(), update: v.string(), verificationDelete: v.string() };
++export const configure = mutationGeneric({ args: handles, handler: async (ctx, args) => {
++  const old = await ctx.db.query("admissionGuard").unique();
++  if (old) {
++    if (old.revision !== revision || Object.keys(args).some(key => old[key] !== args[key as keyof typeof args])) throw new Error("AUTH_GUARD_ALREADY_BOUND");
++    return;
++  }
++  await ctx.db.insert("admissionGuard", { revision, ...args });
++}});
++export const health = queryGeneric({ args: {}, handler: async ctx => {
++  const rows = await ctx.db.query("admissionGuard").take(2);
++  return { configured: rows.length === 1 && rows[0].revision === revision, revision: rows[0]?.revision ?? null, count: rows.length };
++}});
++export async function check(ctx: any, args: { model: string; operation: "create" | "update" | "verificationDelete"; id: string; fields: string[]; previousOwner?: string; approvalNonce?: string }) {
++  const config = await ctx.db.query("admissionGuard").unique();
++  if (!config) return true;
++  if (config.revision !== revision) throw new Error("AUTH_GUARD_REVISION_MISMATCH");
++  return await ctx.runMutation(config[args.operation] as FunctionHandle<"mutation">, args);
++}
+diff --git a/src/component/schema.ts b/src/component/schema.ts
+index 8b5ecc1c7e8dd615461290459f147e9c07813a3f..ffbbc2f2fe3791db8bf132dca68b5191df5a326f 100644
+--- a/src/component/schema.ts
++++ b/src/component/schema.ts
+@@ -134,6 +134,7 @@ export const tables = {
+     .index("key", ["key"]),
+ };
+ 
+-const schema = defineSchema(tables);
++export const authSchema = defineSchema(tables);
++const schema = defineSchema({ ...tables, admissionGuard: defineTable({ revision: v.string(), create: v.string(), update: v.string(), verificationDelete: v.string() }) });
+ 
+ export default schema;
