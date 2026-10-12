@@ -1,10 +1,10 @@
 ---
 id: TASK-33
 title: 'Export, Löschung und Retention umsetzen (P09.03)'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-10 13:23'
+updated_date: '2026-10-12'
 labels:
   - p09
   - r3
@@ -63,8 +63,8 @@ Das Daten-Lifecycle-Paket umfasst zusätzlich Jev-Assessments, Analyse-Caches, E
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
-- [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
+- [x] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
+- [x] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -103,6 +103,8 @@ Nutzerentscheidung 2026-10-08: gewünschte betriebliche Aufbewahrung 30 Tage. Di
 2026-10-10: Umsetzung integriert: paginierte sichere Exporte inkl. Identity/Originale, native Datenkontrollen, dauerhafter Löschkoordinator, scoped Agent/Workflow-Patches und 30-Tage-Retention. Build und vollständiger App-/Backend-Typecheck bestehen. Löschung/Retention/Komponenten41 Tests und native Workspace-Recovery-Browserprüfung bestehen. Abschlussprüfung repariert alte Jev-Nullhorizont-/Cleanup-Budget-Erwartungen ohne Lockerung der Runtime-Proofs. Keine weitere Umfangserweiterung nach Nutzerhinweis auf150min. Kein Deployment und kein Done ohne vorgeschriebene manuelle Nutzerabnahme.
 
 Abschlusskorrektur: pauschaler30-Tage-Cap auf gespeicherte redaktionelle Assessments und Kalibrierungsnachweise würde den akzeptierten28-Tage-Qualifikations-/Monitoring-Pfad deaktivieren. Deshalb bleiben deren originale zweck-/quellengebundene Fristen bestehen; Diagnose-/Ausführungskopien, Routing/Verifier und Agent/Workflow bleiben betrieblich begrenzt. Keine Quellenfrist wird verlängert. UI/Inventar erklären diese Unterscheidung.
+
+2026-10-12 Abschluss: Kinder TASK-33.1 (inkl. 33.1.1/33.1.2/33.1.3), TASK-33.2, TASK-33.3 sind Done (2c2e557, 4b69590, 4119a5d); Nutzerbestätigung 2026-10-12 "schließe backlog Task 33 inkl. seiner Subtasks ab" gilt als manuelle Done-Bestätigung (DOD #2) für alle 7 Tasks. Integrierte Abnahme: pnpm typecheck PASS; 221/221 gezielte operations-Tests in 16 Dateien (11 Export, 4 Deletion/Erasure/Admission, Retention) PASS.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
