@@ -1,10 +1,10 @@
 ---
 id: TASK-33.1.1
 title: Ermögliche den Export eigener Profilangaben
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-07 21:32'
-updated_date: '2026-10-10 13:23'
+updated_date: '2026-10-12'
 labels: []
 dependencies: []
 references:
@@ -32,7 +32,7 @@ Erste bewusst begrenzte native Export-Einheit: aktuell autorisierte eigene Profi
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Technische Prüfungen und konkrete Teilumfang-Grenzen sind dokumentiert.
-- [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
+- [x] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -54,4 +54,5 @@ Fünf Sourcepfade pausiert: SourceReady df8aa2e;346Inventory/336geschützte alte
 Technisch akzeptiert: source20d0b68, frozen10b688ff, freshSPEC/distinctQUALITY, Root12/2betroffeneNative+7Static, Writer34/3, tatsächlichevierJSONDownloads1280/390; exactEUDev457/onlypublicselfQuery/456OldContracts+5HTTPunchanged. Siehe .docs/reviews/task-33.1.1-validation.md. Kein frischerFullsuite-/Legal-/WholeexportClaim; InProgress/manuelleDoD2offen.
 
 2026-10-10: Parent-Integration506/506 gezielte Tests, kompletter Typecheck/Build und Workspace-Recovery/Deletion-Browserprüfung bestanden. Bisher akzeptierter Self-Profile-Export unverändert; manuelles Done weiterhin offen.
+2026-10-12: Auf ausdrückliche Nutzeranweisung geschlossen; technische ACs belegt, frische gezielte Export-Tests 167/167 PASS. Manuelles Done per Nutzerbestätigung 2026-10-12.
 <!-- SECTION:NOTES:END -->

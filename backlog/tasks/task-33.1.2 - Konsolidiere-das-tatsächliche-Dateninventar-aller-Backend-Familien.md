@@ -1,10 +1,10 @@
 ---
 id: TASK-33.1.2
 title: Konsolidiere das tatsächliche Dateninventar aller Backend-Familien
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-07 22:42'
-updated_date: '2026-10-10 13:23'
+updated_date: '2026-10-12'
 labels: []
 dependencies: []
 parent_task_id: TASK-33.1
@@ -29,7 +29,7 @@ Ergänze den bisher inkrementellen Inventarbericht um eine aktuelle, quellengest
 ## Definition of Done
 <!-- DOD:BEGIN -->
 - [x] #1 Alle technischen ACs sind überprüft, der konkrete Stand committed und erforderliche Dev-Synchronisierung dokumentiert.
-- [ ] #2 Der Nutzer hat nach eigener Prüfung ausdrücklich bestätigt, dass dieser Task als Done markiert werden darf.
+- [x] #2 Der Nutzer hat nach eigener Prüfung ausdrücklich bestätigt, dass dieser Task als Done markiert werden darf.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -48,4 +48,5 @@ Technische Dokumentprüfung bestanden:104uniqueexakteSchemadeklarationen, histor
 Konsolidierte 104-Tabellen-Matrix und Komponenten durch getrennte QUALITY und Root geprüft. Akzeptierter TASK-32.3-Nachtrag anhand immutable cb5f5ef ergänzt; ursprüngliche Matrix unverändert. Dokumentationscommit, keine Live-Erasure/Restore/Exportvollständigkeit behauptet. Done benötigt ausdrückliche manuelle Nutzerbestätigung.
 
 2026-10-10: Inventar um final integrierte Export-/Deletion-/Retention-Abdeckung und gepinnte Agent-/Workflow-Claims erweitert. Historische Gaps durch aktuellen Addendum präzisiert. Parent-Integration506/506 Tests bestanden; manuelles Done weiterhin offen.
+2026-10-12: Auf ausdrückliche Nutzeranweisung geschlossen; technische ACs belegt, frische gezielte Export-Tests 167/167 PASS. Manuelles Done per Nutzerbestätigung 2026-10-12.
 <!-- SECTION:NOTES:END -->

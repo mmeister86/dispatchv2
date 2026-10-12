@@ -1,10 +1,10 @@
 ---
 id: TASK-33.1
 title: 'Dateninventar und sicheren Workspace-Export liefern (P09.03, Teil 1)'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-10 13:23'
+updated_date: '2026-10-12'
 labels:
   - p09
   - r3
@@ -45,8 +45,8 @@ Jev-Assessments/Caches, Usage, Frage-/Modell-/Formelreferenzen, kontrollierte Ev
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
-- [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
+- [x] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
+- [x] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -103,6 +103,7 @@ Unit4A accepted and locally committed2158440 after repaired SPEC PASS and distin
 4B1 akzeptiert und lokal exakt neun Quelldateien als eca1227 committed. Vollständige unabhängige SPEC/QUALITY plus günstige finale Delta-Prüfungen schließen fünf konkrete Findungs-Reparaturen ab. Final 29 native Exporttests und zwei unabhängige QUALITY-Repros grün; Backend-Typecheck. Frühere 166 relevante Tests/Browser-/Build-Nachweise ausdrücklich auf damalige eingefrorene Stände begrenzt. Restliche Exportfamilien weiter offen; wegen Nutzer-Aufwandsgrenze zunächst unabhängige Lösch-Fundamentierung vorgezogen.
 
 2026-10-10: Export-Restfamilien, zehn Finanzvarianten, Kalibrierung/Experimente, operative Records, eigene Identity-Metadaten und Originaldateien integriert. Strikte DTOs, native Quellen-/Actor-/Session-Bindungen und kontrollierte Pagination. R2≤32MiB, Agent-Dateien≤8MiB/Inline≤64KiB; externe/unbelegte Referenzen ausdrücklich unavailable. Keine globalen Secrets oder fremden privaten Threads. UI verdrahtet, Inventar ergänzt; manuelle Nutzerabnahme offen.
+2026-10-12: Auf ausdrückliche Nutzeranweisung geschlossen; technische ACs belegt, frische gezielte Export-Tests 167/167 PASS. Manuelles Done per Nutzerbestätigung 2026-10-12.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary

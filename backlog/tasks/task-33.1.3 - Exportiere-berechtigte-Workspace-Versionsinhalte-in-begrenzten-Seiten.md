@@ -1,10 +1,10 @@
 ---
 id: TASK-33.1.3
 title: Exportiere berechtigte Workspace-Versionsinhalte in begrenzten Seiten
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-07 23:23'
-updated_date: '2026-10-10 13:23'
+updated_date: '2026-10-12'
 labels: []
 dependencies: []
 parent_task_id: TASK-33.1
@@ -25,6 +25,12 @@ Ergänze den tatsächlichen Workspace-Export um paginierte gemeinsame Draft-Vers
 - [x] #3 Gemeinsame native Lese-/Byte-/DTO-Budgets einschließlich Auth und Quellenarbeit sind gemessen und erzwungen; echte Fortsetzung, Creation-Time-Auswahlgrenze und pro-Seite-Beobachtung werden von Vollständigkeit und atomarem Snapshot getrennt.
 - [x] #4 Reale native Isolation/Quelle/Rootless/Cap/mehrseitige und ZeroIO-Kontrollen erhalten den eigenen Profil-Export; eingeführter UI-Download ist bounded und Scope-fenced. Frische Reviews, Root-Gates, Commit und exaktes EUDev sind belegt; übrige Familien und Komponenten bleiben explizit offen.
 <!-- AC:END -->
+
+## Definition of Done
+<!-- DOD:BEGIN -->
+- [x] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
+- [x] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
+<!-- DOD:END -->
 
 ## Implementation Plan
 
@@ -49,4 +55,5 @@ Root Sourcefreigabe auf ec7d59da30e0a8096b31275f579061f51e54d60a: sechs existier
 Technisch abgenommen: Source169fdd175d1dd0cc17101af71d1e966188ccef9c/exaktesEUDev471/+1publicversions, alle470altenValidator/Type/Visibility/5HTTPunverändert. Writer17, Root178/6freeze1 qualifiedruntimeunchangedfinal3, frischeSPEC207/5qualifiedpriorruntime undfreshQUALITY207/5final3;283actualstyled/245originalretained. 25realnativeProducerknoten166q/docs56931Bread787wirezeroqueryeffects; syntheticmodeloutputs/queuedprovider nicht ausgeführt. Source355/5generated/344protected/humanzcodeignoreunverändert. HistorischeScreenshot/Clock/FormatREDs erhalten, minimalcapturewaitrepair/freshformal1280/390clean. .docs/reviews/task-33.1.3-validation.md. Manueller Done-Status offen; weitereParentExportfamilien/Archive/Erasure/Retention bleiben offen.
 
 2026-10-10: Parent-Integration506/506 gezielte Tests und Typecheck/Build bestanden. Akzeptierter paginierter Versions-Export integriert, Original-Medienreferenzen und separate Byte-Exporte ergänzt. Manuelles Done weiterhin offen.
+2026-10-12: Auf ausdrückliche Nutzeranweisung geschlossen; technische ACs belegt, frische gezielte Export-Tests 167/167 PASS. Manuelles Done per Nutzerbestätigung 2026-10-12.
 <!-- SECTION:NOTES:END -->
