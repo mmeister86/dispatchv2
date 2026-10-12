@@ -1,10 +1,10 @@
 ---
 id: TASK-33.2
 title: 'Wiederaufnehmbare Account- und Workspace-Löschung umsetzen (P09.03, Teil 2)'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-10 13:23'
+updated_date: '2026-10-12'
 labels:
   - p09
   - r3
@@ -43,8 +43,8 @@ Assessment-/Cache-/Entscheidungsdaten und nutzerbezogene Eval-/Debug-Daten in Ac
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
-- [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
+- [x] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
+- [x] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
 ## Implementation Plan
@@ -79,6 +79,8 @@ Kostenbegrenzt vorgezogen: frischer Standardmodell-Implementer baut aktuelle per
 Restumsetzung: funktionierender Koordinator und identitätsautorisiertes mine vor Bootstrap ergänzt. Native Komponentenbereinigung darf Originalfile-Beweise nicht verlieren; deletionArtifacts ist dafür dauerhafte bounded Ownership-Queue. 15 fokussierte native Löschtests vor Komponentenpatch bestanden; vollständige Abnahme noch offen.
 
 2026-10-10: Dauerhafter bounded Executor mit stop/components/objects/rows/auth/verify, echten R2-Receipts, scoped Agent-Datei-Claims/Storage-Löschung und Workflow-Residuals integriert. Shared-Account-Löschung erhält fremde Geschäftsdaten, entfernt private Actor-Zeilen und optionale Personenverweise. Bereits fehlender Workflow-Root idempotent. Ungeklärte externe Effekte/Ownership bleiben sicher wartend oder blockiert. Native Status-UI verhindert Workspace-Bootstrap während Löschung;41 kombinierte Lifecycle-Tests und Browser-Recovery bestanden. Manuelle Abnahme offen.
+
+2026-10-12: Auf ausdrückliche Nutzeranweisung geschlossen; technische ACs belegt, frische gezielte Lösch-Tests 44/44 PASS. Manuelles Done per Nutzerbestätigung 2026-10-12.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
