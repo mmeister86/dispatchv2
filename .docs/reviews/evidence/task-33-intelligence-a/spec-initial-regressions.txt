@@ -1,0 +1,388 @@
+
+ RUN  v5.0.3 /private/tmp/task33-spec-harness
+
+ ❯ regression.test.ts (5 tests | 5 failed) 855ms
+   × SPEC: request must reject foreign algorithm reference, erased=false 695ms
+   × SPEC: request must reject foreign algorithm reference, erased=true 10ms
+   × SPEC: routing archive preserves original model pin 37ms
+   × SPEC: assessment must reject foreign original policy 30ms
+   × SPEC: actual download projection preserves normalized assessment answer values 82ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  regression.test.ts > SPEC: request must reject foreign algorithm reference, erased=false
+AssertionError: promise resolved "{ accountId: null, …(13) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "accountId": null,
++   "authId": "0000000000000000000000010000user",
++   "creationUpperBound": 1791530618844,
++   "cursor": "_end_cursor",
++   "data": {
++     "format": "dispatch-workspace-intelligence",
++     "selection": {
++       "family": "ownAssessmentRequests",
++       "rows": [
++         {
++           "accountId": "000000000000010004socialAccounts",
++           "actorId": "000000000000000000000010001users",
++           "algorithmId": "000000000010018algorithmProfiles",
++           "audienceId": "0000000000010006audienceProfiles",
++           "createdAt": 1791530618843,
++           "deadline": 1791530621343,
++           "draftId": "00000000000000000000010008drafts",
++           "draftVersionId": "0000000000000010009draftVersions",
++           "id": "00000010016jevAssessmentRequests",
++           "materialAvailability": "retained",
++           "mode": "composer",
++           "selectionRevision": 1,
++           "sourceUntil": null,
++         },
++       ],
++     },
++     "version": 1,
++     "workspaceId": "0000000000000000010000workspaces",
++   },
++   "draftId": null,
++   "isDone": true,
++   "kind": null,
++   "observedAt": 1791530618844,
++   "proofValidUntil": 1791530648844,
++   "requestKey": "independent-review",
++   "role": "Owner",
++   "sessionId": "0000000000000000000010001session",
++   "workspaceId": "0000000000000000010000workspaces",
+  }
+
+ ❯ regression.test.ts:20:85
+     18| if(erased) await ctx.db.patch(f.request.draftVersionId,{sourceUnavaila…
+     19| });vi.advanceTimersByTime(1);
+     20| await expect(f.signed.query(page,{...await args(f),family:'ownAssessme…
+       |                                                                                     ^
+     21| });
+     22| test('SPEC: routing archive preserves original model pin',async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/5]⎯
+
+ FAIL  regression.test.ts > SPEC: request must reject foreign algorithm reference, erased=true
+AssertionError: promise resolved "{ accountId: null, …(13) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "accountId": null,
++   "authId": "0000000000000000000000010000user",
++   "creationUpperBound": 1791530619538,
++   "cursor": "_end_cursor",
++   "data": {
++     "format": "dispatch-workspace-intelligence",
++     "selection": {
++       "family": "ownAssessmentRequests",
++       "rows": [
++         {
++           "accountId": "000000000000010004socialAccounts",
++           "actorId": "000000000000000000000010001users",
++           "algorithmId": "000000000010018algorithmProfiles",
++           "audienceId": "0000000000010006audienceProfiles",
++           "createdAt": 1791530619537,
++           "deadline": 1791530622037,
++           "draftId": "00000000000000000000010008drafts",
++           "draftVersionId": "0000000000000010009draftVersions",
++           "id": "00000010016jevAssessmentRequests",
++           "materialAvailability": "unavailable",
++           "mode": "composer",
++           "selectionRevision": 1,
++           "sourceUntil": null,
++         },
++       ],
++     },
++     "version": 1,
++     "workspaceId": "0000000000000000010000workspaces",
++   },
++   "draftId": null,
++   "isDone": true,
++   "kind": null,
++   "observedAt": 1791530619538,
++   "proofValidUntil": 1791530649538,
++   "requestKey": "independent-review",
++   "role": "Owner",
++   "sessionId": "0000000000000000000010001session",
++   "workspaceId": "0000000000000000010000workspaces",
+  }
+
+ ❯ regression.test.ts:20:85
+     18| if(erased) await ctx.db.patch(f.request.draftVersionId,{sourceUnavaila…
+     19| });vi.advanceTimersByTime(1);
+     20| await expect(f.signed.query(page,{...await args(f),family:'ownAssessme…
+       |                                                                                     ^
+     21| });
+     22| test('SPEC: routing archive preserves original model pin',async()=>{
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/5]⎯
+
+ FAIL  regression.test.ts > SPEC: routing archive preserves original model pin
+AssertionError: expected '{"accountId":"000000000000010004socia…' to contain 'synthetic-routing-1.0'
+
+Expected: "synthetic-routing-1.0"
+Received: "{"accountId":"000000000000010004socialAccounts","actorId":"000000000000000000000010001users","createdAt":1791530619547,"deadline":1791530624547,"id":"000000010013jevRoutingOperations","ideaId":"000000000000000000000010005ideas","inputRevision":1,"inputVersionId":"00000000000000010006ideaVersions","intent":{"cta":null,"intent":"Explore this exact native input","network":"x","objective":"Explain the implications","outputKind":"perspective","strategy":null,"tone":"Clear"},"materialAvailability":"retained","normalizationVersion":"jev-routing-normalization-v1","questionVersion":"jev-intent-routing-v1","result":{"category":"educational","choiceConfidence":0.9,"effectiveStrategy":"educational","generatorKind":"generic","status":"routed","suggestion":"educational","thresholdVersion":"jev-routing-hypotheses-v1"},"sourceUnavailable":false,"sourceUntil":1791617019547,"status":"routed","style":null}"
+
+ ❯ regression.test.ts:26:50
+     24| const id=await f.signed.mutation(api.ai.jev.routing.prepare,f.command)…
+     25| const p:any=await f.signed.query(page,{...await args(f),family:'ownRou…
+     26| expect(JSON.stringify(p.data.selection.rows[0])).toContain('synthetic-…
+       |                                                  ^
+     27| });
+     28|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/5]⎯
+
+ FAIL  regression.test.ts > SPEC: assessment must reject foreign original policy
+AssertionError: promise resolved "{ …(14) }" instead of rejecting
+
+- Expected
++ Received
+
+- Error {
+-   "message": "rejected promise",
++ {
++   "accountId": "000000000000010004socialAccounts",
++   "authId": "0000000000000000000000010000user",
++   "creationUpperBound": 1791530619585,
++   "cursor": "_end_cursor",
++   "data": {
++     "format": "dispatch-workspace-intelligence",
++     "selection": {
++       "family": "assessments",
++       "rows": [
++         {
++           "accountId": "000000000000010004socialAccounts",
++           "algorithmId": "000000000010005algorithmProfiles",
++           "attemptId": "0000000000000000010017aiAttempts",
++           "audienceId": "0000000000010006audienceProfiles",
++           "createdAt": 1791530619584,
++           "draftId": "00000000000000000000010008drafts",
++           "draftVersionId": "0000000000000010009draftVersions",
++           "id": "000000000000010018jevAssessments",
++           "inputVersion": "dispatch-assessment-input-v1",
++           "provenance": {
++             "inputTokens": 20,
++             "latencyMs": 0,
++             "outputTokens": 10,
++             "policyId": "000000000000000010010jevPolicies",
++             "policyVersion": "synthetic-price-v1",
++             "requestedModel": "jev-1.13.0",
++             "resolvedModel": "jev-1.13.0",
++             "selectionRevision": 1,
++             "sentAt": 1791530619584,
++             "settledAt": 1791530619584,
++           },
++           "result": {
++             "answers": {
++               "clarity": {
++                 "confidence": 0.9,
++                 "type": "score",
++                 "value": 0.625,
++               },
++               "clickbait": {
++                 "probability": 0.2,
++                 "type": "noul",
++               },
++               "contentType": {
++                 "confidence": 0.9,
++                 "type": "choice",
++                 "value": "educational",
++               },
++               "discussionPotential": {
++                 "confidence": 0.9,
++                 "type": "score",
++                 "value": 0.625,
++               },
++               "hookStrength": {
++                 "confidence": 0.9,
++                 "type": "score",
++                 "value": 0.625,
++               },
++               "naturalCta": {
++                 "confidence": 0.9,
++                 "type": "score",
++                 "value": 0.625,
++               },
++               "originality": {
++                 "confidence": 0.9,
++                 "type": "score",
++                 "value": 0.625,
++               },
++               "promotionalTone": {
++                 "probability": 0.2,
++                 "type": "noul",
++               },
++               "strongClaim": {
++                 "probability": 0.2,
++                 "type": "noul",
++               },
++             },
++             "deterministic": {
++               "media": {
++                 "count": 0,
++                 "images": 0,
++                 "present": false,
++                 "videos": 0,
++                 "withAlt": 0,
++               },
++               "segments": [
++                 {
++                   "explicitCtaSigns": 0,
++                   "hashtags": 0,
++                   "length": 23,
++                   "lengthValid": true,
++                   "lines": 1,
++                   "links": 0,
++                   "mentions": 0,
++                   "position": 0,
++                   "questionMarks": 0,
++                   "repeatedParagraphs": false,
++                   "structure": 1,
++                 },
++                 {
++                   "explicitCtaSigns": 0,
++                   "hashtags": 0,
++                   "length": 24,
++                   "lengthValid": true,
++                   "lines": 1,
++                   "links": 0,
++                   "mentions": 0,
++                   "position": 1,
++                   "questionMarks": 0,
++                   "repeatedParagraphs": false,
++                   "structure": 1,
++                 },
++               ],
++               "structure": 1,
++               "version": "structure-v1",
++             },
++             "normalizationVersion": "jev-normalization-v1",
++             "outcome": "success",
++             "questionVersion": "jev-post-analysis-v1",
++             "score": {
++               "aggregate": 65,
++               "audienceFit": "unavailable",
++               "formulaVersion": "dispatch-score-v1",
++               "history": {
++                 "basis": "assumed_cold_start_baseline",
++                 "value": 0.5,
++               },
++               "lowConfidence": [],
++               "minimumConfidence": 0.7,
++               "missing": [],
++               "thresholdBasis": "uncalibrated_startup_assumption",
++               "thresholdVersion": "jev-confidence-startup-v1",
++               "weights": {
++                 "clarity": 0.2,
++                 "discussionPotential": 0.2,
++                 "history": 0.1,
++                 "hookStrength": 0.2,
++                 "naturalCta": 0.05,
++                 "originality": 0.15,
++                 "structure": 0.1,
++               },
++             },
++           },
++           "sourceUntil": null,
++           "versionNumber": 1,
++         },
++       ],
++     },
++     "version": 1,
++     "workspaceId": "0000000000000000010000workspaces",
++   },
++   "draftId": "00000000000000000000010008drafts",
++   "isDone": true,
++   "kind": null,
++   "observedAt": 1791530619585,
++   "proofValidUntil": 1791530649585,
++   "requestKey": "independent-review",
++   "role": "Owner",
++   "sessionId": "0000000000000000000010001session",
++   "workspaceId": "0000000000000000010000workspaces",
+  }
+
+ ❯ regression.test.ts:38:37
+
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/5]⎯
+
+ FAIL  regression.test.ts > SPEC: actual download projection preserves normalized assessment answer values
+AssertionError: expected Object{ clarity: Object{ …(2) }, …(8) } to deeply equal { …(9) }
+
+- Expected
++ Received
+
+  {
+    "clarity": {
+      "confidence": 0.9,
+      "type": "score",
+-     "value": 0.625,
+    },
+    "clickbait": {
+-     "probability": 0.2,
+      "type": "noul",
+    },
+    "contentType": {
+      "confidence": 0.9,
+      "type": "choice",
+-     "value": "educational",
+    },
+    "discussionPotential": {
+      "confidence": 0.9,
+      "type": "score",
+-     "value": 0.625,
+    },
+    "hookStrength": {
+      "confidence": 0.9,
+      "type": "score",
+-     "value": 0.625,
+    },
+    "naturalCta": {
+      "confidence": 0.9,
+      "type": "score",
+-     "value": 0.625,
+    },
+    "originality": {
+      "confidence": 0.9,
+      "type": "score",
+-     "value": 0.625,
+    },
+    "promotionalTone": {
+-     "probability": 0.2,
+      "type": "noul",
+    },
+    "strongClaim": {
+-     "probability": 0.2,
+      "type": "noul",
+    },
+  }
+
+ ❯ regression.test.ts:55:51
+     53| const p:any=await f.signed.query(page,{...await args(f),family:'assess…
+     54| const download=project(p.data);
+     55| expect(download.selection.rows[0].result.answers).toEqual(p.data.selec…
+       |                                                   ^
+     56| });
+     57|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/5]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  5 failed (5)
+   Start at  09:23:38
+   Duration  1.25s (tests 78%, transform 14%, import 9%)
+

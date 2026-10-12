@@ -4,7 +4,7 @@ title: 'Betriebsereignisse, Alerts und Wiederherstellung konsolidieren (P09.01)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-07 11:28'
+updated_date: '2026-10-07 19:46'
 labels:
   - p09
   - r3
@@ -79,4 +79,8 @@ Read-only konkrete Vorarbeit /tmp/dispatch-31-preflight.md (SHA44a65617073b56d39
 Weitere konkrete reineVorbereitung: /tmp/dispatch-31-writer-brief.md hält native bounded receipt projection, privateActor+Count guard, genuine current actions, honestempty/unknown/coverage und minimalconsumed episode fest. Nochkeine31SourceFreigabe oderTest/Review/Dev-Abnahme; finale47/49/50/67/68 SourceReconciliation bleibt Pflicht. GanzeBackendFortsetzung läuft47.2, genau einSourceWriter.
 
 Read-only future reconciliation adopted: .docs/reviews/task-31-32-35-current-native-reconciliation.md. Actual notices/routing finance and mounted UI reviewed; native health requires bounded domain proofs, private chat exclusion before counts, honest coverage and current recovery links. TASK-67.2 is moving; reconcile accepted TASK-68 before source release. No implementation/test acceptance; all ACs remain open.
+
+Root adopted READONLY first-health-unit proposal .docs/reviews/task-31-current-native-health-source-plan.md SHA f0ec184b83111fd02eaac871ed981193b2cb045b5b6a8a8b1e98ff731f4ec4f6, receipt SHAf158de1cd45058ccd36aaa53a4082977d183d3a6f3b489f75d2d8a596a72e479; Root proof /tmp/dispatch-31-current-native-health-source-plan-root-verification.json SHA90b9878bde9556f8b8ae606573428305bf4a22e1bd1680cb53c16d48276add21.314protected original nongen/9inputs/9privateartifacts verified;44qualified sourceScopes40stable4moving, no final verifier API claims. Root full5398-token report reread after initial truncation, reduced semantic receipt/meaningful actualCLI taskbody/guard script-log-receipt read; hashes are not whole-source reads. Minimal Cloud Owner/Admin health from five existing bounded receipt families; two concrete selective optional-field indices exclude all privateChat/targetedResearch before count/pagination/hasMore/money. Coverage total:null/no global provider budgets/no triplecost; private content excluded. Actual R2status onlyS3Client construction/remoteCheck:not_performed. Other financial cards initially not_evaluated; full outage/recovery/runbooks/alerts and all31AC/manual remain open. No tests/source release/config activation; implement after separately accepted68.3/source reconciliation.
+
+Nach technischer Abnahme68.3 (4685683/c5f4f14,1437/56/fullnative+7static+SPEC/distinctQUALITY/exaktesEUDev454) erste konkrete Source-Einheit als TASK-31.1 angelegt und InProgress. Scope nur Owner/Admin native Metadatenprojektion fünf vorhandener Belegfamilien, Privacy vorCap+Count, ehrlicheCoverage und tatsächliche aktuelle Links. Alle Parent31AC und Alerts/Runbooks/LiveRecovery bleiben offen. Keine zusätzlicheBuchhaltung/Watchdog/Provideraktivierung; einzelne Sourcewriterfreigabe folgt Releasebrief.
 <!-- SECTION:NOTES:END -->

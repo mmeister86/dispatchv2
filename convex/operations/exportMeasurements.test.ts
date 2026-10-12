@@ -556,7 +556,7 @@ test("genuine native first-send candidate keeps its original pin after rollback 
 
 import { retainedHorizon } from "../performance/history";
 import { retainedSnapshotHorizon } from "../performance/snapshots";
-test("native retained helpers can return past MIN horizons; archive explicitly removes protected material", async () => {
+test("native history denies expired source and archive explicitly removes protected material", async () => {
   const f = await imported();
   const original = (await f.t.run((ctx) =>
     ctx.db.query("historyPosts").first(),
@@ -564,11 +564,11 @@ test("native retained helpers can return past MIN horizons; archive explicitly r
   await f.t.run((ctx) =>
     ctx.db.patch(original._id, { sourceUntil: Date.now() - 1 }),
   );
-  expect(
-    await f.t.run(async (ctx) =>
+  await expect(
+    f.t.run(async (ctx) =>
       retainedHorizon(ctx, (await ctx.db.get(original._id))!),
     ),
-  ).toBeLessThan(Date.now());
+  ).rejects.toThrow("OWN_HISTORY_SOURCE_UNAVAILABLE");
   expect((await pages(f, "historyPosts"))[0].text).toBeNull();
   const g = await measured();
   await g.t.run((ctx) =>

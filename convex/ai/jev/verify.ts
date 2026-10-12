@@ -1,3 +1,4 @@
+import { operationalUntil } from "../../lib/operationalRetention";
 import { ConvexError, v, type Infer } from "convex/values";
 import {
   action,
@@ -385,7 +386,11 @@ export async function packet(
 }
 async function current(ctx: Ctx, ref: Ref, execution = true) {
   const { r, s } = await slot(ctx, ref);
-  if (s.sourceUnavailable) fail("VERIFICATION_SOURCE_UNAVAILABLE");
+  if (
+    s.sourceUnavailable ||
+    operationalUntil(s.startedAt, s.sourceUntil) <= Date.now()
+  )
+    fail("VERIFICATION_SOURCE_UNAVAILABLE");
   if (ref.compositeStage)
     await (await import("./composite")).parent(ctx, r._id, true);
   if (ref.compositeStage && !execution)
@@ -1123,7 +1128,11 @@ export async function retainedVerificationProof(
   s: Slot,
   walk: MaterialWalk = materialWalk(),
 ) {
-  if (s.sourceUnavailable) fail("VERIFICATION_SOURCE_UNAVAILABLE");
+  if (
+    s.sourceUnavailable ||
+    operationalUntil(s.startedAt, s.sourceUntil) <= Date.now()
+  )
+    fail("VERIFICATION_SOURCE_UNAVAILABLE");
   const kept = await packet(ctx, r, s, false, walk),
     sourceUntil = minimum(s.sourceUntil, kept.sourceUntil);
   if (sourceUntil !== null && sourceUntil <= Date.now())
@@ -1335,7 +1344,7 @@ async function cleanup(
     ].filter((s): s is Slot => !!s);
     for (const s of slots) {
       await packet(ctx, r, s, false);
-      if (s.sourceUntil !== null && s.sourceUntil <= Date.now())
+      if (operationalUntil(s.startedAt, s.sourceUntil) <= Date.now())
         fail("VERIFICATION_SOURCE_UNAVAILABLE");
     }
   } catch (error) {

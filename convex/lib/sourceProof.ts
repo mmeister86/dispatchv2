@@ -1,6 +1,7 @@
 import { ConvexError } from "convex/values";
 
 const losses = new Set([
+  "JEV_SOURCE_CHANGED",
   "ROUTING_SOURCE_UNAVAILABLE",
   "ROUTING_ACCOUNT_CHANGED",
   "ROUTING_AUTHORITY_UNAVAILABLE",

@@ -1,0 +1,135 @@
+
+ RUN  v5.0.3 /Volumes/Speicher/Projekte/dispatch_v2
+
+ ❯ ../../../../tmp/task33-spec-repro.test.ts (23 tests | 3 failed | 20 skipped) 417ms
+   × SPEC REPRO mixed metric receipt ownership must reject 352ms
+   × SPEC REPRO mixed history receipt ownership must reject historyPosts 38ms
+   × SPEC REPRO mixed history receipt ownership must reject historyJobs 26ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  ../../../../tmp/task33-spec-repro.test.ts > SPEC REPRO mixed metric receipt ownership must reject
+AssertionError: promise resolved "[ { …(25) }, { …(23) } ]" instead of rejecting
+
+- Expected:
+Error {
+  "message": "rejected promise",
+}
+
++ Received:
+[
+  {
+    "accountId": "000000000000010004socialAccounts",
+    "attemptId": "0000000000000000010041aiAttempts",
+    "confirmedAt": 1791288060000,
+    "createdInDatabaseAt": 1791288060000.005,
+    "definitionVersion": "test-v1",
+    "dialect": "post-fields-repost-v2",
+    "dueAt": 1791374460000,
+    "expiresAt": 1791633660000,
+    "externalId": "101",
+    "fields": [
+      {
+        "definition": "Repeated impressions; not unique audience",
+        "name": "impressions",
+        "rawField": "public_metrics.impression_count",
+        "status": "measured",
+        "value": 0,
+      },
+      {
+        "definition": "Public like count",
+        "name": "likes",
+        "rawField": "public_metrics.like_count",
+        "status": "measured",
+        "value": 3,
+      },
+      {
+        "definition": "Public repost count; dialect configured",
+        "name": "reposts",
+        "rawField": "public_metrics.repost_count",
+        "status": "measured",
+        "value": 1,
+      },
+      {
+        "definition": "Own eligible post URL clicks",
+        "name": "url_clicks",
+        "rawField": "non_public_metrics.url_link_clicks",
+        "status": "missing",
+        "value": null,
+      },
+    ],
+    "generation": 1,
+    "id": "000000010034performanceSnapshots",
+    "late": false,
+    "materialAvailability": "retained",
+    "observedAgeMs": 86400000,
+    "observedAt": 1791374460000,
+    "position": 0,
+    "postAttemptId": "0000000000000010031xPostAttempts",
+    "providerCreatedAt": 1791288060000,
+    "reason": null,
+    "requestedAt": 1791374460000,
+    "scheduleId": "00000000000000000010026schedules",
+    "state": "observed",
+    "versionId": "0000000000000010009draftVersions",
+    "windowHours": 24,
+  },
+  {
+    "accountId": "000000000000010004socialAccounts",
+    "attemptId": null,
+    "confirmedAt": 1791288060000,
+    "createdInDatabaseAt": 1791288060000.0078,
+    "definitionVersion": null,
+    "dialect": null,
+    "dueAt": 1791460860000,
+    "expiresAt": 1791720060000,
+    "externalId": "101",
+    "fields": null,
+    "generation": 1,
+    "id": "000000010037performanceSnapshots",
+    "materialAvailability": "unavailable",
+    "observedAt": null,
+    "position": 0,
+    "postAttemptId": "0000000000000010031xPostAttempts",
+    "providerCreatedAt": null,
+    "reason": null,
+    "requestedAt": null,
+    "scheduleId": "00000000000000000010026schedules",
+    "state": "queued",
+    "versionId": "0000000000000010009draftVersions",
+    "windowHours": 48,
+  },
+]
+
+ ❯ ../../../../private/tmp/task33-spec-repro.test.ts:866:48
+    864|  const original = (await f.t.run(ctx => ctx.db.get(f.snap._id)))!;
+    865|  await f.t.run(ctx => ctx.db.patch(original.attemptId!, {logicalIntent…
+    866|  await expect(pages(f, "performanceSnapshots")).rejects.toThrow();
+       |                                                ^
+    867| });
+    868|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  ../../../../tmp/task33-spec-repro.test.ts > SPEC REPRO mixed history receipt ownership must reject historyPosts
+ FAIL  ../../../../tmp/task33-spec-repro.test.ts > SPEC REPRO mixed history receipt ownership must reject historyJobs
+Error: Invalid argument `id`, expected string but got 'object': null
+ ❯ performAsyncSyscall node_modules/.pnpm/convex@1.46.0_react@19.3.0/node_modules/convex/src/server/impl/syscall.ts:52:11
+ ❯ patch node_modules/.pnpm/convex@1.46.0_react@19.3.0/node_modules/convex/src/server/impl/database_impl.ts:113:3
+ ❯ Object.patch node_modules/.pnpm/convex@1.46.0_react@19.3.0/node_modules/convex/src/server/impl/database_impl.ts:152:11
+ ❯ invokeFunction node_modules/.pnpm/convex@1.46.0_react@19.3.0/node_modules/convex/src/server/impl/registration_impl.ts:90:14
+ ❯ invokeMutation node_modules/.pnpm/convex@1.46.0_react@19.3.0/node_modules/convex/src/server/impl/registration_impl.ts:70:18
+ ❯ runMutationWithHandler node_modules/.pnpm/convex-test@0.0.60_convex@1.46.0_react@19.3.0_/node_modules/convex-test/dist/index.js:1975:31
+ ❯ handler node_modules/.pnpm/convex-test@0.0.60_convex@1.46.0_react@19.3.0_/node_modules/convex-test/dist/index.js:2181:24
+ ❯ invokeFunction node_modules/.pnpm/convex@1.46.0_react@19.3.0/node_modules/convex/src/server/impl/registration_impl.ts:90:14
+ ❯ invokeAction node_modules/.pnpm/convex@1.46.0_react@19.3.0/node_modules/convex/src/server/impl/registration_impl.ts:513:18
+ ❯ run node_modules/.pnpm/convex-test@0.0.60_convex@1.46.0_react@19.3.0_/node_modules/convex-test/dist/index.js:2196:31
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed | 20 skipped (23)
+   Start at  15:09:40
+   Duration  1.30s (tests 37%, transform 34%, import 29%)
+

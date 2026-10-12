@@ -1,4 +1,8 @@
 import { NativeArchiveExport } from "@/features/settings/data-archive";
+import { NativeDataControls } from "@/features/settings/data-controls";
+import { NativeMediaExport } from "@/features/settings/media-export";
+import { NativeIdentityExport } from "@/features/settings/identity-export";
+import { NativeAttachmentExport } from "@/features/settings/attachment-export";
 import { NativeNotificationSettings } from "@/features/settings/notifications";
 import {
   NativeProfileExport,
@@ -174,6 +178,18 @@ export function SettingsPage() {
               <NativeProfileExport key={nativeScope} />
               <NativePreferencesExport key={`preferences:${nativeScope}`} />
               <NativeArchiveExport key={`archive:${nativeScope}`} />
+              <NativeIdentityExport key={`identity:${nativeScope}`} />
+              <NativeAttachmentExport key={`attachments:${nativeScope}`} />
+              {admin && <NativeMediaExport key={`media:${nativeScope}`} />}
+              <NativeDataControls
+                key={`deletion:${nativeScope}`}
+                workspaceId={state.activeWorkspaceId}
+                name={
+                  state.workspaces.find((w) => w.id === state.activeWorkspaceId)
+                    ?.name ?? "Workspace"
+                }
+                owner={state.role === "Owner"}
+              />
               {admin && (
                 <>
                   <WorkspaceVersionsExport key={`versions:${nativeScope}`} />

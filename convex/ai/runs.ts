@@ -1149,22 +1149,38 @@ export const purgeSource = internalMutation({
         conversationId: r.conversationId,
       });
       const c = await ctx.db.get(r.conversationId);
-      if (c?.state === "deleted")
+      if (c?.state === "deleted") {
         await ctx.db.patch(r._id, { sourceCleanupState: "complete" });
-      else await ctx.scheduler.runAfter(10000, internal.ai.runs.purgeSource, a);
+        await ctx.scheduler.runAfter(
+          0,
+          internal.operations.retention.nativeCleanup,
+          { kind: "run", id: r._id, phase: -1 },
+        );
+      } else
+        await ctx.scheduler.runAfter(10000, internal.ai.runs.purgeSource, a);
       return null;
     }
     if (r.executionKey && !r.executionFinishedAt) {
       await ctx.scheduler.runAfter(10000, internal.ai.runs.purgeSource, a);
       return null;
     }
+    await ctx.runQuery(components.agent.erasure.listForThread, {
+      threadId: r.threadId,
+      expectedUserId: String(r.actorId),
+      paginationOpts: { numItems: 1, cursor: null },
+    });
     const result = await ctx.runMutation(
       components.agent.threads.deleteAllForThreadIdAsync,
       { threadId: r.threadId, limit: 100 },
     );
-    if (result.isDone)
+    if (result.isDone) {
       await ctx.db.patch(r._id, { sourceCleanupState: "complete" });
-    else await ctx.scheduler.runAfter(1000, internal.ai.runs.purgeSource, a);
+      await ctx.scheduler.runAfter(
+        0,
+        internal.operations.retention.nativeCleanup,
+        { kind: "run", id: r._id, phase: -1 },
+      );
+    } else await ctx.scheduler.runAfter(1000, internal.ai.runs.purgeSource, a);
     return null;
   },
 });

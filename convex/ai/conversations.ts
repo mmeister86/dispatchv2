@@ -621,11 +621,16 @@ export const cleanup = internalMutation({
       await ctx.scheduler.runAfter(10000, internal.ai.conversations.cleanup, a);
       return null;
     }
+    await ctx.runQuery(components.agent.erasure.listForThread, {
+      threadId: c.threadId,
+      expectedUserId: String(c.actorId),
+      paginationOpts: { numItems: 1, cursor: null },
+    });
     const result = await ctx.runMutation(
       components.agent.threads.deleteAllForThreadIdAsync,
       { threadId: c.threadId, limit: 100 },
     );
-    if (result.isDone)
+    if (result.isDone) {
       await ctx.db.patch(c._id, {
         state: "deleted",
         ideaVersionIds: [],
@@ -633,7 +638,12 @@ export const cleanup = internalMutation({
         title: "Gelöschte Unterhaltung",
         updatedAt: Date.now(),
       });
-    else
+      await ctx.scheduler.runAfter(
+        0,
+        internal.operations.retention.nativeCleanup,
+        { kind: "conversation", id: c._id, phase: -1 },
+      );
+    } else
       await ctx.scheduler.runAfter(1000, internal.ai.conversations.cleanup, a);
     return null;
   },

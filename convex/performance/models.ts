@@ -619,7 +619,7 @@ export const compare = workspaceMutation({
     });
   },
 });
-async function readable(
+export async function readable(
   ctx: Ctx,
   s: Scope,
   row: Doc<"calibrationModels">,

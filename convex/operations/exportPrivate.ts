@@ -1155,6 +1155,41 @@ export const researchMessages = workspaceQuery({
     );
   },
 });
+export async function ownedAttachmentThread(
+  original: Context,
+  a: Infer<typeof vCorrelation> &
+    (
+      | {
+          kind: "conversation";
+          accountId: Id<"socialAccounts">;
+          conversationId: Id<"conversations">;
+        }
+      | { kind: "research"; orderId: Id<"researchOrders"> }
+    ),
+) {
+  const s = await begin(original, a);
+  let threadId: string;
+  if (a.kind === "conversation") {
+    const c = await conversation(s, a);
+    threadId = c.threadId;
+  } else {
+    const o = await orderOwner(s, a.orderId);
+    binding(o.actorId === original.user._id);
+    await material(s, o);
+    const r = await researchRun(s, o);
+    binding(r.threadId);
+    threadId = r.threadId;
+  }
+  const thread = await s.ctx.runQuery(components.agent.threads.getThread, {
+    threadId,
+  });
+  binding(thread && thread.userId === original.user._id);
+  const proof = s.finish("attachmentProof", [], {
+    continueCursor: "",
+    isDone: true,
+  });
+  return { threadId, actorId: original.user._id, ...proof };
+}
 const stages: Record<string, string> = {
   "ai/researchTools:reserve": "reserve",
   "ai/researchTools:prepare": "prepare",

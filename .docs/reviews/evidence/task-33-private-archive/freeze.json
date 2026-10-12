@@ -1,0 +1,64 @@
+{
+  "task": "TASK-33.1 UNIT3 private archive",
+  "status": "DONE_WITH_CONCERNS",
+  "baseline": "033214d50db4e4a20a631d160a00c8ffb40e52b3",
+  "files": [
+    {
+      "path": "/Volumes/Speicher/Projekte/dispatch_v2/convex/operations/exportPrivate.ts",
+      "sha256": "e217cda2ad9a6f50ef8c5c8ecf44a78012506ea022d960d909098742b13dad18",
+      "lines": 1238
+    },
+    {
+      "path": "/Volumes/Speicher/Projekte/dispatch_v2/convex/operations/exportPrivate.test.ts",
+      "sha256": "0d7c10825ae43a276d5dfe9531859abbe34cd2344714efb9511b611b8f87fb12",
+      "lines": 1264
+    },
+    {
+      "path": "/Volumes/Speicher/Projekte/dispatch_v2/convex/operations/exportShared.ts",
+      "sha256": "d2e7b6b0ac7c6a12febc7e5dc6c811840751653f443bc12e4613ccba86997ae6",
+      "lines": 1355
+    },
+    {
+      "path": "/Volumes/Speicher/Projekte/dispatch_v2/convex/schema.ts",
+      "sha256": "1cbb2aacde7f6a4a1be018c2d3d7e3a89f58bc4861febaa527a60bd38d8558ca",
+      "lines": 1288
+    },
+    {
+      "path": "/Volumes/Speicher/Projekte/dispatch_v2/convex/_generated/api.d.ts",
+      "sha256": "97992fdc851e10fab7f5f40824130f2ae140b040bbdfcaa15d905d0f5bfa6e7e",
+      "lines": 351
+    },
+    {
+      "path": "/Volumes/Speicher/Projekte/dispatch_v2/src/features/settings/data-archive.tsx",
+      "sha256": "c5ba761c0dbc6550d1b337aefd76003f30fab12c135908fbca522883dc4aaf1f",
+      "lines": 824
+    },
+    {
+      "path": "/Volumes/Speicher/Projekte/dispatch_v2/src/pages/Settings.tsx",
+      "sha256": "be2e37c33f1e018528e4719b26d6ce17e16fc6fb0ccfbc2a6169a1c878a1e375",
+      "lines": 2410
+    },
+    {
+      "path": "/Volumes/Speicher/Projekte/dispatch_v2/tests/operations.browser.mjs",
+      "sha256": "4c0b6bc46f98c890a12996b0b36bdd4bcf79e421667c9e99e1c6f1d535d33919",
+      "lines": 3731
+    }
+  ],
+  "verification": {
+    "native": "4 files, 97 passing tests including 26 private archive tests; /tmp/dispatch-33-private-native-spec-repair.txt (observed tool receipt)",
+    "typescript": "tsc -b and tsc -p convex/tsconfig.json --noEmit both exit 0",
+    "format": "scoped Prettier check and git diff --check exit 0",
+    "build": "Vite exit 0; /tmp/dispatch-33-private-build.log",
+    "browser": "Full operations.browser.mjs exit 0, including distinct evidence actor/annotationActor/inboxActor download assertions; /tmp/dispatch-33-private-archive-browser/receipt.json; /tmp/dispatch-33-private-browser.log"
+  },
+  "limitations": [
+    "Browser transport mocked and honestly labeled; native tests execute actual Agent/Workflow components.",
+    "Parent selection uses labeled native IDs from archive pages, no dropdown discovery picker.",
+    "Full suite with known pre-existing style 900s timeout not rerun; root baseline was 1582 pass plus one timeout.",
+    "Vite existing chunk size / ineffective dynamic import warnings remain.",
+    "No deployment, stage, commit, Backlog or docs changes by this writer."
+  ],
+  "native_contract": "Targeted research run may omit conversationId; any present value must match exact owned conversation; chatOperationId forbidden. Native scheduled automaticHandoff has no stored timestamps, so none invented.",
+  "remaining_task33": "Final records unit (Research profiles/versions/source policies, own human Research/Idea handoffs, settings as assigned by root), deletion and retention implementation remain outside this unit.",
+  "revision": "Fresh SPEC repair 1: evidence authorship, withdrawn operation pagination, blocked original config"
+}

@@ -232,6 +232,11 @@ export default defineSchema({
     ["workspaceId", "accountId"],
   ),
   calibrationModels: defineTable(calibrationModelFields)
+    .index("by_workspaceId_and_accountId_and_kind", [
+      "workspaceId",
+      "accountId",
+      "kind",
+    ])
     .index("by_workspaceId_and_accountId_and_kind_and_createdAt", [
       "workspaceId",
       "accountId",
@@ -250,6 +255,7 @@ export default defineSchema({
     .index("by_purposeId", ["purposeId"])
     .index("by_expiresAt", ["expiresAt"]),
   calibrationPurposes: defineTable(calibrationPurposeFields)
+    .index("by_workspaceId_and_accountId", ["workspaceId", "accountId"])
     .index("by_workspaceId_and_accountId_and_version", [
       "workspaceId",
       "accountId",
@@ -261,6 +267,11 @@ export default defineSchema({
       "createdAt",
     ]),
   calibrationReferences: defineTable(calibrationReferenceFields)
+    .index("by_workspaceId_and_accountId_and_kind", [
+      "workspaceId",
+      "accountId",
+      "kind",
+    ])
     .index("by_workspaceId_and_accountId_and_kind_and_createdAt", [
       "workspaceId",
       "accountId",
@@ -558,6 +569,7 @@ export default defineSchema({
       }),
     ),
   })
+    .index("by_workspace_actor", ["workspaceId", "actorId"])
     .index("by_workspaceId_and_actorId_and_requestHash", [
       "workspaceId",
       "actorId",
@@ -601,11 +613,25 @@ export default defineSchema({
     "by_workspaceId_and_accountId",
     ["workspaceId", "accountId"],
   ),
-  researchProfileVersions: defineTable(researchVersionFields).index(
-    "by_profileId_and_actorId_and_commandKey",
-    ["profileId", "actorId", "commandKey"],
-  ),
+  researchProfileVersions: defineTable(researchVersionFields)
+    .index("by_profileId", ["profileId"])
+    .index("by_profileId_and_actorId_and_commandKey", [
+      "profileId",
+      "actorId",
+      "commandKey",
+    ]),
   researchOrders: defineTable(researchOrderFields)
+    .index("by_public_finance", [
+      "workspaceId",
+      "accountId",
+      "profileId",
+      "targetedChat.conversationId",
+    ])
+    .index("by_workspace_account_actor", [
+      "workspaceId",
+      "accountId",
+      "actorId",
+    ])
     .index("by_public_profile_createdAt", [
       "profileId",
       "targetedChat.conversationId",
@@ -704,6 +730,7 @@ export default defineSchema({
     ])
     .index("by_conversationId_and_createdAt", ["conversationId", "createdAt"]),
   ideas: defineTable(ideaFields)
+    .index("by_workspace_handoff_actor", ["workspaceId", "handoff.actorId"])
     .index("by_workspaceId", ["workspaceId"])
     .index("by_handoff_ideaVersionId", ["handoff.ideaVersionId"])
     .index("by_handoff_draftId", ["handoff.draftId"])
@@ -805,6 +832,19 @@ export default defineSchema({
   aiPolicies: defineTable(policyFields).index("by_key", ["key"]),
   aiBudgets: defineTable(budgetFields).index("by_key", ["key"]),
   agentRuns: defineTable(runFields)
+    .index("by_public_finance", [
+      "workspaceId",
+      "accountId",
+      "purpose",
+      "conversationId",
+      "chatOperationId",
+      "research.orderId",
+    ])
+    .index("by_workspace_account_actor", [
+      "workspaceId",
+      "accountId",
+      "actorId",
+    ])
     .index("by_public_purpose_createdAt", [
       "workspaceId",
       "accountId",
@@ -832,6 +872,14 @@ export default defineSchema({
       v.object(embeddingAttemptFields),
     ),
   )
+    .index("by_runId", ["runId"])
+    .index("by_researchOrderId", ["researchOrderId"])
+    .index("by_workspace_account_actor", [
+      "workspaceId",
+      "accountId",
+      "actorId",
+    ])
+    .index("by_workspace_account_owner", ["workspaceId", "accountId", "owner"])
     .index("by_compositeParentId_and_stage", [
       "compositeParentId",
       "compositeStage",
@@ -889,6 +937,7 @@ export default defineSchema({
       "state",
     ]),
   githubContexts: defineTable(contextFields)
+    .index("by_workspace_actor", ["workspaceId", "actorId"])
     .index("by_workspaceId_and_actorId_and_operationKey", [
       "workspaceId",
       "actorId",
@@ -913,9 +962,11 @@ export default defineSchema({
     receiptId: v.id("githubWebhookReceipts"),
   }).index("by_guid", ["guid"]),
   githubSignals: defineTable(signalFields)
+    .index("by_public_workspace", ["workspaceId", "private"])
     .index("by_workspaceId_and_eventKey", ["workspaceId", "eventKey"])
     .index("by_workspaceId_and_receivedAt", ["workspaceId", "receivedAt"]),
   githubRecoveries: defineTable(recoveryFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_workspaceId_and_state_and_leaseUntil", [
       "workspaceId",
       "state",
@@ -947,6 +998,7 @@ export default defineSchema({
     .index("by_workspaceId", ["workspaceId"])
     .index("by_expiresAt", ["expiresAt"]),
   githubRepositories: defineTable(githubRepoFields)
+    .index("by_workspaceId", ["workspaceId"])
     .index("by_workspaceId_and_providerId", ["workspaceId", "providerId"])
     .index("by_providerId_and_installationId_and_selected", [
       "providerId",
@@ -1034,6 +1086,7 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
     errorCode: v.optional(v.string()),
   })
+    .index("by_workspace_actor", ["workspaceId", "userId"])
     .index("by_workspaceId_and_requestId", ["workspaceId", "requestId"])
     .index("by_assetId", ["assetId"])
     .index("by_cleanAfter", ["cleanAfter"]),
@@ -1045,6 +1098,7 @@ export default defineSchema({
     .index("by_assetId", ["assetId"])
     .index("by_versionId", ["versionId"]),
   editorialNotices: defineTable(noticeFields)
+    .index("by_workspace_recipient", ["workspaceId", "recipientId"])
     .index("by_occurrence_and_recipientId", ["occurrence", "recipientId"])
     .index("by_workspaceId_and_recipientId_and_createdAt", [
       "workspaceId",
@@ -1170,6 +1224,7 @@ export default defineSchema({
     .index("by_workspaceId", ["workspaceId"])
     .index("by_workspaceId_and_createdAt", ["workspaceId", "createdAt"]),
   publishingNotifications: defineTable(notificationFields)
+    .index("by_workspace_recipient", ["workspaceId", "recipientId"])
     .index("by_workspaceId_and_createdAt", ["workspaceId", "createdAt"])
     .index("by_scheduleId_and_generation_and_recipientId", [
       "scheduleId",
@@ -1216,6 +1271,8 @@ export default defineSchema({
     result: v.optional(teamResult),
     delivery: v.optional(deliveryFields),
   })
+    .index("by_workspace_createdBy", ["workspaceId", "createdBy"])
+    .index("by_workspace_email", ["workspaceId", "email"])
     .index("by_workspaceId", ["workspaceId"])
     .index("by_workspaceId_and_status_and_expiresAt", [
       "workspaceId",
@@ -1235,6 +1292,7 @@ export default defineSchema({
     sourceUnavailable: v.boolean(),
     cleanAfter: v.union(v.number(), v.null()),
   })
+    .index("by_workspace_actor", ["workspaceId", "actorId"])
     .index("by_workspaceId_and_actorId_and_commandKey", [
       "workspaceId",
       "actorId",
@@ -1367,7 +1425,27 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
     retentionUntil: v.number(),
+    tableIndex: v.optional(v.number()),
+    cursor: v.optional(v.union(v.string(), v.null())),
+    retryCount: v.optional(v.number()),
+    reason: v.optional(
+      v.union(
+        v.literal("in-flight"),
+        v.literal("external-outcome"),
+        v.literal("object-cleanup"),
+        v.literal("component-proof"),
+        v.literal("scope-discovery"),
+        v.literal("retry-required"),
+      ),
+    ),
+    blockedTable: v.optional(v.string()),
+    componentStage: v.optional(
+      v.union(v.literal("native"), v.literal("residuals"), v.literal("files")),
+    ),
+    componentPhase: v.optional(v.number()),
+    authModelIndex: v.optional(v.number()),
   })
+    .index("by_authId", ["authId"])
     .index("by_actorId_and_commandKey", ["actorId", "commandKey"])
     .index("by_workspaceId", ["workspaceId"])
     .index("by_userId", ["userId"])

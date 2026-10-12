@@ -104,7 +104,7 @@ async function actor(
   );
   return { ...scope, fingerprint: await identity(user!, scope.membership) };
 }
-async function authority(ctx: Ctx, e: Experiment) {
+export async function authority(ctx: Ctx, e: Experiment) {
   requireReference(e.workspaceId, await ctx.db.get(e.accountId));
   const a = await actor(ctx, e.workspaceId, e.actorId, true);
   if (
@@ -130,7 +130,11 @@ const proofContext = () => ({
   >(),
   fingerprints: new Map<Id<"contentEmbeddings">, string>(),
 });
-async function assignmentProof(ctx: Ctx, row: Assignment, p = proofContext()) {
+export async function assignmentProof(
+  ctx: Ctx,
+  row: Assignment,
+  p = proofContext(),
+) {
   if (row.sourceUnavailable || !row.arm) fail("EXPERIMENT_SOURCE_UNAVAILABLE");
   const reviewer = await actor(ctx, row.workspaceId, row.reviewerId);
   if (

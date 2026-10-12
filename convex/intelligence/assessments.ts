@@ -1,3 +1,4 @@
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 import { projection as projectionValidator } from "../performance/modelFields";
 import { sha256 } from "../lib/crypto";
 import {
@@ -37,6 +38,7 @@ export async function source(
     draftId: Id<"drafts">;
     draftVersionId: Id<"draftVersions">;
     sourceUntil?: number | null;
+    createdAt?: number;
   },
 ) {
   requireActiveWorkspace(await ctx.db.get(workspaceId));
@@ -136,6 +138,7 @@ export const prepare = workspaceInternalMutation({
       await source(ctx, old.workspaceId, {
         ...old.request,
         sourceUntil: old.sourceUntil,
+        createdAt: old.createdAt,
       });
       if (
         old.request.accountId !== r.accountId ||
@@ -542,12 +545,13 @@ export const sweep = internalMutation({
       );
     const batch = await ctx.db
       .query("jevAssessments")
-      .withIndex("by_sourceUntil", (q) => q.gt("sourceUntil", null))
+      .withIndex("by_creation_time")
       .paginate({ cursor: a.cursor, numItems: 25 });
     for (const row of batch.page) {
       try {
         await source(ctx, row.workspaceId, row);
-      } catch {
+      } catch (error) {
+        rethrowUnexpectedSourceError(error);
         await ctx.db.delete(row._id);
       }
     }

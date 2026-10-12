@@ -4,7 +4,7 @@ title: R2-Medienverwaltung mit Inhaltsbindung umsetzen (P02.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-05 11:24'
+updated_date: '2026-10-07 15:09'
 labels:
   - p02
   - r1
@@ -62,6 +62,10 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 3. Medien-UI mit Fortschritt, Abbruch, Alt-Text, autorisierten erneuerbaren Vorschauen und sichtbaren Konfigurationshinweisen verbinden.
 4. Fremdzugriff, Replay, laufende Finalisierung, Referenzen und Wiederaufnahme mit gezielten Tests prüfen; vorhandene UI-Regressionsprüfungen ausführen.
 5. Entwicklungsbackend aktualisieren und regelmäßig auf master committen; echte EU-R2- und Benutzerabnahme separat dokumentieren.
+
+2026-10-07 Uploadfehler localhost: 1. EU-Jurisdiktion und CORS live lesend abgleichen. 2. Separaten privaten dispatch-eu-Bucket anlegen und CORS ausschließlich für localhost:5173 und 127.0.0.1:5173 mit PUT/GET/HEAD einrichten. 3. Bestehende S3-Zugangsdaten gegen neuen Bucket prüfen; nur bei funktionierendem Zugriff Convex-Bucketbindung umstellen. 4. Preflight und Upload verifizieren; bei fehlender EU-Tokenberechtigung konkreten Credential-Handoff dokumentieren. Bestehender Bucket und Medien bleiben erhalten; kein Done ohne Nutzerabnahme.
+
+2026-10-07 Geisterbereinigung: Fünf konkret benannte deleting-Assets samt Sessions und Referenzen live prüfen. Zwei historische dispatch/EU-Sessions sind abgelaufen und unreferenziert; ursprünglichen EU-Namespace per Cloudflare prüfen. Bestehende interne cleanup.receipt mit kurzfristig ursprünglicher Bucket-Konfiguration ausführen, danach Konfiguration in finally auf dispatch-eu zurückstellen; keine gespeicherten Bindings ändern. Drei aktuelle dispatch-eu-Sessions erst nach Grant+60s und Leaseablauf über reguläre cleanupR2.run bereinigen. Abschließend nur fertiges Bild und korrekt freigegebenes Kontingent verifizieren.
 <!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
@@ -98,4 +102,14 @@ Scoped corrections frozen fe3af37 after tests-first20ca2d4/c9f8154 and productio
 Independent final SPEC PASS on productionfe3af37 (root docs218966e):4 targeted files28/28 plus actual test:media-lifecycle/test:media-upload PASS sequential5174, closed. Valid H264/AAC/preparse allocation caps, own MIME, normalized fullnamespace guards including receipt/legacy/rotation, nativefilename/currentbuffer verified. No provider calls,5173 untouched. Independent complete QUALITY re-review running; actualEU-R2/manual gates remain open.
 
 Independent final QUALITY PASSfe3af37:28 targeted+3 original+3 additional receipt/binding checks=34, actualtest:media-upload PASS. No remaining critical/important/minor findings in reviewed code. Accountdrift/missingbinding blocksreceipt/quota; same-namespace rotation allows exactly-once release; productionfrozen/no provider effects. AC1/3/4/5 verified with isolated domain/byte/race tests. AC2 liveimmutablegrant and AC6 actuallargeupload remain unchecked; realEU-R2/CORS/runtime/manual gates open. TASK-9 code-stage reviewed; status stays In Progress until explicit manual user confirmation.
+
+2026-10-07: Nutzer meldet MEDIA_TRANSFER_FAILED beim direkten Browser-PUT auf localhost:5173 trotz grüner Konfigurationsprüfung. Read-only Codeprüfung: status konstruiert nur S3Client, kein R2-Netzwerkzugriff; Transfer fasst HTTP/CORS/Timeout zusammen. Live-Bucket-/CORS-Prüfung begonnen, keine Secrets ausgegeben und keine Medien verändert.
+
+2026-10-07 Live-Diagnose und Infrastrukturkorrektur: Convex konfiguriert R2_MEDIA_BUCKET=dispatch und EU_CONFIRMED=true. dispatch existiert nur in Default-Jurisdiktion (Location EEUR), EU-API meldet 10006, Standard-S3 GET auf nicht existenten Schlüssel meldet NoSuchKey, EU-S3 AccessDenied. dispatch hat keine CORS-Regeln (10059). Privaten neuen Bucket dispatch-eu mit --jurisdiction eu angelegt; CORS ausschließlich http://localhost:5173 und http://127.0.0.1:5173, PUT/GET/HEAD, Content-Type, MaxAge300 gesetzt. Live signierte PUT-Preflights: beide lokalen Origins 204 mit passenden Allow-Headers/Methods; fremde Origin 403 ohne Allow-Origin. Vorhandene S3-Schlüssel dürfen dispatch-eu nicht lesen (GetObject AccessDenied403). Konkreter Handoff: Nutzer muss EU-R2-S3-Zugang mit Object Read & Write für dispatch-eu erstellen/freigeben und in Convex Dev R2_ACCESS_KEY_ID/R2_SECRET_ACCESS_KEY sicher ersetzen sowie R2_MEDIA_BUCKET=dispatch-eu setzen. Keine Schlüsselwerte in Chat; aktuelle Binding nicht vor gültigem Zugriff umgestellt. Keine existierenden Dateien/Buckets gelöscht, keine realen Datei-Uploads ausgelöst. End-to-End-Upload noch offen; Task bleibt In Progress.
+
+2026-10-07 17:00 Europe/Berlin: Zwei Alt-Sessions ks78n2e70zyg6514yy867yfytd8ft1gw/ks73gegd1nx4cegfjx4yaqt1g98fvd9b nach erneuter Cloudflare-EU-API-Abwesenheitsbestätigung10006 und Live-Prüfung von cancelled/deleting, Grant/Leaseablauf, korrekten deterministischen Keys, Größe/Workspace/Sessionbindung und fehlenden Referenzen über bestehende cleanup.receipt abgeschlossen. R2_MEDIA_BUCKET in try/finally kurz dispatch, danach wieder dispatch-eu; keine gespeicherten Namespacewerte geändert und keine Code-/Schema-Pushes. Browser bestätigt beide verschwunden, korrektes PNG weiterhin ready. Drei neue deleting-Sessions warten regulär bis spätestens17:08:24 auf Grant+60s/Leaseablauf; abschließende reguläre Bereinigung und Kontingentabgleich stehen aus.
+
+2026-10-07 17:05 Europe/Berlin: Reguläre media/cleanupR2:run nach Ablauf der ersten zwei neuen EU-Sessions erfolgreich: k57dwqxye8xzjyxf3w3cqzr1a98ftgbh und k57a25xav4j2yfcky84x18j7058fthw1 deleted. Insgesamt4/5 Geister entfernt. Live-Kontingent jetzt2 Assets/2117890Bytes = erfolgreiches PNG1002663Bytes + letzte Reservierung1115227Bytes. Letzte Session ks73t1f595qpm3ze4pka698acd8ftzw1 wird ab17:08:24.881 freigegeben; erneuter regulärer Lauf und Schlussprüfung folgen.
+
+2026-10-07 17:08 Europe/Berlin: Alle5 Geister vollständig bereinigt. Letzte reguläre cleanupR2:run nach17:08:24 erfolgreich. Abschließende assert-basierte readonly Liveprüfung: genau5 deleted, genau1 live/ready, mediaAssetCount=1, mediaReservedBytes=1002663=Größe des erhaltenen PNG. Browser-AX bestätigt alle3 verbleibenden Placeholderkarten verschwunden; screenshot /tmp/dispatch-media-clean.png. Keine Produktionscode-/Schemaänderungen, keine fremden lokalen Änderungen deployed. Nutzerhinweis: manuelles Löschen temporärer Objekte alleine räumt DB/Kontingent nicht auf. TASK-9 bleibt In Progress bis explizite Nutzerabnahme.
 <!-- SECTION:NOTES:END -->

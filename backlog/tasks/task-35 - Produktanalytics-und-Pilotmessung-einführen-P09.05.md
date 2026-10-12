@@ -4,7 +4,7 @@ title: Produktanalytics und Pilotmessung einführen (P09.05)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-07 11:28'
+updated_date: '2026-10-07 21:50'
 labels:
   - p09
   - r3
@@ -63,4 +63,8 @@ Root read-only sequel /tmp/dispatch-continuation-35-seams.md erstellt: kein prod
 Weiterer konsolidierter Vertrag .docs/operations-notifications-contract.md bindet ProductMeasurement an bestehende Domain/finite31Occurrence/explicit47Outcomes. Keine externeAnalytics- oder SessionReplay-Entscheidung/SDK durch diesen Vertrag. VollständigeProducerprüfung/final45-50/67-68ProofReconciliation und separate native SourceUnits bleiben vorImplementierung Pflicht.
 
 Read-only future reconciliation adopted: .docs/reviews/task-31-32-35-current-native-reconciliation.md. Reuse finite native publication counts/receipt currencies and prospective human usefulness/effort/attribution facts; default unspecified measurements remain unset, Demo amounts are not native pilot evidence. Reconcile accepted TASK-68 before release. No implementation/test acceptance; all ACs remain open.
+
+2026-10-07 ROOT: Native Pilot-Vorbereitung als PROPOSAL_ONLY übernommen: .docs/reviews/task-35-current-native-pilot-source-plan.md (SHA256 33dccfc8a79628b0b4ab343fea0fdc91e1e5fc34ee8c3fd6fba782e1588dc605). Vollständig gelesener Bericht und semantische Receipt-Projektion; 314 originale fremde Nicht-Generated-Pfade, 7 Inputs und 5 private Artefakte verifiziert. Root-Proof /tmp/dispatch-35-current-native-pilot-source-plan-root-verification.json; Klassifikation korrigiert in /tmp/dispatch-35-current-native-pilot-source-plan-root-scope-correction.json: 19 Code-Scopes + 1 Input-Doc im Guard, 3 tatsächlich bewegliche Writer-Scopes, 2 nur am Ende beobachtete Docs entsprechen aktuellem HEAD, ohne per-Read-Before-Hash. Teilbereiche bleiben Teilbereiche; vollständiger CLI-Dependency-Graph nicht behauptet. Menschliche Freigabe, Schreibfähigkeit, vollständige Veröffentlichung n=1, Brauchbarkeit, Aufwand und Originalkosten bleiben getrennt. Fehlende Dauer/Baseline/Attribution bleiben unset; keine Demo-Preise oder Freigaben als Messwert. Keine Tests, Provider-Aufrufe, native Pilotdaten oder Abnahme. Implementierung erst nach TASK-31/32 und finaler TASK-68.2/68.3-Reconciliation. Alle AC/DoD und manuelles Done offen.
+
+Weitere minimale PROPOSAL_ONLY-Reconciliation vollständig gelesen: .docs/reviews/task-35-first-unit-yagni-reconciliation.md und task-35-first-unit-work-bound.md. Unverändertes readOverview nicht als Pilotwrapper nutzen (unnötige Ancestry/Media/5Windows und broadcatches). Kleinste künftige echte Teilmetrik: latest5 singleton text-only, 24h-Impressions mit original retainedSnapshotHorizon+describe, keine Kosten/Zeitersparnis/Wholepilotcounts. Direkte kleine Assembly im künftigen Pilotmodul; kein Extrahelper in snapshots.ts, keine Event-/Schema-/Ledgeränderung. Native same-snapshot limits und mögliche Überschreitung beim scheiternden Read ehrlich behandeln. Noch keine Sourcefreigabe/Tests/Abnahme.
 <!-- SECTION:NOTES:END -->

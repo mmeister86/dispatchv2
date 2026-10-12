@@ -186,7 +186,10 @@ async function receipt(
     cleanAfter,
   });
 }
-async function currentCommand(ctx: MutationCtx, c: Doc<"teamCommands">) {
+export async function currentCommand(
+  ctx: QueryCtx | MutationCtx,
+  c: Doc<"teamCommands">,
+) {
   if (c.cleanAfter === null || c.cleanAfter <= Date.now()) return false;
   const user = await ctx.db.get(c.actorId),
     w = await ctx.db.get(c.workspaceId);

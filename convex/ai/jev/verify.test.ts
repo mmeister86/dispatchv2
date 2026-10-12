@@ -1853,7 +1853,8 @@ test("composite root withdrawal converges bounded native scheduling and waits fo
   await f.t.mutation(internal.ai.jev.composite.purgeRoot, { runId: f.runId });
   let ticks = 0;
   await f.t.finishAllScheduledFunctions(() => {
-    expect(++ticks).toBeLessThan(40);
+    // Scoped native cleanup drains bounded residual/file phases before acknowledging each root.
+    expect(++ticks).toBeLessThan(128);
     vi.advanceTimersByTime(10000);
   });
   const runs = await f.t.run(async (ctx) =>
@@ -2806,7 +2807,8 @@ for (const path of ["candidate", "producer", "workspace"] as const)
       });
     let ticks = 0;
     await f.t.finishAllScheduledFunctions(() => {
-      expect(++ticks).toBeLessThan(40);
+      // Scoped native cleanup drains bounded residual/file phases before acknowledging each root.
+      expect(++ticks).toBeLessThan(128);
       vi.advanceTimersByTime(10000);
     });
     const cleared = (await f.t.run((ctx) => ctx.db.get(root._id)))!;

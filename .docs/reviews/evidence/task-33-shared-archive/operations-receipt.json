@@ -1,0 +1,134 @@
+{
+  "researchCompletionSummary": {
+    "styledDrawer": true,
+    "successViewports": [
+      1280,
+      390
+    ],
+    "successImages": [
+      "research-summary-success-1280.png",
+      "research-summary-success-390.png"
+    ],
+    "errorImage": "research-summary-error.png",
+    "observedOnlyDismiss": true,
+    "exactScope": true,
+    "clockExpiry": true,
+    "nativeQuietTransitionRecovery": true,
+    "quietLateCommandTicketFence": true,
+    "privateIndependentError": true
+  },
+  "githubAttention": {
+    "sameDrawer": true,
+    "attentionOnly": true,
+    "personalUnreadUnchanged": true,
+    "exactExpiry": true,
+    "renewal": true,
+    "correlation": true,
+    "independentErrorRetry": true,
+    "safeLink": true,
+    "roles": [
+      "Owner",
+      "Admin",
+      "Editor",
+      "Viewer"
+    ],
+    "subscriptionSkip": true,
+    "nativeScopeSessionWorkspaceAccountABA": true,
+    "entropyFailureExplicitRetry": true,
+    "personalActionsExcludeRecoveryIds": true
+  },
+  "publishingInbox": {
+    "sameDrawer": true,
+    "ownCommands": true,
+    "loadedOnly": true,
+    "nativeExpiry": true,
+    "sessionRoleWorkspaceAccountABA": true,
+    "lateErrorsDiscarded": true,
+    "entropyAndRetry": true,
+    "safeError": true
+  },
+  "actualApp": true,
+  "actualStore": true,
+  "productionCss": true,
+  "viewports": [
+    1280,
+    390
+  ],
+  "scopeSessionABA": true,
+  "accountFence": true,
+  "clockExpiry": true,
+  "explicitRefresh": true,
+  "errorPrivacy": true,
+  "partialCoverage": true,
+  "existingTabs": true,
+  "isolatedDemoTimer": true,
+  "cloudNotificationDefaultOff": true,
+  "cloudNativePreferencesPersisted": true,
+  "cloudNotificationDirtyCASCorrelationABA": true,
+  "cloudWeeklyEmailUnavailable": true,
+  "cloudNotificationRoles": [
+    "Owner",
+    "Admin",
+    "Editor",
+    "Viewer"
+  ],
+  "cloudNoAppLocalPreferenceStorage": true,
+  "cloudOnlyOwnPreferenceSetter": true,
+  "existingRecipientInbox": true,
+  "unresolvedTransportCopy": true,
+  "demoPreferencePersistenceAndViewer": true,
+  "nativePreferencesDownload": {
+    "mockedTransport": true,
+    "actualAppStoreCss": true,
+    "allFourRoles": true,
+    "nullableStoredNotifications": true,
+    "exactCorrelation": true,
+    "sessionWorkspaceABA": true,
+    "sourceHandoffExpiry": true,
+    "oversizedWire": true,
+    "failedHandoffRevokesURL": true,
+    "noPrivateDownloadFields": true,
+    "fileCount": 4
+  },
+  "nativeSelfProfileDownload": true,
+  "sharedArchive": {
+    "families": 19,
+    "actualDownloadedJSON": true,
+    "nextPage": true,
+    "sessionRoleAccountFamilyABA": true,
+    "workspaceABA": true,
+    "unmount": true,
+    "finiteHandoff": true,
+    "failureCleanup": true
+  },
+  "exportRoles": [
+    "Owner",
+    "Admin",
+    "Editor",
+    "Viewer"
+  ],
+  "exportFreshKeys": true,
+  "exportNativeCorrelationExcludedFromFiles": true,
+  "exportSessionWorkspaceABAAndLateUnmount": true,
+  "exportNoAppPersistence": true,
+  "exportEntropyFailureAndRetry": true,
+  "exportLocalHandoffFailureRevokesUrl": true,
+  "exportRoleLateResultRejected": true,
+  "exportFileCount": 4,
+  "nativePilot": {
+    "selectedAccountOnly": true,
+    "roles": [
+      "Owner",
+      "Admin"
+    ],
+    "zeroUnknown": true,
+    "refreshAndCorrelation": true,
+    "expiryWithoutNewKey": true,
+    "entropyFailureRetry": true,
+    "accountRoleSessionABA": true,
+    "safeError": true
+  },
+  "provider": [],
+  "errors": [],
+  "manualAccessibility": false
+}

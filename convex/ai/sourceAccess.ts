@@ -1,3 +1,4 @@
+import { operationalUntil } from "../lib/operationalRetention";
 import { runStyleProof } from "./styleProfiles";
 import { runInputs } from "./contentCopies";
 import { ideaProofUntil } from "../research/contentProof";
@@ -175,6 +176,7 @@ export async function retainedRunProof(
   try {
     if (
       r.sourceCleanupState ||
+      operationalUntil(r.createdAt, r.sourceUntil) <= Date.now() ||
       (r.sourceUntil != null && r.sourceUntil <= Date.now())
     )
       throw new ConvexError("MODEL_SOURCE_EXPIRED");
@@ -203,7 +205,7 @@ export async function retainedRunProof(
     const inputAccount =
       expectedAccountId === undefined ? r.accountId : expectedAccountId;
     const horizons = [
-      r.sourceUntil,
+      operationalUntil(r.createdAt, r.sourceUntil),
       (await runStyleProof(ctx, r, false, walk)).sourceUntil,
       ...(await currentRunSources(
         ctx,

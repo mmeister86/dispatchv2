@@ -854,12 +854,13 @@ test.each(["missing", "complete"])(
   },
 );
 
-test("actual null-horizon copied source loss drains without a generator run and retains native IDs", async () => {
+test("unbounded original source receives the operational cap and source loss drains without a generator run", async () => {
   vi.useFakeTimers();
   const f = await fixture(false),
     id = await f.signed.mutation(prepare, f.command),
     o = (await f.t.run((ctx) => ctx.db.get(id)))!;
-  expect(o.sourceUntil).toBeNull();
+  expect(o.sourceUntil).toBeGreaterThan(Date.now());
+  expect(o.sourceUntil).toBeLessThanOrEqual(o.createdAt + 30 * 86400000);
   expect(o.attemptId).toBeNull();
   await f.t.run((ctx) =>
     ctx.db.patch(o.inputVersionId, { sourceUnavailable: true }),

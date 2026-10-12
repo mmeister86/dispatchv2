@@ -1,12 +1,13 @@
-import { ConvexError, v } from "convex/values";
+import { ConvexError, v, type Infer } from "convex/values";
 import {
   internalMutation,
+  mutation,
   query,
   type QueryCtx,
   type MutationCtx,
 } from "../_generated/server";
 import { authComponent } from "../auth";
-import { components } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import {
   requireIdentity,
@@ -61,8 +62,12 @@ function present(j: Doc<"deletionJobs">) {
     processed: j.processed,
     updatedAt: j.updatedAt,
     retentionDays: 30 as const,
-    reason: j.state === "complete" ? null : ("scope-discovery" as const),
-    canResume: false,
+    reason:
+      j.state === "complete"
+        ? null
+        : (j.reason ??
+          (j.state === "blocked" ? ("scope-discovery" as const) : null)),
+    canResume: j.state === "blocked" || j.state === "waiting",
   };
 }
 function revision(value: number) {
@@ -310,29 +315,162 @@ export const status = query({
   args: { jobId: v.id("deletionJobs") },
   returns: jobStatus,
   handler: async (ctx, a) => {
-    const identity = await authComponent.getAuthUser(ctx);
-    if (!identity.emailVerified) throw new ConvexError("EMAIL_NOT_VERIFIED");
-    const claims = await ctx.auth.getUserIdentity();
-    if (!claims || typeof claims.sessionId !== "string")
-      throw new ConvexError("DELETION_ACCESS_DENIED");
-    const session = await ctx.runQuery(components.betterAuth.adapter.findOne, {
-      model: "session",
-      where: [{ field: "_id", value: claims.sessionId }],
-    });
-    const admission = await ctx.db
-      .query("authRoots")
-      .withIndex("by_authId", (q) => q.eq("authId", identity._id))
-      .unique();
-    if (
-      !session ||
-      session.userId !== identity._id ||
-      session.expiresAt <= Date.now() ||
-      admission?.neverAdmitted
-    )
-      throw new ConvexError("DELETION_ACCESS_DENIED");
+    const authId = await statusIdentity(ctx);
     const job = await ctx.db.get(a.jobId);
-    if (!job || job.authId !== identity._id)
+    if (!job || job.authId !== authId)
       throw new ConvexError("DELETION_ACCESS_DENIED");
     return present(job);
+  },
+});
+
+async function statusIdentity(ctx: QueryCtx | MutationCtx) {
+  const identity = await authComponent.getAuthUser(ctx);
+  if (!identity.emailVerified) throw new ConvexError("EMAIL_NOT_VERIFIED");
+  const claims = await ctx.auth.getUserIdentity();
+  if (!claims || typeof claims.sessionId !== "string")
+    throw new ConvexError("DELETION_ACCESS_DENIED");
+  const session = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+    model: "session",
+    where: [{ field: "_id", value: claims.sessionId }],
+  });
+  const admission = await ctx.db
+    .query("authRoots")
+    .withIndex("by_authId", (q) => q.eq("authId", identity._id))
+    .unique();
+  if (
+    !session ||
+    session.userId !== identity._id ||
+    session.expiresAt <= Date.now() ||
+    admission?.neverAdmitted
+  )
+    throw new ConvexError("DELETION_ACCESS_DENIED");
+  return identity._id;
+}
+
+async function start(
+  ctx: MutationCtx,
+  id: Id<"deletionJobs">,
+): Promise<Infer<typeof jobStatus>> {
+  const job = (await ctx.db.get(id))!;
+  if (job.state === "complete" || job.state === "running") return present(job);
+  if (job.scope === "account" && job.phase === "fence")
+    await ctx.runMutation(
+      internal.operations.authAdmission.fencePreparedAccount,
+      { jobId: id },
+    );
+  await ctx.db.patch(id, {
+    state: "running",
+    phase: job.phase === "fence" ? "stop" : job.phase,
+    reason: undefined,
+    retryCount: 0,
+    updatedAt: Date.now(),
+    revision: job.revision + 1,
+  });
+  await ctx.scheduler.runAfter(0, internal.operations.deletionExecutor.step, {
+    jobId: id,
+    revision: job.revision + 1,
+  });
+  return present((await ctx.db.get(id))!);
+}
+async function replay(ctx: MutationCtx, commandKey: string, intent: string) {
+  const authId = await statusIdentity(ctx);
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_authId", (q) => q.eq("authId", authId))
+    .unique();
+  if (!user) return null;
+  const job = await ctx.db
+    .query("deletionJobs")
+    .withIndex("by_actorId_and_commandKey", (q) =>
+      q.eq("actorId", user._id).eq("commandKey", commandKey),
+    )
+    .unique();
+  if (job && (job.authId !== authId || job.intent !== intent))
+    throw new ConvexError("DELETION_COMMAND_CONFLICT");
+  return job;
+}
+export const beginWorkspace = mutation({
+  args: {
+    workspaceId: v.id("workspaces"),
+    expectedTeamRevision: v.number(),
+    commandKey: v.string(),
+    confirmation: v.literal("delete-workspace"),
+  },
+  returns: jobStatus,
+  handler: async (ctx, args): Promise<Infer<typeof jobStatus>> => {
+    const eligibility = await ctx.runQuery(
+      internal.operations.authAdmission.eligibility,
+      {},
+    );
+    if (!eligibility.eligible) throw new ConvexError("FIXED_GUARD_REQUIRED");
+    const old = await replay(
+      ctx,
+      args.commandKey,
+      JSON.stringify([
+        "workspace",
+        args.workspaceId,
+        args.expectedTeamRevision,
+      ]),
+    );
+    if (old) return present(old);
+    const result = await ctx.runMutation(
+      internal.operations.deletion.prepareWorkspace,
+      args,
+    );
+    return start(ctx, result.id);
+  },
+});
+export const beginAccount = mutation({
+  args: {
+    commandKey: v.string(),
+    confirmation: v.literal("delete-account"),
+    deleteWorkspaces: v.array(choice),
+  },
+  returns: jobStatus,
+  handler: async (ctx, args): Promise<Infer<typeof jobStatus>> => {
+    const eligibility = await ctx.runQuery(
+      internal.operations.authAdmission.eligibility,
+      {},
+    );
+    if (!eligibility.eligible) throw new ConvexError("FIXED_GUARD_REQUIRED");
+    const choices = [...args.deleteWorkspaces].sort((a, b) =>
+      a.workspaceId.localeCompare(b.workspaceId),
+    );
+    const old = await replay(
+      ctx,
+      args.commandKey,
+      JSON.stringify(["account", choices]),
+    );
+    if (old) return present(old);
+    const result = await ctx.runMutation(
+      internal.operations.deletion.prepareAccount,
+      args,
+    );
+    return start(ctx, result.id);
+  },
+});
+export const resume = mutation({
+  args: { jobId: v.id("deletionJobs") },
+  returns: jobStatus,
+  handler: async (ctx, args): Promise<Infer<typeof jobStatus>> => {
+    const authId = await statusIdentity(ctx);
+    const job = await ctx.db.get(args.jobId);
+    if (!job || job.authId !== authId)
+      throw new ConvexError("DELETION_ACCESS_DENIED");
+    return start(ctx, job._id);
+  },
+});
+export const mine = query({
+  args: {},
+  returns: v.array(jobStatus),
+  handler: async (ctx) => {
+    const authId = await statusIdentity(ctx);
+    return (
+      await ctx.db
+        .query("deletionJobs")
+        .withIndex("by_authId", (q) => q.eq("authId", authId))
+        .order("desc")
+        .take(10)
+    ).map(present);
   },
 });

@@ -1,0 +1,11 @@
+# TASK-33.1 own preferences export validation
+
+Source commit aeb256d (six owned paths), based on36fffeb. Existing self/versions contracts and demo unchanged. New own preferences export includes eight profile fields, nullable stored notification settings and at most five originally/currently authorized Research completion metadata rows; no scheduler/correlation/private archive fields in file. Whole64KiB wire ceiling, explicit current native session, active selected workspace and finite source deadline. No new table/job/store.
+
+Writer meaningful TDD initially rejected missing endpoint, then66 tests passed across operations/export.test.ts, preferences.test.ts and research/summaries.test.ts. Both installed app/backend Typechecks PASS; RootViteproductionbuild PASS with existing bundle warnings. Fresh preferences_spec independently66 tests PASS and found no requirement gap. Distinct preferences_quality independently66 tests PASS, reviewed all frozen6paths and finalbrowserhash, found noCritical/Important/Minor issue.
+
+Actual mounted production App/Store/CSS browser test operations.browser.mjs PASS after exact sandboxloopback/Chrome escalation. Four real downloadedJSONfiles covered Owner/Admin/Editor/Viewer, nullable/explicitOFF settings, exact summarykeys, nativecorrelation mismatches,64KiBwire/sourceexpiry, session/workspaceABA, unmount and failed/expiredhandoff URLcleanup. Transport mocked, hostedConvex not tested. Receipt /tmp/dispatch-31.1-browser-operations/receipt.json provider[]/errors[], fileCount4; frozenbrowserSHA256 c703ac951cf0df6d9dfb787796d5fca57bd6ebdba609795ff033d1889d28fdab. Existing browser assertions preserved. Root inspected matchinghash and receipt; QUALITY independentlyreviewed final matchingevidence, didnot rerunbrowser.
+
+Baseline whole native suite before implementation1582PASS/1existing styleProfiles stress timeout900000ms; no newwhole-suite pass claim. Pnpm wrapper registryidentity/networkverification failed; checks used installed binarypaths, no securityverification disabled and no dependencychange. No hostedpush,provider/runtimeerasure/legal/manualaccessibility acceptance claimed.
+
+Remaining parent scope: all other shared/private/AI/operational/componentfamilies, resumableaccount/workspace deletion and retention. This unit alone does not satisfy parent33.1 or33. ManualDone remains open.

@@ -1,0 +1,1302 @@
+diff --git a/dist/component/_generated/api.d.ts b/dist/component/_generated/api.d.ts
+index 492f8715db1ea041b7fa73fe147447670d8d1ff8..d29a8cc43a00561d57373c027e2bc926e8002124 100644
+--- a/dist/component/_generated/api.d.ts
++++ b/dist/component/_generated/api.d.ts
+@@ -1,3 +1,4 @@
++import type * as erasure from "../erasure.js";
+ /**
+  * Generated `api` utility.
+  *
+@@ -16,6 +17,7 @@ import type * as vector_index from "../vector/index.js";
+ import type * as vector_tables from "../vector/tables.js";
+ import type { ApiFromModules, FilterApi, FunctionReference } from "convex/server";
+ declare const fullApi: ApiFromModules<{
++    erasure: typeof erasure;
+     apiKeys: typeof apiKeys;
+     files: typeof files;
+     messages: typeof messages;
+@@ -45,4 +47,3 @@ export declare const api: FilterApi<typeof fullApi, FunctionReference<any, "publ
+ export declare const internal: FilterApi<typeof fullApi, FunctionReference<any, "internal">>;
+ export declare const components: {};
+ export {};
+-//# sourceMappingURL=api.d.ts.map
+\ No newline at end of file
+diff --git a/dist/component/_generated/component.d.ts b/dist/component/_generated/component.d.ts
+index a16ba658f470f0b958105ada06131a170e4f35a6..751b502d6b52dae9bb877fdb548bcffc2efb1913 100644
+--- a/dist/component/_generated/component.d.ts
++++ b/dist/component/_generated/component.d.ts
+@@ -19,6 +19,52 @@ import type { FunctionReference } from "convex/server";
+  * ```
+  */
+ export type ComponentApi<Name extends string | undefined = string | undefined> = {
++    erasure: {
++        listForThread: FunctionReference<"query", "internal", {
++            threadId: string;
++            expectedUserId: string | null;
++            paginationOpts: {
++                numItems: number;
++                cursor: string | null;
++            };
++        }, {
++            page: Array<{
++                fileId: string;
++                storageId: string;
++                refcount: number;
++                hash: string;
++            }>;
++            isDone: boolean;
++            continueCursor: string;
++        }, Name>;
++        deleteUnusedClaimed: FunctionReference<"mutation", "internal", {
++            threadId: string;
++            expectedUserId: string | null;
++            claims: Array<{
++                fileId: string;
++                storageId: string;
++            }>;
++        }, {
++            deletedStorageIds: string[];
++            sharedFileIds: string[];
++        }, Name>;
++        deleteThreadResiduals: FunctionReference<"mutation", "internal", {
++            threadId: string;
++            expectedUserId: string | null;
++            phase: number;
++        }, {
++            isDone: boolean;
++            nextPhase: number;
++        }, Name>;
++        deleteUserMemories: FunctionReference<"mutation", "internal", {
++            userId: string;
++            phase: number;
++    olderThan?: number;
++        }, {
++            isDone: boolean;
++            nextPhase: number;
++        }, Name>;
++    };
+     apiKeys: {
+         destroy: FunctionReference<"mutation", "internal", {
+             apiKey?: string;
+@@ -3117,4 +3163,3 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
+         };
+     };
+ };
+-//# sourceMappingURL=component.d.ts.map
+\ No newline at end of file
+diff --git a/dist/component/erasure.d.ts b/dist/component/erasure.d.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..ed979b5503559b4dbd32e6ec8d208bbcf1cfab75
+--- /dev/null
++++ b/dist/component/erasure.d.ts
+@@ -0,0 +1,51 @@
++import { type MutationCtx } from "./_generated/server.js";
++import type { Doc } from "./_generated/dataModel.js";
++export declare function captureFiles(ctx: MutationCtx, message: Doc<"messages">): Promise<void>;
++export declare const listForThread: import("convex/server").RegisteredQuery<"public", {
++    expectedUserId: string | null;
++    paginationOpts: {
++        id?: number;
++        endCursor?: string | null;
++        maximumRowsRead?: number;
++        maximumBytesRead?: number;
++        numItems: number;
++        cursor: string | null;
++    };
++    threadId: import("convex/values").GenericId<"threads">;
++}, Promise<{
++    page: {
++        fileId: Doc<"files">["_id"];
++        storageId: string;
++        refcount: number;
++        hash: string;
++    }[];
++    isDone: boolean;
++    continueCursor: string;
++}>>;
++export declare const deleteUnusedClaimed: import("convex/server").RegisteredMutation<"public", {
++    claims: {
++        fileId: import("convex/values").GenericId<"files">;
++        storageId: string;
++    }[];
++    expectedUserId: string | null;
++    threadId: import("convex/values").GenericId<"threads">;
++}, Promise<{
++    deletedStorageIds: string[];
++    sharedFileIds: import("convex/values").GenericId<"files">[];
++}>>;
++export declare const deleteThreadResiduals: import("convex/server").RegisteredMutation<"public", {
++    expectedUserId: string | null;
++    phase: number;
++    threadId: import("convex/values").GenericId<"threads">;
++}, Promise<{
++    isDone: boolean;
++    nextPhase: number;
++}>>;
++export declare const deleteUserMemories: import("convex/server").RegisteredMutation<"public", {
++    olderThan?: number | undefined;
++    phase: number;
++    userId: string;
++}, Promise<{
++    isDone: boolean;
++    nextPhase: number;
++}>>;
+diff --git a/dist/component/erasure.js b/dist/component/erasure.js
+new file mode 100644
+index 0000000000000000000000000000000000000000..15e518735021ed7e67662fdaf3c575368f466748
+--- /dev/null
++++ b/dist/component/erasure.js
+@@ -0,0 +1,197 @@
++import { paginationOptsValidator } from "convex/server";
++import { ConvexError } from "convex/values";
++import { mutation, query, } from "./_generated/server.js";
++import { v } from "./schema.js";
++import { VectorTableNames, getVectorIdInfo } from "./vector/tables.js";
++const owner = v.union(v.string(), v.null());
++const scope = { threadId: v.id("threads"), expectedUserId: owner };
++async function checkThread(ctx, a) {
++    const thread = await ctx.db.get("threads", a.threadId);
++    if (thread && (thread.userId ?? null) !== a.expectedUserId)
++        throw new ConvexError("ERASURE_OWNER_CHANGED");
++    return thread;
++}
++export async function captureFiles(ctx, message) {
++    const thread = await ctx.db.get("threads", message.threadId);
++    for (const fileId of new Set(message.fileIds ?? [])) {
++        const file = await ctx.db.get("files", fileId);
++        if (!file)
++            throw new ConvexError("ERASURE_FILE_MISSING");
++        const old = await ctx.db
++            .query("fileCleanupClaims")
++            .withIndex("threadId_fileId", (q) => q.eq("threadId", message.threadId).eq("fileId", fileId))
++            .unique();
++        if (!old)
++            await ctx.db.insert("fileCleanupClaims", {
++                threadId: message.threadId,
++                userId: thread?.userId ?? message.userId,
++                fileId,
++                storageId: file.storageId,
++                hash: file.hash,
++            });
++    }
++}
++const claim = v.object({
++    fileId: v.id("files"),
++    storageId: v.string(),
++    refcount: v.number(),
++    hash: v.string(),
++});
++export const listForThread = query({
++    args: { ...scope, paginationOpts: paginationOptsValidator },
++    returns: v.object({
++        page: v.array(claim),
++        isDone: v.boolean(),
++        continueCursor: v.string(),
++    }),
++    handler: async (ctx, a) => {
++        const thread = await checkThread(ctx, a);
++        const options = {
++            ...a.paginationOpts,
++            numItems: Math.min(25, a.paginationOpts.numItems),
++        };
++        const files = new Map();
++        let result;
++        if (thread) {
++            const rows = await ctx.db
++                .query("messages")
++                .withIndex("threadId_status_tool_order_stepOrder", (q) => q.eq("threadId", a.threadId))
++                .paginate(options);
++            result = rows;
++            for (const m of rows.page)
++                for (const id of m.fileIds ?? []) {
++                    const f = await ctx.db.get("files", id);
++                    if (!f)
++                        throw new ConvexError("ERASURE_FILE_MISSING");
++                    files.set(f._id, {
++                        fileId: f._id,
++                        storageId: f.storageId,
++                        refcount: f.refcount,
++                        hash: f.hash,
++                    });
++                }
++        }
++        else {
++            const rows = await ctx.db
++                .query("fileCleanupClaims")
++                .withIndex("threadId_fileId", (q) => q.eq("threadId", a.threadId))
++                .paginate(options);
++            result = rows;
++            for (const c of rows.page) {
++                if ((c.userId ?? null) !== a.expectedUserId)
++                    throw new ConvexError("ERASURE_OWNER_CHANGED");
++                const f = await ctx.db.get("files", c.fileId);
++                if (f && f.storageId !== c.storageId)
++                    throw new ConvexError("ERASURE_FILE_CHANGED");
++                files.set(c.fileId, {
++                    fileId: c.fileId,
++                    storageId: c.storageId,
++                    refcount: f?.refcount ?? 0,
++                    hash: c.hash,
++                });
++            }
++        }
++        if (files.size > 100)
++            throw new ConvexError("ERASURE_FILE_PAGE_LIMIT");
++        return {
++            page: [...files.values()],
++            isDone: result.isDone,
++            continueCursor: result.continueCursor,
++        };
++    },
++});
++export const deleteUnusedClaimed = mutation({
++    args: {
++        ...scope,
++        claims: v.array(v.object({ fileId: v.id("files"), storageId: v.string() })),
++    },
++    returns: v.object({
++        deletedStorageIds: v.array(v.string()),
++        sharedFileIds: v.array(v.id("files")),
++    }),
++    handler: async (ctx, a) => {
++        await checkThread(ctx, a);
++        if (a.claims.length > 25)
++            throw new ConvexError("ERASURE_FILE_PAGE_LIMIT");
++        const deletedStorageIds = [], sharedFileIds = [];
++        for (const c of a.claims) {
++            const proof = await ctx.db
++                .query("fileCleanupClaims")
++                .withIndex("threadId_fileId", (q) => q.eq("threadId", a.threadId).eq("fileId", c.fileId))
++                .unique();
++            if (!proof ||
++                proof.storageId !== c.storageId ||
++                (proof.userId ?? null) !== a.expectedUserId)
++                throw new ConvexError("ERASURE_FILE_UNCLAIMED");
++            const f = await ctx.db.get("files", c.fileId);
++            if (f && (f.storageId !== c.storageId || f.refcount < 0))
++                throw new ConvexError("ERASURE_FILE_CHANGED");
++            const aliases = await ctx.db.query("files").withIndex("storageId", q => q.eq("storageId", c.storageId)).take(26);
++            if (aliases.length > 25)
++                throw new ConvexError("ERASURE_FILE_ALIAS_LIMIT");
++            if (aliases.some(alias => alias.refcount < 0))
++                throw new ConvexError("ERASURE_FILE_CHANGED");
++            if (aliases.some(alias => alias.refcount > 0)) {
++                sharedFileIds.push(c.fileId);
++                if (f && f.refcount === 0)
++                    await ctx.db.delete("files", f._id);
++            }
++            else {
++                if (f)
++                    await ctx.db.delete("files", f._id);
++                deletedStorageIds.push(c.storageId);
++            }
++            await ctx.db.delete("fileCleanupClaims", proof._id);
++        }
++        return {
++            deletedStorageIds: [...new Set(deletedStorageIds)],
++            sharedFileIds,
++        };
++    },
++});
++const result = v.object({ isDone: v.boolean(), nextPhase: v.number() });
++async function residuals(ctx, a) {
++    if (!Number.isSafeInteger(a.phase) || a.phase < 0 || a.phase > 10)
++        throw new ConvexError("ERASURE_PHASE_INVALID");
++    const index = a.threadId ? "threadId" : "userId", key = a.threadId ?? a.userId;
++    if (a.phase === 0) {
++        const rows = await ctx.db
++            .query("memories")
++            .withIndex(index, (q) => a.olderThan === undefined ? q.eq(index, key) : q.eq(index, key).lt("_creationTime", a.olderThan))
++            .take(25);
++        for (const m of rows) {
++            if (m.embeddingId) {
++                const { tableName } = getVectorIdInfo(ctx, m.embeddingId);
++                const vector = await ctx.db.get(tableName, m.embeddingId);
++                if (vector && vector[index] === key)
++                    await ctx.db.delete(tableName, m.embeddingId);
++            }
++            await ctx.db.delete("memories", m._id);
++        }
++        return { isDone: false, nextPhase: rows.length === 25 ? 0 : 1 };
++    }
++    const table = VectorTableNames[a.phase - 1];
++    const rows = await ctx.db
++        .query(table)
++        .withIndex(index, (q) => a.olderThan === undefined ? q.eq(index, key) : q.eq(index, key).lt("_creationTime", a.olderThan))
++        .take(25);
++    for (const r of rows)
++        await ctx.db.delete(table, r._id);
++    return {
++        isDone: a.phase === 10 && rows.length < 25,
++        nextPhase: rows.length === 25 ? a.phase : Math.min(10, a.phase + 1),
++    };
++}
++export const deleteThreadResiduals = mutation({
++    args: { ...scope, phase: v.number() },
++    returns: result,
++    handler: async (ctx, a) => {
++        await checkThread(ctx, a);
++        return residuals(ctx, { threadId: a.threadId, phase: a.phase });
++    },
++});
++export const deleteUserMemories = mutation({
++    args: { userId: v.string(), phase: v.number(), olderThan: v.optional(v.number()) },
++    returns: result,
++    handler: async (ctx, a) => residuals(ctx, a),
++});
+diff --git a/dist/component/messages.js b/dist/component/messages.js
+index 529ae1e53825c0cc7a1600afdd368acf54068a92..9d47f7426e5ef6e04d2f3a82325b8422bce54e38 100644
+--- a/dist/component/messages.js
++++ b/dist/component/messages.js
+@@ -1,3 +1,4 @@
++import { captureFiles } from "./erasure.js";
+ import { assert, omit, pick } from "convex-helpers";
+ import { mergedStream, stream } from "convex-helpers/server/stream";
+ import { paginationOptsValidator, } from "convex/server";
+@@ -15,6 +16,7 @@ function publicMessage(message) {
+     return omit(message, ["parentMessageId", "stepId", "files"]);
+ }
+ export async function deleteMessage(ctx, messageDoc) {
++    await captureFiles(ctx, messageDoc);
+     await ctx.db.delete("messages", messageDoc._id);
+     if (messageDoc.embeddingId) {
+         const { tableName } = getVectorIdInfo(ctx, messageDoc.embeddingId);
+@@ -764,4 +766,3 @@ export const getMessageSearchFields = query({
+         };
+     },
+ });
+-//# sourceMappingURL=messages.js.map
+\ No newline at end of file
+diff --git a/dist/component/schema.d.ts b/dist/component/schema.d.ts
+index eae9394f85bf1a8ac379e853d40da18b2dc7716d..b07df4f35017e1b8aa40ef4ad9afa5424cfce800 100644
+--- a/dist/component/schema.d.ts
++++ b/dist/component/schema.d.ts
+@@ -24,6 +24,8 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+     }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+         model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++        threadId: ["threadId", "_creationTime"];
++        userId: ["userId", "_creationTime"];
+     }, import("convex/server").GenericTableSearchIndexes, {
+         vector: {
+             vectorField: "vector";
+@@ -49,6 +51,8 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+     }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+         model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++        threadId: ["threadId", "_creationTime"];
++        userId: ["userId", "_creationTime"];
+     }, import("convex/server").GenericTableSearchIndexes, {
+         vector: {
+             vectorField: "vector";
+@@ -74,6 +78,8 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+     }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+         model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++        threadId: ["threadId", "_creationTime"];
++        userId: ["userId", "_creationTime"];
+     }, import("convex/server").GenericTableSearchIndexes, {
+         vector: {
+             vectorField: "vector";
+@@ -99,6 +105,8 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+     }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+         model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++        threadId: ["threadId", "_creationTime"];
++        userId: ["userId", "_creationTime"];
+     }, import("convex/server").GenericTableSearchIndexes, {
+         vector: {
+             vectorField: "vector";
+@@ -124,6 +132,8 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+     }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+         model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++        threadId: ["threadId", "_creationTime"];
++        userId: ["userId", "_creationTime"];
+     }, import("convex/server").GenericTableSearchIndexes, {
+         vector: {
+             vectorField: "vector";
+@@ -149,6 +159,8 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+     }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+         model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++        threadId: ["threadId", "_creationTime"];
++        userId: ["userId", "_creationTime"];
+     }, import("convex/server").GenericTableSearchIndexes, {
+         vector: {
+             vectorField: "vector";
+@@ -174,6 +186,8 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+     }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+         model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++        threadId: ["threadId", "_creationTime"];
++        userId: ["userId", "_creationTime"];
+     }, import("convex/server").GenericTableSearchIndexes, {
+         vector: {
+             vectorField: "vector";
+@@ -199,6 +213,8 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+     }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+         model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++        threadId: ["threadId", "_creationTime"];
++        userId: ["userId", "_creationTime"];
+     }, import("convex/server").GenericTableSearchIndexes, {
+         vector: {
+             vectorField: "vector";
+@@ -224,6 +240,8 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+     }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+         model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++        threadId: ["threadId", "_creationTime"];
++        userId: ["userId", "_creationTime"];
+     }, import("convex/server").GenericTableSearchIndexes, {
+         vector: {
+             vectorField: "vector";
+@@ -249,6 +267,8 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+     }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+         model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++        threadId: ["threadId", "_creationTime"];
++        userId: ["userId", "_creationTime"];
+     }, import("convex/server").GenericTableSearchIndexes, {
+         vector: {
+             vectorField: "vector";
+@@ -3209,6 +3229,21 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         userId: ["userId", "_creationTime"];
+         embeddingId: ["embeddingId", "_creationTime"];
+     }, {}, {}>;
++    fileCleanupClaims: import("convex/server").TableDefinition<import("convex/values").VObject<{
++        fileId: import("convex/values").GenericId<"files">;
++        hash: string;
++        storageId: string;
++        threadId: import("convex/values").GenericId<"threads">;
++        userId?: string | undefined;
++    }, {
++        threadId: import("convex/values").VId<import("convex/values").GenericId<"threads">, "required">;
++        userId: import("convex/values").VString<string | undefined, "optional">;
++        fileId: import("convex/values").VId<import("convex/values").GenericId<"files">, "required">;
++        storageId: import("convex/values").VString<string, "required">;
++        hash: import("convex/values").VString<string, "required">;
++    }, "required", "fileId" | "hash" | "storageId" | "threadId" | "userId">, {
++        threadId_fileId: ["threadId", "fileId", "_creationTime"];
++    }, {}, {}>;
+     files: import("convex/server").TableDefinition<import("convex/values").VObject<{
+         mediaType?: string | undefined;
+         mimeType?: string | undefined;
+@@ -3227,6 +3262,7 @@ export declare const schema: import("convex/server").SchemaDefinition<{
+         refcount: import("convex/values").VFloat64<number, "required">;
+         lastTouchedAt: import("convex/values").VFloat64<number, "required">;
+     }, "required", "mediaType" | "mimeType" | "filename" | "storageId" | "hash" | "refcount" | "lastTouchedAt">, {
++        storageId: ["storageId", "_creationTime"];
+         hash: ["hash", "_creationTime"];
+         refcount: ["refcount", "_creationTime"];
+     }, {}, {}>;
+@@ -3292,6 +3328,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -3319,6 +3357,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -3346,6 +3386,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -3373,6 +3415,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -3400,6 +3444,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -3427,6 +3473,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -3454,6 +3502,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -3481,6 +3531,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -3508,6 +3560,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -3535,6 +3589,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -3547,6 +3603,25 @@ export declare const vv: Omit<{
+                 };
+             };
+         };
++        fileCleanupClaims: {
++            document: {
++                _id: import("convex/values").GenericId<"fileCleanupClaims">;
++                _creationTime: number;
++                threadId: import("convex/values").GenericId<"threads">;
++                userId?: string | undefined;
++                fileId: import("convex/values").GenericId<"files">;
++                storageId: string;
++                hash: string;
++            };
++            fieldPaths: "_id" | "_creationTime" | "threadId" | "userId" | "fileId" | "storageId" | "hash";
++            indexes: {
++                threadId_fileId: ["threadId", "fileId", "_creationTime"];
++                by_id: ["_id"];
++                by_creation_time: ["_creationTime"];
++            };
++            searchIndexes: {};
++            vectorIndexes: {};
++        };
+         files: {
+             document: {
+                 _id: import("convex/values").GenericId<"files">;
+@@ -3561,6 +3636,7 @@ export declare const vv: Omit<{
+             };
+             fieldPaths: ("_creationTime" | "mediaType" | "mimeType" | "filename" | "storageId" | "hash" | "refcount" | "lastTouchedAt") | "_id";
+             indexes: {
++                storageId: ["storageId", "_creationTime"];
+                 hash: ["hash", "_creationTime"];
+                 refcount: ["refcount", "_creationTime"];
+                 by_id: ["_id"];
+@@ -4061,6 +4137,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -4088,6 +4166,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -4115,6 +4195,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -4142,6 +4224,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -4169,6 +4253,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -4196,6 +4282,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -4223,6 +4311,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -4250,6 +4340,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -4277,6 +4369,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -4304,6 +4398,8 @@ export declare const vv: Omit<{
+             fieldPaths: "_id" | ("userId" | "_creationTime" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector");
+             indexes: {
+                 model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++                threadId: ["threadId", "_creationTime"];
++                userId: ["userId", "_creationTime"];
+                 by_id: ["_id"];
+                 by_creation_time: ["_creationTime"];
+             };
+@@ -4316,6 +4412,25 @@ export declare const vv: Omit<{
+                 };
+             };
+         };
++        fileCleanupClaims: {
++            document: {
++                _id: import("convex/values").GenericId<"fileCleanupClaims">;
++                _creationTime: number;
++                threadId: import("convex/values").GenericId<"threads">;
++                userId?: string | undefined;
++                fileId: import("convex/values").GenericId<"files">;
++                storageId: string;
++                hash: string;
++            };
++            fieldPaths: "_id" | "_creationTime" | "threadId" | "userId" | "fileId" | "storageId" | "hash";
++            indexes: {
++                threadId_fileId: ["threadId", "fileId", "_creationTime"];
++                by_id: ["_id"];
++                by_creation_time: ["_creationTime"];
++            };
++            searchIndexes: {};
++            vectorIndexes: {};
++        };
+         files: {
+             document: {
+                 _id: import("convex/values").GenericId<"files">;
+@@ -4330,6 +4445,7 @@ export declare const vv: Omit<{
+             };
+             fieldPaths: ("_creationTime" | "mediaType" | "mimeType" | "filename" | "storageId" | "hash" | "refcount" | "lastTouchedAt") | "_id";
+             indexes: {
++                storageId: ["storageId", "_creationTime"];
+                 hash: ["hash", "_creationTime"];
+                 refcount: ["refcount", "_creationTime"];
+                 by_id: ["_id"];
+@@ -4813,6 +4929,8 @@ export declare const vv: Omit<{
+             vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+         }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+             model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++            threadId: ["threadId", "_creationTime"];
++            userId: ["userId", "_creationTime"];
+         }, import("convex/server").GenericTableSearchIndexes, {
+             vector: {
+                 vectorField: "vector";
+@@ -4838,6 +4956,8 @@ export declare const vv: Omit<{
+             vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+         }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+             model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++            threadId: ["threadId", "_creationTime"];
++            userId: ["userId", "_creationTime"];
+         }, import("convex/server").GenericTableSearchIndexes, {
+             vector: {
+                 vectorField: "vector";
+@@ -4863,6 +4983,8 @@ export declare const vv: Omit<{
+             vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+         }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+             model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++            threadId: ["threadId", "_creationTime"];
++            userId: ["userId", "_creationTime"];
+         }, import("convex/server").GenericTableSearchIndexes, {
+             vector: {
+                 vectorField: "vector";
+@@ -4888,6 +5010,8 @@ export declare const vv: Omit<{
+             vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+         }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+             model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++            threadId: ["threadId", "_creationTime"];
++            userId: ["userId", "_creationTime"];
+         }, import("convex/server").GenericTableSearchIndexes, {
+             vector: {
+                 vectorField: "vector";
+@@ -4913,6 +5037,8 @@ export declare const vv: Omit<{
+             vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+         }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+             model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++            threadId: ["threadId", "_creationTime"];
++            userId: ["userId", "_creationTime"];
+         }, import("convex/server").GenericTableSearchIndexes, {
+             vector: {
+                 vectorField: "vector";
+@@ -4938,6 +5064,8 @@ export declare const vv: Omit<{
+             vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+         }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+             model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++            threadId: ["threadId", "_creationTime"];
++            userId: ["userId", "_creationTime"];
+         }, import("convex/server").GenericTableSearchIndexes, {
+             vector: {
+                 vectorField: "vector";
+@@ -4963,6 +5091,8 @@ export declare const vv: Omit<{
+             vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+         }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+             model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++            threadId: ["threadId", "_creationTime"];
++            userId: ["userId", "_creationTime"];
+         }, import("convex/server").GenericTableSearchIndexes, {
+             vector: {
+                 vectorField: "vector";
+@@ -4988,6 +5118,8 @@ export declare const vv: Omit<{
+             vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+         }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+             model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++            threadId: ["threadId", "_creationTime"];
++            userId: ["userId", "_creationTime"];
+         }, import("convex/server").GenericTableSearchIndexes, {
+             vector: {
+                 vectorField: "vector";
+@@ -5013,6 +5145,8 @@ export declare const vv: Omit<{
+             vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+         }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+             model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++            threadId: ["threadId", "_creationTime"];
++            userId: ["userId", "_creationTime"];
+         }, import("convex/server").GenericTableSearchIndexes, {
+             vector: {
+                 vectorField: "vector";
+@@ -5038,6 +5172,8 @@ export declare const vv: Omit<{
+             vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+         }, "required", "userId" | "threadId" | "model" | "table" | "model_table_userId" | "model_table_threadId" | "vector">, {
+             model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++            threadId: ["threadId", "_creationTime"];
++            userId: ["userId", "_creationTime"];
+         }, import("convex/server").GenericTableSearchIndexes, {
+             vector: {
+                 vectorField: "vector";
+@@ -7998,6 +8134,21 @@ export declare const vv: Omit<{
+             userId: ["userId", "_creationTime"];
+             embeddingId: ["embeddingId", "_creationTime"];
+         }, {}, {}>;
++        fileCleanupClaims: import("convex/server").TableDefinition<import("convex/values").VObject<{
++            fileId: import("convex/values").GenericId<"files">;
++            hash: string;
++            storageId: string;
++            threadId: import("convex/values").GenericId<"threads">;
++            userId?: string | undefined;
++        }, {
++            threadId: import("convex/values").VId<import("convex/values").GenericId<"threads">, "required">;
++            userId: import("convex/values").VString<string | undefined, "optional">;
++            fileId: import("convex/values").VId<import("convex/values").GenericId<"files">, "required">;
++            storageId: import("convex/values").VString<string, "required">;
++            hash: import("convex/values").VString<string, "required">;
++        }, "required", "fileId" | "hash" | "storageId" | "threadId" | "userId">, {
++            threadId_fileId: ["threadId", "fileId", "_creationTime"];
++        }, {}, {}>;
+         files: import("convex/server").TableDefinition<import("convex/values").VObject<{
+             mediaType?: string | undefined;
+             mimeType?: string | undefined;
+@@ -8016,6 +8167,7 @@ export declare const vv: Omit<{
+             refcount: import("convex/values").VFloat64<number, "required">;
+             lastTouchedAt: import("convex/values").VFloat64<number, "required">;
+         }, "required", "mediaType" | "mimeType" | "filename" | "storageId" | "hash" | "refcount" | "lastTouchedAt">, {
++            storageId: ["storageId", "_creationTime"];
+             hash: ["hash", "_creationTime"];
+             refcount: ["refcount", "_creationTime"];
+         }, {}, {}>;
+diff --git a/dist/component/schema.js b/dist/component/schema.js
+index 06ac1c45ed0310bc62b1ded04dbcd6a8d9a42b48..cbe817ed1b8c3c933060f04fa80375e1346114f8 100644
+--- a/dist/component/schema.js
++++ b/dist/component/schema.js
+@@ -121,6 +121,13 @@ export const schema = defineSchema({
+         .index("threadId", ["threadId"])
+         .index("userId", ["userId"])
+         .index("embeddingId", ["embeddingId"]),
++    fileCleanupClaims: defineTable({
++        threadId: v.id("threads"),
++        userId: v.optional(v.string()),
++        fileId: v.id("files"),
++        storageId: v.string(),
++        hash: v.string(),
++    }).index("threadId_fileId", ["threadId", "fileId"]),
+     files: defineTable({
+         storageId: v.string(),
+         mediaType: v.optional(v.string()),
+@@ -132,7 +139,8 @@ export const schema = defineSchema({
+         lastTouchedAt: v.number(),
+     })
+         .index("hash", ["hash"])
+-        .index("refcount", ["refcount"]),
++        .index("refcount", ["refcount"])
++        .index("storageId", ["storageId"]),
+     ...vectorTables,
+     // To authenticate playground usage
+     // Delete a key to invalidate it
+@@ -144,4 +152,3 @@ export const schema = defineSchema({
+ export const vv = typedV(schema);
+ export { vv as v };
+ export default schema;
+-//# sourceMappingURL=schema.js.map
+\ No newline at end of file
+diff --git a/dist/component/vector/tables.d.ts b/dist/component/vector/tables.d.ts
+index 7dd5cbb300083237c2c6612e93fabb3874e9a82c..b8a3ef3b4242a986a8b425a03dc587775ce2ebf3 100644
+--- a/dist/component/vector/tables.d.ts
++++ b/dist/component/vector/tables.d.ts
+@@ -11,10 +11,10 @@ declare const embeddings: {
+     vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+ };
+ export declare const vEmbeddingsWithoutDenormalizedFields: VObject<{
+-    userId?: string | undefined;
+-    threadId?: string | undefined;
+     model: string;
+     table: string;
++    threadId?: string | undefined;
++    userId?: string | undefined;
+     vector: number[];
+ }, {
+     model: import("convex/values").VString<string, "required">;
+@@ -22,10 +22,12 @@ export declare const vEmbeddingsWithoutDenormalizedFields: VObject<{
+     userId: import("convex/values").VString<string | undefined, "optional">;
+     threadId: import("convex/values").VString<string | undefined, "optional">;
+     vector: import("convex/values").VArray<number[], import("convex/values").VFloat64<number, "required">, "required">;
+-}, "required", "userId" | "threadId" | "model" | "table" | "vector">;
++}, "required", "model" | "table" | "threadId" | "userId" | "vector">;
+ export type EmbeddingsWithoutDenormalizedFields = Infer<typeof vEmbeddingsWithoutDenormalizedFields>;
+ type VectorTable<D extends number> = TableDefinition<VObject<ObjectType<typeof embeddings>, typeof embeddings>, {
+     model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++    threadId: ["threadId", "_creationTime"];
++    userId: ["userId", "_creationTime"];
+ }, GenericTableSearchIndexes, VectorIndex<D>>;
+ type VectorIndex<D extends number> = {
+     vector: {
+@@ -44,15 +46,14 @@ export declare const VectorTableNames: `embeddings_${(typeof VectorDimensions)[n
+ export type VectorTableName = (typeof VectorTableNames)[number];
+ export type VectorTableId = GenericId<(typeof VectorTableNames)[number]>;
+ export declare const vVectorDimension: VUnion<128 | 256 | 512 | 768 | 1024 | 1408 | 1536 | 2048 | 3072 | 4096, NoInfer<[import("convex/values").VLiteral<128, "required">, import("convex/values").VLiteral<256, "required">, import("convex/values").VLiteral<512, "required">, import("convex/values").VLiteral<768, "required">, import("convex/values").VLiteral<1024, "required">, import("convex/values").VLiteral<1408, "required">, import("convex/values").VLiteral<1536, "required">, import("convex/values").VLiteral<2048, "required">, import("convex/values").VLiteral<3072, "required">, import("convex/values").VLiteral<4096, "required">]>, "required", never>;
+-export declare const vVectorTableName: VUnion<"embeddings_128" | "embeddings_256" | "embeddings_512" | "embeddings_768" | "embeddings_1024" | "embeddings_1408" | "embeddings_1536" | "embeddings_2048" | "embeddings_3072" | "embeddings_4096", NoInfer<import("convex/values").VLiteral<"embeddings_128" | "embeddings_256" | "embeddings_512" | "embeddings_768" | "embeddings_1024" | "embeddings_1408" | "embeddings_1536" | "embeddings_2048" | "embeddings_3072" | "embeddings_4096", "required">[]>, "required", never>;
++export declare const vVectorTableName: VUnion<"embeddings_1024" | "embeddings_128" | "embeddings_1408" | "embeddings_1536" | "embeddings_2048" | "embeddings_256" | "embeddings_3072" | "embeddings_4096" | "embeddings_512" | "embeddings_768", NoInfer<import("convex/values").VLiteral<"embeddings_1024" | "embeddings_128" | "embeddings_1408" | "embeddings_1536" | "embeddings_2048" | "embeddings_256" | "embeddings_3072" | "embeddings_4096" | "embeddings_512" | "embeddings_768", "required">[]>, "required", never>;
+ export declare const vVectorId: VUnion<GenericId<(typeof VectorTableNames)[number]>, VId<(typeof VectorTableNames)[number]>[]>;
+ export declare function getVectorTableName(dimension: VectorDimension): VectorTableName;
+ export declare function getVectorIdInfo(ctx: QueryCtx, id: VectorTableId): {
+-    tableName: "embeddings_128" | "embeddings_256" | "embeddings_512" | "embeddings_768" | "embeddings_1024" | "embeddings_1408" | "embeddings_1536" | "embeddings_2048" | "embeddings_3072" | "embeddings_4096";
++    tableName: "embeddings_1024" | "embeddings_128" | "embeddings_1408" | "embeddings_1536" | "embeddings_2048" | "embeddings_256" | "embeddings_3072" | "embeddings_4096" | "embeddings_512" | "embeddings_768";
+     dimension: 128 | 256 | 512 | 768 | 1024 | 1408 | 1536 | 2048 | 3072 | 4096;
+ };
+ declare const tables: {
+     [K in keyof typeof VectorDimensions & number as `embeddings_${(typeof VectorDimensions)[K]}`]: VectorTable<(typeof VectorDimensions)[K]>;
+ };
+ export default tables;
+-//# sourceMappingURL=tables.d.ts.map
+\ No newline at end of file
+diff --git a/dist/component/vector/tables.js b/dist/component/vector/tables.js
+index e63537b0831f4934885f68ec37d7255094f3fa0d..ad6899f39e78204934b6244c81a7e53b5a3b678e 100644
+--- a/dist/component/vector/tables.js
++++ b/dist/component/vector/tables.js
+@@ -22,7 +22,9 @@ function table(dimensions) {
+         dimensions,
+         filterFields: ["model_table_userId", "model_table_threadId"],
+     })
+-        .index("model_table_threadId", ["model", "table", "threadId"]);
++        .index("model_table_threadId", ["model", "table", "threadId"])
++        .index("threadId", ["threadId"])
++        .index("userId", ["userId"]);
+ }
+ export const VectorDimensions = [
+     128, 256, 512, 768, 1024, 1408, 1536, 2048, 3072, 4096,
+@@ -53,4 +55,3 @@ const tables = Object.fromEntries(VectorDimensions.map((dimensions) => [
+     table(dimensions),
+ ]));
+ export default tables;
+-//# sourceMappingURL=tables.js.map
+\ No newline at end of file
+diff --git a/src/component/_generated/api.ts b/src/component/_generated/api.ts
+index 21a3928dfead1b9aa7bf29804b6e7d4efe09b97d..8a3306cf4da5c587baa5e5597c229c16c7387c0a 100644
+--- a/src/component/_generated/api.ts
++++ b/src/component/_generated/api.ts
+@@ -1,3 +1,4 @@
++import type * as erasure from "../erasure.js";
+ /* eslint-disable */
+ /**
+  * Generated `api` utility.
+@@ -25,6 +26,7 @@ import type {
+ import { anyApi, componentsGeneric } from "convex/server";
+ 
+ const fullApi: ApiFromModules<{
++    erasure: typeof erasure;
+   apiKeys: typeof apiKeys;
+   files: typeof files;
+   messages: typeof messages;
+diff --git a/src/component/_generated/component.ts b/src/component/_generated/component.ts
+index e808be925904f09e3e82faa4430f4cd198b71683..03ef73f9542e0586be6a69a3dcd7d7bccd4a1c90 100644
+--- a/src/component/_generated/component.ts
++++ b/src/component/_generated/component.ts
+@@ -23,6 +23,12 @@ import type { FunctionReference } from "convex/server";
+  */
+ export type ComponentApi<Name extends string | undefined = string | undefined> =
+   {
++    erasure: {
++      listForThread: FunctionReference<"query", "internal", {threadId:string;expectedUserId:string|null;paginationOpts:{numItems:number;cursor:string|null}}, {page:Array<{fileId:string;storageId:string;refcount:number;hash:string}>;isDone:boolean;continueCursor:string},Name>;
++      deleteUnusedClaimed: FunctionReference<"mutation", "internal", {threadId:string;expectedUserId:string|null;claims:Array<{fileId:string;storageId:string}>}, {deletedStorageIds:string[];sharedFileIds:string[]},Name>;
++      deleteThreadResiduals: FunctionReference<"mutation", "internal", {threadId:string;expectedUserId:string|null;phase:number}, {isDone:boolean;nextPhase:number},Name>;
++      deleteUserMemories: FunctionReference<"mutation", "internal", {userId:string;phase:number;olderThan?:number}, {isDone:boolean;nextPhase:number},Name>;
++    };
+     apiKeys: {
+       destroy: FunctionReference<
+         "mutation",
+diff --git a/src/component/erasure.ts b/src/component/erasure.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..fe5638e82b1e40e3656877448a699c94c11f8858
+--- /dev/null
++++ b/src/component/erasure.ts
+@@ -0,0 +1,210 @@
++import { paginationOptsValidator } from "convex/server";
++import { ConvexError } from "convex/values";
++import {
++  mutation,
++  query,
++  type MutationCtx,
++  type QueryCtx,
++} from "./_generated/server.js";
++import type { Doc } from "./_generated/dataModel.js";
++import { v } from "./schema.js";
++import { VectorTableNames, getVectorIdInfo } from "./vector/tables.js";
++const owner = v.union(v.string(), v.null());
++const scope = { threadId: v.id("threads"), expectedUserId: owner };
++async function checkThread(
++  ctx: QueryCtx | MutationCtx,
++  a: { threadId: Doc<"threads">["_id"]; expectedUserId: string | null },
++) {
++  const thread = await ctx.db.get("threads", a.threadId);
++  if (thread && (thread.userId ?? null) !== a.expectedUserId)
++    throw new ConvexError("ERASURE_OWNER_CHANGED");
++  return thread;
++}
++export async function captureFiles(ctx: MutationCtx, message: Doc<"messages">) {
++  const thread = await ctx.db.get("threads", message.threadId);
++  for (const fileId of new Set(message.fileIds ?? [])) {
++    const file = await ctx.db.get("files", fileId);
++    if (!file) throw new ConvexError("ERASURE_FILE_MISSING");
++    const old = await ctx.db
++      .query("fileCleanupClaims")
++      .withIndex("threadId_fileId", (q) =>
++        q.eq("threadId", message.threadId).eq("fileId", fileId),
++      )
++      .unique();
++    if (!old)
++      await ctx.db.insert("fileCleanupClaims", {
++        threadId: message.threadId,
++        userId: thread?.userId ?? message.userId,
++        fileId,
++        storageId: file.storageId,
++        hash: file.hash,
++      });
++  }
++}
++const claim = v.object({
++  fileId: v.id("files"),
++  storageId: v.string(),
++  refcount: v.number(),
++  hash: v.string(),
++});
++export const listForThread = query({
++  args: { ...scope, paginationOpts: paginationOptsValidator },
++  returns: v.object({
++    page: v.array(claim),
++    isDone: v.boolean(),
++    continueCursor: v.string(),
++  }),
++  handler: async (ctx, a) => {
++    const thread = await checkThread(ctx, a);
++    const options = {
++      ...a.paginationOpts,
++      numItems: Math.min(25, a.paginationOpts.numItems),
++    };
++    const files = new Map<
++      string,
++      { fileId: Doc<"files">["_id"]; storageId: string; refcount: number; hash: string }
++    >();
++    let result;
++    if (thread) {
++      const rows = await ctx.db
++        .query("messages")
++        .withIndex("threadId_status_tool_order_stepOrder", (q) =>
++          q.eq("threadId", a.threadId),
++        )
++        .paginate(options);
++      result = rows;
++      for (const m of rows.page)
++        for (const id of m.fileIds ?? []) {
++          const f = await ctx.db.get("files", id);
++          if (!f) throw new ConvexError("ERASURE_FILE_MISSING");
++          files.set(f._id, {
++            fileId: f._id,
++            storageId: f.storageId,
++            refcount: f.refcount,
++            hash:f.hash,
++          });
++        }
++    } else {
++      const rows = await ctx.db
++        .query("fileCleanupClaims")
++        .withIndex("threadId_fileId", (q) => q.eq("threadId", a.threadId))
++        .paginate(options);
++      result = rows;
++      for (const c of rows.page) {
++        if ((c.userId ?? null) !== a.expectedUserId)
++          throw new ConvexError("ERASURE_OWNER_CHANGED");
++        const f = await ctx.db.get("files", c.fileId);
++        if (f && f.storageId !== c.storageId)
++          throw new ConvexError("ERASURE_FILE_CHANGED");
++        files.set(c.fileId, {
++          fileId: c.fileId,
++          storageId: c.storageId,
++          refcount: f?.refcount ?? 0,
++          hash:c.hash,
++        });
++      }
++    }
++    if (files.size > 100) throw new ConvexError("ERASURE_FILE_PAGE_LIMIT");
++    return {
++      page: [...files.values()],
++      isDone: result.isDone,
++      continueCursor: result.continueCursor,
++    };
++  },
++});
++export const deleteUnusedClaimed = mutation({
++  args: {
++    ...scope,
++    claims: v.array(v.object({ fileId: v.id("files"), storageId: v.string() })),
++  },
++  returns: v.object({
++    deletedStorageIds: v.array(v.string()),
++    sharedFileIds: v.array(v.id("files")),
++  }),
++  handler: async (ctx, a) => {
++    await checkThread(ctx, a);
++    if (a.claims.length > 25) throw new ConvexError("ERASURE_FILE_PAGE_LIMIT");
++    const deletedStorageIds: string[] = [],
++      sharedFileIds: Doc<"files">["_id"][] = [];
++    for (const c of a.claims) {
++      const proof = await ctx.db
++        .query("fileCleanupClaims")
++        .withIndex("threadId_fileId", (q) =>
++          q.eq("threadId", a.threadId).eq("fileId", c.fileId),
++        )
++        .unique();
++      if (
++        !proof ||
++        proof.storageId !== c.storageId ||
++        (proof.userId ?? null) !== a.expectedUserId
++      )
++        throw new ConvexError("ERASURE_FILE_UNCLAIMED");
++      const f = await ctx.db.get("files", c.fileId);
++      if (f && (f.storageId !== c.storageId || f.refcount < 0))
++        throw new ConvexError("ERASURE_FILE_CHANGED");
++      const aliases = await ctx.db.query("files").withIndex("storageId",q=>q.eq("storageId",c.storageId)).take(26);
++      if(aliases.length>25)throw new ConvexError("ERASURE_FILE_ALIAS_LIMIT");
++      if(aliases.some(alias=>alias.refcount<0))throw new ConvexError("ERASURE_FILE_CHANGED");
++      if (aliases.some(alias=>alias.refcount>0)) {
++        sharedFileIds.push(c.fileId);
++        if(f && f.refcount===0)await ctx.db.delete("files",f._id);
++      } else {
++        if (f) await ctx.db.delete("files", f._id);
++        deletedStorageIds.push(c.storageId);
++      }
++      await ctx.db.delete("fileCleanupClaims", proof._id);
++    }
++    return {
++      deletedStorageIds: [...new Set(deletedStorageIds)],
++      sharedFileIds,
++    };
++  },
++});
++const result = v.object({ isDone: v.boolean(), nextPhase: v.number() });
++async function residuals(
++  ctx: MutationCtx,
++  a: { threadId?: Doc<"threads">["_id"]; userId?: string; phase: number; olderThan?: number },
++) {
++  if (!Number.isSafeInteger(a.phase) || a.phase < 0 || a.phase > 10)
++    throw new ConvexError("ERASURE_PHASE_INVALID");
++  const index = a.threadId ? "threadId" : "userId",
++    key = a.threadId ?? a.userId!;
++  if (a.phase === 0) {
++    const rows = await ctx.db
++      .query("memories")
++      .withIndex(index, (q) => a.olderThan === undefined ? q.eq(index, key) : q.eq(index, key).lt("_creationTime", a.olderThan))
++      .take(25);
++    for (const m of rows) {
++      if (m.embeddingId) {
++        const { tableName } = getVectorIdInfo(ctx, m.embeddingId);
++        const vector = await ctx.db.get(tableName, m.embeddingId);
++        if (vector && vector[index] === key) await ctx.db.delete(tableName, m.embeddingId);
++      }
++      await ctx.db.delete("memories", m._id);
++    }
++    return { isDone: false, nextPhase: rows.length === 25 ? 0 : 1 };
++  }
++  const table = VectorTableNames[a.phase - 1]!;
++  const rows = await ctx.db
++    .query(table)
++    .withIndex(index, (q) => a.olderThan === undefined ? q.eq(index, key) : q.eq(index, key).lt("_creationTime", a.olderThan))
++    .take(25);
++  for (const r of rows) await ctx.db.delete(table, r._id);
++  return {
++    isDone: a.phase === 10 && rows.length < 25,
++    nextPhase: rows.length === 25 ? a.phase : Math.min(10, a.phase + 1),
++  };
++}
++export const deleteThreadResiduals = mutation({
++  args: { ...scope, phase: v.number() },
++  returns: result,
++  handler: async (ctx, a) => {
++    await checkThread(ctx, a);
++    return residuals(ctx, { threadId: a.threadId, phase: a.phase });
++  },
++});
++export const deleteUserMemories = mutation({
++  args: { userId: v.string(), phase: v.number(), olderThan: v.optional(v.number()) },
++  returns: result,
++  handler: async (ctx, a) => residuals(ctx, a),
++});
+diff --git a/src/component/messages.ts b/src/component/messages.ts
+index dacf57d5bd6ebc96c6585de7b531edf927872adc..fdf56890f3b6ea05b01e9994e32947ef26c4a8cd 100644
+--- a/src/component/messages.ts
++++ b/src/component/messages.ts
+@@ -1,3 +1,4 @@
++import { captureFiles } from "./erasure.js";
+ import { assert, omit, pick } from "convex-helpers";
+ import { mergedStream, stream } from "convex-helpers/server/stream";
+ import {
+@@ -51,6 +52,7 @@ export async function deleteMessage(
+   ctx: MutationCtx,
+   messageDoc: Doc<"messages">,
+ ) {
++  await captureFiles(ctx, messageDoc);
+   await ctx.db.delete("messages", messageDoc._id);
+   if (messageDoc.embeddingId) {
+     const { tableName } = getVectorIdInfo(ctx, messageDoc.embeddingId);
+diff --git a/src/component/schema.ts b/src/component/schema.ts
+index 644cc62ed735ada7b793a6552213664ccbb34c0a..0fe970722a2dab5a11519b31fae8d3428f7897b8 100644
+--- a/src/component/schema.ts
++++ b/src/component/schema.ts
+@@ -147,6 +147,14 @@ export const schema = defineSchema({
+     .index("userId", ["userId"])
+     .index("embeddingId", ["embeddingId"]),
+ 
++  fileCleanupClaims: defineTable({
++    threadId: v.id("threads"),
++    userId: v.optional(v.string()),
++    fileId: v.id("files"),
++    storageId: v.string(),
++    hash: v.string(),
++  }).index("threadId_fileId", ["threadId", "fileId"]),
++
+   files: defineTable({
+     storageId: v.string(),
+     mediaType: v.optional(v.string()),
+@@ -158,7 +166,8 @@ export const schema = defineSchema({
+     lastTouchedAt: v.number(),
+   })
+     .index("hash", ["hash"])
+-    .index("refcount", ["refcount"]),
++    .index("refcount", ["refcount"])
++    .index("storageId", ["storageId"]),
+   ...vectorTables,
+   // To authenticate playground usage
+   // Delete a key to invalidate it
+diff --git a/src/component/vector/tables.ts b/src/component/vector/tables.ts
+index e86d2633a1849b686d576c8cc6707ef6c019d192..7be5d5c6076d64e70cafa583ea78f5387b151b83 100644
+--- a/src/component/vector/tables.ts
++++ b/src/component/vector/tables.ts
+@@ -44,12 +44,18 @@ function table<D extends number>(dimensions: D): VectorTable<D> {
+       dimensions,
+       filterFields: ["model_table_userId", "model_table_threadId"],
+     })
+-    .index("model_table_threadId", ["model", "table", "threadId"]);
++    .index("model_table_threadId", ["model", "table", "threadId"])
++    .index("threadId", ["threadId"])
++    .index("userId", ["userId"]);
+ }
+ 
+ type VectorTable<D extends number> = TableDefinition<
+   VObject<ObjectType<typeof embeddings>, typeof embeddings>,
+-  { model_table_threadId: ["model", "table", "threadId", "_creationTime"] },
++  {
++    model_table_threadId: ["model", "table", "threadId", "_creationTime"];
++    threadId: ["threadId", "_creationTime"];
++    userId: ["userId", "_creationTime"];
++  },
+   GenericTableSearchIndexes,
+   VectorIndex<D>
+ >;
+@@ -109,10 +115,10 @@ export function getVectorIdInfo(ctx: QueryCtx, id: VectorTableId) {
+ }
+ 
+ const tables: {
+-  [K in keyof typeof VectorDimensions &
+-    number as `embeddings_${(typeof VectorDimensions)[K]}`]: VectorTable<
+-    (typeof VectorDimensions)[K]
+-  >;
++  [
++    K in keyof typeof VectorDimensions &
++      number as `embeddings_${(typeof VectorDimensions)[K]}`
++  ]: VectorTable<(typeof VectorDimensions)[K]>;
+ } = Object.fromEntries(
+   VectorDimensions.map((dimensions) => [
+     `embeddings_${dimensions}`,

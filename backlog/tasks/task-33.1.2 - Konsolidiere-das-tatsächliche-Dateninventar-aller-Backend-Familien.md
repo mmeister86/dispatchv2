@@ -4,7 +4,7 @@ title: Konsolidiere das tatsächliche Dateninventar aller Backend-Familien
 status: In Progress
 assignee: []
 created_date: '2026-10-07 22:42'
-updated_date: '2026-10-07 23:16'
+updated_date: '2026-10-10 13:23'
 labels: []
 dependencies: []
 parent_task_id: TASK-33.1
@@ -46,4 +46,6 @@ Dokumentationsownership ausschließlich .docs/decisions/data-inventory.md bei re
 Technische Dokumentprüfung bestanden:104uniqueexakteSchemadeklarationen, historischeByteserhalten,31schema/importHashprovenance und13installedcomponentHashprovenance,339protectedalteNongens+5gens/humanexact. RoothatvollständigeMatrix undindependentQUALITYPASSgelesen;Review/Validationin.docs/reviews/task-33.1.2-inventory-{quality,validation}.md. Moving32.3ausAkzeptanzbasis4a22190ausgeschlossen. KeineTests/Provider/Deployment/LifecycleImplementierungbehauptet. Commitwartetauf32.3FixedHEADGates;manualDoneoffen.
 
 Konsolidierte 104-Tabellen-Matrix und Komponenten durch getrennte QUALITY und Root geprüft. Akzeptierter TASK-32.3-Nachtrag anhand immutable cb5f5ef ergänzt; ursprüngliche Matrix unverändert. Dokumentationscommit, keine Live-Erasure/Restore/Exportvollständigkeit behauptet. Done benötigt ausdrückliche manuelle Nutzerbestätigung.
+
+2026-10-10: Inventar um final integrierte Export-/Deletion-/Retention-Abdeckung und gepinnte Agent-/Workflow-Claims erweitert. Historische Gaps durch aktuellen Addendum präzisiert. Parent-Integration506/506 Tests bestanden; manuelles Done weiterhin offen.
 <!-- SECTION:NOTES:END -->

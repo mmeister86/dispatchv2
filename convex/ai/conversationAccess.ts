@@ -1,3 +1,4 @@
+import { operationalUntil } from "../lib/operationalRetention";
 import { materialWalk } from "../research/pipelineAccess";
 import { ConvexError } from "convex/values";
 import type { QueryCtx, MutationCtx } from "../_generated/server";
@@ -31,6 +32,8 @@ export async function historyAuthority(
   c: Doc<"conversations">,
 ) {
   if (c.state !== "active") throw new ConvexError("CHAT_INACTIVE");
+  if (operationalUntil(c._creationTime) <= Date.now())
+    throw new ConvexError("CHAT_HISTORY_SOURCE_WITHDRAWN");
   const walk = materialWalk();
   const horizons: (number | null)[] = await currentRunSources(
     ctx,
@@ -48,7 +51,10 @@ export async function historyAuthority(
       throw new ConvexError("CHAT_HISTORY_SOURCE_WITHDRAWN");
     horizons.push(await ideaProofUntil(ctx, version!, walk, c.accountId));
   }
-  const until = Math.min(...horizons.map((x) => x ?? Infinity));
+  const until = Math.min(
+    operationalUntil(c._creationTime),
+    ...horizons.map((x) => x ?? Infinity),
+  );
   return Number.isFinite(until) ? until : null;
 }
 export async function operationRun(

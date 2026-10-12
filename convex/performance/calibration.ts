@@ -635,7 +635,7 @@ async function replay(
     fail("CALIBRATION_REPLAY_CONFLICT");
   return row;
 }
-async function readableSpec(
+export async function readableSpec(
   ctx: Ctx,
   s: Scope,
   id: Id<"calibrationReferences">,
@@ -751,7 +751,7 @@ export const createSpec = workspaceMutation({
     });
   },
 });
-async function readableSnapshot(ctx: Ctx, s: Scope, row: Snapshot) {
+export async function readableSnapshot(ctx: Ctx, s: Scope, row: Snapshot) {
   if (row.expiresAt <= Date.now()) fail("CALIBRATION_REFERENCE_EXPIRED");
   const { spec, p, horizon } = await readableSpec(ctx, s, row.specId);
   if (

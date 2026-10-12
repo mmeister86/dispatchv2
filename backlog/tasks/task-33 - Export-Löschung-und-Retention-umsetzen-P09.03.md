@@ -4,7 +4,7 @@ title: 'Export, Löschung und Retention umsetzen (P09.03)'
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-06 15:25'
+updated_date: '2026-10-10 13:23'
 labels:
   - p09
   - r3
@@ -54,11 +54,11 @@ Das Daten-Lifecycle-Paket umfasst zusätzlich Jev-Assessments, Analyse-Caches, E
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Löschung während laufender Recherche/Publikation verhindert neue Arbeit.
-- [ ] #2 Wiederholungen reaktivieren den Workspace nicht.
-- [ ] #3 Export enthält keine Provider-Secrets.
-- [ ] #4 Der Betreiber kann den Abschluss nachweisen, ohne Inhalte unnötig zu behalten.
-- [ ] #5 Alle bis zum Release eingeführten Jev-Daten und Jobs sind durch Inventar, autorisierten Export, Löschung und Retention abgedeckt.
+- [x] #1 Löschung während laufender Recherche/Publikation verhindert neue Arbeit.
+- [x] #2 Wiederholungen reaktivieren den Workspace nicht.
+- [x] #3 Export enthält keine Provider-Secrets.
+- [x] #4 Der Betreiber kann den Abschluss nachweisen, ohne Inhalte unnötig zu behalten.
+- [x] #5 Alle bis zum Release eingeführten Jev-Daten und Jobs sind durch Inventar, autorisierten Export, Löschung und Retention abgedeckt.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -66,6 +66,16 @@ Das Daten-Lifecycle-Paket umfasst zusätzlich Jev-Assessments, Analyse-Caches, E
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Bestehenden akzeptierten Checkpoint fortsetzen, keine neuen Preflight- oder Freeze-Dokumente.
+2. Export-Restfamilien und Originalmedien durch Export-Implementer; Löschkoordinator durch Lifecycle-Implementer; Retention durch Retention-Implementer in disjunkten Dateien ergänzen.
+3. Root integriert native Datenkontrollen und API-Codegen.
+4. Einmal gezielte Tests je Änderung, Typecheck/Build und begrenzte unabhängige SPEC/QUALITY-Prüfung.
+5. Nur belegte ACs abhaken, manuelle Nutzerabnahme für Done einholen.
+<!-- SECTION:PLAN:END -->
 
 ## Implementation Notes
 
@@ -79,4 +89,24 @@ TASK44 Inventar-Erweiterung vorbereitet: Root hat actual intelligenceSourceUpdat
 TASK-44-Graph jetzt softwareakzeptiert an7427f01 und exaktesEUDev UTC15:15:11 verifiziert; .docs/decisions/data-inventory.md und .docs/reviews/task-44-source-updates-validation.md reconciled. Vollständige OriginalCheck→Proposal→Evaluation→DerivedProfile/ActorEdges und unknownCounterUnbestätigtheit erhalten; weder Lifecycleinventar noch Export/ErasurePolicy vollständig abgenommen. Keine Done-Änderung.
 
 Root hat read-only /tmp/dispatch-continuation-33-36-seams.md vollständig gelesen: nochkeinOperationsExport/Delete/RetentionBackend, UserLifecycle/Bootstrap kannfehlendenUser reprovisionieren, Actor/freeText und before/resultEdges brauchen eigeneErasureProofs. PrivateNativeChatOwnership, parent-onlyResearchCopyBindings, actualAgent/WorkflowArtefakte, R2readyFinal/latePUT und unknownPublishing/FinanceEltern dürfen nicht pauschal gelöschtwerden. InheritedGithubcontext maskiertCurrentProof, privateExcerpt/SummaryPhysischeGraphCleanup bislang explizitdeferred; 45+ neueDerivatives dürfen dieseDeferral nicht übernehmen. Bericht baseline7a1494c, laufender48 wedergeprüftnochgeändert; keinefrischenTests/LifecycleAbnahme.
+
+2026-10-08: Nutzer hat die vollständige Implementierung von TASK-33 einschließlich aller Subtasks mit subagent-driven-development ausdrücklich beauftragt. Aktuelle Basis 36fffeb auf codex/backend-research-summaries; bestehende uncommittete Task-/Review-/zcodeignore-Änderungen bleiben erhalten. Initialer Gesamttest läuft. Export- und Lifecycle-Preflight getrennt beauftragt.
+
+Nutzerentscheidung 2026-10-08: gewünschte betriebliche Aufbewahrung 30 Tage. Dies ist keine erfundene gesetzliche Frist; ungeklärte externe Effekte benötigen gesonderte inhaltsfreie Sperren/Abgleich bis zur sicheren Auflösung. Baseline: beide Typechecks PASS; vollständiger nativer Vitest-Lauf 1582 PASS/1 Timeout (vor Änderungen, bestehender disjoint26-styleProfiles mixed=true Test nach900000ms). Keine neue Regression behauptet.
+
+2026-10-09: Nutzer meldet 80% Wochenquote und 24h Aufwand; ausdrücklich Restumsetzung mit deutlich begrenztem Aufwand gewählt. Keine weiteren Voranalysen, günstigere Modelle, gezielte statt pauschal wiederholter Prüfungen. Erforderlicher Umfang und Datenschutz-/Datenverlustschutz bleiben. Aktuelles 4B1-QUALITY mit zwei konkreten Archivkonsistenz-Findings wird gezielt in zwei Dateien repariert.
+
+2026-10-10: Nutzer fordert ausdrücklich Jetzt mit sauberem Zwischenstand beenden. Geprüfter Auth-Teil 9d8ca84 gesichert, frischer SPEC nach behobenem Repeat-Deletion-Finding und getrenntes QUALITY APPROVE. 28 focused native + 2 fresh source/dist parity, beide TS, Format und frozen offline Patch-Reproduktion bestanden. Ziel wird pausiert; keine neue Umsetzung, kein Done, keine unbewiesenen ACs. Zwischenstand/offene Arbeiten: .docs/reviews/task-33-checkpoint.md. Weiter offen: tatsächlicher Löschkoordinator/Komponenten/R2, 30-Tage-Retention, verbleibende Exporte/Originalbytes, native Lösch-UI und integrierte Abnahme.
+
+2026-10-10: Nutzer beauftragt Wiederaufnahme und vollständige Restumsetzung mit engen Zeit-/Tokenmaßstab. Ziel: erste integrierte Restumsetzung innerhalb ca. 30 Minuten, keine endlosen Review-/Dokumentationsschleifen; Sicherheits-/Löschvollständigkeit bleibt verbindlich. Drei begrenzte Arbeitsstränge, bestehende Nachweise wiederverwenden.
+
+2026-10-10: Umsetzung integriert: paginierte sichere Exporte inkl. Identity/Originale, native Datenkontrollen, dauerhafter Löschkoordinator, scoped Agent/Workflow-Patches und 30-Tage-Retention. Build und vollständiger App-/Backend-Typecheck bestehen. Löschung/Retention/Komponenten41 Tests und native Workspace-Recovery-Browserprüfung bestehen. Abschlussprüfung repariert alte Jev-Nullhorizont-/Cleanup-Budget-Erwartungen ohne Lockerung der Runtime-Proofs. Keine weitere Umfangserweiterung nach Nutzerhinweis auf150min. Kein Deployment und kein Done ohne vorgeschriebene manuelle Nutzerabnahme.
+
+Abschlusskorrektur: pauschaler30-Tage-Cap auf gespeicherte redaktionelle Assessments und Kalibrierungsnachweise würde den akzeptierten28-Tage-Qualifikations-/Monitoring-Pfad deaktivieren. Deshalb bleiben deren originale zweck-/quellengebundene Fristen bestehen; Diagnose-/Ausführungskopien, Routing/Verifier und Agent/Workflow bleiben betrieblich begrenzt. Keine Quellenfrist wird verlängert. UI/Inventar erklären diese Unterscheidung.
 <!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Export, Löschung und Retention einschließlich Unteraufgaben lokal integriert. Sichere paginierte Business-/Private-/Jev-/Kalibrierungs-/Finanz-/Identitätsarchive und Originaldateien, native Datenkontrollen, dauerhafter Löschkoordinator sowie scoped Agent/Workflow-Residuals und Storage-Claims. Quellenverlust propagiert; gemeinsame Geschäftsdaten bleiben bei Account-Löschung erhalten. Betriebskopien30Tage, gespeicherte Assessments/Kalibrierung mit originalen zweckgebundenen Fristen. Finale integrierte Prüfung:506/506 Tests in22 Dateien, kompletter App-/Backend-Typecheck, Build, Diff-/Formatprüfung und tatsächlicher Workspace-Recovery/Deletion-Browsertest bestanden. Bekannte Prüfgrenzen: kein Live-R2/Provider-/Backup-Erasure, kein Deployment, keine komplette22+ Anwendungssuite; externe Outcomes/unklare Legacy-Ownership bleiben sicher blockiert. Build zeigt Chunk-Warnungen, Convex-Test Node-Timer-Warnungen bei30-Tage-Jobs; keine Testfehler. Technische AC geprüft; DOD/manuelles Done offen.
+<!-- SECTION:FINAL_SUMMARY:END -->

@@ -1,3 +1,4 @@
+import { operationalUntil } from "../lib/operationalRetention";
 import { ConvexError, v } from "convex/values";
 import {
   internalMutation,
@@ -140,7 +141,7 @@ async function source(
     !job ||
     job.generation !== a.generation ||
     !["queued", "reading"].includes(job.state) ||
-    job.sourceUntil <= Date.now() ||
+    operationalUntil(job.createdAt, job.sourceUntil) <= Date.now() ||
     job.pages >= 3
   )
     throw new ConvexError("OWN_HISTORY_INTENT_INACTIVE");
@@ -248,13 +249,13 @@ export const start = workspaceMutation({
         p.expiresAt,
         grantUntil,
         originalCredential.expiresAt - 15000,
-        Date.now() + p.retentionMs,
+        operationalUntil(Date.now(), Date.now() + p.retentionMs),
       ),
       sourceUntil: Math.min(
         p.expiresAt,
         grantUntil,
         originalCredential.expiresAt - 15000,
-        Date.now() + p.retentionMs,
+        operationalUntil(Date.now(), Date.now() + p.retentionMs),
       ),
       state: "queued",
       pages: 0,
@@ -490,6 +491,62 @@ export const block = internalMutation({
     return null;
   },
 });
+export async function historyAttempt(
+  ctx: QueryCtx | MutationCtx,
+  attemptId: Id<"aiAttempts">,
+) {
+  const t = await ctx.db.get(attemptId);
+  if (
+    !t ||
+    t.owner !== "own-history" ||
+    t.runId !== undefined ||
+    t.researchOrderId !== undefined ||
+    t.logicalIntent !== undefined
+  )
+    throw new ConvexError("OWN_HISTORY_RECEIPT_OWNER_INVALID");
+  const j = await ctx.db.get(t.historyJobId),
+    p = await ctx.db.get(t.policyId);
+  if (
+    !j ||
+    (t.state !== "settled" && j.attemptId !== t._id) ||
+    j.workspaceId !== t.workspaceId ||
+    j.accountId !== t.accountId ||
+    j.policyId !== t.policyId ||
+    j.policyFingerprint !== t.policyFingerprint ||
+    !Number.isSafeInteger(t.page) ||
+    t.page < 0 ||
+    t.page >= 3 ||
+    (t.state !== "settled" && j.pages !== t.page) ||
+    !p ||
+    p.workspaceId !== t.workspaceId ||
+    p.accountId !== t.accountId ||
+    p.version !== t.policyVersion ||
+    p.currency !== t.currency ||
+    p.unitMicros !== t.unitMicros ||
+    p.maxResults !== t.maxResults ||
+    t.reservedMicros !== t.maxResults * t.unitMicros ||
+    (await hash(p)) !== t.policyFingerprint ||
+    t.budgetIds.length !== 3 ||
+    new Set(t.budgetIds).size !== 3
+  )
+    throw new ConvexError("OWN_HISTORY_RECEIPT_OWNER_INVALID");
+  for (const [i, id] of t.budgetIds.entries()) {
+    const b = await ctx.db.get(id);
+    if (
+      !b ||
+      b.key !== keys(t)[i] ||
+      b.scope !== (["provider", "workspace", "account"] as const)[i] ||
+      b.currency !== t.currency ||
+      (i === 0 && (b.workspaceId !== undefined || b.accountId !== undefined)) ||
+      (i === 1 &&
+        (b.workspaceId !== t.workspaceId || b.accountId !== undefined)) ||
+      (i === 2 &&
+        (b.workspaceId !== t.workspaceId || b.accountId !== t.accountId))
+    )
+      throw new ConvexError("OWN_HISTORY_RECEIPT_OWNER_INVALID");
+  }
+  return { t, j, p };
+}
 export const finish = internalMutation({
   args: {
     attemptId: v.id("aiAttempts"),
@@ -501,57 +558,7 @@ export const finish = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
-    const t = await ctx.db.get(a.attemptId);
-    if (
-      !t ||
-      t.owner !== "own-history" ||
-      t.runId !== undefined ||
-      t.researchOrderId !== undefined ||
-      t.logicalIntent !== undefined
-    )
-      throw new ConvexError("OWN_HISTORY_RECEIPT_OWNER_INVALID");
-    const j = await ctx.db.get(t.historyJobId),
-      p = await ctx.db.get(t.policyId);
-    if (
-      !j ||
-      (t.state !== "settled" && j.attemptId !== t._id) ||
-      j.workspaceId !== t.workspaceId ||
-      j.accountId !== t.accountId ||
-      j.policyId !== t.policyId ||
-      j.policyFingerprint !== t.policyFingerprint ||
-      !Number.isSafeInteger(t.page) ||
-      t.page < 0 ||
-      t.page >= 3 ||
-      (t.state !== "settled" && j.pages !== t.page) ||
-      !p ||
-      p.workspaceId !== t.workspaceId ||
-      p.accountId !== t.accountId ||
-      p.version !== t.policyVersion ||
-      p.currency !== t.currency ||
-      p.unitMicros !== t.unitMicros ||
-      p.maxResults !== t.maxResults ||
-      t.reservedMicros !== t.maxResults * t.unitMicros ||
-      (await hash(p)) !== t.policyFingerprint ||
-      t.budgetIds.length !== 3 ||
-      new Set(t.budgetIds).size !== 3
-    )
-      throw new ConvexError("OWN_HISTORY_RECEIPT_OWNER_INVALID");
-    for (const [i, id] of t.budgetIds.entries()) {
-      const b = await ctx.db.get(id);
-      if (
-        !b ||
-        b.key !== keys(t)[i] ||
-        b.scope !== (["provider", "workspace", "account"] as const)[i] ||
-        b.currency !== t.currency ||
-        (i === 0 &&
-          (b.workspaceId !== undefined || b.accountId !== undefined)) ||
-        (i === 1 &&
-          (b.workspaceId !== t.workspaceId || b.accountId !== undefined)) ||
-        (i === 2 &&
-          (b.workspaceId !== t.workspaceId || b.accountId !== t.accountId))
-      )
-        throw new ConvexError("OWN_HISTORY_RECEIPT_OWNER_INVALID");
-    }
+    const { t, j, p } = await historyAttempt(ctx, a.attemptId);
     if (
       a.resourceCount !== null &&
       (!Number.isSafeInteger(a.resourceCount) ||
@@ -875,6 +882,8 @@ export async function retainedHorizon(
     row.jobId,
     row.generation,
   ]);
+  if (operationalUntil(row.observedAt, row.sourceUntil) <= Date.now())
+    throw new ConvexError("OWN_HISTORY_SOURCE_UNAVAILABLE");
   const prior = memo?.get(key);
   if (prior !== undefined) return Math.min(row.sourceUntil, prior);
   const j = await ctx.db.get(row.jobId),
@@ -906,7 +915,7 @@ export async function retainedHorizon(
     throw new ConvexError("OWN_HISTORY_SOURCE_UNAVAILABLE");
   const currentCredential = await credential(ctx, row, p);
   const until = Math.min(
-    j.sourceUntil,
+    operationalUntil(j.createdAt, j.sourceUntil),
     j.createdAt + p.retentionMs,
     original.expiresAt,
     p.expiresAt,
@@ -935,16 +944,24 @@ export const expire = internalMutation({
     if (a.jobs) {
       const jobs = await ctx.db
         .query("historyJobs")
-        .withIndex("by_checkpointUntil", (q) =>
-          q.lte("checkpointUntil", Date.now()),
-        )
-        .take(25);
-      for (const j of jobs) {
+        .withIndex("by_creation_time")
+        .paginate({ cursor: a.cursor ?? null, numItems: 25 });
+      for (const j of jobs.page) {
         if (
-          j.sourceUntil > Date.now() &&
+          j.checkpointUntil === Number.MAX_SAFE_INTEGER ||
+          Math.min(
+            j.checkpointUntil ?? Infinity,
+            operationalUntil(j.createdAt, j.sourceUntil),
+          ) > Date.now()
+        )
+          continue;
+        if (
+          operationalUntil(j.createdAt, j.sourceUntil) > Date.now() &&
           ["queued", "reading", "paused"].includes(j.state)
         ) {
-          await ctx.db.patch(j._id, { checkpointUntil: j.sourceUntil });
+          await ctx.db.patch(j._id, {
+            checkpointUntil: operationalUntil(j.createdAt, j.sourceUntil),
+          });
           continue;
         }
         if (j.jobId)
@@ -967,9 +984,10 @@ export const expire = internalMutation({
           updatedAt: Date.now(),
         });
       }
-      if (jobs.length === 25)
+      if (!jobs.isDone)
         await ctx.scheduler.runAfter(0, internal.performance.history.expire, {
           jobs: true,
+          cursor: jobs.continueCursor,
         });
       return null;
     }

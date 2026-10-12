@@ -1,3 +1,4 @@
+import { operationalUntil } from "../lib/operationalRetention";
 import { admitResearchCompletion } from "../preferences";
 import { conversationAccess } from "../ai/conversationAccess";
 import { orderLiability } from "./pipelineAccess";
@@ -387,7 +388,9 @@ export const results = workspaceQuery({
         const attempt = owned?.t ?? null;
         let currentPolicy: Doc<"researchSourcePolicies"> | null = null;
         let allowed = readable;
-        let proofUntil = cache?.expiresAt ?? 0;
+        let proofUntil = cache
+          ? operationalUntil(cache.createdAt, cache.expiresAt)
+          : 0;
         try {
           const { p: current, captured } = await sourceAuthority(ctx, o!, op);
           currentPolicy = current;
@@ -418,7 +421,10 @@ export const results = workspaceQuery({
               s.workspaceId === o!.workspaceId &&
               s.accountId === o!.accountId &&
               s.status === "usable" &&
-              Math.min(s.usableUntil, proofUntil) > Date.now() &&
+              Math.min(
+                operationalUntil(s.observedAt, s.usableUntil),
+                proofUntil,
+              ) > Date.now() &&
               s.policyFingerprint === cache.policyFingerprint &&
               s.title !== null
             )
@@ -432,7 +438,10 @@ export const results = workspaceQuery({
                 publishedAt: s.publishedAt,
                 count: s.count,
                 observedAt: s.observedAt,
-                usableUntil: Math.min(s.usableUntil, proofUntil),
+                usableUntil: Math.min(
+                  operationalUntil(s.observedAt, s.usableUntil),
+                  proofUntil,
+                ),
               });
           }
         return {

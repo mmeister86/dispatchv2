@@ -4,7 +4,7 @@ title: Exportiere berechtigte Workspace-Versionsinhalte in begrenzten Seiten
 status: In Progress
 assignee: []
 created_date: '2026-10-07 23:23'
-updated_date: '2026-10-08 06:20'
+updated_date: '2026-10-10 13:23'
 labels: []
 dependencies: []
 parent_task_id: TASK-33.1
@@ -47,4 +47,6 @@ Root read-only Page-Budget-Preflight cbd6cd55 vollständig gelesen: .docs/review
 Root Sourcefreigabe auf ec7d59da30e0a8096b31275f579061f51e54d60a: sechs existierende Sourcepfade laut /tmp/dispatch-33.1.3-baseline.json, eigener Profil-Export unverändert. Ein public workspaceQuery versions im vorhandenen Exportmodul, ein draftVersions[workspaceId]-Index, eine Kandidatin/Standardwalk32, keine neue Walker/Cache/Komponenten/Dependencies. Native Plattformlimits umfassen äußere Auth und Quellenarbeit, Fehler propagieren; konkrete Messungen ersetzen keine universelle Graph-Liveness-Garantie. Aktuelle Context7-Dokumentation: nested transactionLimits können nur senken und verbrauchte Overages zählen; kein Zero-Overshoot-Anspruch. Nur positive Flags/fehlender Root/fehlender eigener Account/finite abgelaufener Horizon dürfen ganze Payload auslassen; fremde Bindungen, mehrdeutige Helperfehler, Ancestry/Ressourcen/Wire fail. Consumer lädt maximal eine gemeinsame Business-Version je Seite, keine Ursprungsarchive/Medien/Personen/Secrets. Weitere Exportfamilien/Komponenten/atomarer Gesamtexport bleiben offen.
 
 Technisch abgenommen: Source169fdd175d1dd0cc17101af71d1e966188ccef9c/exaktesEUDev471/+1publicversions, alle470altenValidator/Type/Visibility/5HTTPunverändert. Writer17, Root178/6freeze1 qualifiedruntimeunchangedfinal3, frischeSPEC207/5qualifiedpriorruntime undfreshQUALITY207/5final3;283actualstyled/245originalretained. 25realnativeProducerknoten166q/docs56931Bread787wirezeroqueryeffects; syntheticmodeloutputs/queuedprovider nicht ausgeführt. Source355/5generated/344protected/humanzcodeignoreunverändert. HistorischeScreenshot/Clock/FormatREDs erhalten, minimalcapturewaitrepair/freshformal1280/390clean. .docs/reviews/task-33.1.3-validation.md. Manueller Done-Status offen; weitereParentExportfamilien/Archive/Erasure/Retention bleiben offen.
+
+2026-10-10: Parent-Integration506/506 gezielte Tests und Typecheck/Build bestanden. Akzeptierter paginierter Versions-Export integriert, Original-Medienreferenzen und separate Byte-Exporte ergänzt. Manuelles Done weiterhin offen.
 <!-- SECTION:NOTES:END -->

@@ -1,3 +1,4 @@
+import { operationalUntil } from "../lib/operationalRetention";
 import { prerequisites, sameApproval } from "./access";
 import { ConvexError } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
@@ -103,7 +104,8 @@ async function materialAuthority(
 ) {
   if (!o.pipeline || o.pipeline.cleanupState !== "retained")
     throw new ConvexError("RESEARCH_MATERIAL_REMOVED");
-  let until = o.pipeline.retentionUntil ?? Number.MAX_SAFE_INTEGER;
+  let until = operationalUntil(o.createdAt, o.pipeline.retentionUntil);
+  if (until <= Date.now()) throw new ConvexError("RESEARCH_MATERIAL_REMOVED");
   if (o.reResearch)
     until = Math.min(
       until,

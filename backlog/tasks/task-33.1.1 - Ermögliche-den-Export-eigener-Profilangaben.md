@@ -4,7 +4,7 @@ title: Ermögliche den Export eigener Profilangaben
 status: In Progress
 assignee: []
 created_date: '2026-10-07 21:32'
-updated_date: '2026-10-07 22:03'
+updated_date: '2026-10-10 13:23'
 labels: []
 dependencies: []
 references:
@@ -52,4 +52,6 @@ Source-Release .docs/reviews/task-33.1.1-profile-export-source-release.md. Keine
 Fünf Sourcepfade pausiert: SourceReady df8aa2e;346Inventory/336geschützte alte Nicht-Generated exakt; DemoDataSettings/downloadBlob und67alteBrowserasserts erhalten. Writer34/3fokussiert nativePASS (7Export), beideTSC/format/diff und tatsächlicher App/Store/CSSBrowser1280/390 mitvierJSONDateienPASS. Rootintermediate+finalCodegenPASS; nur api.d.ts2Zeilen, finalzeroDelta. Finalfreeze10b688ff; unabhängigeSPEC undRootgezielteNative/7Static laufen. Kein frischerFullsuite-, Dev-, Legal- odermanuellesDoneClaim.
 
 Technisch akzeptiert: source20d0b68, frozen10b688ff, freshSPEC/distinctQUALITY, Root12/2betroffeneNative+7Static, Writer34/3, tatsächlichevierJSONDownloads1280/390; exactEUDev457/onlypublicselfQuery/456OldContracts+5HTTPunchanged. Siehe .docs/reviews/task-33.1.1-validation.md. Kein frischerFullsuite-/Legal-/WholeexportClaim; InProgress/manuelleDoD2offen.
+
+2026-10-10: Parent-Integration506/506 gezielte Tests, kompletter Typecheck/Build und Workspace-Recovery/Deletion-Browserprüfung bestanden. Bisher akzeptierter Self-Profile-Export unverändert; manuelles Done weiterhin offen.
 <!-- SECTION:NOTES:END -->

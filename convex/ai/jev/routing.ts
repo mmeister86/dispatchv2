@@ -1,3 +1,4 @@
+import { operationalUntil } from "../../lib/operationalRetention";
 import { ConvexError, v, type Infer } from "convex/values";
 import {
   action,
@@ -54,6 +55,7 @@ type Control = Extract<Doc<"jevControls">, { purpose: "intent-routing" }>;
 type Intent = Infer<typeof routingIntent>;
 type SourcePin = Pick<
   Operation,
+  | "createdAt"
   | "workspaceId"
   | "actorId"
   | "accountId"
@@ -366,7 +368,11 @@ export async function routingSourceProof(
       if (c?.selectedVersionId) fail("ROUTING_SUPERSEDED");
     }
   }
-  const sourceUntil = minimum(o.sourceUntil, until, style.sourceUntil);
+  const sourceUntil = minimum(
+    operationalUntil(o.createdAt, o.sourceUntil),
+    until,
+    style.sourceUntil,
+  );
   if (sourceUntil !== null && sourceUntil <= Date.now())
     fail("ROUTING_SOURCE_UNAVAILABLE");
   const state = {

@@ -1,3 +1,5 @@
+import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
+import { operationalUntil } from "../lib/operationalRetention";
 import { evidenceSource } from "./contentProof";
 import { registerResearchCopies } from "./contentCleanup";
 import { conversationAccess } from "../ai/conversationAccess";
@@ -399,13 +401,13 @@ export const purge = internalMutation({
     if (o.pipeline.cleanupState === "complete" && !copies.length) return null;
     if (
       o.pipeline.cleanupState === "retained" &&
-      o.pipeline.retentionUntil !== null &&
-      o.pipeline.retentionUntil > Date.now()
+      operationalUntil(o.createdAt, o.pipeline.retentionUntil) > Date.now()
     ) {
       try {
         await currentMaterialProof(ctx, o);
         return null;
-      } catch {
+      } catch (error) {
+        rethrowUnexpectedSourceError(error);
         /* inherited proof withdrawal requires the same cleanup */
       }
     }
@@ -491,13 +493,19 @@ export const purge = internalMutation({
     let agentCleaned = p.agentCleaned || !r,
       workflowCleaned = p.workflowCleaned || !p.workflowId;
     // Native isDone proves component traversal finished; a canceled/stopped wrapper is insufficient.
-    if (r && !agentCleaned && (!r.executionKey || r.executionFinishedAt))
+    if (r && !agentCleaned && (!r.executionKey || r.executionFinishedAt)) {
+      await ctx.runQuery(components.agent.erasure.listForThread, {
+        threadId: r.threadId,
+        expectedUserId: String(r.actorId),
+        paginationOpts: { numItems: 1, cursor: null },
+      });
       agentCleaned = (
         await ctx.runMutation(
           components.agent.threads.deleteAllForThreadIdAsync,
           { threadId: r.threadId, limit: 100 },
         )
       ).isDone;
+    }
     if (p.workflowId && !workflowCleaned) {
       workflowCleaned = await workflow.cleanup(ctx, p.workflowId as WorkflowId);
       if (workflowCleaned) {
@@ -526,6 +534,17 @@ export const purge = internalMutation({
     });
     if (!agentCleaned || !workflowCleaned || copiesRemain)
       await ctx.scheduler.runAfter(10000, internal.research.pipeline.purge, a);
+    else {
+      await ctx.scheduler.runAfter(
+        0,
+        internal.operations.retention.workflowCleanup,
+        { orderId: o._id },
+      );
+      if (r)
+        await ctx.scheduler.runAfter(0, internal.ai.runs.purgeSource, {
+          runId: r._id,
+        });
+    }
     return null;
   },
 });

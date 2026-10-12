@@ -12,7 +12,7 @@ const mutations=new Map();
 export const useMutation=ref=>{const name=getFunctionName(ref);if(!mutations.has(name))mutations.set(name,async args=>{
 window.commands.push({name,args});if(name==='users:bootstrap'){if(!window.deferBootstrap)return 'user';return new Promise((resolve,reject)=>window.bootstrapPending.push({resolve,reject}));}
 return new Promise((resolve,reject)=>window.pending.push({name,args,resolve,reject}));});return mutations.get(name)};
-export const useQuery=(ref,args)=>{useTick();const name=getFunctionName(ref);if(args==='skip')return undefined;if(name==='users:current'){window.currentReads.push(args);return window.snapshot;}
+export const useQuery=(ref,args)=>{useTick();const name=getFunctionName(ref);if(args==='skip')return undefined;if(name==='operations/deletion:mine')return window.deletionJobs??[];if(name==='users:current'){window.currentReads.push(args);return window.snapshot;}
 window.protected.push({name,args});return name==='editorial:resources'?window.resources[args.workspaceId]:undefined};
 export const usePaginatedQuery=(ref,args)=>{useTick();const name=getFunctionName(ref);if(args!=='skip')window.protected.push({name,args});return {results:[],status:'Exhausted',loadMore:()=>{}}};`,
   "@/lib/auth-client": `import React from 'react';export const demoMode=false;export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.subscribers.add(cb);return()=>window.subscribers.delete(cb)},()=>window.tick);return {data:window.session,isPending:false}}};`,
@@ -26,6 +26,7 @@ window.session={user:{id:'auth-alpha'}};window.ready=(id,role='Owner',authId=win
 window.resources={alpha:{accounts:[{_id:'alpha-account',workspaceId:'alpha',name:'Alpha secret account',handle:'@alpha',provider:'X',connection:'connected',capability:{}}],assets:[],events:[],members:[],notifications:[],resourcesLimited:false},beta:{accounts:[{_id:'beta-account',workspaceId:'beta',name:'Beta account',handle:'@beta',provider:'X',connection:'connected',capability:{}}],assets:[],events:[],members:[],notifications:[],resourcesLimited:false}};
 window.snapshot=window.ready('alpha');window.updateSnapshot=value=>{window.snapshot=value;window.tick++;window.subscribers.forEach(fn=>fn());};
 function Probe(){const s=useStore();return React.createElement('div',null,React.createElement('output',{'data-testid':'state'},JSON.stringify({workspace:s.state.activeWorkspaceId,name:s.state.preferences.name,account:s.state.activeAccountId,accounts:s.state.accounts.map(a=>a.name),drafts:s.state.drafts.length,media:s.state.media.length})),React.createElement('button',{onClick:()=>s.selectAccount('alpha-account')},'Alpha auswählen'));}
+if(location.hash==='#deletion')window.deletionJobs=[{id:'delete-job',scope:'account',state:'blocked',phase:'components',processed:42,reason:'component-proof',canResume:true}];
 window.fixtureRoot=createRoot(document.getElementById('root'));window.fixtureRoot.render(React.createElement(MemoryRouter,{initialEntries:['/overview']},React.createElement(WorkspaceStoreProvider,null,React.createElement(Probe))));`;
 const server = await createServer({
   root,
@@ -353,6 +354,23 @@ try {
       ),
     ),
   ).toEqual([]);
+  await page.goto("http://127.0.0.1:5182/workspace-recovery-fixture#deletion");
+  await page.reload();
+  await expect(page.getByText("Löschung läuft", { exact: true })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText(
+    "42 Einträge verarbeitet",
+  );
+  await expect(
+    page.getByRole("button", { name: "Löschung fortsetzen" }),
+  ).toBeVisible();
+  await expect(page.getByTestId("state")).toHaveCount(0);
+  expect(
+    await page.evaluate(() =>
+      window.commands.filter((c) => c.name === "users:bootstrap"),
+    ),
+  ).toEqual([]);
+  expect(await page.evaluate(() => window.protected)).toEqual([]);
+  expect(errors).toEqual([]);
   console.log(
     "PASS actual styled WorkspaceStoreProvider: recovery/no-target unmount, no protected queries, explicit select error/retry, Viewer ready, actor switch/delayed ready and recovery/bootstrap completion/unmount, ABA and same-user session operation success/error ownership, account buffer reset, 390px, zero non-allowed mutation IO",
   );

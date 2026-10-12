@@ -1,3 +1,4 @@
+import { operationalUntil } from "../lib/operationalRetention";
 import { describe, baselineView, type BaselinePost } from "./baselines";
 import { ConvexError, v } from "convex/values";
 import {
@@ -8,7 +9,7 @@ import {
 } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { workspaceQuery, requireReference } from "../lib/authorization";
-import type { Doc } from "../_generated/dataModel";
+import type { Doc, Id } from "../_generated/dataModel";
 import {
   authority,
   policy,
@@ -69,7 +70,7 @@ export async function enqueue(ctx: MutationCtx, c: Doc<"xPostAttempts">) {
       dialect: null,
       fields: [],
       reason: null,
-      expiresAt: dueAt + p.retentionMs,
+      expiresAt: operationalUntil(Date.now(), dueAt + p.retentionMs),
     });
     const jobId = await ctx.scheduler.runAt(
       dueAt,
@@ -94,7 +95,7 @@ export async function source(
     !row ||
     row.generation !== a.generation ||
     !["queued", "reading"].includes(row.state) ||
-    row.expiresAt <= Date.now()
+    operationalUntil(row._creationTime, row.expiresAt) <= Date.now()
   )
     throw new ConvexError("OWN_METRICS_INTENT_INACTIVE");
   const x = await authority(ctx, row, a.generation, reserve),
@@ -228,6 +229,64 @@ export const begin = internalMutation({
     };
   },
 });
+export async function metricsAttempt(
+  ctx: QueryCtx | MutationCtx,
+  attemptId: Id<"aiAttempts">,
+) {
+  const t = await ctx.db.get(attemptId);
+  if (
+    !t ||
+    t.owner !== "own-metrics" ||
+    t.runId !== undefined ||
+    t.researchOrderId !== undefined ||
+    t.logicalIntent !== undefined
+  )
+    throw new ConvexError("OWN_METRICS_RECEIPT_OWNER_INVALID");
+  const row = await ctx.db.get(t.snapshotId),
+    p = await ctx.db.get(t.policyId);
+  if (
+    !row ||
+    row.attemptId !== t._id ||
+    row.workspaceId !== t.workspaceId ||
+    row.accountId !== t.accountId ||
+    row.generation !== t.generation ||
+    !p ||
+    t.budgetIds.length !== 3 ||
+    new Set(t.budgetIds).size !== 3 ||
+    t.unitMicros !== t.reservedMicros
+  )
+    throw new ConvexError("OWN_METRICS_RECEIPT_OWNER_INVALID");
+  for (const [i, id] of t.budgetIds.entries()) {
+    const b = await ctx.db.get(id);
+    if (
+      !b ||
+      b.key !==
+        [
+          "metrics:x",
+          `metrics:workspace:${t.workspaceId}`,
+          `metrics:account:${t.accountId}`,
+        ][i] ||
+      b.scope !== (["provider", "workspace", "account"] as const)[i] ||
+      b.currency !== t.currency ||
+      (i === 0 && (b.workspaceId !== undefined || b.accountId !== undefined)) ||
+      (i === 1 &&
+        (b.workspaceId !== t.workspaceId || b.accountId !== undefined)) ||
+      (i === 2 &&
+        (b.workspaceId !== t.workspaceId || b.accountId !== t.accountId))
+    )
+      throw new ConvexError("OWN_METRICS_RECEIPT_OWNER_INVALID");
+  }
+  if (
+    p.workspaceId !== t.workspaceId ||
+    p.accountId !== t.accountId ||
+    p.version !== t.policyVersion ||
+    p.unitMicros !== t.unitMicros ||
+    p.currency !== t.currency ||
+    (await fingerprint(p)) !== t.policyFingerprint
+  )
+    throw new ConvexError("OWN_METRICS_RECEIPT_OWNER_INVALID");
+  return { t, row, p };
+}
 export const finish = internalMutation({
   args: {
     attemptId: v.id("aiAttempts"),
@@ -238,59 +297,7 @@ export const finish = internalMutation({
   },
   returns: v.null(),
   handler: async (ctx, a) => {
-    const t = await ctx.db.get(a.attemptId);
-    if (
-      !t ||
-      t.owner !== "own-metrics" ||
-      t.runId !== undefined ||
-      t.researchOrderId !== undefined ||
-      t.logicalIntent !== undefined
-    )
-      throw new ConvexError("OWN_METRICS_RECEIPT_OWNER_INVALID");
-    const row = await ctx.db.get(t.snapshotId),
-      p = await ctx.db.get(t.policyId);
-    if (
-      !row ||
-      row.attemptId !== t._id ||
-      row.workspaceId !== t.workspaceId ||
-      row.accountId !== t.accountId ||
-      row.generation !== t.generation ||
-      !p ||
-      t.budgetIds.length !== 3 ||
-      new Set(t.budgetIds).size !== 3 ||
-      t.unitMicros !== t.reservedMicros
-    )
-      throw new ConvexError("OWN_METRICS_RECEIPT_OWNER_INVALID");
-    for (const [i, id] of t.budgetIds.entries()) {
-      const b = await ctx.db.get(id);
-      if (
-        !b ||
-        b.key !==
-          [
-            "metrics:x",
-            `metrics:workspace:${t.workspaceId}`,
-            `metrics:account:${t.accountId}`,
-          ][i] ||
-        b.scope !== (["provider", "workspace", "account"] as const)[i] ||
-        b.currency !== t.currency ||
-        (i === 0 &&
-          (b.workspaceId !== undefined || b.accountId !== undefined)) ||
-        (i === 1 &&
-          (b.workspaceId !== t.workspaceId || b.accountId !== undefined)) ||
-        (i === 2 &&
-          (b.workspaceId !== t.workspaceId || b.accountId !== t.accountId))
-      )
-        throw new ConvexError("OWN_METRICS_RECEIPT_OWNER_INVALID");
-    }
-    if (
-      p.workspaceId !== t.workspaceId ||
-      p.accountId !== t.accountId ||
-      p.version !== t.policyVersion ||
-      p.unitMicros !== t.unitMicros ||
-      p.currency !== t.currency ||
-      (await fingerprint(p)) !== t.policyFingerprint
-    )
-      throw new ConvexError("OWN_METRICS_RECEIPT_OWNER_INVALID");
+    const { t, row, p } = await metricsAttempt(ctx, a.attemptId);
     const receipt = await sha256(
       JSON.stringify({
         knownCharge: a.knownCharge,
@@ -412,14 +419,19 @@ export const clear = internalMutation({
   },
 });
 export const expire = internalMutation({
-  args: {},
+  args: { cursor: v.optional(v.union(v.string(), v.null())) },
   returns: v.null(),
-  handler: async (ctx) => {
+  handler: async (ctx, a) => {
     const rows = await ctx.db
       .query("performanceSnapshots")
-      .withIndex("by_expiresAt", (q) => q.lte("expiresAt", Date.now()))
-      .take(25);
-    for (const row of rows) {
+      .withIndex("by_creation_time")
+      .paginate({ cursor: a.cursor ?? null, numItems: 25 });
+    for (const row of rows.page) {
+      if (
+        row.state === "removed" ||
+        operationalUntil(row._creationTime, row.expiresAt) > Date.now()
+      )
+        continue;
       await ctx.scheduler.runAfter(
         0,
         internal.performance.experiments.purgeSnapshot,
@@ -434,12 +446,10 @@ export const expire = internalMutation({
         expiresAt: Number.MAX_SAFE_INTEGER,
       });
     }
-    if (rows.length === 25)
-      await ctx.scheduler.runAfter(
-        0,
-        internal.performance.snapshots.expire,
-        {},
-      );
+    if (!rows.isDone)
+      await ctx.scheduler.runAfter(0, internal.performance.snapshots.expire, {
+        cursor: rows.continueCursor,
+      });
     return null;
   },
 });
@@ -608,7 +618,7 @@ export async function readOverview(
         r.generation > (control?.deletedThroughGeneration ?? -1)
       )
         snapshots.push(
-          r.expiresAt > Date.now()
+          operationalUntil(r._creationTime, r.expiresAt) > Date.now()
             ? {
                 ...r,
                 late:
@@ -868,7 +878,7 @@ export async function retainedSnapshotHorizon(
   )
     throw new Error("OWN_METRICS_SOURCE_UNAVAILABLE");
   return Math.min(
-    row.expiresAt,
+    operationalUntil(row._creationTime, row.expiresAt),
     original.expiresAt,
     current.expiresAt,
     cred.expiresAt - 15000,

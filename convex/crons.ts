@@ -1,3 +1,4 @@
+import { sweepReference } from "./operations/retention";
 import { cronJobs } from "convex/server";
 import { internal } from "./_generated/api";
 const crons = cronJobs();
@@ -120,5 +121,11 @@ crons.interval(
   { minutes: 15 },
   internal.preferences.sweepResearchSummaries,
   { cursor: null },
+);
+crons.interval(
+  "Operational retention and restored source cleanup",
+  { minutes: 15 },
+  sweepReference,
+  { phase: "sources", cursor: null },
 );
 export default crons;

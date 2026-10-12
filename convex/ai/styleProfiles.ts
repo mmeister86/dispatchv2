@@ -1,3 +1,4 @@
+import { operationalUntil } from "../lib/operationalRetention";
 import {
   materialWalk,
   enterMaterial,
@@ -221,7 +222,10 @@ export async function versionProof(
         (await sha256(JSON.stringify(validate(version.payload))))
     )
       throw new ConvexError("STYLE_SOURCE_UNAVAILABLE");
-    let until = version.sourceUntil;
+    let until: number | null = operationalUntil(
+      version.createdAt,
+      version.sourceUntil,
+    );
     if (version.baseVersionId) {
       const base = await scoped(
         ctx,
@@ -327,7 +331,7 @@ export async function proposalProof(
     if (proof.ver.draftId !== p.draftId)
       throw new ConvexError("STYLE_SOURCE_UNAVAILABLE");
     const until = minimum(
-      p.sourceUntil,
+      operationalUntil(p.createdAt, p.sourceUntil),
       p.beforeUntil,
       p.resultUntil,
       baseUntil,
@@ -706,7 +710,8 @@ export async function commandProof(
 ) {
   const w = walk(false, 32, reads),
     horizons: (number | null)[] = [];
-  if (row.sourceUnavailable) throw new ConvexError("STYLE_SOURCE_UNAVAILABLE");
+  if (row.sourceUnavailable || operationalUntil(row.createdAt) <= Date.now())
+    throw new ConvexError("STYLE_SOURCE_UNAVAILABLE");
   await account(ctx, row.workspaceId, row.accountId, reads);
   await authorized(ctx, row.workspaceId, row.actorId, reads);
   if (row.versionId)

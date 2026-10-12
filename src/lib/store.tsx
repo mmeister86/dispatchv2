@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { useMutation, useQuery, usePaginatedQuery } from "convex/react";
+import { DeletionProgress } from "@/features/settings/data-controls";
 import { useLocation } from "react-router-dom";
 import {
   draftView,
@@ -454,6 +455,11 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
   const authId = session?.user.id;
   const sessionId = session?.session?.id;
   const bootstrap = useMutation(api.users.bootstrap);
+  const deletionJobs = useQuery(
+    api.operations.deletion.mine,
+    authId && !sessionPending ? {} : "skip",
+  );
+  const deleting = deletionJobs?.some((job) => job.state !== "complete");
   const select = useMutation(api.workspaces.select);
   const create = useMutation(api.workspaces.create);
   const [readyActor, setReadyActor] = useState<string | null>(null);
@@ -467,7 +473,8 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
     setError("");
     setPending(false);
     setReadyActor(null);
-    if (!authId || sessionPending) return;
+    if (!authId || sessionPending || deletionJobs === undefined || deleting)
+      return;
     bootstrap({})
       .then(() => {
         if (active) setReadyActor(authId);
@@ -484,10 +491,20 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
       active = false;
       recoveryOperation.current = null;
     };
-  }, [bootstrap, attempt, authId, sessionId, sessionPending]);
+  }, [
+    bootstrap,
+    attempt,
+    authId,
+    sessionId,
+    sessionPending,
+    deletionJobs === undefined,
+    deleting,
+  ]);
   const current = useQuery(
     api.users.current,
-    authId && !sessionPending && readyActor === authId ? {} : "skip",
+    authId && !sessionPending && !deleting && readyActor === authId
+      ? {}
+      : "skip",
   );
   const snapshot =
     !sessionPending && current?.authId === authId ? current : undefined;
@@ -509,6 +526,12 @@ export function WorkspaceStoreProvider({ children }: { children: ReactNode }) {
       }
     }
   };
+  if (deleting)
+    return (
+      <div className="p-12">
+        <DeletionProgress />
+      </div>
+    );
   if (!snapshot)
     return (
       <div className="p-12 stack" role={error ? "alert" : "status"}>

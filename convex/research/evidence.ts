@@ -1,3 +1,4 @@
+import { operationalUntil } from "../lib/operationalRetention";
 import { rethrowUnexpectedSourceError } from "../lib/sourceProof";
 import {
   currentMaterials,
@@ -91,8 +92,8 @@ export async function deliveredSource(
     throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
   const { p, captured } = await sourceAuthority(ctx, o, s.operation);
   let until = Math.min(
-    c.expiresAt,
-    s.usableUntil,
+    operationalUntil(c.createdAt, c.expiresAt),
+    operationalUntil(s.observedAt, s.usableUntil),
     p.expiresAt,
     p.lifecycleValidUntil,
   );

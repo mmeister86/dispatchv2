@@ -52,7 +52,7 @@ async function member(
   if (!row || !allowed.includes(row.role) || !(await ctx.db.get(id)))
     throw new ConvexError("NOTICE_UNAVAILABLE");
 }
-async function proof(ctx: QueryCtx, n: Doc<"editorialNotices">) {
+export async function proof(ctx: QueryCtx, n: Doc<"editorialNotices">) {
   requireActiveWorkspace(await ctx.db.get(n.workspaceId));
   const draft = await ctx.db.get(n.draftId),
     ver = await ctx.db.get(n.versionId);

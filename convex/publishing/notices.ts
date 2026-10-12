@@ -86,7 +86,7 @@ async function member(
   if (!m || !["Owner", "Admin"].includes(m.role) || !(await ctx.db.get(userId)))
     throw new ConvexError("NOTICE_UNAVAILABLE");
 }
-async function proof(ctx: QueryCtx, n: Doc<"publishingNotifications">) {
+export async function proof(ctx: QueryCtx, n: Doc<"publishingNotifications">) {
   const p = n.presentation;
   if (
     n.presentationUnavailable !== false ||

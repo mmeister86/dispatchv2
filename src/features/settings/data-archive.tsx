@@ -1,15 +1,423 @@
 import { useEffect, useRef, useState } from "react";
 import { useConvex } from "convex/react";
-import type { FunctionReturnType } from "convex/server";
+import {
+  makeFunctionReference,
+  type ApiFromModules,
+  type FunctionArgs,
+  type FunctionReturnType,
+} from "convex/server";
 import { Download } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import type {
+  RemainingFamily,
+  page as remainingPage,
+} from "../../../convex/operations/exportRemaining";
+import type {
+  FinanceFamily,
+  page as financePage,
+} from "../../../convex/operations/exportFinance";
+import type {
+  RecordsFamily,
+  page as recordsPage,
+} from "../../../convex/operations/exportRecords";
 import type { IntelligenceFamily } from "../../../convex/operations/exportIntelligence";
 import type { SharedFamily } from "../../../convex/operations/exportShared";
 import { authClient } from "@/lib/auth-client";
 import { useStore } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/shared";
+
+type RecordsArchive = FunctionReturnType<
+  ApiFromModules<{ module: { page: typeof recordsPage } }>["module"]["page"]
+>;
+const recordsQuery = makeFunctionReference<
+  "query",
+  FunctionArgs<
+    ApiFromModules<{ module: { page: typeof recordsPage } }>["module"]["page"]
+  >,
+  RecordsArchive
+>("operations/exportRecords:page");
+const recordsFamilies: Record<RecordsFamily, string> = {
+  githubRepositorySettings: "Gespeicherte Repository-Einstellungen",
+  publishingPostEffects: "Publishing-Postbelege",
+  publishingMediaEffects: "Publishing-Medienbelege",
+  ownGithubContexts: "Eigene freigegebene GitHub-Kontexte",
+  ownEditorialNotices: "Eigene redaktionelle Hinweise",
+  ownUploadSessions: "Eigene Uploadvorgänge",
+  ownPublishingReceipts: "Eigene Publishing-Mitteilungen",
+  ownTeamCommands: "Eigene Teamvorgänge",
+  teamInvitationRecords: "Einladungsmetadaten",
+  publicGithubSignals: "Öffentliche GitHub-Signale",
+  publicGithubRecoveries: "Öffentliche GitHub-Wiederherstellungen",
+  ownCreatedInvitations: "Eigene erstellte Einladungen",
+  ownReceivedInvitations: "Eigene empfangene Einladungen",
+  ownIdeaHandoffs: "Eigene Ideenübergaben",
+  ownResearchHandoffs: "Eigene Research-Übergaben",
+  mediaVersionReferences: "Originale Medienreferenzen einer Version",
+};
+const recordsFields: Record<RecordsFamily, string> = {
+  githubRepositorySettings:
+    "id createdInDatabaseAt providerId installationId fullName private selected access monitoring content contextRead communicableContext purposeActorId purposeAt purposeVersion generation verifiedAt proofExpiresAt updatedAt",
+  publishingPostEffects:
+    "id createdInDatabaseAt scheduleId versionId accountId providerIdentity generation position attempt stage mediaIds parentId externalId httpStatus rateResetAt requestStartedAt confirmedAt durationMs createdAt updatedAt reconciledAt reconciledBy reconcileReads",
+  publishingMediaEffects:
+    "id createdInDatabaseAt scheduleId versionId accountId assetId generation mediaPosition attempt phase operation mediaId nextSegment expiresAt nextCheckAt deadline statusReads readRetries metadataApplied bytesRead bytesUploaded bytesSubmitted chunkCount providerRequests durationMs measurementIncomplete createdAt updatedAt",
+  ownGithubContexts:
+    "id createdInDatabaseAt actorId signalId repositoryId generation paths createdAt state excerpts approvedAt runId accountId resultIdeaId decision summary rationale novelty uncertainty references evidence",
+  ownEditorialNotices:
+    "id createdInDatabaseAt draftId versionId accountId parent createdAt sourceUntil readAt dismissedAt",
+  ownUploadSessions:
+    "id createdInDatabaseAt assetId state expiresAt expectedSize expectedMime deletedAt",
+  ownPublishingReceipts:
+    "id createdInDatabaseAt scheduleId generation state createdAt presentation",
+  ownTeamCommands:
+    "id createdInDatabaseAt actorId ownerOperation result materialAvailability",
+  teamInvitationRecords:
+    "id createdInDatabaseAt status createdAt expiresAt role delivery",
+  publicGithubSignals:
+    "id createdInDatabaseAt repositoryId generation kind fullName private ref before after commitCount created deleted forced releaseId tag prerelease url providerAt receivedAt processedAt explicitRecovery",
+  publicGithubRecoveries:
+    "id createdInDatabaseAt repositoryId generation providerId installationId event deliveredAt providerStatus state attempts notBefore updatedAt",
+  ownCreatedInvitations:
+    "id createdInDatabaseAt email role status createdAt expiresAt",
+  ownReceivedInvitations:
+    "id createdInDatabaseAt email role status createdAt expiresAt",
+  ownIdeaHandoffs: "id createdInDatabaseAt handoff",
+  ownResearchHandoffs:
+    "id createdInDatabaseAt accountId actorId createdAt count target selection results",
+  mediaVersionReferences:
+    "id createdInDatabaseAt assetId versionId versionKind positions",
+};
+function recordsData(data: RecordsArchive["data"]) {
+  const rows = data.selection.rows.map((row) => {
+    const r = fields(row, recordsFields[data.selection.family]);
+    if (r.handoff)
+      r.handoff = fields(
+        r.handoff,
+        "ideaVersionId ideaRevision accountId draftId draftVersionId actorId intent clarificationConfirmed text at",
+      );
+    if (r.results && Array.isArray(r.results))
+      r.results = r.results.map((x) =>
+        fields(x, "ideaId ideaVersionId draftId draftVersionId"),
+      );
+    if (r.positions && Array.isArray(r.positions))
+      r.positions = r.positions.map((x) => fields(x, "position alt"));
+    if (r.explicitRecovery)
+      r.explicitRecovery = fields(
+        r.explicitRecovery,
+        "actorId authorizedAt recoveryId",
+      );
+    if (r.activation) {
+      const activation = fields(
+        r.activation,
+        "kind language operations autoHandoff",
+      );
+    }
+    if (r.presentation)
+      r.presentation = fields(
+        r.presentation,
+        "draftId versionId accountId approvalId approvalActorId purpose readAt dismissedAt sourceUntil",
+      );
+    if (r.result)
+      r.result = fields(
+        r.result,
+        "revision invitationId membershipId userId disposition",
+      );
+    if (r.delivery)
+      r.delivery = fields(r.delivery, "status providerId firstSendAt");
+    if (r.parent)
+      r.parent = fields(
+        r.parent,
+        "kind commandId stage decisionId withdrawn approvalId revoked",
+      );
+    if (r.excerpts && Array.isArray(r.excerpts))
+      r.excerpts = r.excerpts.map((x) =>
+        fields(x, "path previousPath blobSha change patch"),
+      );
+    if (r.evidence && Array.isArray(r.evidence))
+      r.evidence = r.evidence.map((x) => fields(x, "path quote"));
+    return r;
+  });
+  return {
+    format: data.format,
+    version: data.version,
+    workspaceId: data.workspaceId,
+    selection: { family: data.selection.family, rows },
+  };
+}
+
+type FinanceArchive = FunctionReturnType<
+  ApiFromModules<{ module: { page: typeof financePage } }>["module"]["page"]
+>;
+const financeQuery = makeFunctionReference<
+  "query",
+  FunctionArgs<
+    ApiFromModules<{ module: { page: typeof financePage } }>["module"]["page"]
+  >,
+  FinanceArchive
+>("operations/exportFinance:page");
+const financeFamilies: Record<FinanceFamily, string> = {
+  businessFinanceRuns: "Gemeinsame KI-Finanzläufe",
+  businessRunUsage: "Kosten eines gemeinsamen KI-Laufs",
+  publicFinanceOrders: "Gemeinsame Research-Finanzaufträge",
+  publicOrderUsage: "Kosten eines öffentlichen Research-Auftrags",
+  researchRunUsage: "KI-Kosten eines Research-Auftrags",
+  ownFinanceRuns: "Eigene KI-Finanzläufe",
+  ownFinanceOrders: "Eigene Research-Finanzaufträge",
+  ownFinanceReceipts: "Eigene KI-Kostenbelege",
+  runUsage: "Kosten eines eigenen KI-Laufs",
+  orderUsage: "Kosten eines eigenen Research-Auftrags",
+  metricsUsage: "Messkosten",
+  historyUsage: "Historienkosten",
+  usageBudgets: "Workspace- und Accountbudgets",
+};
+const financeFields: Record<string, string> = {
+  generation:
+    "id createdInDatabaseAt owner currency policyVersion provider state reservedMicros heldMicros estimatedMicros billedMicros sentAt settledAt runId generation model inputMicrosPerMillion outputMicrosPerMillion inputTokens outputTokens reportedCost reportedCurrency reportedCostInvalid compositeParentId compositeStage",
+  "generation-reservation":
+    "id createdInDatabaseAt owner currency policyVersion provider state reservedMicros heldMicros estimatedMicros billedMicros sentAt settledAt runId generation model inputMicrosPerMillion outputMicrosPerMillion inputTokens outputTokens reportedCost reportedCurrency reportedCostInvalid compositeParentId compositeStage accountId actorId maxInputTokens maxOutputTokens compositeRootRunId reservedAt",
+  "native-search":
+    "id createdInDatabaseAt owner currency policyVersion provider state reservedMicros heldMicros estimatedMicros billedMicros sentAt settledAt accountId researchOrderId operation generation policyId unit unitMicros costCurrencyEvidence reportedCost reportedCurrency reportedCostInvalid units dispatchedAt intentVersion",
+  "jev-analyzer":
+    "id createdInDatabaseAt owner currency policyVersion provider state reservedMicros heldMicros estimatedMicros billedMicros sentAt settledAt accountId actorId purpose operation draftId draftVersionId algorithmId audienceId selectionRevision mode deadline policyId controlId questionVersion normalizationVersion model resolvedModel inputMicrosPerMillion outputMicrosPerMillion maxInputTokens maxOutputTokens inputTokens outputTokens latencyMs outcome fallback",
+  "jev-intent-router":
+    "id createdInDatabaseAt owner currency policyVersion provider state reservedMicros heldMicros estimatedMicros billedMicros sentAt settledAt accountId actorId purpose operation routingOperationId inputVersionId policyId controlId questionVersion normalizationVersion model resolvedModel inputMicrosPerMillion outputMicrosPerMillion maxInputTokens maxOutputTokens inputTokens outputTokens latencyMs outcome fallback",
+  "jev-output-verifier":
+    "id createdInDatabaseAt owner currency policyVersion provider state reservedMicros heldMicros estimatedMicros billedMicros sentAt settledAt accountId actorId purpose operation inputVersionId policyId controlId questionVersion normalizationVersion model resolvedModel inputMicrosPerMillion outputMicrosPerMillion maxInputTokens maxOutputTokens inputTokens outputTokens latencyMs outcome fallback contentRequestId candidateVersionId producerRunId thresholdVersion compositeParentId compositeStage compositeRootRunId",
+  "jev-output-verifier-reservation":
+    "id createdInDatabaseAt owner currency policyVersion provider state reservedMicros heldMicros estimatedMicros billedMicros sentAt settledAt accountId actorId purpose operation inputVersionId policyId controlId questionVersion normalizationVersion model resolvedModel inputMicrosPerMillion outputMicrosPerMillion maxInputTokens maxOutputTokens inputTokens outputTokens latencyMs outcome fallback contentRequestId producerRunId thresholdVersion compositeParentId compositeStage compositeRootRunId deadline reservedAt",
+  "own-metrics":
+    "id createdInDatabaseAt owner currency policyVersion provider state reservedMicros heldMicros estimatedMicros billedMicros sentAt settledAt accountId purpose snapshotId policyId generation unit unitMicros inputTokens outputTokens reportedCurrency reportedCostInvalid reportedCost",
+  "own-history":
+    "id createdInDatabaseAt owner currency policyVersion provider state reservedMicros heldMicros estimatedMicros billedMicros sentAt settledAt accountId purpose historyJobId policyId generation unit unitMicros inputTokens outputTokens reportedCurrency reportedCostInvalid reportedCost page maxResults resourceCount",
+  "own-content-embedding":
+    "id createdInDatabaseAt owner currency policyVersion provider state reservedMicros heldMicros estimatedMicros billedMicros sentAt settledAt accountId actorId purpose controlId generation policyId model identity inputMicrosPerMillion maxInputTokens inputTokens createdAt deadline sourceUnavailable",
+  run: "id createdInDatabaseAt accountId actorId purpose state generation policyVersion promptVersion createdAt deadline executionFinishedAt attempts toolSteps",
+  order:
+    "id createdInDatabaseAt accountId actorId profileId profileVersionId occasion state generation createdAt",
+  budget:
+    "id createdInDatabaseAt scope workspaceId accountId policyVersion currency purposes approvedBy expiresAt limitMicros heldMicros spentMicros namespace",
+};
+function financeData(data: FinanceArchive["data"]) {
+  const rows = data.selection.rows.map((row) => {
+    const r = fields(
+      row,
+      financeFields[
+        "owner" in row
+          ? (row.owner ?? "generation")
+          : ["ownFinanceRuns", "businessFinanceRuns"].includes(
+                data.selection.family,
+              )
+            ? "run"
+            : ["ownFinanceOrders", "publicFinanceOrders"].includes(
+                  data.selection.family,
+                )
+              ? "order"
+              : "budget"
+      ],
+    );
+    if (r.identity)
+      r.identity = fields(
+        r.identity,
+        "resolvedModel dimension assembly normalization",
+      );
+    return r;
+  });
+  return {
+    format: data.format,
+    version: data.version,
+    workspaceId: data.workspaceId,
+    selection: { family: data.selection.family, rows },
+  };
+}
+
+type RemainingArchive = FunctionReturnType<
+  ApiFromModules<{ module: { page: typeof remainingPage } }>["module"]["page"]
+>;
+const remainingQuery = makeFunctionReference<
+  "query",
+  FunctionArgs<
+    ApiFromModules<{ module: { page: typeof remainingPage } }>["module"]["page"]
+  >,
+  RemainingArchive
+>("operations/exportRemaining:page");
+const remainingFamilies: Record<RemainingFamily, string> = {
+  mediaManifest: "Medienverzeichnis",
+  accountRecords: "Accounts",
+  githubConnections: "GitHub-Verbindungen",
+  embeddingPolicies: "Embedding-Richtlinien",
+  embeddingControls: "Embedding-Einwilligungen",
+  performanceContentPolicies: "Inhaltsrichtlinien",
+  researchPoliciesRecent: "Research-Richtlinien: X-Posts",
+  researchPoliciesTrends: "Research-Richtlinien: X-Trends",
+  researchPoliciesWeb: "Research-Richtlinien: Websuche",
+  researchProfileRecords: "Research-Profile",
+  researchVersionRecords: "Research-Profilversionen",
+  calibrationPurposes: "Kalibrierungszwecke",
+  calibrationControls: "Kalibrierungssteuerung",
+  calibrationReferences: "Kalibrierungsreferenzen",
+  calibrationModels: "Kalibrierungsmodelle",
+  jevPolicies: "Jev-Richtlinien",
+  jevAnalyzerControl: "Jev-Analyzersteuerung",
+  jevRoutingControl: "Jev-Routingsteuerung",
+  jevVerificationControl: "Jev-Prüfsteuerung",
+  editorialExperiments: "Redaktionelle Experimente",
+  experimentCommands: "Experimentänderungen",
+  experimentAssignments: "Experimentzuordnungen",
+  experimentBindings: "Experimentbelege",
+  workspaceRecord: "Workspace",
+  memberRecords: "Mitgliedschaftsrollen",
+};
+const remainingFields: Record<RemainingFamily, string> = {
+  mediaManifest:
+    "id createdInDatabaseAt name defaultAlt type mime size width height duration state",
+  accountRecords:
+    "id createdInDatabaseAt provider providerIdentity name handle connection capability xEvidence",
+  githubConnections:
+    "id createdInDatabaseAt status identity login installations inventoryLimited updatedAt",
+  embeddingPolicies:
+    "id createdInDatabaseAt accountId version enabled approvedBy expiresAt purpose provider baseURL model identity processingEvidence upstreamEuEvidence storageEvidence trainingEvidence retentionEvidence rightsEvidence pricingEvidence protocolEvidence allocationEvidence currency inputMicrosPerMillion allocatedProviderLimitMicros maxInputTokens retentionMs maxDurationMs",
+  embeddingControls:
+    "id createdInDatabaseAt accountId generation enabled approvedBy connectionSequence policyId purpose ownHistory draftVersions consentEvidence expiresAt updatedAt",
+  performanceContentPolicies:
+    "id createdInDatabaseAt accountId version purpose rightsEvidence approvedBy expiresAt",
+  researchPoliciesRecent:
+    "id createdInDatabaseAt accountId operation enabled version generation approvedBy expiresAt accessEvidence processingEvidence pricingEvidence rightsEvidence protocolEvidence lifecycleEvidence lifecycleValidUntil retentionMs authMode protocol currency unit unitMicros totalChargeBoundEvidence allocationEvidence allocatedProviderLimitMicros costCurrencyEvidence model woeid",
+  researchPoliciesTrends:
+    "id createdInDatabaseAt accountId operation enabled version generation approvedBy expiresAt accessEvidence processingEvidence pricingEvidence rightsEvidence protocolEvidence lifecycleEvidence lifecycleValidUntil retentionMs authMode protocol currency unit unitMicros totalChargeBoundEvidence allocationEvidence allocatedProviderLimitMicros costCurrencyEvidence model woeid",
+  researchPoliciesWeb:
+    "id createdInDatabaseAt accountId operation enabled version generation approvedBy expiresAt accessEvidence processingEvidence pricingEvidence rightsEvidence protocolEvidence lifecycleEvidence lifecycleValidUntil retentionMs authMode protocol currency unit unitMicros totalChargeBoundEvidence allocationEvidence allocatedProviderLimitMicros costCurrencyEvidence model woeid",
+  researchProfileRecords:
+    "id createdInDatabaseAt accountId currentVersionId revision paused deleted scheduleActive scheduleGeneration scheduleActorId nextAt scheduleReason activation",
+  researchVersionRecords:
+    "id createdInDatabaseAt profileId actorId number createdAt config",
+  calibrationPurposes:
+    "id createdInDatabaseAt accountId version target rightsEvidence explanation approvedBy expiresAt retentionMs redactedAt createdAt generation consent withdrawal",
+  calibrationControls:
+    "id createdInDatabaseAt accountId revision activeDecisionId actorId updatedAt",
+  jevPolicies:
+    "id createdInDatabaseAt policyKind accountId version approvedBy expiresAt model currency pricingEvidence inputMicrosPerMillion outputMicrosPerMillion maxInputTokens maxOutputTokens euEvidence purpose processingRights questionVersion normalizationVersion thresholdVersion",
+  jevAnalyzerControl:
+    "id createdInDatabaseAt policyKind accountId enabled analyzer routing verification networkFit policyId composerTimeoutMs backgroundTimeoutMs purpose withdrawn",
+  jevRoutingControl:
+    "id createdInDatabaseAt policyKind accountId enabled analyzer routing verification networkFit policyId composerTimeoutMs backgroundTimeoutMs purpose withdrawn",
+  jevVerificationControl:
+    "id createdInDatabaseAt policyKind accountId enabled analyzer routing verification networkFit policyId composerTimeoutMs backgroundTimeoutMs purpose withdrawn",
+  editorialExperiments:
+    "id createdInDatabaseAt accountId actorId membershipId revision state startSequence stopSequence startedAt stoppedAt endsAt sourceUntil sourceUnavailable createdAt spec",
+  experimentCommands:
+    "id createdInDatabaseAt accountId experimentId actorId revision sourceUnavailable createdAt",
+  experimentAssignments:
+    "id createdInDatabaseAt accountId experimentId draftId versionId reviewerId reviewerMembershipId arm planItemId seriesVersionId sourceUntil sourceUnavailable style publication",
+  experimentBindings:
+    "id createdInDatabaseAt accountId assignmentId vectorId draftVersionId snapshotId sourceUntil sourceUnavailable",
+  workspaceRecord:
+    "id createdInDatabaseAt name description lifecycle teamRevision",
+  memberRecords: "id createdInDatabaseAt userId role",
+  calibrationReferences:
+    "id createdInDatabaseAt accountId purposeId generation actorId createdAt expiresAt kind specId payload",
+  calibrationModels:
+    "id createdInDatabaseAt accountId purposeId generation actorId createdAt expiresAt kind specId experimentId candidateId declarationId blockNumber payload",
+};
+const remainingPayloadFields: Record<string, string> = {
+  spec: "from fitCutoff holdout1Start holdout1End holdout2Start holdout2End mode target transfers empiricalPolicy prospectiveStatus activationEligible compatibility anchor",
+  snapshot:
+    "asOf frameEnd frameComplete scanned populationLowerBound populationTotal exclusions counts timeSpanMs engineeringScreen engineeringScreenBasis empiricalStatus activationEligible unknownSegments missingPolicies refs",
+  experiment:
+    "from fitCutoff holdout1Start holdout1End holdout2Start holdout2End mode target transfers lossVersion predeclaredAt policy activationEligible compatibility",
+  candidate:
+    "trainSnapshotId frozenAt transfer n spanMs trainLosses baseline selected status activationEligible manifest",
+  evaluation:
+    "candidateId snapshotId evaluatedAt asOf trainN trainSpanMs block1 block2 stability engineeringScreen engineeringScreenBasis scanned populationTotal populationLowerBound frameComplete excludedFraction exclusions unknownSegments reasons evidenceQualified activationEligible compatibility",
+  "monitoring-declaration":
+    "version evaluationId policy firstEnd unusedSecondStart compatibility",
+  "monitoring-check":
+    "snapshotId computedAt asOf block excludedFraction coverageBasis status reasons",
+  activate:
+    "action evaluationId candidateId checkId expectedRevision resultingRevision",
+  "rollback-static":
+    "action expectedRevision resultingRevision formulaVersion thresholdVersion",
+};
+const remainingCompatibilityFields =
+  "network format windowHours metricPolicyId metricVersion dialect replyField replyDefinition impressionField impressionDefinition algorithmId audienceId jevPolicyId jevPolicyVersion requestedModel resolvedModel questionVersion inputVersion normalizationVersion formulaVersion thresholdVersion";
+const remainingRefFields =
+  "postAttemptId scheduleId versionId externalId knowledgeId assessmentId analysisReceiptId snapshotId metricReceiptId confirmedAt publishedAt observedAt assessmentAt capturedAt requestStartedAt sourceUntil originalUntil membership";
+function remainingData(data: RemainingArchive["data"]) {
+  const rows = data.selection.rows.map((row) => {
+    const r = fields(row, remainingFields[data.selection.family]);
+    if (r.activation) {
+      const activation = fields(
+        r.activation,
+        "kind language operations autoHandoff",
+      );
+      if (activation.autoHandoff)
+        activation.autoHandoff = fields(
+          activation.autoHandoff,
+          "count target intent",
+        );
+      r.activation = activation;
+    }
+    if (r.xEvidence) {
+      const evidence = fields(
+        r.xEvidence,
+        "scopes identityVerifiedAt textScopeEligible mediaScopeEligible liveWrite remoteRevocation writeProof",
+      );
+      if (evidence.writeProof)
+        evidence.writeProof = fields(
+          evidence.writeProof,
+          "externalId attemptId confirmedAt",
+        );
+      r.xEvidence = evidence;
+    }
+    if (r.spec) {
+      const spec = fields(
+        r.spec,
+        "hypothesis dimension a b outcome startsAt endsAt sampleCap stopCondition context frequency publication",
+      );
+      if (spec.publication)
+        spec.publication = fields(
+          spec.publication,
+          "metric windowHours policyId rightsEvidence explanation expiresAt",
+        );
+      r.spec = spec;
+    }
+    if (r.style)
+      r.style = fields(
+        r.style,
+        "versionId selectedBy selectionReceiptId sourceUntil",
+      );
+    if (r.publication)
+      r.publication = fields(
+        r.publication,
+        "scheduleId approvalId generation admittedAt",
+      );
+    if (r.consent) r.consent = fields(r.consent, "actorId at");
+    if (r.withdrawal) r.withdrawal = fields(r.withdrawal, "actorId at");
+    if (r.payload) {
+      const native = r.payload as Record<string, unknown>;
+      const k =
+        r.kind === "activation-decision"
+          ? String(native.action)
+          : String(r.kind);
+      const p = fields(native, remainingPayloadFields[k]);
+      if (p.compatibility)
+        p.compatibility = fields(p.compatibility, remainingCompatibilityFields);
+      if (p.anchor) p.anchor = fields(p.anchor, remainingRefFields);
+      if (p.refs) p.refs = items(p.refs, (x) => fields(x, remainingRefFields));
+      if (p.manifest)
+        p.manifest = items(p.manifest, (x) => fields(x, remainingRefFields));
+      r.payload = p;
+    }
+    return r;
+  });
+  return {
+    format: data.format,
+    version: data.version,
+    workspaceId: data.workspaceId,
+    selection: { family: data.selection.family, rows },
+  };
+}
 
 type Archive = FunctionReturnType<typeof api.operations.exportShared.shared>;
 const intelligenceFamilies: Record<IntelligenceFamily, string> = {
@@ -296,7 +704,13 @@ const privateFamilies = {
   workflowSteps: "Research-Ablaufschritte",
 };
 type PrivateFamily = keyof typeof privateFamilies;
-type Family = SharedFamily | PrivateFamily | IntelligenceFamily;
+type Family =
+  | SharedFamily
+  | PrivateFamily
+  | IntelligenceFamily
+  | RemainingFamily
+  | FinanceFamily
+  | RecordsFamily;
 type PrivateArchive = FunctionReturnType<
   (typeof api.operations.exportPrivate)[PrivateFamily]
 >;
@@ -631,6 +1045,33 @@ export function NativeArchiveExport() {
   const [family, setFamily] = useState<Family>(
     ["Owner", "Admin"].includes(state.role) ? "drafts" : "conversations",
   );
+  const [remainingKind, setRemainingKind] = useState<
+    | "spec"
+    | "snapshot"
+    | "experiment"
+    | "candidate"
+    | "evaluation"
+    | "monitoring-declaration"
+    | "monitoring-check"
+    | "activation-decision"
+    | "monitoring-tombstone"
+  >("spec");
+  const [financePurpose, setFinancePurpose] = useState<
+    "summary" | "research" | "draft" | "plan"
+  >("draft");
+  const [financeRunId, setFinanceRunId] = useState("");
+  const [financeNamespace, setFinanceNamespace] = useState<
+    "generation" | "native-search" | "jev" | "metrics" | "history" | "embedding"
+  >("generation");
+  const [financeBudgetScope, setFinanceBudgetScope] = useState<
+    "workspace" | "account"
+  >("account");
+  const [recordsVersionKind, setRecordsVersionKind] = useState<
+    "draft" | "idea"
+  >("draft");
+  const [recordsVersionId, setRecordsVersionId] = useState("");
+  const [experimentId, setExperimentId] = useState("");
+  const [assignmentId, setAssignmentId] = useState("");
   const [draftId, setDraftId] = useState("");
   const [updateKind, setUpdateKind] = useState<
     "check" | "proposal" | "evaluation"
@@ -642,6 +1083,38 @@ export function NativeArchiveExport() {
   const [operation, setOperation] = useState<
     "web-search" | "x-recent" | "x-trends"
   >("web-search");
+  const recordsFamily = family in recordsFamilies;
+  const ownRecords = recordsFamily && family.startsWith("own");
+  const financeFamily = family in financeFamilies;
+  const ownFinance =
+    financeFamily &&
+    ![
+      "metricsUsage",
+      "historyUsage",
+      "usageBudgets",
+      "businessFinanceRuns",
+      "businessRunUsage",
+      "publicFinanceOrders",
+      "publicOrderUsage",
+    ].includes(family);
+  const remainingFamily = family in remainingFamilies;
+  const needsRemainingAccount =
+    remainingFamily &&
+    ![
+      "mediaManifest",
+      "accountRecords",
+      "githubConnections",
+      "workspaceRecord",
+      "memberRecords",
+    ].includes(family);
+  const selectedRemainingKind =
+    family === "calibrationReferences"
+      ? remainingKind === "snapshot"
+        ? "snapshot"
+        : "spec"
+      : remainingKind === "spec" || remainingKind === "snapshot"
+        ? "experiment"
+        : remainingKind;
   const privateFamily = family in privateFamilies;
   const intelligenceFamily = family in intelligenceFamilies;
   const ownIntelligence = intelligenceFamily && family.startsWith("own");
@@ -658,18 +1131,39 @@ export function NativeArchiveExport() {
     "workflowSteps",
   ].includes(family);
   const allowed =
+    ownRecords ||
+    ownFinance ||
     ownIntelligence ||
     (privateFamily
       ? family !== "publicOrders" || ["Owner", "Admin"].includes(state.role)
       : ["Owner", "Admin"].includes(state.role));
+  const needsExperiment = [
+    "experimentCommands",
+    "experimentAssignments",
+    "experimentBindings",
+  ].includes(family);
   const ready =
     allowed &&
-    (!(privateFamily || (intelligenceFamily && !ownIntelligence)) ||
+    (!(
+      financeFamily ||
+      needsRemainingAccount ||
+      privateFamily ||
+      (intelligenceFamily && !ownIntelligence)
+    ) ||
       !!state.activeAccountId) &&
+    (family !== "mediaVersionReferences" || !!recordsVersionId) &&
+    (!needsExperiment || !!experimentId) &&
+    (family !== "experimentBindings" || !!assignmentId) &&
     (family !== "assessments" || !!draftId) &&
     (!needsConversation || !!conversationId) &&
     (!needsOrder || !!orderId) &&
-    (family !== "publicOrders" || !!profileId) &&
+    (!["runUsage", "businessRunUsage"].includes(family) || !!financeRunId) &&
+    (!["orderUsage", "publicOrderUsage", "researchRunUsage"].includes(family) ||
+      !!orderId) &&
+    ((family !== "publicOrders" &&
+      family !== "researchVersionRecords" &&
+      family !== "publicFinanceOrders") ||
+      !!profileId) &&
     (family !== "conversationRuns" || !!operationId);
   const { data: session } = authClient.useSession();
   const convex = useConvex();
@@ -678,7 +1172,7 @@ export function NativeArchiveExport() {
   const workspaceId = state.activeWorkspaceId,
     accountId = state.activeAccountId,
     role = state.role;
-  const scope = `${nativeScope}:${authId}:${sessionId}:${workspaceId}:${accountId}:${role}:${family}:${conversationId}:${profileId}:${orderId}:${operationId}:${operation}:${draftId}:${updateKind}`;
+  const scope = `${nativeScope}:${authId}:${sessionId}:${workspaceId}:${accountId}:${role}:${family}:${conversationId}:${profileId}:${orderId}:${operationId}:${operation}:${draftId}:${updateKind}:${selectedRemainingKind}:${financeRunId}:${financeNamespace}:${financeBudgetScope}:${financePurpose}:${experimentId}:${assignmentId}:${recordsVersionKind}:${recordsVersionId}`;
   const current = useRef({ scope, epoch: 0 });
   if (current.current.scope !== scope)
     current.current = { scope, epoch: current.current.epoch + 1 };
@@ -768,7 +1262,13 @@ export function NativeArchiveExport() {
         cursor: sent.cursor,
       };
       const offset = sent.cursor === null ? 0 : Number(sent.cursor);
-      let raw: Archive | PrivateArchive | IntelligenceArchive;
+      let raw:
+        | Archive
+        | PrivateArchive
+        | IntelligenceArchive
+        | RemainingArchive
+        | FinanceArchive
+        | RecordsArchive;
       switch (family) {
         case "conversations":
           raw = await convex.query(api.operations.exportPrivate.conversations, {
@@ -840,26 +1340,111 @@ export function NativeArchiveExport() {
           });
           break;
         default:
-          raw = intelligenceFamily
-            ? await convex.query(api.operations.exportIntelligence.page, {
+          raw = recordsFamily
+            ? await convex.query(recordsQuery, {
                 ...common,
-                family: family as IntelligenceFamily,
-                ...(ownIntelligence ? {} : { accountId: parent.accountId }),
-                ...(family === "assessments"
-                  ? { draftId: draftId as Id<"drafts"> }
-                  : {}),
-                ...(family === "intelligenceSourceUpdates"
-                  ? { kind: updateKind }
+                family: family as RecordsFamily,
+                ...(family === "mediaVersionReferences"
+                  ? {
+                      version:
+                        recordsVersionKind === "draft"
+                          ? {
+                              kind: "draft" as const,
+                              id: recordsVersionId as Id<"draftVersions">,
+                            }
+                          : {
+                              kind: "idea" as const,
+                              id: recordsVersionId as Id<"ideaVersions">,
+                            },
+                    }
                   : {}),
                 cursor: sent.cursor,
                 creationUpperBound: sent.creationUpperBound,
               })
-            : await convex.query(api.operations.exportShared.shared, {
-                ...common,
-                family: family as SharedFamily,
-                cursor: sent.cursor,
-                creationUpperBound: sent.creationUpperBound,
-              });
+            : financeFamily
+              ? await convex.query(financeQuery, {
+                  ...common,
+                  family: family as FinanceFamily,
+                  accountId: parent.accountId,
+                  ...(["runUsage", "businessRunUsage"].includes(family)
+                    ? { runId: financeRunId as Id<"agentRuns"> }
+                    : {}),
+                  ...([
+                    "orderUsage",
+                    "publicOrderUsage",
+                    "researchRunUsage",
+                  ].includes(family)
+                    ? { orderId: orderId as Id<"researchOrders"> }
+                    : {}),
+                  ...(["businessFinanceRuns", "businessRunUsage"].includes(
+                    family,
+                  )
+                    ? { purpose: financePurpose }
+                    : {}),
+                  ...(family === "publicFinanceOrders"
+                    ? { profileId: profileId as Id<"researchProfiles"> }
+                    : {}),
+                  ...(family === "usageBudgets"
+                    ? {
+                        namespace: financeNamespace,
+                        budgetScope: financeBudgetScope,
+                      }
+                    : {}),
+                  cursor: sent.cursor,
+                  creationUpperBound: sent.creationUpperBound,
+                })
+              : remainingFamily
+                ? await convex.query(remainingQuery, {
+                    ...common,
+                    family: family as RemainingFamily,
+                    ...(needsExperiment
+                      ? {
+                          experimentId:
+                            experimentId as Id<"editorialExperiments">,
+                        }
+                      : {}),
+                    ...(family === "experimentBindings"
+                      ? {
+                          assignmentId:
+                            assignmentId as Id<"editorialExperimentAssignments">,
+                        }
+                      : {}),
+                    ...(needsRemainingAccount
+                      ? { accountId: parent.accountId }
+                      : {}),
+                    ...(family === "researchVersionRecords"
+                      ? { profileId: profileId as Id<"researchProfiles"> }
+                      : {}),
+                    ...(["calibrationReferences", "calibrationModels"].includes(
+                      family,
+                    )
+                      ? { kind: selectedRemainingKind }
+                      : {}),
+                    cursor: sent.cursor,
+                    creationUpperBound: sent.creationUpperBound,
+                  })
+                : intelligenceFamily
+                  ? await convex.query(api.operations.exportIntelligence.page, {
+                      ...common,
+                      family: family as IntelligenceFamily,
+                      ...(ownIntelligence
+                        ? {}
+                        : { accountId: parent.accountId }),
+                      ...(family === "assessments"
+                        ? { draftId: draftId as Id<"drafts"> }
+                        : {}),
+                      ...(family === "intelligenceSourceUpdates"
+                        ? { kind: updateKind }
+                        : {}),
+                      cursor: sent.cursor,
+                      creationUpperBound: sent.creationUpperBound,
+                    })
+                  : await convex.query(api.operations.exportShared.shared, {
+                      ...common,
+                      family: family as SharedFamily,
+                      cursor: sent.cursor,
+                      creationUpperBound: sent.creationUpperBound,
+                    });
       }
       const result = {
         ...raw,
@@ -880,11 +1465,23 @@ export function NativeArchiveExport() {
         result.data.workspaceId !== workspaceId ||
         result.role !== role ||
         result.data.format !==
-          (intelligenceFamily
-            ? "dispatch-workspace-intelligence"
-            : privateFamily
-              ? "dispatch-workspace-private"
-              : "dispatch-workspace-shared") ||
+          (recordsFamily
+            ? "dispatch-workspace-operational-records"
+            : financeFamily
+              ? "dispatch-workspace-finance"
+              : remainingFamily
+                ? "dispatch-workspace-records"
+                : intelligenceFamily
+                  ? "dispatch-workspace-intelligence"
+                  : privateFamily
+                    ? "dispatch-workspace-private"
+                    : "dispatch-workspace-shared") ||
+        (recordsFamily &&
+          (!("version" in raw) ||
+            (family === "mediaVersionReferences"
+              ? raw.version?.kind !== recordsVersionKind ||
+                raw.version.id !== recordsVersionId
+              : raw.version !== null))) ||
         result.data.version !== 1 ||
         result.data.selection.family !== family ||
         result.data.selection.rows.length > 1 ||
@@ -900,6 +1497,55 @@ export function NativeArchiveExport() {
             Object.is(result.creationUpperBound, -0) ||
             result.creationUpperBound < 0 ||
             result.creationUpperBound > result.observedAt)) ||
+        (financeFamily &&
+          (!("purpose" in raw) ||
+            raw.purpose !==
+              (["businessFinanceRuns", "businessRunUsage"].includes(family)
+                ? financePurpose
+                : null) ||
+            !("profileId" in raw) ||
+            raw.profileId !==
+              (family === "publicFinanceOrders" ? profileId : null))) ||
+        (financeFamily &&
+          (!("runId" in raw) ||
+            raw.runId !==
+              (["runUsage", "businessRunUsage"].includes(family)
+                ? financeRunId
+                : null) ||
+            !("orderId" in raw) ||
+            raw.orderId !==
+              (["orderUsage", "publicOrderUsage", "researchRunUsage"].includes(
+                family,
+              )
+                ? orderId
+                : null) ||
+            !("accountId" in raw) ||
+            raw.accountId !== accountId ||
+            !("namespace" in raw) ||
+            raw.namespace !==
+              (family === "usageBudgets" ? financeNamespace : null) ||
+            !("budgetScope" in raw) ||
+            raw.budgetScope !==
+              (family === "usageBudgets" ? financeBudgetScope : null) ||
+            result.creationUpperBound === null)) ||
+        (remainingFamily &&
+          (!("experimentId" in raw) ||
+            raw.experimentId !== (needsExperiment ? experimentId : null) ||
+            !("assignmentId" in raw) ||
+            raw.assignmentId !==
+              (family === "experimentBindings" ? assignmentId : null))) ||
+        (remainingFamily &&
+          (!("accountId" in raw) ||
+            raw.accountId !== (needsRemainingAccount ? accountId : null) ||
+            !("profileId" in raw) ||
+            raw.profileId !==
+              (family === "researchVersionRecords" ? profileId : null) ||
+            !("kind" in raw) ||
+            raw.kind !==
+              (["calibrationReferences", "calibrationModels"].includes(family)
+                ? selectedRemainingKind
+                : null) ||
+            result.creationUpperBound === null)) ||
         (intelligenceFamily &&
           (!("kind" in raw) ||
             raw.kind !==
@@ -942,11 +1588,17 @@ export function NativeArchiveExport() {
         throw new Error("EXPORT_SCOPE_CHANGED");
       revoke();
       if (result.data.selection.rows.length) {
-        const payload = intelligenceFamily
-          ? intelligenceData(result.data as IntelligenceArchive["data"])
-          : privateFamily
-            ? privateData(result.data as PrivateArchive["data"])
-            : downloadData(result.data as Archive["data"]);
+        const payload = recordsFamily
+          ? recordsData(result.data as RecordsArchive["data"])
+          : financeFamily
+            ? financeData(result.data as FinanceArchive["data"])
+            : remainingFamily
+              ? remainingData(result.data as RemainingArchive["data"])
+              : intelligenceFamily
+                ? intelligenceData(result.data as IntelligenceArchive["data"])
+                : privateFamily
+                  ? privateData(result.data as PrivateArchive["data"])
+                  : downloadData(result.data as Archive["data"]);
         const serialized = JSON.stringify(payload);
         if (new TextEncoder().encode(serialized).length > 64 * 1024)
           throw Error("EXPORT_DATA_UNAVAILABLE");
@@ -1014,6 +1666,29 @@ export function NativeArchiveExport() {
       title="Inhalte und Verlauf exportieren"
       description="Lade die erhaltenen Inhalte eines Archivbereichs seitenweise herunter. Quellen und Berechtigungen werden bei jeder Seite erneut geprüft. Diese Auswahl ist kein Snapshot. Draft-Versionshistorie und eigene Einstellungen haben separate Exporte; Chatnachrichten und Ablaufschritte zeigen den erhaltenen Verlauf mit fortlaufender Seitenauswahl. Medienbytes sind nicht enthalten."
     >
+      {family === "mediaVersionReferences" && (
+        <>
+          <label htmlFor="archive-reference-kind">Versionstyp</label>
+          <select
+            id="archive-reference-kind"
+            className="native-select mb-3"
+            value={recordsVersionKind}
+            onChange={(e) =>
+              setRecordsVersionKind(e.target.value as "draft" | "idea")
+            }
+          >
+            <option value="draft">Draft-Version</option>
+            <option value="idea">Ideen-Version</option>
+          </select>
+          <label htmlFor="archive-reference-version">Versions-ID</label>
+          <input
+            id="archive-reference-version"
+            value={recordsVersionId}
+            onChange={(e) => setRecordsVersionId(e.target.value)}
+            className="input mb-3"
+          />
+        </>
+      )}
       <label htmlFor="archive-family" className="block text-sm mb-2">
         Archivbereich
       </label>
@@ -1024,8 +1699,29 @@ export function NativeArchiveExport() {
         onChange={(e) => setFamily(e.target.value as Family)}
       >
         {Object.entries({
-          ...(["Owner", "Admin"].includes(role) ? families : {}),
+          ...(["Owner", "Admin"].includes(role)
+            ? { ...families, ...remainingFamilies }
+            : {}),
+          ...Object.fromEntries(
+            Object.entries(recordsFamilies).filter(
+              ([k]) => k.startsWith("own") || ["Owner", "Admin"].includes(role),
+            ),
+          ),
           ...privateFamilies,
+          ...Object.fromEntries(
+            Object.entries(financeFamilies).filter(
+              ([k]) =>
+                ![
+                  "metricsUsage",
+                  "historyUsage",
+                  "usageBudgets",
+                  "businessFinanceRuns",
+                  "businessRunUsage",
+                  "publicFinanceOrders",
+                  "publicOrderUsage",
+                ].includes(k) || ["Owner", "Admin"].includes(role),
+            ),
+          ),
           ...Object.fromEntries(
             Object.entries(intelligenceFamilies).filter(
               ([key]) =>
@@ -1056,6 +1752,126 @@ export function NativeArchiveExport() {
           Bewertungen verwenden den aktiven Account. Nicht mehr freigegebene
           Inhalte sind ausdrücklich als nicht verfügbar gekennzeichnet.
         </p>
+      )}
+      {remainingFamily &&
+        ["calibrationReferences", "calibrationModels"].includes(family) && (
+          <label className="block text-sm mb-3">
+            Datensatzart
+            <select
+              className="native-select block"
+              value={selectedRemainingKind}
+              onChange={(e) =>
+                setRemainingKind(e.target.value as typeof remainingKind)
+              }
+            >
+              {(family === "calibrationReferences"
+                ? ["spec", "snapshot"]
+                : [
+                    "experiment",
+                    "candidate",
+                    "evaluation",
+                    "monitoring-declaration",
+                    "monitoring-check",
+                    "activation-decision",
+                    "monitoring-tombstone",
+                  ]
+              ).map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      {["runUsage", "businessRunUsage"].includes(family) && (
+        <label className="block text-sm mb-3">
+          KI-Lauf-ID
+          <input
+            className="native-input block"
+            value={financeRunId}
+            onChange={(e) => setFinanceRunId(e.target.value.trim())}
+          />
+        </label>
+      )}
+      {["businessFinanceRuns", "businessRunUsage"].includes(family) && (
+        <label className="block text-sm mb-3">
+          KI-Zweck
+          <select
+            className="native-select block"
+            value={financePurpose}
+            onChange={(e) =>
+              setFinancePurpose(e.target.value as typeof financePurpose)
+            }
+          >
+            {["summary", "research", "draft", "plan"].map((k) => (
+              <option key={k} value={k}>
+                {k}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {family === "usageBudgets" && (
+        <>
+          <label className="block text-sm mb-3">
+            Budgetbereich
+            <select
+              className="native-select block"
+              value={financeNamespace}
+              onChange={(e) =>
+                setFinanceNamespace(e.target.value as typeof financeNamespace)
+              }
+            >
+              {[
+                "generation",
+                "native-search",
+                "jev",
+                "metrics",
+                "history",
+                "embedding",
+              ].map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm mb-3">
+            Budgetumfang
+            <select
+              className="native-select block"
+              value={financeBudgetScope}
+              onChange={(e) =>
+                setFinanceBudgetScope(
+                  e.target.value as typeof financeBudgetScope,
+                )
+              }
+            >
+              <option value="account">Account</option>
+              <option value="workspace">Workspace</option>
+            </select>
+          </label>
+        </>
+      )}
+      {needsExperiment && (
+        <label className="block text-sm mb-3">
+          Experiment-ID
+          <input
+            className="native-input block"
+            value={experimentId}
+            onChange={(e) => setExperimentId(e.target.value.trim())}
+          />
+        </label>
+      )}
+      {family === "experimentBindings" && (
+        <label className="block text-sm mb-3">
+          Zuordnungs-ID
+          <input
+            className="native-input block"
+            value={assignmentId}
+            onChange={(e) => setAssignmentId(e.target.value.trim())}
+          />
+        </label>
       )}
       {family === "assessments" && (
         <label className="block text-sm mb-3">
@@ -1091,7 +1907,9 @@ export function NativeArchiveExport() {
           />
         </label>
       )}
-      {family === "publicOrders" && (
+      {(family === "publicOrders" ||
+        family === "researchVersionRecords" ||
+        family === "publicFinanceOrders") && (
         <label className="block text-sm mb-3">
           Research-Profil-ID
           <input
@@ -1101,7 +1919,10 @@ export function NativeArchiveExport() {
           />
         </label>
       )}
-      {needsOrder && (
+      {(needsOrder ||
+        ["orderUsage", "publicOrderUsage", "researchRunUsage"].includes(
+          family,
+        )) && (
         <label className="block text-sm mb-3">
           Research-Auftrag-ID
           <input

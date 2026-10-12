@@ -1,3 +1,4 @@
+import { operationalUntil } from "../lib/operationalRetention";
 import { orderLiability } from "./pipelineAccess";
 import { clearSourceCopies, materialHash } from "./evidence";
 import { ConvexError, v } from "convex/values";
@@ -99,14 +100,14 @@ export const begin = internalMutation({
         throw new ConvexError("RESEARCH_ATTEMPT_OWNER_INVALID");
       if (prior.state !== "completed" && prior.state !== "empty")
         throw new ConvexError("RESEARCH_FILL_UNRESOLVED");
-      if (prior.expiresAt > Date.now()) {
+      if (operationalUntil(prior.createdAt, prior.expiresAt) > Date.now()) {
         let valid = true;
         for (const id of prior.sourceIds) {
           const s = await ctx.db.get(id);
           if (
             !s ||
             s.status !== "usable" ||
-            s.usableUntil <= Date.now() ||
+            operationalUntil(s.observedAt, s.usableUntil) <= Date.now() ||
             s.policyFingerprint !== captured.fingerprint ||
             s.workspaceId !== o.workspaceId ||
             s.accountId !== o.accountId
@@ -432,7 +433,7 @@ export const commit = internalMutation({
         generation: p.generation,
         observedAt: Date.now(),
         usableUntil: Math.min(
-          Date.now() + p.retentionMs,
+          operationalUntil(Date.now(), Date.now() + p.retentionMs),
           p.expiresAt,
           p.lifecycleValidUntil,
         ),
@@ -516,7 +517,7 @@ export const expire = internalMutation({
       !s ||
       s.generation !== a.generation ||
       s.usableUntil !== a.usableUntil ||
-      s.usableUntil > Date.now() ||
+      operationalUntil(s.observedAt, s.usableUntil) > Date.now() ||
       s.status !== "usable"
     )
       return null;
