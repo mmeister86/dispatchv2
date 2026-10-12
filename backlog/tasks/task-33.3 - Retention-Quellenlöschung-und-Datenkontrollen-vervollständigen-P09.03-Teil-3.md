@@ -3,10 +3,10 @@ id: TASK-33.3
 title: >-
   Retention, Quellenlöschung und Datenkontrollen vervollständigen (P09.03, Teil
   3)
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-10 13:23'
+updated_date: '2026-10-12'
 labels:
   - p09
   - r3
@@ -45,8 +45,8 @@ Explizite Retention für Assessments, Cache, Usage, kontrollierte Evaluation und
 
 ## Definition of Done
 <!-- DOD:BEGIN -->
-- [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
-- [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
+- [x] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
+- [x] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
 ## Implementation Notes
@@ -57,6 +57,8 @@ TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umge
 2026-10-09: Nutzer bestätigt 30 Tage als gewünschte Aufbewahrung. Umsetzung nutzt eine unverlängerbare betriebliche Obergrenze mit früherem Quellenwiderruf/-ablauf und Löschung. Inhaltsfreie Sperren für ungeklärte externe Effekte, offene Abrechnung und noch gültige Upload-/Replay-Risiken bleiben bis zum sicheren Abgleich; keine gesetzliche oder fremde Provider-/Backup-Frist erfunden. Inventarentscheidung aktualisiert, technische Retention noch in Umsetzung.
 
 2026-10-10: Source-loss-/Retention-Hooks, bounded sweep, native Agent/Workflow-Restbereinigung einschließlich _storage umgesetzt. Betriebliche Ausführung/Diagnose30Tage; gespeicherte Business-/Kalibrierungsnachweise behalten originale zweckgebundene Fristen. Kürzere Quellenfrist hat Vorrang, minimale Replay/Settlement-Barrieren bleiben bis sicherem Abgleich. UI erklärt Provider-Kopien/Backups/öffentliche Posts. Manuelle Abnahme offen.
+
+2026-10-12: Auf ausdrückliche Nutzeranweisung geschlossen; technische ACs belegt, frische gezielte Retention-Tests 10/10 PASS. Manuelles Done per Nutzerbestätigung 2026-10-12.
 <!-- SECTION:NOTES:END -->
 
 ## Final Summary
