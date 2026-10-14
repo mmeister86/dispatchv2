@@ -21,6 +21,7 @@ async function person(
   email: string,
   verified = true,
 ) {
+  await t.mutation(internal.operations.authAdmission.initialize, {});
   const identity = await t.run(async (ctx) => {
     const u = await ctx.runMutation(components.betterAuth.adapter.create, {
       input: {
@@ -31,6 +32,19 @@ async function person(
           emailVerified: verified,
           createdAt: Date.now(),
           updatedAt: Date.now(),
+        },
+      },
+    });
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "account",
+        data: {
+          userId: u._id,
+          providerId: "credential",
+          accountId: u._id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          password: "synthetic-hash",
         },
       },
     });

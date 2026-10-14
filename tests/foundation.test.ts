@@ -2,7 +2,7 @@ import { convexTest } from "convex-test";
 import betterAuthComponent from "@convex-dev/better-auth/test";
 import { describe, expect, test, vi } from "vitest";
 import schema from "../convex/schema";
-import { api, components } from "../convex/_generated/api";
+import { api, components, internal } from "../convex/_generated/api";
 import { authOrigins } from "../convex/auth";
 import { requireReference } from "../convex/lib/authorization";
 
@@ -18,6 +18,7 @@ async function identity(
   verified = true,
   expiresAt = Date.now() + 60_000,
 ) {
+  await t.mutation(internal.operations.authAdmission.initialize, {});
   return await t.run(async (ctx) => {
     const user = await ctx.runMutation(components.betterAuth.adapter.create, {
       input: {
@@ -28,6 +29,19 @@ async function identity(
           emailVerified: verified,
           createdAt: Date.now(),
           updatedAt: Date.now(),
+        },
+      },
+    });
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "account",
+        data: {
+          userId: user._id,
+          providerId: "credential",
+          accountId: user._id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          password: "synthetic-hash",
         },
       },
     });
@@ -233,6 +247,7 @@ test("real Better Auth handlers verify email, reset passwords and revoke session
     });
   try {
     const t = setup();
+    await t.mutation(internal.operations.authAdmission.initialize, {});
     const post = (path: string, body: unknown) =>
       t.fetch(`/api/auth/${path}`, {
         method: "POST",

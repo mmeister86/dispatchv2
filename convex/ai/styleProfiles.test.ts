@@ -453,6 +453,19 @@ test("current roles, account/tenant and lifecycle guard commands and exact repla
         },
       },
     });
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "account",
+        data: {
+          userId: u._id,
+          providerId: "credential",
+          accountId: u._id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          password: "synthetic-hash",
+        },
+      },
+    });
     const session = await ctx.runMutation(
       components.betterAuth.adapter.create,
       {
@@ -990,6 +1003,19 @@ async function secondAdmin(f: Awaited<ReturnType<typeof fixture>>) {
           emailVerified: true,
           createdAt: Date.now(),
           updatedAt: Date.now(),
+        },
+      },
+    });
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "account",
+        data: {
+          userId: u._id,
+          providerId: "credential",
+          accountId: u._id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          password: "synthetic-hash",
         },
       },
     });

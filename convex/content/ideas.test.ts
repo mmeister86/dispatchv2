@@ -1051,6 +1051,19 @@ test("TASK45.2 valid unbounded Owner style discovers and erases a former Editor'
         },
       },
     });
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "account",
+        data: {
+          userId: user._id,
+          providerId: "credential",
+          accountId: user._id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          password: "synthetic-hash",
+        },
+      },
+    });
     const session = await ctx.runMutation(
       components.betterAuth.adapter.create,
       {

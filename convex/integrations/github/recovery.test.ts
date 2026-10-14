@@ -376,6 +376,19 @@ test("concurrent two-Owner recovery performs one App POST, shares three attempts
         },
       },
     });
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "account",
+        data: {
+          userId: u._id,
+          providerId: "credential",
+          accountId: u._id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          password: "synthetic-hash",
+        },
+      },
+    });
     const session = await ctx.runMutation(
       components.betterAuth.adapter.create,
       {

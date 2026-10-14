@@ -109,6 +109,19 @@ test("a new authorized human records their own approval when the former approver
         },
       },
     });
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "account",
+        data: {
+          userId: u._id,
+          providerId: "credential",
+          accountId: u._id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          password: "synthetic-hash",
+        },
+      },
+    });
     const s = await ctx.runMutation(components.betterAuth.adapter.create, {
       input: {
         model: "session",

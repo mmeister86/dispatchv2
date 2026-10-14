@@ -25,6 +25,7 @@ async function fixture(proof = false, claim = true, review = false) {
   vi.stubEnv("INTEGRATION_ENCRYPTION_KEY_ID", "fixture");
   const t = convexTest(schema, modules);
   betterAuthComponent.register(t);
+  await t.mutation(internal.operations.authAdmission.initialize, {});
   const identity = await t.run(async (ctx) => {
     const user = await ctx.runMutation(components.betterAuth.adapter.create, {
       input: {
@@ -35,6 +36,19 @@ async function fixture(proof = false, claim = true, review = false) {
           emailVerified: true,
           createdAt: Date.now(),
           updatedAt: Date.now(),
+        },
+      },
+    });
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "account",
+        data: {
+          userId: user._id,
+          providerId: "credential",
+          accountId: user._id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          password: "synthetic-hash",
         },
       },
     });
