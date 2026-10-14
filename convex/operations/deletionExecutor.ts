@@ -895,7 +895,7 @@ export const advance = internalMutation({
         : db.query(table); // Bounded discovery also finds prior shared actor references and rootless edges.
     const page = await source.paginate({
       cursor: job.cursor ?? null,
-      numItems: job.phase === "components" ? 1 : 20,
+      numItems: 20,
       maximumBytesRead: 1024 * 1024,
     });
     const restartingStop =

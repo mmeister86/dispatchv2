@@ -559,3 +559,112 @@ test("missing native Workflow root still drains exact bounded residuals without 
     await native.run((ctx) => ctx.db.query("events").collect()),
   ).toMatchObject([{ workflowId: ids.foreign, name: "foreign" }]);
 });
+test("components phase pages foreign rows without one step per row", async () => {
+  const f = await fixture();
+  const foreign = await f.t.run((ctx) =>
+    ctx.db.insert("workspaces", { name: "Foreign", description: "survives" }),
+  );
+  const foreignActor = await f.t.run((ctx) =>
+    ctx.db.insert("users", {
+      authId: "foreign-components-page",
+      defaultWorkspaceId: foreign,
+      activeWorkspaceId: foreign,
+    }),
+  );
+  const account = await f.t.run((ctx) =>
+    ctx.db.insert("socialAccounts", {
+      workspaceId: foreign,
+      provider: "X",
+      name: "Foreign",
+      providerIdentity: "foreign-components-page",
+      handle: "foreign",
+      connection: "connected",
+      capability: {
+        maxText: 280,
+        maxThread: 25,
+        maxMedia: 4,
+        mediaTypes: ["image"],
+        publish: true,
+      },
+    }),
+  );
+  await f.t.run(async (ctx) => {
+    const ids = [];
+    for (let i = 0; i < 5; i++)
+      ids.push(
+        await ctx.db.insert("agentRuns", {
+          workspaceId: foreign,
+          accountId: account,
+          actorId: foreignActor,
+          purpose: "chat",
+          policyVersion: "test",
+          promptVersion: "test",
+          policyFingerprint: "test",
+          accountConnectionSequence: 0,
+          sources: [],
+          threadId: `foreign-thread-${i}`,
+          promptMessageId: `foreign-prompt-${i}`,
+          generation: 1,
+          state: "completed",
+          executionKey: null,
+          deadline: Date.now(),
+          attempts: 1,
+          toolSteps: 0,
+          budgetIds: [],
+          createdAt: Date.now() + i,
+          errorCode: null,
+        }),
+      );
+    return ids;
+  });
+  // Account scope scans the whole table, so foreign rows enter the page and
+  // are skipped one by one unless the page holds more than one row.
+  const jobId = await f.t.run((ctx) =>
+    ctx.db.insert("deletionJobs", {
+      scope: "account",
+      actorId: f.userId,
+      authId: "test-components-page",
+      workspaceId: f.workspaceId,
+      userId: f.userId,
+      deleteWorkspaces: [
+        { workspaceId: f.workspaceId, expectedTeamRevision: 0 },
+      ],
+      commandKey: "test-components-page",
+      intent: "test",
+      state: "running",
+      phase: "components",
+      processed: 0,
+      revision: 0,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      retentionUntil: Date.now() + 86400000,
+      tableIndex: 0,
+    }),
+  );
+  const read = () => f.t.run((ctx) => ctx.db.get(jobId));
+  const step = async () => {
+    const before = (await read())!;
+    await f.t.mutation(internal.operations.deletionExecutor.advance, {
+      jobId,
+      revision: before.revision,
+    });
+    return read();
+  };
+  // Drain the whole components phase: every page must complete in a single
+  // step, so no advance may leave a mid-page cursor behind. With one row per
+  // step, each of the 5 foreign agentRuns rows would leave a cursor behind.
+  let sawCursor = false;
+  for (let n = 0; n < 300; n++) {
+    const job = (await read())!;
+    if (job.phase !== "components" || job.state !== "running") break;
+    const after = (await step())!;
+    if (after.phase === "components" && after.cursor) sawCursor = true;
+  }
+  const done = (await read())!;
+  expect(done.phase).not.toBe("components");
+  expect(sawCursor).toBe(false);
+  // Foreign rows are skipped, never deleted, by the components phase.
+  expect(
+    await f.t.run((ctx) => ctx.db.query("agentRuns").collect()),
+  ).toHaveLength(5);
+});
