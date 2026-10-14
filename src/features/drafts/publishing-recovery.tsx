@@ -156,7 +156,8 @@ export function PublishingRecovery({ schedule }: { schedule: Schedule }) {
     } catch (e) {
       if (current()) setFeedback(editorialActionError(e));
     } finally {
-      if (current()) setPending(false);
+      // Re-enable controls while mounted even if the command bumped the schedule generation.
+      if (mounted.current) setPending(false);
     }
   };
   return (

@@ -68,6 +68,7 @@ import {
   FirstWriteConfirmation,
   PublishingResults,
 } from "../src/features/drafts/first-write-confirmation";
+import { PublishingRecovery } from "../src/features/drafts/publishing-recovery";
 const draft = {
   id: "d",
   workspaceId: "w",
@@ -131,4 +132,37 @@ test("published result uses confirmed IDs and immutable snapshot; uncertainty ex
   expect(html).toContain("Ungeklärte Positionen blockieren");
   expect(html).toContain("Auftrag abbrechen");
   expect(html).not.toContain("erfolgreich fortgesetzt");
+});
+test("publishing recovery controls start enabled; no command in flight on mount", () => {
+  const html = renderToStaticMarkup(
+    createElement(PublishingRecovery, {
+      schedule: {
+        id: "s",
+        draftId: "d",
+        workspaceId: "w",
+        accountId: "a",
+        version: 1,
+        versionId: "v",
+        generation: 1,
+        text: ["Snapshot text"],
+        mediaIds: [],
+        at: "2026-10-05",
+        status: "uncertain",
+        publishedCount: 1,
+        externalPosts: [
+          {
+            position: 0,
+            externalId: "123",
+            url: "https://x.com/i/web/status/123",
+            attemptId: "p",
+            confirmedAt: 1,
+          },
+        ],
+      },
+    }),
+  );
+  expect(html).toContain("Unveränderten Thread ausdrücklich fortsetzen");
+  expect(html).toContain("nur lesend abgleichen");
+  expect(html).not.toContain("Befehl wird ausgeführt");
+  expect(html).not.toContain("Abgleich läuft");
 });
