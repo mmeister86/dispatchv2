@@ -95,7 +95,13 @@ export async function request(
     );
     if (response.status === 401 || response.status === 403) {
       await response.body?.cancel();
-      throw new ProviderError("GITHUB_REAUTH_REQUIRED");
+      throw new ProviderError(
+        response.status === 403 &&
+          (response.headers.get("x-ratelimit-remaining") === "0" ||
+            response.headers.has("retry-after"))
+          ? "GITHUB_RATE_LIMITED"
+          : "GITHUB_REAUTH_REQUIRED",
+      );
     }
     const reader = response.body?.getReader();
     if (!reader) throw new ProviderError("GITHUB_PROVIDER_RESPONSE_INVALID");
@@ -599,6 +605,22 @@ export const refresh = action({
       );
       return null;
     } catch (e) {
+      if (e instanceof ProviderError && e.code === "GITHUB_RATE_LIMITED") {
+        // Rejected unprocessed: the refresh token was not consumed, so commit the
+        // unchanged credentials to release the lease instead of blocking.
+        await ctx.runMutation(
+          internal.integrations.github.repositories.refreshed,
+          {
+            ...a,
+            generation: c.generation,
+            credentialGeneration: c.credentialGeneration,
+            envelope: c.envelope!,
+            expiresAt: c.expiresAt,
+            refreshExpiresAt: c.refreshExpiresAt,
+          },
+        );
+        throw new ConvexError("GITHUB_RATE_LIMITED");
+      }
       const code =
         e instanceof ProviderError && e.code === "GITHUB_REAUTH_REQUIRED"
           ? e.code

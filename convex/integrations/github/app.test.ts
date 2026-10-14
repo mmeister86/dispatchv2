@@ -634,6 +634,97 @@ test("401 closes source authority even when provider returns an unparseable body
     (await f.t.run((ctx) => ctx.db.query("githubConnections").first()))!.status,
   ).toBe("reauth_required");
 });
+test("403 rate limit classifies GITHUB_RATE_LIMITED; plain 403 and 401 stay reauth", async () => {
+  const respond = (status: number, headers?: Record<string, string>) =>
+    vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValue(new Response("provider body", { status, headers }));
+  respond(403, { "x-ratelimit-remaining": "0" });
+  await expect(request("/user", "token")).rejects.toThrow(
+    "GITHUB_RATE_LIMITED",
+  );
+  vi.restoreAllMocks();
+  respond(403, { "retry-after": "60" });
+  await expect(request("/user", "token")).rejects.toThrow(
+    "GITHUB_RATE_LIMITED",
+  );
+  vi.restoreAllMocks();
+  respond(403, { "x-ratelimit-remaining": "5000" });
+  await expect(request("/user", "token")).rejects.toThrow(
+    "GITHUB_REAUTH_REQUIRED",
+  );
+  vi.restoreAllMocks();
+  respond(401, { "x-ratelimit-remaining": "0" });
+  await expect(request("/user", "token")).rejects.toThrow(
+    "GITHUB_REAUTH_REQUIRED",
+  );
+});
+test("rate-limited refresh keeps credentials, releases the lease and retries later", async () => {
+  config();
+  const f = await mediaFixture();
+  provider();
+  await connect(f);
+  vi.restoreAllMocks();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response("rate limit exceeded", {
+      status: 403,
+      headers: { "x-ratelimit-remaining": "0" },
+    }),
+  );
+  await expect(
+    f.signed.action(api.integrations.github.app.refresh, {
+      workspaceId: f.workspaceId,
+    }),
+  ).rejects.toThrow("GITHUB_RATE_LIMITED");
+  const c = await f.t.run((ctx) => ctx.db.query("githubConnections").first());
+  expect(c).toMatchObject({ status: "connected", leaseUntil: 0 });
+  expect(await open(c!.envelope!, association(f.workspaceId))).toMatchObject({
+    accessToken: "fixture-access",
+  });
+  vi.restoreAllMocks();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    Response.json({
+      access_token: "next-access",
+      refresh_token: "next-refresh",
+      token_type: "bearer",
+      scope: "",
+      expires_in: 28800,
+      refresh_token_expires_in: 15897600,
+    }),
+  );
+  await f.signed.action(api.integrations.github.app.refresh, {
+    workspaceId: f.workspaceId,
+  });
+  expect(
+    await open(
+      (await f.t.run((ctx) => ctx.db.query("githubConnections").first()))!
+        .envelope!,
+      association(f.workspaceId),
+    ),
+  ).toEqual({ accessToken: "next-access", refreshToken: "next-refresh" });
+});
+test("rate-limited discover surfaces GITHUB_RATE_LIMITED and keeps the connection", async () => {
+  config();
+  const f = await mediaFixture();
+  provider();
+  await connect(f);
+  vi.restoreAllMocks();
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response("rate limit exceeded", {
+      status: 403,
+      headers: { "x-ratelimit-remaining": "0" },
+    }),
+  );
+  await expect(
+    f.signed.action(api.integrations.github.app.discoverRepositories, {
+      workspaceId: f.workspaceId,
+      installationId: "50",
+    }),
+  ).rejects.toThrow("GITHUB_RATE_LIMITED");
+  expect(
+    await f.t.run((ctx) => ctx.db.query("githubConnections").first()),
+  ).toMatchObject({ status: "connected", leaseUntil: 0 });
+});
 test("disconnect during OAuth provider I/O cannot restore a connection or accept late identity proof", async () => {
   config();
   const f = await mediaFixture(),
