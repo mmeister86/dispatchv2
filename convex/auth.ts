@@ -146,7 +146,16 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
           },
           runMutation: async (reference: unknown, args: any) => {
             const input = args?.input;
-            if (!lease || !input || (!input.data && !input.update))
+            // Only admission-gated models need staged proofs; public key
+            // material (jwks) passes through like the component guard does.
+            if (
+              !lease ||
+              !input ||
+              (!input.data && !input.update) ||
+              !["user", "account", "session", "verification"].includes(
+                input.model,
+              )
+            )
               return mutationCtx.runMutation(reference as never, args);
             const operation = input.data ? "create" : "update";
             const key = canonicalWrite(
