@@ -4,8 +4,8 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "@/lib/auth-client": `export const demoMode=false;`,
-  "convex/react": `import {useSyncExternalStore} from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';const noop=async()=>null;const lookup=args=>new Promise(resolve=>window.pending.push({kind:'reconcile',args,resolve})),resume=args=>new Promise(resolve=>window.pending.push({kind:'continue',args,resolve}));export const useAction=ref=>getFunctionName(ref)==='publishing/reconcile:lookup'?lookup:noop;export const useMutation=ref=>getFunctionName(ref)==='publishing/reconcile:continueThread'?resume:getFunctionName(ref)==='publishing/reconcile:finalizeAbort'?args=>new Promise(resolve=>window.pending.push({kind:'abort',args,resolve})):noop;export const useQuery=ref=>useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>getFunctionName(ref)==='publishing/reconcile:inspect'?window.recovery??null:getFunctionName(ref)==='editorial:calendar'?window.calendar??undefined:null);export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
+  "@/lib/auth-client": `export const demoMode=false;export const authClient={useSession:()=>({data:{user:{id:'auth-alpha'},session:{id:'session-alpha'}},isPending:false})};`,
+  "convex/react": `import {useSyncExternalStore} from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';const noop=async()=>null;const lookup=args=>new Promise(resolve=>window.pending.push({kind:'reconcile',args,resolve})),resume=args=>new Promise(resolve=>window.pending.push({kind:'continue',args,resolve}));export const useAction=ref=>getFunctionName(ref)==='publishing/reconcile:lookup'?lookup:noop;export const useMutation=ref=>getFunctionName(ref)==='publishing/reconcile:continueThread'?resume:getFunctionName(ref)==='publishing/reconcile:finalizeAbort'?args=>new Promise(resolve=>window.pending.push({kind:'abort',args,resolve})):noop;const review={authId:'auth-alpha',sessionId:'session-alpha',revision:0,policyId:null,editorial:false,brand:false,editorialDecisionId:null,brandDecisionId:null,sourceUntil:null,aborted:false};export const useQuery=ref=>useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>getFunctionName(ref)==='publishing/reconcile:inspect'?window.recovery??null:getFunctionName(ref)==='editorial:calendar'?window.calendar??undefined:getFunctionName(ref)==='editorial/reviews:get'?review:undefined);export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});export const useConvex=()=>({});export const useConvexAuth=()=>({isLoading:false,isAuthenticated:true});export class ConvexReactClient{}`,
   "@/lib/store": `import {useSyncExternalStore} from 'react';export const useStore=()=>{const state=useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>window.store.state);return {...window.store,state};};`,
 };
 const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {createMemoryRouter,RouterProvider} from 'react-router-dom';import {ComposerPage} from '/src/pages/Drafts.tsx';import {CalendarPage} from '/src/pages/Calendar.tsx';import {createSeed} from '/src/lib/model.ts';
@@ -13,7 +13,7 @@ window.pending=[];window.listeners=new Set();window.recovery={aborted:false,posi
 const seed=createSeed(),ws=seed.activeWorkspaceId;
 const account={...seed.accounts.find(a=>a.channel==='X' && a.workspaceId===ws),connection:'connected',capability:{maxText:280,maxThread:100,maxMedia:4,mediaTypes:['image'],publish:false},xEvidence:{scopes:['tweet.write','tweet.read','users.read','media.write'],identityVerifiedAt:1,connectionSequence:1,textScopeEligible:true,mediaScopeEligible:true,liveWrite:'unverified'}};
 const asset={id:'media',workspaceId:ws,name:'Approved image',alt:'Changed library default',type:'image',size:70,status:'ready',origin:'R2',url:'',mime:'image/png'};
-const draft={id:'thread',workspaceId:ws,title:'Exact approved thread',accountId:account.id,pillar:'',strategy:'generic',comments:[],revision:1,versions:[{id:'version-one',number:1,text:['Exact approved first','Exact approved second'],mediaIds:['media'],media:[{assetId:'media',alt:'Exact approved alt'}],createdAt:new Date().toISOString(),reason:'Fixture'}]};
+const draft={id:'thread',workspaceId:ws,title:'Exact approved thread',accountId:account.id,pillar:'',strategy:'generic',comments:[],revision:1,approvals:[{id:'proof-approval',purpose:'first_write_verification',versionId:'version-one',accountId:account.id,reviewPin:{sourceUntil:Date.now()+3600000},expiresAt:Date.now()+3600000}],versions:[{id:'version-one',number:1,text:['Exact approved first','Exact approved second'],mediaIds:['media'],media:[{assetId:'media',alt:'Exact approved alt'}],createdAt:new Date().toISOString(),reason:'Fixture'}]};
 const command=(kind,args)=>new Promise(resolve=>window.pending.push({kind,args,resolve}));
 const no=()=>false;
 window.store={state:{...seed,role:'Owner',accounts:[account],media:[asset],drafts:[draft],schedules:[]},approveFirstWrite:d=>command('approve',{versionId:d.versions.at(-1).id,accountId:d.accountId}),confirmFirstWrite:(d,id)=>command('confirm',{versionId:d.versions.at(-1).id,accountId:d.accountId,approvalId:id}),saveDraft:d=>command('save',d),approveVersion:async()=>false,revokeApproval:async()=>false,cancelSchedule:s=>command('cancel',{scheduleId:s.id,expectedGeneration:s.generation}),replaceSchedule:async()=>false,createDraft:async()=>'',loadMoreVersions:no,hasMoreVersions:false,loadMoreMedia:no,hasMoreMedia:false,members:[],mutate:no,addComment:async()=>false,resolveComment:async()=>false,assignDraft:async()=>false};
@@ -221,6 +221,30 @@ try {
   ).toBeEnabled();
   await expect(candidate).toHaveValue("https://x.com/fixture/status/124");
   await expect(page.getByText(/Ausgang weiterhin ungeklärt/)).toBeVisible();
+  // Regression: a command that bumps the schedule generation while in flight must not strand `pending`.
+  await page
+    .getByRole("button", { name: "Beitrag 2 nur lesend abgleichen" })
+    .click();
+  await page.evaluate(() =>
+    window.update((s) => ({
+      ...s,
+      schedules: s.schedules.map((job) => ({ ...job, generation: 2 })),
+    })),
+  );
+  await expect(
+    page.getByRole("button", { name: "Abgleich läuft …" }),
+  ).toBeDisabled();
+  await page.evaluate(() => window.pending.at(-1).resolve("unknown"));
+  await expect(
+    page.getByRole("button", { name: "Beitrag 2 nur lesend abgleichen" }),
+  ).toBeEnabled();
+  // Restore the generation the later assertions expect.
+  await page.evaluate(() =>
+    window.update((s) => ({
+      ...s,
+      schedules: s.schedules.map((job) => ({ ...job, generation: 1 })),
+    })),
+  );
   await page
     .getByRole("button", { name: "Beitrag 2 nur lesend abgleichen" })
     .click();
