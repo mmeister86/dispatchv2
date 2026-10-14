@@ -640,22 +640,40 @@ test("real native journal rejects foreign original args and unknown stages befor
     "REFERENCE_ACCESS_DENIED",
   );
 });
-test("retained order config must match its original profile version", async () => {
+test("retention-scrubbed order config is unavailable while broken profile bindings deny access", async () => {
   const f = await researchMaterial();
+  const a = {
+    ...f.args,
+    accountId: f.accountId,
+    conversationId: f.conversationId,
+    cursor: null,
+    selectionUpperBound: null,
+  };
   await f.t.run(async (ctx) => {
     const o = (await ctx.db.get(f.orderId))!;
     await ctx.db.patch(o._id, {
-      config: { ...o.config, topics: "FOREIGN_PROTECTED_CONFIG" },
+      // retention.ts rewrites the order's config snapshot once operational.
+      config: {
+        ...o.config,
+        topics: "",
+        project: "",
+        audience: "",
+        languages: [],
+        regions: [],
+        preferredSources: [],
+        exclusions: "",
+        autoHandoff: false,
+      },
     });
   });
+  const page = await f.signed.query(endpoint("targetedOrders"), a);
+  expect(page.data.selection.rows).toEqual([]);
+  await f.t.run(async (ctx) => {
+    const o = (await ctx.db.get(f.orderId))!;
+    await ctx.db.delete(o.profileVersionId);
+  });
   await expect(
-    f.signed.query(endpoint("targetedOrders"), {
-      ...f.args,
-      accountId: f.accountId,
-      conversationId: f.conversationId,
-      cursor: null,
-      selectionUpperBound: null,
-    }),
+    f.signed.query(endpoint("targetedOrders"), a),
   ).rejects.toThrow("REFERENCE_ACCESS_DENIED");
 });
 test("chat result metadata proves the original native operation and both idea versions", async () => {

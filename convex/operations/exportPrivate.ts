@@ -692,9 +692,11 @@ async function orderOwner(s: Read, id: Id<"researchOrders">) {
     profile &&
       version &&
       profile.accountId === o.accountId &&
-      version.profileId === profile._id &&
-      JSON.stringify(version.config) === JSON.stringify(o.config),
+      version.profileId === profile._id,
   );
+  // Only retention scrubbing rewrites an order's config snapshot after creation.
+  if (JSON.stringify(version.config) !== JSON.stringify(o.config))
+    unavailable();
   if (profile.deleted || profile.paused) unavailable();
   return o;
 }
