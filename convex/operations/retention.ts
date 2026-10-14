@@ -99,7 +99,7 @@ export const sweep = internalMutation({
           await ctx.scheduler.runAfter(0, internal.ai.runs.purgeSource, {
             runId: r._id,
           });
-        else
+        else if (!r.nativeCleanupAt)
           await ctx.scheduler.runAfter(0, nativeCleanupReference, {
             kind: "run",
             id: r._id,
@@ -169,7 +169,7 @@ export const sweep = internalMutation({
           await ctx.scheduler.runAfter(0, internal.ai.conversations.cleanup, {
             conversationId: c._id,
           });
-        else if (c.state === "deleted")
+        else if (c.state === "deleted" && !c.nativeCleanupAt)
           await ctx.scheduler.runAfter(0, nativeCleanupReference, {
             kind: "conversation",
             id: c._id,
@@ -214,6 +214,7 @@ export const nativeCleanup = internalMutation({
     if (!id) return null;
     const row = await ctx.db.get(id);
     if (!row || !("threadId" in row) || !("actorId" in row)) return null;
+    if ("nativeCleanupAt" in row && row.nativeCleanupAt) return null;
     if (
       "sourceCleanupState" in row
         ? row.sourceCleanupState !== "complete"
@@ -275,6 +276,14 @@ export const nativeCleanup = internalMutation({
         ...a,
         userPhase: r.nextPhase,
       });
+    else if (a.kind === "run") {
+      const runId = ctx.db.normalizeId("agentRuns", a.id);
+      if (runId) await ctx.db.patch(runId, { nativeCleanupAt: Date.now() });
+    } else {
+      const conversationId = ctx.db.normalizeId("conversations", a.id);
+      if (conversationId)
+        await ctx.db.patch(conversationId, { nativeCleanupAt: Date.now() });
+    }
     return null;
   },
 });

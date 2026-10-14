@@ -692,6 +692,7 @@ export default defineSchema({
       v.literal("deleted"),
     ),
     cleanupAfter: v.number(),
+    nativeCleanupAt: v.optional(v.number()),
   })
     .index("by_workspaceId_and_accountId_and_actorId", [
       "workspaceId",

@@ -96,6 +96,7 @@ export const runFields = {
   sourceCleanupState: v.optional(
     v.union(v.literal("pending"), v.literal("complete")),
   ),
+  nativeCleanupAt: v.optional(v.number()),
   research: v.optional(
     v.object({
       orderId: v.id("researchOrders"),

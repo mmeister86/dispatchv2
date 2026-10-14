@@ -324,6 +324,30 @@ test("retention drains scoped Workflow cleanup after the native root was already
   }
 });
 
+test("drained run is marked so the retention sweep never restarts nativeCleanup", async () => {
+  vi.useFakeTimers();
+  const f = await modelFixture();
+  const runId = await f.create();
+  await f.t.run((ctx) =>
+    ctx.db.patch(runId, {
+      createdAt: Date.now() - OPERATIONAL_RETENTION_MS,
+    }),
+  );
+  await f.t.mutation(internal.ai.runs.purgeSource, { runId });
+  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+  expect(await f.t.run((ctx) => ctx.db.get(runId))).toMatchObject({
+    sourceCleanupState: "complete",
+    nativeCleanupAt: expect.any(Number),
+  });
+  // Marked row: re-entry returns cleanly instead of restarting the chain.
+  await f.t.mutation(nativeCleanupReference, {
+    kind: "run",
+    id: runId,
+    phase: 99,
+  });
+  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+});
+
 test("source cleanup refuses a restored native thread with foreign current ownership before deletion", async () => {
   vi.useFakeTimers();
   const f = await modelFixture();
