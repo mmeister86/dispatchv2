@@ -559,7 +559,39 @@ test("missing native Workflow root still drains exact bounded residuals without 
     await native.run((ctx) => ctx.db.query("events").collect()),
   ).toMatchObject([{ workflowId: ids.foreign, name: "foreign" }]);
 });
-test("components phase pages foreign rows without one step per row", async () => {
+test("components phase erases every owned thread in one page, not just the first", async () => {
+  const { modelFixture } = await import("../../tests/model-fixture");
+  const f = await modelFixture();
+  await f.t.mutation(internal.operations.authAdmission.initialize, {});
+  const runId1 = await f.create();
+  const runId2 = await f.create();
+  const run1 = (await f.t.run((ctx) => ctx.db.get(runId1)))!;
+  const run2 = (await f.t.run((ctx) => ctx.db.get(runId2)))!;
+  expect(run1.threadId).not.toBe(run2.threadId);
+  const job = await begin(f, "executor-two-threads");
+  const final = await drain(f, job.id);
+  expect(final.state).toBe("complete");
+  expect(await f.t.run((ctx) => ctx.db.get(runId1))).toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.get(runId2))).toBeNull();
+  for (const threadId of [run1.threadId, run2.threadId]) {
+    expect(
+      await f.t.query(components.agent.threads.getThread, {
+        threadId: threadId as never,
+      }),
+    ).toBeNull();
+    const messages = await f.t.query(
+      components.agent.messages.listMessagesByThreadId,
+      {
+        threadId: threadId as never,
+        order: "asc",
+        paginationOpts: { numItems: 25, cursor: null },
+      },
+    );
+    expect(messages.page).toEqual([]);
+  }
+});
+
+test("components phase serializes rows one per step and preserves foreign rows", async () => {
   const f = await fixture();
   const foreign = await f.t.run((ctx) =>
     ctx.db.insert("workspaces", { name: "Foreign", description: "survives" }),
@@ -618,7 +650,10 @@ test("components phase pages foreign rows without one step per row", async () =>
     return ids;
   });
   // Account scope scans the whole table, so foreign rows enter the page and
-  // are skipped one by one unless the page holds more than one row.
+  // are skipped. The components stage machine is job-global but tracks one
+  // row's thread at a time, so owned rows must serialize one per step;
+  // widening this page would let a later owned row inherit a stale stage and
+  // skip native thread erasure.
   const jobId = await f.t.run((ctx) =>
     ctx.db.insert("deletionJobs", {
       scope: "account",
@@ -650,9 +685,8 @@ test("components phase pages foreign rows without one step per row", async () =>
     });
     return read();
   };
-  // Drain the whole components phase: every page must complete in a single
-  // step, so no advance may leave a mid-page cursor behind. With one row per
-  // step, each of the 5 foreign agentRuns rows would leave a cursor behind.
+  // Drain the whole components phase: every step takes at most one row, so
+  // each of the 5 foreign agentRuns rows advances the cursor behind it.
   let sawCursor = false;
   for (let n = 0; n < 300; n++) {
     const job = (await read())!;
@@ -662,7 +696,7 @@ test("components phase pages foreign rows without one step per row", async () =>
   }
   const done = (await read())!;
   expect(done.phase).not.toBe("components");
-  expect(sawCursor).toBe(false);
+  expect(sawCursor).toBe(true);
   // Foreign rows are skipped, never deleted, by the components phase.
   expect(
     await f.t.run((ctx) => ctx.db.query("agentRuns").collect()),

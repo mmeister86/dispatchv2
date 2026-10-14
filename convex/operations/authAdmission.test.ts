@@ -532,6 +532,22 @@ test("native validated GitHub callback with current state admits changed email; 
     const fresh = await callback(await start(), "current-code");
 
     expect(fresh.status).toBe(302);
+    // Simulate staleness under initialize-first: the old state's
+    // verification was journaled under the guard, so its paused callback
+    // lease is still proven. Revoke that suspended lease before resuming it,
+    // so the stale callback cannot borrow the fresh approval (previously an
+    // unproven pre-guard producer provided the staleness).
+    const revoked = await t.run(async (ctx) => {
+      const leases = await ctx.db.query("authLeases").collect();
+      const stale = leases.filter(
+        (lease) =>
+          lease.path === "/callback/github" && lease.state === "active",
+      );
+      for (const lease of stale)
+        await ctx.db.patch(lease._id, { state: "revoked" });
+      return stale.length;
+    });
+    expect(revoked).toBe(1);
     const roots = await t.run((ctx) => ctx.db.query("authRoots").collect());
     const admitted = roots.filter((row) => row.state === "admitted");
     expect(admitted).toHaveLength(1);

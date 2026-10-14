@@ -895,7 +895,12 @@ export const advance = internalMutation({
         : db.query(table); // Bounded discovery also finds prior shared actor references and rootless edges.
     const page = await source.paginate({
       cursor: job.cursor ?? null,
-      numItems: 20,
+      // The components stage machine (componentStage/componentPhase) is
+      // job-global but tracks one row's thread at a time; serializing owned
+      // rows one per step keeps later rows from inheriting a stale stage and
+      // skipping native capture/erasure. shortcut: per-row stage cursor, when
+      // components pages are ever widened again.
+      numItems: job.phase === "components" ? 1 : 20,
       maximumBytesRead: 1024 * 1024,
     });
     const restartingStop =
