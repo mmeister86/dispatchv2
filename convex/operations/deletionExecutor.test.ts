@@ -1,8 +1,16 @@
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
+import { convexTest } from "convex-test";
+import betterAuthComponent from "@convex-dev/better-auth/test";
+import schema from "../schema";
 import { api, internal, components } from "../_generated/api";
 import { mediaFixture } from "../../tests/media-fixture";
 import agentComponent from "@convex-dev/agent/test";
 import { S3Client } from "@aws-sdk/client-s3";
+const modules = Object.fromEntries(
+  Object.entries(import.meta.glob("../../convex/**/*.ts")).map(
+    ([path, load]) => [new URL(path, import.meta.url).pathname, load],
+  ),
+);
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -51,11 +59,20 @@ function begin(
   });
 }
 test("public deletion requires fixed native guard and cannot start a partially prepared fence", async () => {
-  const f = await mediaFixture();
-  await expect(begin(f)).rejects.toThrow("FIXED_GUARD_REQUIRED");
-  expect(
-    (await f.t.run((ctx) => ctx.db.get(f.workspaceId)))!.lifecycle,
-  ).toBeUndefined();
+  const t = convexTest(schema, modules);
+  betterAuthComponent.register(t);
+  const workspaceId = await t.run((ctx) =>
+    ctx.db.insert("workspaces", { name: "Unconfigured", description: "" }),
+  );
+  await expect(
+    t.mutation(api.operations.deletion.beginWorkspace, {
+      workspaceId,
+      expectedTeamRevision: 0,
+      commandKey: "executor-workspace",
+      confirmation: "delete-workspace",
+    }),
+  ).rejects.toThrow("FIXED_GUARD_REQUIRED");
+  expect((await t.run((ctx) => ctx.db.get(workspaceId)))!.lifecycle).toBeUndefined();
 });
 test("bounded populated workspace deletion removes drafts and descendants and preserves another tenant", async () => {
   const f = await fixture();

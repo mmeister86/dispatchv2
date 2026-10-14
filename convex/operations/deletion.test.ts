@@ -159,6 +159,19 @@ async function recipient(f: Awaited<ReturnType<typeof mediaFixture>>) {
         },
       },
     });
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "account",
+        data: {
+          userId: u._id,
+          providerId: "credential",
+          accountId: u._id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          password: "synthetic-hash",
+        },
+      },
+    });
     const session = await ctx.runMutation(
       components.betterAuth.adapter.create,
       {
@@ -416,7 +429,7 @@ test("native erasure primitives capture exact token ownership, use bounded reset
   );
   expect(captured.targetOwned).toBe(1);
   await f.t.run((ctx) => ctx.db.patch(job.id, { phase: "auth" }));
-  const purge = (model: "session" | "verification" | "user") =>
+  const purge = (model: "session" | "verification" | "user" | "account") =>
     f.t.mutation(internal.operations.authAdmission.purgeNativePage, {
       jobId: job.id,
       model,
@@ -425,6 +438,7 @@ test("native erasure primitives capture exact token ownership, use bounded reset
   expect((await purge("session")).processed).toBe(25);
   expect((await purge("session")).processed).toBe(6);
   expect((await purge("verification")).processed).toBe(1);
+  expect((await purge("account")).processed).toBe(1);
   expect(
     await f.t.query(components.betterAuth.adapter.findOne, {
       model: "verification",

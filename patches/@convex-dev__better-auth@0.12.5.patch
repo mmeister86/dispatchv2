@@ -884,7 +884,7 @@ index 0000000000000000000000000000000000000000..30d183e7261c132492020ded787c5f24
 +} });
 +async function check(ctx, args) {
 +  const config = await ctx.db.query("admissionGuard").unique();
-+  if (!config) return true;
++  if (!config) throw new Error("AUTH_GUARD_NOT_CONFIGURED"); // fail-closed until authAdmission.initialize has bound the guard.
 +  if (config.revision !== revision) throw new Error("AUTH_GUARD_REVISION_MISMATCH");
 +  return await ctx.runMutation(config[args.operation], args);
 +}
@@ -1530,7 +1530,7 @@ index 0000000000000000000000000000000000000000..00350d560ff342b1c6004bb57e29af46
 +}});
 +export async function check(ctx: any, args: { model: string; operation: "create" | "update" | "verificationDelete"; id: string; fields: string[]; previousOwner?: string; approvalNonce?: string }) {
 +  const config = await ctx.db.query("admissionGuard").unique();
-+  if (!config) return true;
++  if (!config) throw new Error("AUTH_GUARD_NOT_CONFIGURED"); // fail-closed until authAdmission.initialize has bound the guard.
 +  if (config.revision !== revision) throw new Error("AUTH_GUARD_REVISION_MISMATCH");
 +  return await ctx.runMutation(config[args.operation] as FunctionHandle<"mutation">, args);
 +}

@@ -11,6 +11,7 @@ export async function mediaFixture() {
   );
   const t = convexTest(schema, modules);
   betterAuthComponent.register(t);
+  await t.mutation(internal.operations.authAdmission.initialize, {});
   const identity = await t.run(async (ctx) => {
     const u = await ctx.runMutation(components.betterAuth.adapter.create, {
       input: {
@@ -21,6 +22,19 @@ export async function mediaFixture() {
           emailVerified: true,
           createdAt: Date.now(),
           updatedAt: Date.now(),
+        },
+      },
+    });
+    await ctx.runMutation(components.betterAuth.adapter.create, {
+      input: {
+        model: "account",
+        data: {
+          userId: u._id,
+          providerId: "credential",
+          accountId: u._id,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          password: "synthetic-hash",
         },
       },
     });

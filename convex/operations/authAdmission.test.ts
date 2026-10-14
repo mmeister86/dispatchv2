@@ -45,6 +45,19 @@ test("fixed guard journals native legacy birth and rejects session before accoun
   expect(journal?.authId).toBe(user._id);
   expect(journal?.state).toBe("pending");
 });
+test("unconfigured admission guard fails closed until initialize binds it", async () => {
+  const t = setup();
+  await expect(
+    t.mutation(components.betterAuth.adapter.create, {
+      input: { model: "user", data: userData() },
+    }),
+  ).rejects.toThrow("AUTH_GUARD_NOT_CONFIGURED");
+  await t.mutation(internal.operations.authAdmission.initialize, {});
+  const user = await t.mutation(components.betterAuth.adapter.create, {
+    input: { model: "user", data: userData() },
+  });
+  expect(user).not.toBeNull();
+});
 const accountData = (
   userId: string,
   providerId = "credential",
@@ -258,6 +271,7 @@ test("guard journals original verification provenance after consume without reta
 test("native hook Dates, optional credentials and null fields canonicalize exactly", async () => {
   const { canonicalWrite } = await import("./authAdmission");
   const t = setup();
+  await t.mutation(internal.operations.authAdmission.initialize, {});
   const user = await t.mutation(components.betterAuth.adapter.create, {
     input: { model: "user", data: userData() },
   });
@@ -368,6 +382,7 @@ test("actual legacy HS256 JWT cannot verify a fresh native generation while newl
   try {
     const t = setup();
     const email = "reregister@example.test";
+    await t.mutation(internal.operations.authAdmission.initialize, {});
     const old = await t.mutation(components.betterAuth.adapter.create, {
       input: { model: "user", data: userData(email) },
     });
@@ -499,8 +514,8 @@ test("native validated GitHub callback with current state admits changed email; 
         .join("; ");
       return { state, cookie };
     };
-    const oldState = await start();
     await t.mutation(internal.operations.authAdmission.initialize, {});
+    const oldState = await start();
     await addFence(t, "provider", JSON.stringify(["github", "77"]), -60000);
     const callback = (proof: Awaited<ReturnType<typeof start>>, code: string) =>
       t.fetch(

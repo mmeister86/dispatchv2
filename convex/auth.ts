@@ -320,7 +320,15 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
         components.betterAuth.guard.health,
         {},
       );
-      if (!health.configured) return nativeHandler(request);
+      // Fail closed until authAdmission.initialize has bound the guard.
+      if (!health.configured)
+        return new Response(
+          JSON.stringify({ code: "AUTH_GUARD_NOT_CONFIGURED" }),
+          {
+            status: 503,
+            headers: { "content-type": "application/json" },
+          },
+        );
       keyValue = await mutationCtx.runQuery(
         internal.operations.authAdmission.admissionKey,
         {},
