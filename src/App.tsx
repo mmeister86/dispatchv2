@@ -91,7 +91,7 @@ import {
   useWorkspaceLocalState,
 } from "@/lib/store";
 import { AccountIcon, Status, EmptyState } from "@/components/shared";
-import { cn } from "@/lib/utils";
+import { cn } from "cn";
 import { OverviewPage } from "@/pages/Overview";
 import { DraftsPage, ComposerPage } from "@/pages/Drafts";
 import { CalendarPage } from "@/pages/Calendar";
