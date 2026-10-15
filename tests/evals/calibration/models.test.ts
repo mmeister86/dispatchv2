@@ -1381,7 +1381,7 @@ async function changeRole(
 }
 async function sweepModelsOnly(f: Awaited<ReturnType<typeof qualifiedCorpus>>) {
   await f.t.mutation(internal.performance.models.sweep, { cursor: null });
-  // shortcut: 0-delay drain only; runAllTimers would jump the fake clock +120s past holdout1Start
+  // shortcut: 0-delay drain only; runAllTimers would jump the fake clock +120s past holdout1Start; if a non-zero-delay sweep chain is ever added, this must become an explicit clock re-pin (or equivalent)
   await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0));
 }
 test("Owner restoration cannot redeclare a spent candidate after protected declaration cleanup", async () => {

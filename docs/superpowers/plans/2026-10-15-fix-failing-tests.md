@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Make `pnpm test` (plus `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test:bundle`) pass again on commit 3042eb8 by fixing six test-side defects; no product behavior changes.
+**Goal:** Make `pnpm test` (plus `pnpm lint`, `pnpm typecheck`, `pnpm build`, `pnpm test:bundle`) pass again on commit 3042eb8 by fixing seven test-side defects; no product behavior changes.
 
 **Architecture:** Five independent root causes, all in test/fixture code (diagnosed 2026-10-15 with file:line evidence, reproduced per file): (1) one test consumes the production algorithm-profile seed whose hardcoded review deadline 2026-10-12 has passed; (2) eight ideas tests still expect pre-retention-cap (`null`) horizons after commit aa575de introduced the 30-day operational-retention cap; (3) calibration tests let `vi.runAllTimers()` fire 120 s auth-guard timers and jump the fake clock past a holdout boundary, plus one heavy test exceeds the 5 s default timeout; (4) one conversations test raw-patches run state while its scheduled executor is in flight and gets clobbered; (5) one similarity max-shape test needs ~8.7 s against the 5 s default; (6) one styleProfiles variant's workload needs >880 s of CPU. Each task fixes one root cause in one file, following existing repo patterns.
 

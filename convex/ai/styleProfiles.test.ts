@@ -1576,7 +1576,7 @@ test.each([
 );
 
 test.each([false, true])(
-  "disjoint26 native catalogs, exact32-node details and bounded cleanup retain physical evidence (mixed=%s)",
+  "disjoint26 native catalogs, exact node details and bounded cleanup retain physical evidence (mixed=%s)",
   async (mixed) => {
     const started = realPerformance.now();
     const f = await fixture();
@@ -1694,19 +1694,19 @@ test.each([false, true])(
           payload: value,
           baseVersionId: parents[i].versionId,
           freshDeclaration: false,
-          reason: "Independent leaf32 " + i,
+          reason: "Independent leaf " + i,
         }),
       );
     for (let i = 0; i < roots; i++)
       await f.command({
         kind: "select",
         versionId: leaves[i].versionId,
-        reason: "Independent selection32 " + i,
+        reason: "Independent selection " + i,
       });
     await f.command({
       kind: "select",
       versionId: leaves[0].versionId,
-      reason: "Older selected leaf32",
+      reason: "Older selected leaf",
     });
     const limits = {
       databaseQueries: 4096,
