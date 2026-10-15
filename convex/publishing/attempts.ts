@@ -120,16 +120,24 @@ export const claim = internalMutation({
     try {
       const ver = await preflight(ctx, s),
         account = await ctx.db.get(s.accountId);
-      if (
-        rows.some(
-          (c) =>
-            c.workspaceId !== s.workspaceId ||
-            c.versionId !== s.versionId ||
-            c.accountId !== s.accountId ||
-            c.providerIdentity !== account?.providerIdentity,
+      // Cross-generation connection check (same scope as the old history
+      // scan, but early-exit instead of capped): any attempt recorded under a
+      // different workspace/version/account/binding fails the claim.
+      const drifted = await ctx.db
+        .query("xPostAttempts")
+        .withIndex("by_scheduleId_and_generation_and_position", (q) =>
+          q.eq("scheduleId", s._id),
         )
-      )
-        throw new ConvexError("ACCOUNT_CONNECTION_CHANGED");
+        .filter((q) =>
+          q.or(
+            q.neq(q.field("workspaceId"), s.workspaceId),
+            q.neq(q.field("versionId"), s.versionId),
+            q.neq(q.field("accountId"), s.accountId),
+            q.neq(q.field("providerIdentity"), account?.providerIdentity),
+          ),
+        )
+        .first();
+      if (drifted) throw new ConvexError("ACCOUNT_CONNECTION_CHANGED");
       if (!account || account.provider !== "X")
         throw new ConvexError("PUBLISHER_NOT_CONFIGURED");
       if (position >= ver.content.text.length) {

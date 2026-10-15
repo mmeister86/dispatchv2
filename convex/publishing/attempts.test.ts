@@ -254,3 +254,36 @@ test.each(["sending", "unknown"] as const)(
     expect(schedule.errorCode).toBe("X_RECONCILIATION_REQUIRED");
   },
 );
+test("settled old-generation attempts under a different binding still fail a fresh generation", async () => {
+  const f = await fixture();
+  await f.t.run(async (ctx) => {
+    await ctx.db.insert("xPostAttempts", {
+      workspaceId: f.workspaceId,
+      scheduleId: f.scheduleId,
+      generation: 1,
+      versionId: f.versionId,
+      accountId: f.accountId,
+      providerIdentity: "999",
+      connectionSequence: 1,
+      position: 0,
+      attempt: 1,
+      claimSequence: 1,
+      leaseUntil: 0,
+      deadline: Date.now() + 3600000,
+      stage: "rejected",
+      mediaIds: [],
+      durationMs: 1,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    await ctx.db.patch(f.scheduleId, { generation: 2 });
+  });
+  expect(
+    await f.t.mutation(internal.publishing.attempts.claim, {
+      scheduleId: f.scheduleId,
+      generation: 2,
+    }),
+  ).toBeNull();
+  const schedule = (await f.t.run((ctx) => ctx.db.get(f.scheduleId)))!;
+  expect(schedule.errorCode).toBe("ACCOUNT_CONNECTION_CHANGED");
+});
