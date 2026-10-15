@@ -32,3 +32,28 @@ test("valid demo payload still loads from storage", () => {
   stubStorage(JSON.stringify(seed));
   expect(readState()).toEqual(seed);
 });
+
+test("draft without versions falls back to seed instead of bricking overview", () => {
+  const seed = createSeed();
+  stubStorage(
+    JSON.stringify({
+      ...seed,
+      drafts: [{ workspaceId: seed.activeWorkspaceId, versions: [] }],
+    }),
+  );
+  const state = readState();
+  expect(state.drafts.length).toBeGreaterThan(0);
+  expect(state.drafts.every((d) => d.versions.length > 0)).toBe(true);
+});
+
+test("schedule without at falls back to seed instead of breaking the sort", () => {
+  const seed = createSeed();
+  stubStorage(
+    JSON.stringify({
+      ...seed,
+      schedules: [{ workspaceId: seed.activeWorkspaceId, status: "scheduled" }],
+    }),
+  );
+  const state = readState();
+  expect(state.schedules.every((s) => typeof s.at === "string")).toBe(true);
+});

@@ -59,7 +59,14 @@ export function readState(): AppState {
         // preferences.name feeds .slice() in App.tsx and timezone feeds
         // Intl/formatDate call sites; fall back to seed unless both are strings.
         typeof s.preferences?.name === "string" &&
-        typeof s.preferences?.timezone === "string"
+        typeof s.preferences?.timezone === "string" &&
+        // currentVersion() throws on drafts without versions (Overview review
+        // filter); Schedule.at is required for the upcoming sort comparator.
+        s.drafts.every(
+          (d: { versions?: unknown }) =>
+            Array.isArray(d?.versions) && d.versions.length > 0,
+        ) &&
+        s.schedules.every((x: { at?: unknown }) => typeof x?.at === "string")
       )
         return s;
     }
