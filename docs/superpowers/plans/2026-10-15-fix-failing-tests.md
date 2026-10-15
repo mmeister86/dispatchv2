@@ -255,3 +255,35 @@ git commit -m "fix(tests): allow 30s for styleProfiles read-limit tests"
 ```
 
 ---
+
+### Task 8: exportMeasurements — per-test timeout for consistently >5s corpus test
+
+**Files:**
+- Modify: `convex/operations/exportMeasurements.test.ts` (test "original experiment policy, spec and purpose corruption rejects both live and expired saved candidate pins" at :873)
+
+**Interfaces:**
+- Consumes: nothing new. Measured durations of this test's body under parallel load: 5079 ms (default workers), 5088 ms (--maxWorkers=4), 5137 ms (pristine audit) — consistently over vitest's 5 s default whenever other files run concurrently; passes idle/sequentially. Same defect class as Tasks 3/5/7. This is the last known member of that class; do not add timeouts to any other test in the file.
+- Produces: `convex/operations/exportMeasurements.test.ts` passing at the default timeout, including under `--maxWorkers=4` full-suite parallelism.
+
+- [ ] **Step 1: Reproduce**
+
+Run: `timeout 300 ./node_modules/.bin/vitest run convex/operations/exportMeasurements.test.ts`
+Expected: file passes or the named test is within ~1 s of the 5 s limit (it passes idle; the defect is its lack of headroom — the three loaded measurements above are the reproduction evidence).
+
+- [ ] **Step 2: Add the trailing per-test timeout**
+
+Append the trailing timeout argument to that single `test(...)` call in repo style: `}, 30000);`. Change nothing else — no data, no assertions, no other test.
+
+- [ ] **Step 3: Verify**
+
+Run: `timeout 300 ./node_modules/.bin/vitest run convex/operations/exportMeasurements.test.ts`
+Expected: 29 passed at the default timeout.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add convex/operations/exportMeasurements.test.ts
+git commit -m "fix(tests): allow 30s for exportMeasurements corpus test"
+```
+
+---
