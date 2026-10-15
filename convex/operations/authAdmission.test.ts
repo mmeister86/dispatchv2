@@ -945,6 +945,14 @@ test("admission retention sweep deletes stale rows and keeps fresh ones", async 
       producer: "unproven",
       consumed: true,
     });
+    const heldJournal = await ctx.db.insert("authVerificationJournal", {
+      nativeId: "held",
+      identifierDigest: "held",
+      createdAt: stale,
+      expiresAt: stale,
+      producer: "unproven",
+      consumed: false,
+    });
     const liveIssuance = await ctx.db.insert("authEmailIssuance", {
       tokenDigest: "live",
       authId: "synthetic",
@@ -961,6 +969,7 @@ test("admission retention sweep deletes stale rows and keeps fresh ones", async 
       link,
       issuance,
       journal,
+      heldJournal,
       liveIssuance,
     };
   });
@@ -982,6 +991,7 @@ test("admission retention sweep deletes stale rows and keeps fresh ones", async 
     link: await ctx.db.get(ids.link),
     issuance: await ctx.db.get(ids.issuance),
     journal: await ctx.db.get(ids.journal),
+    heldJournal: await ctx.db.get(ids.heldJournal),
     fresh: await ctx.db.get(ids.fresh),
     waiting: await ctx.db.get(ids.waiting),
     liveIssuance: await ctx.db.get(ids.liveIssuance),
@@ -991,6 +1001,8 @@ test("admission retention sweep deletes stale rows and keeps fresh ones", async 
   expect(remaining.link).toBeNull();
   expect(remaining.issuance).toBeNull();
   expect(remaining.journal).toBeNull();
+  // Unconsumed proofs still back live erasure evidence and survive the sweep.
+  expect(remaining.heldJournal).not.toBeNull();
   expect(remaining.fresh).not.toBeNull();
   expect(remaining.waiting).not.toBeNull();
   expect(remaining.liveIssuance).not.toBeNull();

@@ -1058,7 +1058,11 @@ export const sweep = internalMutation({
         .query("authVerificationJournal")
         .paginate({ cursor: a.cursor, numItems: 50 });
       for (const row of page.page)
-        if (row.expiresAt < cutoff) await ctx.db.delete(row._id);
+        // Only consumed rows: purgeNativePage marks a proof consumed exactly
+        // when its native row is gone, so unconsumed rows still back live
+        // erasure evidence and must survive.
+        if (row.consumed && row.expiresAt < cutoff)
+          await ctx.db.delete(row._id);
       if (!page.isDone)
         await ctx.scheduler.runAfter(
           0,
