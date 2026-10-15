@@ -1,0 +1,133 @@
+import {
+  verificationSlot,
+  checkedVerification,
+  compositeEnvelope,
+} from "../ai/jev/types";
+import { source as agentSource } from "../ai/fields";
+import { v } from "convex/values";
+import { content, mediaChecksums } from "../lib/editorialFields";
+export const candidate = v.object({
+  content,
+  contentHash: v.string(),
+  provenanceHash: v.string(),
+  routingOperationId: v.id("jevRoutingOperations"),
+  commandFingerprint: v.string(),
+});
+import {
+  researchContentSource,
+  researchCopyFields,
+} from "../research/contentFields";
+export const ideaSource = v.union(
+  v.object({ kind: v.literal("context-set"), sources: v.array(agentSource) }),
+  researchContentSource,
+  v.object({ kind: v.literal("context"), contextId: v.id("githubContexts") }),
+  v.object({ kind: v.literal("note") }),
+  v.object({
+    kind: v.literal("signal"),
+    signalId: v.id("githubSignals"),
+    repositoryId: v.id("githubRepositories"),
+    generation: v.number(),
+  }),
+);
+export const inputSource = v.union(
+  v.object({ kind: v.literal("note") }),
+  v.object({ kind: v.literal("signal"), signalId: v.id("githubSignals") }),
+);
+export const ideaInput = {
+  title: v.string(),
+  perspective: v.string(),
+  note: v.string(),
+  priority: v.union(v.literal("low"), v.literal("normal"), v.literal("high")),
+};
+export const ideaFields = {
+  workspaceId: v.id("workspaces"),
+  actorId: v.id("users"),
+  operationKey: v.string(),
+  fingerprint: v.string(),
+  revision: v.number(),
+  currentVersionId: v.union(v.id("ideaVersions"), v.null()),
+  status: v.union(
+    v.literal("new"),
+    v.literal("accepted"),
+    v.literal("archived"),
+  ),
+  updatedAt: v.number(),
+  handoff: v.optional(
+    v.object({
+      candidateCommand: v.optional(
+        v.object({
+          verification: v.optional(checkedVerification),
+          key: v.string(),
+          fingerprint: v.string(),
+          contentHash: v.string(),
+          target: v.union(
+            v.object({
+              draftId: v.id("drafts"),
+              versionId: v.id("draftVersions"),
+              revision: v.number(),
+            }),
+            v.null(),
+          ),
+        }),
+      ),
+      ideaVersionId: v.id("ideaVersions"),
+      ideaRevision: v.number(),
+      accountId: v.union(v.id("socialAccounts"), v.null()),
+      draftId: v.id("drafts"),
+      draftVersionId: v.id("draftVersions"),
+      actorId: v.id("users"),
+      intent: v.string(),
+      clarificationConfirmed: v.boolean(),
+      text: v.string(),
+      at: v.number(),
+    }),
+  ),
+};
+export const ideaVersionFields = {
+  candidate: v.optional(candidate),
+  candidateMediaChecksums: v.optional(mediaChecksums),
+  ...researchCopyFields,
+  workspaceId: v.id("workspaces"),
+  ideaId: v.id("ideas"),
+  number: v.number(),
+  actorId: v.id("users"),
+  createdAt: v.number(),
+  ...ideaInput,
+  source: ideaSource,
+  originals: v.array(v.string()),
+  rationale: v.string(),
+  questions: v.array(v.string()),
+  runId: v.optional(v.id("agentRuns")),
+  inputVersionId: v.optional(v.id("ideaVersions")),
+};
+export const feedbackFields = {
+  ...researchCopyFields,
+  workspaceId: v.id("workspaces"),
+  ideaId: v.id("ideas"),
+  versionId: v.id("ideaVersions"),
+  actorId: v.id("users"),
+  kind: v.union(v.literal("edit"), v.literal("reject"), v.literal("restore")),
+  text: v.string(),
+  createdAt: v.number(),
+  resultingVersionId: v.optional(v.id("ideaVersions")),
+};
+export const requestFields = {
+  composite: v.optional(compositeEnvelope),
+  compositeParentId: v.optional(v.id("contentRequests")),
+  compositeStage: v.optional(v.literal("repair")),
+  verification: v.optional(verificationSlot),
+  routingOperationId: v.optional(v.id("jevRoutingOperations")),
+  outputKind: v.optional(v.literal("social-post-candidate")),
+  routingCommandFingerprint: v.optional(v.string()),
+  workspaceId: v.id("workspaces"),
+  actorId: v.id("users"),
+  ideaId: v.id("ideas"),
+  inputVersionId: v.id("ideaVersions"),
+  inputRevision: v.number(),
+  accountId: v.id("socialAccounts"),
+  intent: v.string(),
+  operationKey: v.string(),
+  runId: v.id("agentRuns"),
+  resultIdeaId: v.union(v.id("ideas"), v.null()),
+  createdAt: v.number(),
+};

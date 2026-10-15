@@ -62,6 +62,7 @@ export function Status({
 export function PublishBadge({ status }: { status: PublishStatus }) {
   const labels = {
     scheduled: "Geplant",
+    publishing: "Wird ausgeführt",
     published: "Veröffentlicht",
     failed: "Fehlgeschlagen",
     partial: "Teilweise veröffentlicht",
@@ -137,6 +138,7 @@ export function AccountSelect({
         onChange={(e) => onChange(e.target.value)}
         disabled={disabled}
       >
+        <option value="">Ohne Account-Zuordnung</option>
         {state.accounts
           .filter((a) => a.workspaceId === state.activeWorkspaceId)
           .map((a) => (

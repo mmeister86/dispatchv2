@@ -23,6 +23,8 @@ import {
 } from "@/components/shared";
 import { useStore, useWorkspaceLocalState } from "@/lib/store";
 import { canEdit, uid, now } from "@/lib/model";
+import { demoMode } from "@/lib/auth-client";
+import { RealAgentChat } from "@/features/agent/chat";
 type Message = {
   id: string;
   role: "user" | "assistant";
@@ -43,6 +45,9 @@ type Conversation = {
 const answer =
   "Ich sehe einen guten Ansatz: Erzähle von einer kleinen Produktentscheidung, die euren Nutzern Zeit spart.\n\nBeginne mit der konkreten Beobachtung. Zeige anschließend, was du geändert hast und welches Learning du mitnimmst. Eine persönliche Perspektive ist glaubwürdiger als ein allgemeines Versprechen.\n\nMein Vorschlag bleibt ein Entwurf. Prüfe Fakten, Ton und Quellen vor einer Freigabe.";
 export function AgentPage() {
+  return demoMode ? <DemoAgentPage /> : <RealAgentChat />;
+}
+function DemoAgentPage() {
   const { state, createDraft } = useStore();
   const [params] = useSearchParams();
   const sourceContext = params.get("source") ?? "";
@@ -157,7 +162,7 @@ export function AgentPage() {
     setSelected(id);
     setPrompt("");
   }
-  function draft() {
+  async function draft() {
     if (!conversation || !editable) return;
     if (
       conversation.draftId &&
@@ -166,7 +171,7 @@ export function AgentPage() {
       navigate(`/drafts/${conversation.draftId}`);
       return;
     }
-    const id = createDraft(
+    const id = await createDraft(
       "Eine kleine Entscheidung, ein besseres Produkt",
       "Heute haben wir einen Ablauf vereinfacht. Ein Klick weniger, ein klarer nächster Schritt.\n\nKleine Entscheidungen machen ein Produkt jeden Tag ein bisschen besser.",
       `Agent · Unterhaltung ${conversation.id} · Vorschlag v${conversation.version} · simuliert · Quelle: ${conversation.source ?? "Eigene Notiz"} · ${state.accounts.find((a) => a.id === account)?.channel}`,

@@ -1,0 +1,146 @@
+import { projection } from "./modelFields";
+import { v } from "convex/values";
+export const scope = {
+  workspaceId: v.id("workspaces"),
+  accountId: v.id("socialAccounts"),
+};
+export const dialect = v.union(
+  v.literal("tweet-fields-retweet-v2"),
+  v.literal("post-fields-repost-v2"),
+);
+export const windows = [0.25, 1, 6, 24, 48] as const;
+export const windowHours = v.union(...windows.map(v.literal));
+export const policyFields = {
+  windows: v.optional(v.array(windowHours)),
+  windowsEvidence: v.optional(v.string()),
+  ...scope,
+  version: v.string(),
+  approvedBy: v.id("users"),
+  expiresAt: v.number(),
+  purpose: v.literal("own-post-descriptive-editorial-v1"),
+  dialect,
+  accessEvidence: v.string(),
+  rightsEvidence: v.string(),
+  pricingEvidence: v.string(),
+  protocolEvidence: v.string(),
+  allocationEvidence: v.string(),
+  fields: v.array(v.string()),
+  unit: v.literal("single-post-request"),
+  unitMicros: v.number(),
+  currency: v.string(),
+  retentionMs: v.number(),
+  connectionSequence: v.number(),
+  providerIdentity: v.string(),
+  allocatedProviderLimitMicros: v.number(),
+};
+export const controlFields = {
+  contentPolicyId: v.optional(v.id("performanceContentPolicies")),
+  contentApprovedBy: v.optional(v.id("users")),
+  deletedThroughGeneration: v.optional(v.number()),
+  ...scope,
+  enabled: v.boolean(),
+  deleted: v.boolean(),
+  generation: v.number(),
+  actorId: v.id("users"),
+  connectionSequence: v.number(),
+  updatedAt: v.number(),
+};
+export const knowledgeFields = {
+  projection: v.optional(projection),
+  postAttemptId: v.id("xPostAttempts"),
+  generation: v.number(),
+  ...scope,
+  scheduleId: v.id("schedules"),
+  versionId: v.id("draftVersions"),
+  providerIdentity: v.string(),
+  network: v.literal("x"),
+  capturedAt: v.number(),
+  assessmentId: v.union(v.id("jevAssessments"), v.null()),
+  applicable: v.boolean(),
+  reason: v.union(v.string(), v.null()),
+};
+export const field = v.object({
+  name: v.string(),
+  rawField: v.string(),
+  definition: v.string(),
+  status: v.union(
+    ...(
+      [
+        "measured",
+        "missing",
+        "invalid",
+        "unavailable",
+        "deleted",
+        "access_expired",
+      ] as const
+    ).map(v.literal),
+  ),
+  value: v.union(v.number(), v.null()),
+});
+export const snapshotFields = {
+  ...scope,
+  postAttemptId: v.id("xPostAttempts"),
+  scheduleId: v.id("schedules"),
+  versionId: v.id("draftVersions"),
+  externalId: v.string(),
+  position: v.number(),
+  confirmedAt: v.number(),
+  windowHours,
+  observedAgeMs: v.optional(v.number()),
+  late: v.optional(v.boolean()),
+  dueAt: v.number(),
+  generation: v.number(),
+  state: v.union(
+    ...(["queued", "reading", "observed", "blocked", "removed"] as const).map(
+      v.literal,
+    ),
+  ),
+  jobId: v.optional(v.id("_scheduled_functions")),
+  attemptId: v.union(v.id("aiAttempts"), v.null()),
+  requestedAt: v.union(v.number(), v.null()),
+  observedAt: v.union(v.number(), v.null()),
+  providerCreatedAt: v.union(v.number(), v.null()),
+  definitionVersion: v.union(v.string(), v.null()),
+  dialect: v.union(dialect, v.null()),
+  fields: v.array(field),
+  reason: v.union(v.string(), v.null()),
+  expiresAt: v.number(),
+};
+export const snapshotDoc = v.object({
+  _id: v.id("performanceSnapshots"),
+  _creationTime: v.number(),
+  ...snapshotFields,
+});
+export const metricsAttemptFields = {
+  inputTokens: v.optional(v.number()),
+  outputTokens: v.optional(v.number()),
+  reportedCurrency: v.optional(v.null()),
+  reportedCostInvalid: v.optional(v.boolean()),
+  runId: v.optional(v.id("agentRuns")),
+  researchOrderId: v.optional(v.id("researchOrders")),
+  logicalIntent: v.optional(v.string()),
+  reportedCost: v.optional(v.number()),
+  owner: v.literal("own-metrics"),
+  provider: v.literal("x"),
+  purpose: v.literal("own-post-descriptive-editorial-v1"),
+  ...scope,
+  snapshotId: v.id("performanceSnapshots"),
+  policyId: v.id("performancePolicies"),
+  policyFingerprint: v.string(),
+  policyVersion: v.string(),
+  generation: v.number(),
+  credentialGeneration: v.number(),
+  budgetIds: v.array(v.id("aiBudgets")),
+  currency: v.string(),
+  unit: v.literal("single-post-request"),
+  unitMicros: v.number(),
+  reservedMicros: v.number(),
+  heldMicros: v.number(),
+  estimatedMicros: v.union(v.number(), v.null()),
+  billedMicros: v.null(),
+  state: v.union(v.literal("sent"), v.literal("unknown"), v.literal("settled")),
+  sentAt: v.number(),
+  settledAt: v.union(v.number(), v.null()),
+  receiptFingerprint: v.union(v.string(), v.null()),
+  errorCode: v.union(v.string(), v.null()),
+};

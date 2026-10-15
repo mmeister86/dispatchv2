@@ -1,0 +1,34 @@
+# TASK-49.1 fresh corrected independent QUALITY — PASS
+
+Frozen master HEAD `246063f15597486bff20ea7f404eb6f8b87bdfda`,323 source/config files, freeze SHA256 `f83203143c93a74cedafd06a522e4c933cc17556116909a7403bee96d3a3b6c9`. Every frozen source matches before and after review. All10 original independent source/config hashes and all original reviewer pixel hashes remain unchanged. Full second corrective SOURCE_READY, receipt, exact Store/browser correction diff, final SPEC and the preserved original rejected QUALITY were read. All12 corrective test/documentation log hashes plus diff/source guard hashes were independently verified. No repository/Backlog/generated API edits.
+
+## Corrected P2
+
+The original late A→B→A completion bug is resolved at the shared recover seam. Each pending operation owns one unique local object; another invocation cannot submit while that owner is active. Only the current owner may report error or release pending. Existing effect setup/cleanup invalidates ownership on actual user/session.id, pending-session and retry lifecycle changes, including unmount. An obsolete success/error does not regain ownership merely because the account returns. Legitimate same-session reactive snapshot replacement retains the actual current owner and permits both current success and current failure to finish. The correction removes stale snapshot-reference dependence without adding a backend/global epoch or service.
+
+Current own-authId response matching, protected child/query masks, workspace/role remount and existing target-scoped select/create are unchanged. This is UI pending ownership, not new backend create idempotency. Existing native authority/source/finance/effect and introduced command-cleanup logic remain among the321 unchanged files.
+
+## Fresh actual checks
+
+Four browser commands ran sequentially outside sandbox, each actual exit0, using private local port5190/cache/pixel paths and the real production WorkspaceStoreProvider plus production CSS:
+
+- `node /tmp/dispatch-quality491-corrected/aba.mjs`:2.197s. Exact original final immutable ABA regression assertions are now GREEN: captured C1/C2 creates, resolving only obsolete C1 leaves C2 disabled; current C2 finishes. Original source `/tmp/dispatch-quality491/browser-late-aba.mjs` retains SHA256 `dee0b5698e54c0ce8544bdcc3bc43084824d1414c207722c4183562e7230599a` and original meaningful RED logs/pixels remain intact.
+- `node /tmp/dispatch-quality491-corrected/keyboard.mjs`:1.826s. Original keyboard selection, actual rejected select/error, retry and Viewer ready controls PASS, with fresh desktop1280x900/mobile390x844 pixels and no horizontal overflow.
+- `node /tmp/dispatch-quality491-corrected/bootstrap.mjs`:1.741s. Original bootstrap loading, rejected bootstrap, labelled keyboard retry and current completion controls PASS.
+- `node /tmp/dispatch-quality491-corrected/registered.mjs`:2.266s. Exact final owned registered-browser assertions PASS: obsolete C1 success after A→B→A cannot unlock C2; current C2 success completes after a separately processed same-session reactive snapshot update. Same-user session-one→session-two obsolete C3 error cannot unlock C4 or insert an alert; current C4 error after a separately processed snapshot update releases pending and displays the mapped alert. Exactly4 explicitly initiated intercepted creates. Original selection error/retry, delayed old READY/RECOVERY, obsolete bootstrap completion/no users.current resubscription, current Viewer readiness, account/role/workspace reset, recovery/no-target zero protected queries and explicit unmount controls all execute.
+
+Every executed copy was compared against its original with only these deterministic replacements: absolute project root where needed,5182→5190 local port, private /tmp cache and private pixel destination. Fixture/action/assertion logic is identical. This is explicit assertion-preserving plumbing, not a claim that the original pathname itself was executed in this corrected pass. Original files and pixels were never overwritten.
+
+`node node_modules/vitest/vitest.mjs run tests/foundation.test.ts tests/media-store.test.ts`:actual exit0,7PASS/2files,1.50s; original5foundation/2Store counts/assertions preserved.
+
+Fresh desktop/mobile recovery and mobile current-error pixels were actually inspected. Labels and the mapped error wrap inside390, actions remain visible, no horizontal overflow/browser errors. Pending-state behavior is established by actual DOM assertions; visual pixels alone do not prove disabled state. Nonempty account names/selection are exercised; draft/media fields remain empty browser fixtures, so populated live-history projection is not claimed.
+
+## Retained evidence and scope
+
+The earlier distinct QUALITY actual33/3 native, unchanged10/2 independent and1/1 command-fault suites remain valid historical evidence for the321 unchanged backend/source files; they were not unnecessarily rerun here. Public verified invite onboarding, Owner/Admin/last-Owner/CAS/replay/cap+1, separate scheduler/approver text/EACHmedia checks, joined Agent/Research/GitHub authority, original46/47 membership pins, bounded >page cleanup and unknown-fault nondestruction remain as previously independently reviewed. Original late financial/effect receipts and native source parents are preserved. Prior expired-recipient/source-cleanup REDs and first sandbox/resolver failures remain historical receipts, not concealed PASS claims.
+
+Durable current Better Auth library/docs commands both exited0; all corresponding log hashes were checked and docs read. They supply useSession data/isPending and core session.id; installed component id↔_id adapter and native session lookup mapping remain as independently inspected. Current main docs are supporting guidance, not a claimed exact installed-version match; no credentials or token values read. The earlier useSession invocation without a durable logfile retains its original qualified transcript-only status.
+
+Exact commands/exits/timestamps/log hashes, private-copy equivalence, source guard, original10 hashes and fresh pixel hashes are in `/tmp/dispatch-continuation-49.1-quality-corrected-receipt.json`. All browser promises/auth/native responses were synthetic intercepts. No live authenticated manual test, email/provider/publication/upload/grants, empirical production OCC/load, legal retention or whole33/36 export/erasure/restore claim. Full Team/auth-only invitation/mail49.2 and reviewpolicy50 remain separate.
+
+Verdict **PASS**, no remaining actionable QUALITY finding for this frozen49.1 scope. No full900000/302/backend duplicate, codegen/commit/deploy or task Done performed. Root interrupted partial exit130 is neither whole PASS nor test failure; root still owns the complete fresh native/static/build/bundle/source commit/exact existing EU Dev gates. Task remains In Progress/manual Done open. Reviewer STOP.

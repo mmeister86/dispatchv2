@@ -1,0 +1,59 @@
+{
+  "task": "TASK-32.5",
+  "commit": "596471448c13b2a482b9c0e838ee169f5b62922a",
+  "target": "https://accurate-lion-749.eu-west-1.convex.cloud",
+  "freezeSha256": "05f777e4d351fd8f1122897a9514e252f11430a12387a64aa4cfce7e00e37822",
+  "checks": {
+    "target": {
+      "command": [
+        "node",
+        "node_modules/convex/bin/main.js",
+        "function-spec"
+      ],
+      "startedAtUtc": "2026-10-08T11:15:08.736446+00:00",
+      "finishedAtUtc": "2026-10-08T11:15:10.218140+00:00",
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-dev-target.log",
+      "logSha256": "3fc326248f054169bc9dc36a2d4ac8638e4912ca91f642024e06f9b7de358751"
+    },
+    "sync": {
+      "command": [
+        "node",
+        "node_modules/convex/bin/main.js",
+        "dev",
+        "--once"
+      ],
+      "startedAtUtc": "2026-10-08T11:15:10.250300+00:00",
+      "finishedAtUtc": "2026-10-08T11:15:21.454756+00:00",
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-dev-sync.log",
+      "logSha256": "5624a309022a11504275a9a9cec3392a51ecec6927a0d747fef4e99666a3b05e"
+    },
+    "metadata": {
+      "command": [
+        "node",
+        "node_modules/convex/bin/main.js",
+        "function-spec"
+      ],
+      "startedAtUtc": "2026-10-08T11:15:21.532314+00:00",
+      "finishedAtUtc": "2026-10-08T11:15:22.853878+00:00",
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-dev-metadata.log",
+      "logSha256": "80745d04a8574ee819b3a382ef954d24a89543f946b239330f0e6786cde4c881"
+    }
+  },
+  "manualDone": false,
+  "metadataEntries": 478,
+  "addedInterfaces": [
+    "preferences.js:dismissResearchSummaries",
+    "preferences.js:expireResearchSummary",
+    "preferences.js:releaseResearchSummary",
+    "preferences.js:researchSummaries",
+    "preferences.js:scrubActorResearchSummaries",
+    "preferences.js:scrubResearchSummaries",
+    "preferences.js:sweepResearchSummaries"
+  ],
+  "unchangedPriorContracts": 471,
+  "unchangedHttp": 5,
+  "sourceUnchanged": true
+}

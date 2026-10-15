@@ -1,4 +1,10 @@
-import { useState } from "react";
+import { demoMode } from "@/lib/auth-client";
+import { lazy, Suspense, useState } from "react";
+const GithubSignals = lazy(() =>
+  import("@/features/signals/github").then((m) => ({
+    default: m.GithubSignals,
+  })),
+);
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Plus,
@@ -33,7 +39,19 @@ import {
 } from "@/components/shared";
 import { useStore, useWorkspaceLocalState } from "@/lib/store";
 import { uid, type Idea } from "@/lib/model";
+const RealIdeas = lazy(() =>
+  import("@/features/ideas/ideas").then((m) => ({ default: m.RealIdeas })),
+);
 export function IdeasPage() {
+  return demoMode ? (
+    <DemoIdeasPage />
+  ) : (
+    <Suspense fallback={<p role="status">Ideen werden geladen …</p>}>
+      <RealIdeas />
+    </Suspense>
+  );
+}
+function DemoIdeasPage() {
   const { state, setState, ideaToDraft } = useStore();
   const nav = useNavigate();
   const [query, setQuery] = useState("");
@@ -113,8 +131,8 @@ export function IdeasPage() {
                 variant="outline"
                 size="sm"
                 disabled={!write}
-                onClick={() => {
-                  const id = ideaToDraft(i);
+                onClick={async () => {
+                  const id = await ideaToDraft(i);
                   if (id) nav(`/drafts/${id}`);
                 }}
               >
@@ -317,6 +335,15 @@ const signalSeed = [
   },
 ];
 export function SignalsPage() {
+  return demoMode ? (
+    <DemoSignalsPage />
+  ) : (
+    <Suspense fallback={<p role="status">Signale werden geladen …</p>}>
+      <GithubSignals />
+    </Suspense>
+  );
+}
+function DemoSignalsPage() {
   const { state, setState } = useStore();
   const [params, setParams] = useSearchParams();
   const nav = useNavigate();

@@ -4,7 +4,7 @@ title: Generierte Inhalte mit Jev prüfen und begrenzt nachbessern
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 23:12'
 labels:
   - r5
   - jev
@@ -55,4 +55,8 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence. Version-bound mock verification, warning/manual confirmation/unavailable, individual criterion notes, bounded attempts and explicit local rewrite into a fresh reviewable version. Grenze: No factual/output verification, real generation or provider-controlled retry; no automatic publication. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Rootcontract .docs/jev-generation-continuation-contract.md: missingactualgeneratedpost seam requires separatelyreviewed narrow candidateoutput mode in EXISTINGfunded purpose=draft generator, then68exactverifier→finiteoneLowRiskRepair. Currentperspective/humanDraftText maynotclaimfull68. NativecandidateID/source/style/version first, all7criteria, noulprobability≠confidence, stickystrongclaim/meaning/intent risk manualreview beforelowfit/repair; exacthumanapply/newunapprovedversions. Bothgeneration/Jevfund gates sameimmutablewholeoperation(time/calls/cost/unknownheld) withoutsecondledger/childreset/currencyfiction; reservefinalverification before repair. Indexedprotectedcandidate/Agent/descendantcleanup beforeconsumer; final45-50 reconciliation/rootfreshreviews/EU required. Noactualpaidactivation/tests/manualDone.
+
+Drei konkrete native CLI-Untertasks jetzt angelegt: 68.1 Kandidaten-Voraussetzung im EXISTING purpose=draft Generator nach67.2; 68.2 exakte sieben-Kriterien-Jev-Verifikation nach68.1; 68.3 höchstens ein risikoarmer Repair mit gemeinsamem finanzierten Operationsrahmen nach68.2. Diese actual IDs ersetzen bisher unnummerierte Vorarbeit. Noch keine Implementierung/Tests/Dev oder Providerfreigabe, manuelle Done-Abnahme offen.
 <!-- SECTION:NOTES:END -->

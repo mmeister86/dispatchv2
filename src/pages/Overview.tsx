@@ -1,3 +1,6 @@
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -12,6 +15,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
+import { demoMode } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { useStore } from "@/lib/store";
 import { approved, currentVersion } from "@/lib/model";
@@ -25,7 +29,8 @@ import {
   TextLink,
 } from "@/components/shared";
 export function OverviewPage() {
-  const { state, createDraft } = useStore();
+  const { state, createDraft, events, notifications, hasMoreDrafts } =
+    useStore();
   const nav = useNavigate();
   const drafts = state.drafts.filter(
     (d) => d.workspaceId === state.activeWorkspaceId,
@@ -64,8 +69,8 @@ export function OverviewPage() {
         description="Deine Arbeit hat Geschichten. Gib ihnen einen guten Platz."
         actions={
           <Button
-            onClick={() => {
-              const id = createDraft("Unbenannter Entwurf");
+            onClick={async () => {
+              const id = await createDraft("Unbenannter Entwurf");
               if (id) nav(`/drafts/${id}`);
             }}
             disabled={state.role === "Viewer"}
@@ -75,6 +80,26 @@ export function OverviewPage() {
           </Button>
         }
       />
+      {!demoMode && (
+        <p className="mb-4 text-xs muted">
+          R1: Redaktion und Terminierung sind intern verfügbar. Live-Publishing
+          folgt mit der Provider-Integration.{" "}
+          {hasMoreDrafts
+            ? "Der Überblick zeigt die ersten 25 Entwürfe; weitere findest du in der Entwurfsliste."
+            : ""}
+        </p>
+      )}
+      {!demoMode && notifications.some((n) => n.state === "blocked") && (
+        <div role="alert" className="mb-4 surface p-4 text-sm">
+          Der Versandstatus einer Publishing-Benachrichtigung benötigt Prüfung.
+          Die Versandanforderung kann zurückgehalten worden sein oder ein
+          Transportproblem haben. Ob die Nachricht zugestellt wurde, ist damit
+          nicht geklärt.{" "}
+          <Link to="/settings/integrations" className="underline">
+            E-Mail-Transport prüfen
+          </Link>
+        </div>
+      )}
       {!state.preferences.onboardingDone && (
         <div className="mb-7 flex flex-wrap items-center justify-between gap-4 rounded-lg border border-[#ddd9bc] bg-[#f0f0df] p-4 dark:bg-secondary">
           <div className="flex items-center gap-3">
@@ -86,8 +111,9 @@ export function OverviewPage() {
                 Mach Dispatch zu deinem Workspace
               </strong>
               <p className="mt-1 mb-0 text-xs text-[#687054] dark:text-muted-foreground">
-                Zielgruppe, Schreibstil und Accounts in wenigen Schritten
-                einrichten.
+                {demoMode
+                  ? "Zielgruppe, Schreibstil und Accounts in wenigen Schritten einrichten."
+                  : "Projekt, Zielgruppe und Schreibstil einrichten. Quellen und Kanäle kannst du später ergänzen."}
               </p>
             </div>
           </div>
@@ -117,10 +143,18 @@ export function OverviewPage() {
           },
           {
             label: "Neue Ideen",
-            value: ideas.length,
+            value: demoMode ? (
+              ideas.length
+            ) : (
+              <RecentIdeaCount
+                workspaceId={state.activeWorkspaceId as Id<"workspaces">}
+              />
+            ),
             icon: Lightbulb,
             to: "/ideas",
-            detail: "Aus deinen Quellen",
+            detail: demoMode
+              ? "Aus deinen Quellen"
+              : "Neue unter den 25 zuletzt bearbeiteten Ideen",
           },
           {
             label: "Aufmerksamkeit nötig",
@@ -218,22 +252,31 @@ export function OverviewPage() {
               <TextLink to="/signals">Alle Signale</TextLink>
             </div>
             <div className="surface divide-y">
-              {[
-                {
-                  title: "Kalenderansicht aufgeräumt",
-                  repo: "dispatch / Pull Request #128",
-                  desc: "Vier kleine Verbesserungen, die den Alltag leichter machen.",
-                  icon: GitPullRequest,
-                  color: "#687d55",
-                },
-                {
-                  title: "Release v0.8 ist bereit",
-                  repo: "dispatch / Release",
-                  desc: "Ein guter Anlass, zu zeigen, woran du gearbeitet hast.",
-                  icon: Radio,
-                  color: "#bc6945",
-                },
-              ].map((s, i) => (
+              {!demoMode && (
+                <p className="p-5 text-sm muted">
+                  Noch keine Quellen verbunden. Du kannst deinen Workspace ohne
+                  GitHub einrichten.
+                </p>
+              )}
+              {(demoMode
+                ? [
+                    {
+                      title: "Kalenderansicht aufgeräumt",
+                      repo: "dispatch / Pull Request #128",
+                      desc: "Vier kleine Verbesserungen, die den Alltag leichter machen.",
+                      icon: GitPullRequest,
+                      color: "#687d55",
+                    },
+                    {
+                      title: "Release v0.8 ist bereit",
+                      repo: "dispatch / Release",
+                      desc: "Ein guter Anlass, zu zeigen, woran du gearbeitet hast.",
+                      icon: Radio,
+                      color: "#bc6945",
+                    },
+                  ]
+                : []
+              ).map((s, i) => (
                 <Link
                   to={`/signals?signal=${i + 1}`}
                   key={s.title}
@@ -259,8 +302,9 @@ export function OverviewPage() {
             <span className="eyebrow">Dein nächster guter Beitrag</span>
             <h3 className="mt-3 mb-2">Weniger überlegen. Mehr erzählen.</h3>
             <p className="mb-4 text-xs leading-relaxed muted">
-              Drei Vorschläge aus Arbeitssignalen und Recherche — bereit für
-              deinen redaktionellen Blick.
+              {demoMode
+                ? "Drei Vorschläge aus Arbeitssignalen und Recherche — bereit für deinen redaktionellen Blick."
+                : "Dein Workspace startet mit einem leeren Redaktionsplan. Sobald die Inhalte angebunden sind, findest du hier deine Vorschläge."}
             </p>
             <Button variant="outline" size="sm" asChild>
               <Link to="/plans">
@@ -292,51 +336,106 @@ export function OverviewPage() {
               </Link>
             ))}
             {!review.length && (
-              <p className="muted text-xs">Alle Entwürfe sind freigegeben.</p>
+              <p className="muted text-xs">
+                {drafts.length
+                  ? "Alle Entwürfe sind freigegeben."
+                  : "Noch keine Entwürfe vorhanden."}
+              </p>
             )}
           </Section>
           <Section title="Dein Themenmix">
-            <div className="mb-4 flex h-2 overflow-hidden rounded-full">
-              <span className="w-[45%] bg-[#6c7e5e]" />
-              <span className="w-[30%] bg-[#bc7758]" />
-              <span className="w-[25%] bg-[#b8b399]" />
-            </div>
-            {[
-              ["Building in public", "45 %", "#6c7e5e"],
-              ["Learnings", "30 %", "#bc7758"],
-              ["Produktupdates", "25 %", "#b8b399"],
-            ].map(([name, n, c]) => (
-              <div key={name} className="mb-3 flex justify-between text-xs">
-                <span className="flex items-center gap-2">
-                  <span
-                    style={{ background: c }}
-                    className="size-2 rounded-full"
-                  />
-                  {name}
-                </span>
-                <span className="muted">{n}</span>
-              </div>
-            ))}
-            <TextLink to="/settings/strategy">Strategie bearbeiten</TextLink>
-            <p className="mt-3 mb-0 text-[10px] muted">
-              Beispielhafte Zielverteilung
-            </p>
+            {!demoMode ? (
+              <p className="muted text-xs">
+                {state.preferences.topics ||
+                  "Lege deine Themen im Profil fest."}
+              </p>
+            ) : (
+              <>
+                <div className="mb-4 flex h-2 overflow-hidden rounded-full">
+                  <span className="w-[45%] bg-[#6c7e5e]" />
+                  <span className="w-[30%] bg-[#bc7758]" />
+                  <span className="w-[25%] bg-[#b8b399]" />
+                </div>
+                {[
+                  ["Building in public", "45 %", "#6c7e5e"],
+                  ["Learnings", "30 %", "#bc7758"],
+                  ["Produktupdates", "25 %", "#b8b399"],
+                ].map(([name, n, c]) => (
+                  <div key={name} className="mb-3 flex justify-between text-xs">
+                    <span className="flex items-center gap-2">
+                      <span
+                        style={{ background: c }}
+                        className="size-2 rounded-full"
+                      />
+                      {name}
+                    </span>
+                    <span className="muted">{n}</span>
+                  </div>
+                ))}
+                <TextLink to="/settings/strategy">
+                  Strategie bearbeiten
+                </TextLink>
+                <p className="mt-3 mb-0 text-[10px] muted">
+                  Beispielhafte Zielverteilung
+                </p>
+              </>
+            )}
           </Section>
+          {!demoMode && (
+            <Section title="Technische Ereignisse">
+              {events.length ? (
+                events.slice(0, 5).map((e) => (
+                  <p key={e.id} className="text-xs muted">
+                    {{
+                      DRAFT_CREATED: "Entwurf erstellt",
+                      VERSION_SAVED: "Arbeitsversion gespeichert",
+                      VERSION_APPROVED: "Version freigegeben",
+                      APPROVAL_REVOKED: "Freigabe widerrufen",
+                      SCHEDULE_CREATED: "Termin geplant",
+                      SCHEDULE_MOVED: "Termin verschoben",
+                      SCHEDULE_CANCELLED: "Termin storniert",
+                      PUBLISHING_CLAIMED: "Publishing begonnen",
+                      PUBLISHER_NOT_CONFIGURED:
+                        "Publishing-Konfiguration fehlt",
+                    }[e.code] ?? "Redaktionelles Ereignis"}{" "}
+                    · {formatDate(e.at, state.preferences.timezone)}
+                  </p>
+                ))
+              ) : (
+                <p className="text-xs muted">Noch keine Ereignisse.</p>
+              )}
+            </Section>
+          )}
           <Section title="Ein ruhiger Überblick">
             <p className="text-xs leading-relaxed muted">
-              Demo-Workspace ·{" "}
+              {demoMode ? "Demo-Workspace" : "Workspace"} ·{" "}
               {
                 state.accounts.filter(
                   (a) =>
                     a.workspaceId === state.activeWorkspaceId && a.connected,
                 ).length
               }{" "}
-              verbundene Accounts. Alle Abläufe sind lokal simuliert.
+              verbundene Accounts.{" "}
+              {demoMode
+                ? "Alle Abläufe sind lokal simuliert."
+                : "Dein Profil und dein Workspace sind gespeichert."}
             </p>
             <TextLink to="/analytics">Performance erkunden</TextLink>
           </Section>
         </aside>
       </div>
     </div>
+  );
+}
+
+function RecentIdeaCount({ workspaceId }: { workspaceId: Id<"workspaces"> }) {
+  const ideas = useQuery(api.content.ideas.list, {
+    workspaceId,
+    paginationOpts: { numItems: 25, cursor: null },
+  });
+  return ideas ? (
+    <>{ideas.page.filter((r) => r.idea.status === "new").length}</>
+  ) : (
+    <span aria-label="Ideenzahl wird geladen">…</span>
   );
 }

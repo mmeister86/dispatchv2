@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { NativeReview } from "@/features/drafts/review";
+import { PublishingRecovery } from "@/features/drafts/publishing-recovery";
+import { useState, useEffect } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
@@ -28,6 +30,20 @@ import {
   formatDate,
 } from "@/components/shared";
 import { ScheduleDialog } from "@/components/ScheduleDialog";
+import type { FunctionReturnType } from "convex/server";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
+import { demoMode } from "@/lib/auth-client";
+import { scheduleView } from "@/lib/editorial-mapping";
+import {
+  civilDate,
+  addCivilDays,
+  addCivilMonths,
+  formatCivilDate,
+  calendarWindow,
+} from "@/lib/time";
+import { useGithubSourceProofClock } from "@/lib/github-source-proof";
 import { useStore } from "@/lib/store";
 import {
   canApprove,
@@ -37,46 +53,104 @@ import {
   approveSnapshot,
   resumeSnapshot,
   now,
+  currentVersion,
+  type Draft,
   type Schedule,
 } from "@/lib/model";
-function dateKey(value: string, zone: string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: zone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(value));
-}
-function addDate(d: Date, offset: number) {
-  const x = new Date(d);
-  x.setDate(x.getDate() + offset);
-  return x;
+type CalendarRange = { start: number; end: number; account: string };
+function draftLabel(draft: Draft | undefined, schedule?: Schedule) {
+  return (draft && currentVersion(draft).sourceUnavailable) ||
+    schedule?.sourceUnavailable
+    ? "Quelle nicht verfügbar"
+    : draft?.title || schedule?.draftTitle || "Entwurf";
 }
 export function CalendarPage() {
-  const { state, mutate } = useStore();
+  return demoMode ? <CalendarContent /> : <ConnectedCalendarPage />;
+}
+function ConnectedCalendarPage() {
+  const { state } = useStore();
+  const [range, setRange] = useState<CalendarRange | null>(null);
+  const remote = useQuery(
+    api.editorial.calendar,
+    state.activeWorkspaceId && range
+      ? {
+          workspaceId: state.activeWorkspaceId as Id<"workspaces">,
+          start: range.start,
+          end: range.end,
+          ...(range.account !== "all"
+            ? { accountId: range.account as Id<"socialAccounts"> }
+            : {}),
+        }
+      : "skip",
+  );
+  return <CalendarContent remote={remote} onRange={setRange} />;
+}
+function CalendarContent({
+  remote,
+  onRange,
+}: {
+  remote?: FunctionReturnType<typeof api.editorial.calendar>;
+  onRange?: (range: CalendarRange) => void;
+}) {
+  const { state, mutate, cancelSchedule } = useStore();
   const [params, setParams] = useSearchParams();
   const view = params.get("view") ?? "week";
-  const [anchor, setAnchor] = useState(new Date());
+  const zone = state.preferences.timezone;
+  const [anchor, setAnchor] = useState(() =>
+    civilDate(new Date().toISOString(), zone),
+  );
   const [account, setAccount] = useState("all");
   const [status, setStatus] = useState("all");
   const [detail, setDetail] = useState<Schedule | null>(null);
   const [moving, setMoving] = useState<Schedule | null>(null);
   const [dragged, setDragged] = useState<string | null>(null);
-  const zone = state.preferences.timezone;
-  const monday = addDate(anchor, -((anchor.getDay() + 6) % 7));
-  const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1, 12);
-  const gridStart = addDate(first, -((first.getDay() + 6) % 7));
-  const days = Array.from({ length: view === "month" ? 42 : 7 }, (_, i) =>
-    addDate(view === "month" ? gridStart : monday, i),
+  const {
+    days,
+    start: rangeStart,
+    end: rangeEnd,
+  } = calendarWindow(anchor, view === "month", zone);
+  const start = rangeStart ? Date.parse(rangeStart) : 0,
+    end = rangeEnd ? Date.parse(rangeEnd) : 0;
+  useEffect(() => {
+    if (start && end) onRange?.({ start, end, account });
+  }, [start, end, account, onRange]);
+  const calendarSchedules = demoMode
+    ? state.schedules
+    : (remote?.rows ?? []).map((row) =>
+        scheduleView(row.schedule, row.version, row.frozenReview),
+      );
+  const protectedSchedules = [
+    ...calendarSchedules,
+    ...(detail ? [detail] : []),
+    ...(moving ? [moving] : []),
+  ];
+  const proofClock = useGithubSourceProofClock(
+    protectedSchedules
+      .filter((s) => s.sourceProofUntil !== undefined)
+      .map((s) => ({
+        authorized: !s.sourceUnavailable,
+        proofExpiresAt: s.sourceProofUntil!,
+      })),
   );
-  const schedules = state.schedules.filter(
+  useEffect(() => {
+    const blocked = (s: Schedule | null) =>
+      s &&
+      (s.sourceUnavailable ||
+        (s.sourceProofUntil !== undefined &&
+          s.sourceProofUntil <= proofClock) ||
+        calendarSchedules.find((current) => current.id === s.id)
+          ?.sourceUnavailable);
+    if (blocked(detail)) setDetail(null);
+    if (blocked(moving)) setMoving(null);
+  }, [proofClock, remote, detail, moving]);
+  const schedules = calendarSchedules.filter(
     (s) =>
       s.workspaceId === state.activeWorkspaceId &&
       (account === "all" || s.accountId === account) &&
       (status === "all" || s.status === status),
   );
   const currentDetail = detail
-    ? state.schedules.find((s) => s.id === detail.id)
+    ? calendarSchedules.find((s) => s.id === detail.id)
     : undefined;
   const draft = currentDetail
     ? state.drafts.find((d) => d.id === currentDetail.draftId)
@@ -87,15 +161,24 @@ export function CalendarPage() {
   const snapshot = currentDetail
     ? snapshotDraft(state, currentDetail)
     : undefined;
-  const agenda = schedules.sort((a, b) => a.at.localeCompare(b.at));
+  const agenda = schedules
+    .filter((s) => Date.parse(s.at) >= start && Date.parse(s.at) < end)
+    .sort((a, b) => a.at.localeCompare(b.at));
   const editable = canApprove(state.role);
   const openMove = (s: Schedule) => {
     setDetail(null);
     setMoving(s);
   };
-  const weekCaption = `${new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short" }).format(days[0])} – ${new Intl.DateTimeFormat("de-DE", { day: "numeric", month: "short", year: "numeric" }).format(days[6])}`;
+  const weekCaption = `${formatCivilDate(days[0], { day: "numeric", month: "short" })} – ${formatCivilDate(days[6], { day: "numeric", month: "short", year: "numeric" })}`;
   return (
     <div className="fade-in">
+      {!demoMode && (
+        <p className="mb-4 text-xs muted">
+          R1: Redaktion und Planung sind intern verfügbar. Live-Publishing wird
+          mit der Provider-Integration aktiviert.{" "}
+          {remote === undefined ? "Termine werden geladen …" : ""}
+        </p>
+      )}
       <PageHeader
         eyebrow="Redaktionsplanung"
         title="Platz für gute Geschichten"
@@ -109,6 +192,26 @@ export function CalendarPage() {
           </Button>
         }
       />
+      {(!rangeStart || !rangeEnd) && (
+        <p role="alert" className="mb-4 text-sm">
+          Dieser Kalenderzeitraum beginnt an einem nicht existierenden lokalen
+          Datum. Bitte einen anderen Zeitraum wählen.
+        </p>
+      )}
+      {remote?.tooDense && (
+        <div role="alert" className="mb-4 surface p-4 text-sm">
+          Dieser Zeitraum enthält mehr als 100 Termine. Es werden keine Termine
+          ausgeblendet: Bitte auf Wochenansicht wechseln oder einen einzelnen
+          Account auswählen.
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setParams({ view: "week" })}
+          >
+            Woche anzeigen
+          </Button>
+        </div>
+      )}
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Button
@@ -117,9 +220,7 @@ export function CalendarPage() {
             aria-label="Vorheriger Zeitraum"
             onClick={() =>
               setAnchor((d) =>
-                view === "month"
-                  ? new Date(d.getFullYear(), d.getMonth() - 1, 1, 12)
-                  : addDate(d, -7),
+                view === "month" ? addCivilMonths(d, -1) : addCivilDays(d, -7),
               )
             }
           >
@@ -131,9 +232,7 @@ export function CalendarPage() {
             aria-label="Nächster Zeitraum"
             onClick={() =>
               setAnchor((d) =>
-                view === "month"
-                  ? new Date(d.getFullYear(), d.getMonth() + 1, 1, 12)
-                  : addDate(d, 7),
+                view === "month" ? addCivilMonths(d, 1) : addCivilDays(d, 7),
               )
             }
           >
@@ -142,19 +241,14 @@ export function CalendarPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => setAnchor(new Date())}
+            onClick={() => setAnchor(civilDate(new Date().toISOString(), zone))}
           >
             Heute
           </Button>
           <strong className="ml-1 text-sm">
             {view === "month"
-              ? new Intl.DateTimeFormat("de-DE", {
-                  month: "long",
-                  year: "numeric",
-                }).format(anchor)
-              : view === "agenda"
-                ? "Alle Termine"
-                : weekCaption}
+              ? formatCivilDate(anchor, { month: "long", year: "numeric" })
+              : weekCaption}
           </strong>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -220,7 +314,9 @@ export function CalendarPage() {
                   </div>
                   <AccountIcon channel={a?.channel ?? "X"} />
                   <div className="min-w-0 flex-1">
-                    <strong className="block text-sm">{d?.title}</strong>
+                    <strong className="block text-sm">
+                      {draftLabel(d, s)}
+                    </strong>
                     <span className="mt-1 block text-[11px] muted">
                       {a?.handle} · v{s.version} ·{" "}
                       {s.text.length > 1
@@ -257,9 +353,9 @@ export function CalendarPage() {
                   {label}
                   {view === "week" && (
                     <span
-                      className={`mx-auto mt-2 grid size-8 place-items-center rounded-full text-lg font-semibold ${dateKey(days[i].toISOString(), zone) === dateKey(new Date().toISOString(), zone) ? "bg-primary text-primary-foreground" : "text-foreground"}`}
+                      className={`mx-auto mt-2 grid size-8 place-items-center rounded-full text-lg font-semibold ${days[i] === civilDate(new Date().toISOString(), zone) ? "bg-primary text-primary-foreground" : "text-foreground"}`}
                     >
-                      {days[i].getDate()}
+                      {Number(days[i].slice(-2))}
                     </span>
                   )}
                 </div>
@@ -267,15 +363,16 @@ export function CalendarPage() {
             </div>
             <div className="grid grid-cols-7">
               {days.map((day) => {
-                const key = dateKey(day.toISOString(), zone);
+                const key = day;
                 const slots = schedules.filter(
-                  (s) => dateKey(s.at, zone) === key,
+                  (s) => civilDate(s.at, zone) === key,
                 );
-                const isToday = key === dateKey(new Date().toISOString(), zone);
+                const isToday =
+                  key === civilDate(new Date().toISOString(), zone);
                 return (
                   <div
                     key={key}
-                    className={`min-h-36 border-r border-b p-2 last:border-r-0 ${view === "week" ? "min-h-[480px]" : ""} ${day.getMonth() !== anchor.getMonth() && view === "month" ? "bg-secondary/40" : ""} ${isToday ? "bg-primary/[.035]" : ""}`}
+                    className={`min-h-36 border-r border-b p-2 last:border-r-0 ${view === "week" ? "min-h-[480px]" : ""} ${day.slice(0, 7) !== anchor.slice(0, 7) && view === "month" ? "bg-secondary/40" : ""} ${isToday ? "bg-primary/[.035]" : ""}`}
                     onDragOver={(e) => {
                       if (editable) e.preventDefault();
                     }}
@@ -292,7 +389,7 @@ export function CalendarPage() {
                       <div
                         className={`mb-2 text-right text-xs ${isToday ? "text-primary font-semibold" : "muted"}`}
                       >
-                        {day.getDate()}
+                        {Number(day.slice(-2))}
                       </div>
                     )}
                     {slots.map((s) => {
@@ -319,7 +416,7 @@ export function CalendarPage() {
                             </span>
                           </div>
                           <h3 className="mb-2 text-[11px] leading-snug">
-                            {d?.title}
+                            {draftLabel(d, s)}
                           </h3>
                           <div className="mb-2">
                             <PublishBadge status={s.status} />
@@ -367,7 +464,7 @@ export function CalendarPage() {
               to={`/drafts/${d.id}`}
               className="rounded-md border bg-card px-3 py-2 text-xs hover:border-primary"
             >
-              {d.title}
+              {draftLabel(d)}
               <ArrowRight size={12} className="ml-2 inline" />
             </Link>
           ))}
@@ -378,9 +475,13 @@ export function CalendarPage() {
           if (!o) setDetail(null);
         }}
       >
-        <DialogContent className="sm:max-w-xl">
+        <DialogContent className="sm:max-w-xl [&>*]:min-w-0 max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{draft?.title ?? "Termindetails"}</DialogTitle>
+            <DialogTitle>
+              {currentDetail
+                ? draftLabel(draft, currentDetail)
+                : "Termindetails"}
+            </DialogTitle>
             <DialogDescription>
               Geplanter Snapshot · v{currentDetail?.version} ·{" "}
               {currentDetail ? formatDate(currentDetail.at, zone) : ""} · {zone}
@@ -423,15 +524,58 @@ export function CalendarPage() {
                     <p className="mb-0 whitespace-pre-wrap text-xs leading-relaxed">
                       {t}
                     </p>
+                    {i === 0 &&
+                      currentDetail.media?.map((m) => (
+                        <p
+                          key={m.assetId}
+                          className="mt-2 whitespace-pre-wrap text-xs"
+                        >
+                          Medium am ersten Beitrag ·{" "}
+                          {state.media.find((asset) => asset.id === m.assetId)
+                            ?.name ?? m.assetId}{" "}
+                          · Freigegebener Alt-Text: {m.alt}
+                        </p>
+                      ))}
+                    {currentDetail.externalPosts?.find(
+                      (p) => p.position === i,
+                    ) && (
+                      <a
+                        className="mt-2 block text-xs underline"
+                        href={
+                          currentDetail.externalPosts.find(
+                            (p) => p.position === i,
+                          )!.url
+                        }
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        X-Beitrag{" "}
+                        {
+                          currentDetail.externalPosts.find(
+                            (p) => p.position === i,
+                          )!.externalId
+                        }
+                      </a>
+                    )}
                     {i < currentDetail.publishedCount && (
                       <span className="mt-2 block text-[10px] muted">
-                        Externe Demo-ID: demo-{currentDetail.id}-{i + 1}. Kein
-                        echter öffentlicher Post.
+                        {demoMode
+                          ? `Externe Demo-ID: demo-${currentDetail.id}-${i + 1}. Kein echter öffentlicher Post.`
+                          : "Vom Provider bestätigter Beitrag."}
                       </span>
                     )}
                   </div>
                 ))}
               </div>
+              {!demoMode &&
+                ["uncertain", "partial", "failed"].includes(
+                  currentDetail.status,
+                ) && (
+                  <PublishingRecovery
+                    key={`${currentDetail.id}:${currentDetail.workspaceId}`}
+                    schedule={currentDetail}
+                  />
+                )}
               <DialogFooter className="flex-wrap gap-2">
                 {currentDetail.status === "scheduled" && (
                   <Button
@@ -443,7 +587,7 @@ export function CalendarPage() {
                     Termin verschieben
                   </Button>
                 )}
-                {currentDetail.status === "uncertain" && (
+                {demoMode && currentDetail.status === "uncertain" && (
                   <Button
                     disabled={!editable}
                     onClick={() =>
@@ -470,116 +614,123 @@ export function CalendarPage() {
                     Demo-Abgleich durchführen
                   </Button>
                 )}
-                {(currentDetail.status === "partial" ||
-                  currentDetail.status === "failed") && (
-                  <>
-                    <Button
-                      disabled={!canResumeSnapshot(state, currentDetail)}
-                      onClick={() =>
-                        mutate(
-                          (s) => resumeSnapshot(s, currentDetail.id),
-                          "Nur offene Beiträge des unveränderten Snapshots im Demo-Zustand fortgesetzt.",
-                        )
-                      }
-                    >
-                      <ArrowRight size={14} />
-                      Offene Beiträge simulieren
-                    </Button>
-                    {!canResumeSnapshot(state, currentDetail) && snapshot && (
-                      <>
-                        <Button
-                          variant="outline"
-                          disabled={
-                            !editable ||
-                            !draftValid(snapshot, state.accounts, state.media)
-                          }
-                          onClick={() =>
-                            mutate(
-                              (s) => approveSnapshot(s, currentDetail.id),
-                              "Genau diese Snapshot-Version erneut freigegeben. Arbeitsversion bleibt unverändert.",
-                            )
-                          }
-                        >
-                          Snapshot v{currentDetail.version} erneut freigeben
-                        </Button>
-                        {(["editorial", "brand"] as const)
-                          .filter(
-                            (stage) =>
-                              snapshot.reviewPolicy?.[stage] &&
-                              !snapshot.reviews?.some(
-                                (r) =>
-                                  r.stage === stage &&
-                                  r.version === currentDetail.version &&
-                                  r.accountId === currentDetail.accountId,
-                              ),
-                          )
-                          .map((stage) => (
-                            <Button
-                              key={stage}
-                              variant="outline"
-                              size="sm"
-                              disabled={!editable}
-                              onClick={() =>
-                                mutate(
-                                  (s) => ({
-                                    ...s,
-                                    drafts: s.drafts.map((d) =>
-                                      d.id === currentDetail.draftId
-                                        ? {
-                                            ...d,
-                                            reviews: [
-                                              ...(d.reviews ?? []),
-                                              {
-                                                version: currentDetail.version,
-                                                accountId:
-                                                  currentDetail.accountId,
-                                                stage,
-                                                by: s.preferences.name,
-                                                at: now(),
-                                              },
-                                            ],
-                                          }
-                                        : d,
-                                    ),
-                                  }),
-                                  "Snapshot-Review bestätigt. Keine Freigabe erteilt.",
-                                )
-                              }
-                            >
-                              {stage === "editorial"
-                                ? "Redaktionellen"
-                                : "Marken-"}
-                              Snapshot-Review bestätigen
-                            </Button>
-                          ))}
-                      </>
-                    )}
-                  </>
+                {!demoMode && (
+                  <div className="stack text-sm">
+                    <p>
+                      Gespeicherte Review-Regel:{" "}
+                      {currentDetail.reviewPin?.policyId ?? "Legacy OFF"} ·{" "}
+                      {currentDetail.frozenReview?.usable
+                        ? "eingefrorener Nachweis aktuell verfügbar"
+                        : "eingefrorener Nachweis nicht verfügbar"}
+                      . Eine reine Zeitverschiebung behält diesen Nachweis.
+                    </p>
+                  </div>
                 )}
+                {demoMode &&
+                  (currentDetail.status === "partial" ||
+                    currentDetail.status === "failed") && (
+                    <>
+                      <Button
+                        disabled={!canResumeSnapshot(state, currentDetail)}
+                        onClick={() =>
+                          mutate(
+                            (s) => resumeSnapshot(s, currentDetail.id),
+                            "Nur offene Beiträge des unveränderten Snapshots im Demo-Zustand fortgesetzt.",
+                          )
+                        }
+                      >
+                        <ArrowRight size={14} />
+                        Offene Beiträge simulieren
+                      </Button>
+                      {!canResumeSnapshot(state, currentDetail) && snapshot && (
+                        <>
+                          <Button
+                            variant="outline"
+                            disabled={
+                              !editable ||
+                              !draftValid(snapshot, state.accounts, state.media)
+                            }
+                            onClick={() =>
+                              mutate(
+                                (s) => approveSnapshot(s, currentDetail.id),
+                                "Genau diese Snapshot-Version erneut freigegeben. Arbeitsversion bleibt unverändert.",
+                              )
+                            }
+                          >
+                            Snapshot v{currentDetail.version} erneut freigeben
+                          </Button>
+                          {(["editorial", "brand"] as const)
+                            .filter(
+                              (stage) =>
+                                snapshot.reviewPolicy?.[stage] &&
+                                !snapshot.reviews?.some(
+                                  (r) =>
+                                    r.stage === stage &&
+                                    r.version === currentDetail.version &&
+                                    r.accountId === currentDetail.accountId,
+                                ),
+                            )
+                            .map((stage) => (
+                              <Button
+                                key={stage}
+                                variant="outline"
+                                size="sm"
+                                disabled={!editable}
+                                onClick={() =>
+                                  mutate(
+                                    (s) => ({
+                                      ...s,
+                                      drafts: s.drafts.map((d) =>
+                                        d.id === currentDetail.draftId
+                                          ? {
+                                              ...d,
+                                              reviews: [
+                                                ...(d.reviews ?? []),
+                                                {
+                                                  version:
+                                                    currentDetail.version,
+                                                  accountId:
+                                                    currentDetail.accountId,
+                                                  stage,
+                                                  by: s.preferences.name,
+                                                  at: now(),
+                                                },
+                                              ],
+                                            }
+                                          : d,
+                                      ),
+                                    }),
+                                    "Snapshot-Review bestätigt. Keine Freigabe erteilt.",
+                                  )
+                                }
+                              >
+                                {stage === "editorial"
+                                  ? "Redaktionellen"
+                                  : "Marken-"}
+                                Snapshot-Review bestätigen
+                              </Button>
+                            ))}
+                        </>
+                      )}
+                    </>
+                  )}
                 {!["published", "cancelled", "uncertain"].includes(
                   currentDetail.status,
-                ) && (
-                  <Button
-                    variant="ghost"
-                    disabled={!editable}
-                    onClick={() => {
-                      mutate(
-                        (s) => ({
-                          ...s,
-                          schedules: s.schedules.map((x) =>
-                            x.id === currentDetail.id
-                              ? { ...x, status: "cancelled" }
-                              : x,
-                          ),
-                        }),
-                        "Weitere Ausführung storniert. Bereits veröffentlichte Beiträge bleiben erhalten.",
-                      );
-                      setDetail(null);
-                    }}
-                  >
-                    Termin stornieren
-                  </Button>
-                )}
+                ) &&
+                  (demoMode ||
+                    !["partial", "failed"].includes(currentDetail.status)) && (
+                    <Button
+                      variant="ghost"
+                      disabled={!editable}
+                      onClick={async () => {
+                        if (await cancelSchedule(currentDetail)) {
+                          setDetail(null);
+                        }
+                      }}
+                    >
+                      Termin stornieren
+                    </Button>
+                  )}
                 <Button variant="outline" asChild>
                   <Link to={`/drafts/${currentDetail.draftId}`}>
                     Arbeitsversion öffnen
@@ -590,10 +741,30 @@ export function CalendarPage() {
           )}
         </DialogContent>
       </Dialog>
-      {moving && state.drafts.find((d) => d.id === moving.draftId) && (
+      {moving && (
         <ScheduleDialog
           key={moving.id}
-          draft={state.drafts.find((d) => d.id === moving.draftId)!}
+          draft={
+            state.drafts.find((d) => d.id === moving.draftId) ?? {
+              id: moving.draftId,
+              workspaceId: moving.workspaceId,
+              title: moving.draftTitle ?? "Geplanter Beitrag",
+              accountId: moving.accountId,
+              pillar: "",
+              strategy: "generic",
+              comments: [],
+              versions: [
+                {
+                  id: moving.versionId,
+                  number: moving.version,
+                  text: moving.text,
+                  mediaIds: moving.mediaIds,
+                  createdAt: moving.at,
+                  reason: "Geplanter Snapshot",
+                },
+              ],
+            }
+          }
           schedule={moving}
           open
           onOpenChange={(o) => {

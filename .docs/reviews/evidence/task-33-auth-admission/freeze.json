@@ -1,0 +1,51 @@
+{
+  "unit": "Task33.2 unit6B Auth admission/erasure seam",
+  "frozenAt": "2026-10-10T07:48:55.237677+00:00",
+  "root": "/Volumes/Speicher/Projekte/dispatch_v2",
+  "files": [
+    {
+      "path": "convex/auth.ts",
+      "sha256": "abbbe5c2c77937f5957be6bccc545d911220dc83a44f6d638e9903332ad1d130"
+    },
+    {
+      "path": "convex/lib/authorization.ts",
+      "sha256": "6e343c78b5dafbedb75625c820e0d24600095a58f327898bba1e67d12983a248"
+    },
+    {
+      "path": "convex/schema.ts",
+      "sha256": "baa04a04ed49596d590e05a7040182e5f289413d4b8a70b5a83d41d97d24c89d"
+    },
+    {
+      "path": "convex/_generated/api.d.ts",
+      "sha256": "947d9c9b06ab693667031846471382fd35e00e28ba953f3e3e10acb59ac38736"
+    },
+    {
+      "path": "convex/operations/authAdmission.ts",
+      "sha256": "fe75be02c10e86d2099c64dfbba77d85532475344b53c330bc2485bf1b663dfb"
+    },
+    {
+      "path": "convex/operations/authAdmission.test.ts",
+      "sha256": "8d1950a96dde6e9dd72f5cf2293bbd6cb5acf36b30fd1d800e30e47ab2cbdab7"
+    },
+    {
+      "path": "convex/operations/deletion.ts",
+      "sha256": "0992792f580d417f1a93132a8d0d78b7789c70cc71298a6152fda3c8eb34da65"
+    },
+    {
+      "path": "convex/operations/deletion.test.ts",
+      "sha256": "462735137ea3d05231feaafb0f53f884f0e9d209b51f0535775e0930233fa655"
+    },
+    {
+      "path": "patches/@convex-dev__better-auth@0.12.5.patch",
+      "sha256": "52aa51fe0c12258ac423fcd1c16edb2e8705c084cb4b8c0376624ef864de6a27"
+    },
+    {
+      "path": "pnpm-workspace.yaml",
+      "sha256": "be96629807e18e227e71ea646e9ce3bcc4648df0de282c54a6ed477c251e55b1"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "sha256": "d79b61a08e3e63bb43d87bae263e967119f6e4c0c73bfe0a6fda7cefe8ec851d"
+    }
+  ]
+}

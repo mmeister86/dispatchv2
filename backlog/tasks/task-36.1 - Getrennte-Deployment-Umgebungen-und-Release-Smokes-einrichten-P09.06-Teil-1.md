@@ -4,7 +4,7 @@ title: 'Getrennte Deployment-Umgebungen und Release-Smokes einrichten (P09.06, T
 status: To Do
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-07 11:34'
 labels:
   - p09
   - r3
@@ -46,3 +46,9 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P09.06. Der übergeord
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Read-only current inventory delta adopted: .docs/reviews/task-33-36-current-inventory-delta.md. Actual schema85->104:19 additions, none removed; scoped/native ownership and missing-root export/disposition/restore gaps recorded. Reconcile final accepted67.2 and future68/32 edges before implementation. This is preparation, no source/test/export/erase/restore/legal acceptance; ACs remain open.
+<!-- SECTION:NOTES:END -->

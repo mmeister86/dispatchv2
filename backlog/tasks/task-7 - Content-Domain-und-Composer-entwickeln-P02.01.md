@@ -4,7 +4,7 @@ title: Content-Domain und Composer entwickeln (P02.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 10:14'
 labels:
   - p02
   - r1
@@ -35,8 +35,8 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Eine Bearbeitung lässt frühere Versionen unverändert.
-- [ ] #2 konkurrierende Speicherungen verlieren keine Änderungen unbemerkt.
+- [x] #1 Eine Bearbeitung lässt frühere Versionen unverändert.
+- [x] #2 konkurrierende Speicherungen verlieren keine Änderungen unbemerkt.
 - [ ] #3 plattformspezifische Längen- und Formatgrenzen stammen aus dem Capability-Adapter.
 <!-- AC:END -->
 
@@ -46,8 +46,18 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Normalisierte Entwürfe und unveränderliche Versionen mit erwarteter Versionsnummer in Convex speichern.
+2. Composer, Erstellung, Kommentare, Zuweisung und Varianten auf explizite asynchrone Mutations umstellen.
+3. Rechte, Fremdreferenzen, konkurrierende Bearbeitung und Snapshot-Erhalt testen.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts, /drafts/:id. Search/status/channel filters, single-post/thread editor, post ordering, unsaved-edit warning, save/reopen, immutable content versions, account assignment, preview and version restoration. Grenze: Persistence is localStorage; cross-user collaborative concurrency is not implemented. No real publishing. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Editorial code9376587/6eea458/2079e68/f041927 auf Dev umgesetzt. Unabhängige SPEC und QUALITY PASS f041927:42UnitTests, Kommentar-Race-Browsercheck, isolierte Legacy-/Approval-/Concurrent-Limit-Repros. ImmutableSnapshots/CAS und sichtbarer Buffer-Erhalt geprüft. AC3 bleibt bis tatsächlichem X-Capability-Adapter TASK-10 offen; aktuell werden serverseitig hinterlegte Capabilities korrekt geprüft, keine erfundenen Accounts. Manuelle authentifizierte Composer-/Workspace-Abnahme offen; Status bleibt In Progress.
 <!-- SECTION:NOTES:END -->

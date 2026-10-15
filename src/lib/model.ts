@@ -1,7 +1,14 @@
+import { textWithinLimit } from "../../shared/xText";
 export type Channel = "X" | "LinkedIn" | "Bluesky" | "Mastodon";
 export type Role = "Owner" | "Admin" | "Editor" | "Viewer";
 export type PublishStatus =
-  "scheduled" | "published" | "failed" | "partial" | "uncertain" | "cancelled";
+  | "scheduled"
+  | "publishing"
+  | "published"
+  | "failed"
+  | "partial"
+  | "uncertain"
+  | "cancelled";
 export interface Account {
   id: string;
   workspaceId: string;
@@ -9,9 +16,32 @@ export interface Account {
   handle: string;
   channel: Channel;
   connected: boolean;
+  connection?: "connected" | "reauth_required" | "disconnected";
+  xEvidence?: {
+    scopes: string[];
+    identityVerifiedAt: number;
+    connectionSequence?: number;
+    textScopeEligible: boolean;
+    mediaScopeEligible: boolean;
+    liveWrite: "unverified" | "verified" | "blocked";
+    errorCode?: string;
+    remoteRevocation?: "not_attempted";
+  };
   color: string;
+  capability?: {
+    maxText: number;
+    maxThread: number;
+    maxMedia: number;
+    mediaTypes: ("image" | "video")[];
+    publish: boolean;
+  };
 }
 export interface Version {
+  researchProofUntil?: number;
+  sourceProofUntil?: number;
+  sourceUnavailable?: boolean;
+  id?: string;
+  media?: { assetId: string; alt: string }[];
   number: number;
   text: string[];
   mediaIds: string[];
@@ -19,6 +49,15 @@ export interface Version {
   reason: string;
 }
 export interface Approval {
+  reviewPin?: {
+    policyId: string | null;
+    decisionIds: string[];
+    sourceUntil: number | null;
+  };
+  purpose?: "publishing" | "first_write_verification";
+  expiresAt?: number;
+  id?: string;
+  versionId?: string;
   version: number;
   accountId: string;
   at: string;
@@ -33,6 +72,24 @@ export interface Comment {
   resolved: boolean;
 }
 export interface Draft {
+  assignmentRevision?: number;
+  currentVersionId?: string;
+  nativeReview?: {
+    revision: number;
+    policyId: string | null;
+    editorial: boolean;
+    brand: boolean;
+    editorialDecisionId: string | null;
+    brandDecisionId: string | null;
+    sourceUntil: number | null;
+    approvalId: string | null;
+    stageSourceUntil?: number | null;
+    approvalsLimited: boolean;
+  } | null;
+  revision?: number;
+  historyLimited?: boolean;
+  commentsLimited?: boolean;
+  schedulesLimited?: boolean;
   id: string;
   workspaceId: string;
   title: string;
@@ -56,6 +113,29 @@ export interface Draft {
   }[];
 }
 export interface Schedule {
+  frozenReview?: { usable: boolean; sourceUntil: number | null };
+  reviewPin?: {
+    policyId: string | null;
+    decisionIds: string[];
+    sourceUntil: number | null;
+  };
+  sourceProofUntil?: number;
+  sourceUnavailable?: boolean;
+  media?: { assetId: string; alt: string }[];
+  purpose?: "publishing" | "first_write_verification";
+  externalPosts?: {
+    position: number;
+    externalId: string;
+    url: string;
+    attemptId: string;
+    confirmedAt: number;
+  }[];
+  generation?: number;
+  versionId?: string;
+  timezone?: string;
+  localTime?: string;
+  draftTitle?: string;
+  durableState?: string;
   id: string;
   draftId: string;
   workspaceId: string;
@@ -87,7 +167,10 @@ export interface MediaAsset {
   url: string;
   alt: string;
   size: number;
-  status: "ready" | "failed";
+  status:
+    "uploading" | "validating" | "ready" | "failed" | "deleting" | "deleted";
+  uploadSessionId?: string;
+  mime?: string;
   origin: string;
 }
 export interface Workspace {
@@ -121,7 +204,10 @@ export interface AppState {
 export const now = () => new Date().toISOString();
 export const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 export const currentVersion = (draft: Draft) =>
-  draft.versions[draft.versions.length - 1];
+  draft.versions.find(
+    (v) =>
+      draft.currentVersionId !== undefined && v.id === draft.currentVersionId,
+  ) ?? draft.versions[draft.versions.length - 1];
 export const limits: Record<Channel, number> = {
   X: 280,
   LinkedIn: 3000,
@@ -145,14 +231,24 @@ export function draftValid(
     !!account?.connected &&
     account.workspaceId === draft.workspaceId &&
     v.text.length > 0 &&
-    (account.channel !== "LinkedIn" || v.text.length === 1) &&
-    v.mediaIds.length <= 4 &&
+    (account.capability
+      ? v.text.length <= account.capability.maxThread
+      : account.channel !== "LinkedIn" || v.text.length === 1) &&
+    v.mediaIds.length <= (account.capability?.maxMedia ?? 4) &&
     (!v.mediaIds.some(
-      (id) => media.find((m) => m.id === id)?.type === "video",
+      (id) =>
+        media.find((m) => m.id === id)?.type === "video" ||
+        media.find((m) => m.id === id)?.mime === "image/gif",
     ) ||
       v.mediaIds.length === 1) &&
     v.text.every(
-      (t) => t.trim().length > 0 && t.length <= limits[account.channel],
+      (t) =>
+        t.trim().length > 0 &&
+        textWithinLimit(
+          t,
+          account.channel,
+          account.capability?.maxText ?? limits[account.channel],
+        ),
     ) &&
     v.mediaIds.every((id) =>
       media.some(
@@ -160,20 +256,47 @@ export function draftValid(
           m.id === id &&
           m.workspaceId === draft.workspaceId &&
           m.status === "ready" &&
-          m.alt.trim().length > 0,
+          (v.media?.find((ref) => ref.assetId === id)?.alt ?? m.alt).trim()
+            .length > 0 &&
+          (!account.capability ||
+            account.capability.mediaTypes.includes(m.type)),
       ),
     )
   );
 }
 export function approved(draft: Draft) {
+  if (draft.nativeReview !== undefined)
+    return (
+      !!draft.nativeReview?.approvalId &&
+      (draft.nativeReview.sourceUntil === null ||
+        draft.nativeReview.sourceUntil > Date.now())
+    );
   return (
     draft.approval?.version === currentVersion(draft).number &&
     draft.approval?.accountId === draft.accountId &&
     !draft.approval?.revokedAt &&
+    draft.approval?.purpose !== "first_write_verification" &&
     reviewComplete(draft)
   );
 }
+export function reviewStageSourceUntil(draft: Draft): number | null {
+  const r = draft.nativeReview;
+  return r
+    ? r.stageSourceUntil === undefined
+      ? r.sourceUntil
+      : r.stageSourceUntil
+    : (currentVersion(draft).sourceProofUntil ?? null);
+}
 export function reviewComplete(draft: Draft) {
+  if (draft.nativeReview !== undefined)
+    return (
+      !!draft.nativeReview &&
+      (!draft.nativeReview.editorial ||
+        !!draft.nativeReview.editorialDecisionId) &&
+      (!draft.nativeReview.brand || !!draft.nativeReview.brandDecisionId) &&
+      (reviewStageSourceUntil(draft) === null ||
+        reviewStageSourceUntil(draft)! > Date.now())
+    );
   return (["editorial", "brand"] as const).every(
     (stage) =>
       !draft.reviewPolicy?.[stage] ||

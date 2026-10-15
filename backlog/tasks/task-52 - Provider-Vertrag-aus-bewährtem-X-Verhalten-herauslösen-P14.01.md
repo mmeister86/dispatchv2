@@ -4,7 +4,7 @@ title: Provider-Vertrag aus bewährtem X-Verhalten herauslösen (P14.01)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-07 13:41'
 labels:
   - p14
   - r7
@@ -59,4 +59,6 @@ Publishing-Adapter und Jev-Entscheidungsadapter bleiben getrennte Grenzen. Platt
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id, /settings/integrations, /calendar. Linked content packages with separately editable channel drafts, versions, approvals and schedules; channel text limits and separate states. Grenze: No backend provider contract/registry; capability numbers are illustrative local validation, not access-tested platform promises. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Root adopted readonly current proposal /tmp/dispatch-52-current-native-source-plan.md SHA edbfd79edfe305762f69270cd9efc77595ea601f08b79c6afa0ad7bd1d17762a after full report/semantic receipt;24 selected unowned source/doc/human before-after exact and6 private hashes verified. Existing concrete X native checkpoint/FirstWrite/unknown/read-only reconciliation/ownmetrics transport reuse; single explicit capability contract, no factory/registry/duplicate variant state. Independent existing Drafts with native original Idea provenance first; grouping metadata/index only when real caller needs it, no account-bound candidate/source laundering. Remote post deletion not implemented, explicitly unsupported in Dispatch; no platform maximum/access promises or extra channel selected. Final68.1 ancestry needs fresh reconciliation; moving observations after-only, no334freeze/new tests/source release/backendProvider/manual acceptance. AllAC/DoD open;53.1 already asked platform unanswered, not defaulted.
 <!-- SECTION:NOTES:END -->

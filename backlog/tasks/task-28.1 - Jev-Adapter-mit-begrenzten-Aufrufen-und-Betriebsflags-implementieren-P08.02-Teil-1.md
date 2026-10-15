@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 04:03'
 labels:
   - p08
   - jev
@@ -43,11 +43,11 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Gepinnter SDK-/Runtime-Durchstich ist dokumentiert; reale Kundendatenaufrufe erfordern den EU-only-/Datenschutznachweis aus TASK-1.
-- [ ] #2 Contract-Tests unterscheiden choice-/score-Confidence und noul-Wahrscheinlichkeit und weisen fehlende oder ungültige Antworten zurück.
-- [ ] #3 Tests für Timeout, Rate Limit, Providerfehler und SDK-Retries belegen Gesamtzeit-, Versuchs- und Kostenlimits sowie Circuit-Breaker-Erholung.
-- [ ] #4 Usage wird je tatsächlichem Versuch höchstens einmal verbucht und jeder weitere Versuch benötigt Budgetdeckung.
-- [ ] #5 Flags können Jev ohne Deployment deaktivieren. API-Schlüssel gelangen weder ins Frontend noch in Assessments oder Logs; Assessments und allgemeine Telemetrie speichern keine zusätzlichen privaten Draft-/Prompt-Kopien. Die autorisierte Darstellung und Bearbeitung von Entwürfen im Composer bleibt möglich.
+- [x] #1 Gepinnter SDK-/Runtime-Durchstich ist dokumentiert; reale Kundendatenaufrufe erfordern den EU-only-/Datenschutznachweis aus TASK-1.
+- [x] #2 Contract-Tests unterscheiden choice-/score-Confidence und noul-Wahrscheinlichkeit und weisen fehlende oder ungültige Antworten zurück.
+- [x] #3 Tests für Timeout, Rate Limit, Providerfehler und SDK-Retries belegen Gesamtzeit-, Versuchs- und Kostenlimits sowie Circuit-Breaker-Erholung.
+- [x] #4 Usage wird je tatsächlichem Versuch höchstens einmal verbucht und jeder weitere Versuch benötigt Budgetdeckung.
+- [x] #5 Flags können Jev ohne Deployment deaktivieren. API-Schlüssel gelangen weder ins Frontend noch in Assessments oder Logs; Assessments und allgemeine Telemetrie speichern keine zusätzlichen privaten Draft-/Prompt-Kopien. Die autorisierte Darstellung und Bearbeitung von Entwürfen im Composer bleibt möglich.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -56,10 +56,38 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Pin verified official SDK and prove server Action runtime with intercepted transport.
+2. Implement strict normalization, absolute call bounds, default-off flags and bounded circuit with visible missing processing/configuration state.
+3. Extend the existing single attempt ledger/shared three-scope counters for narrowly owned Jev attempts, exact current-purpose admission and safe late settlement.
+4. Run meaningful registered financial/source/SDK controls, full checks and existing EU Dev; freeze exact source and independent SPEC then QUALITY.
+5. Document software evidence; retain manual Done and actual EU-processing acceptance open.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 2026-09-19 D04: Nutzer verlangt Intelligence bereits im Dispatch-MVP/R2. Release-Zuordnung aktualisiert; keine Umsetzung oder Provideraktivierung. Maßgeblich: .docs/decisions/release-scope.md.
 
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence, /operations. Supporting disabled/provider-failure/low-confidence and local cost/bounded-attempt states. Grenze: No TypeSafe SDK integration, EU-only data-path approval, circuit breaker or provider accounting. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+ROOT readonly preparation: current official SDK0.6.0/current primary source and Context7 docs mapped, no install or runtime acceptance yet. Release waits final27 review loop. Missing EU-processing evidence keeps real calls disabled; user preference visible configuration guidance. New concrete analyzer-purpose owner must reuse sole aiAttempts ledger/shared counters, not generation/native-search grants. No AC/Done/live processing claimed.
+
+Implementation released after final27 independent SPEC/QUALITY and corrected label review PASS. Fresh sole source writer uses current SDK0.6.0 primary/Context7 map, strict runtime normalization/bounds/default-off flags/circuit and existing single ledger counters with concrete analyzer ownership. No live paid calls/processing or policy/grant activation; future actual questions28.2/assessments28.3, no arbitrary public classification API. Full checks and independent reviews required before AC; manual Done open.
+
+ROOT read genuine normalization RED05:28:24 two executed failures (fractional valid score success and lowconfidence) before implementation, distinct GREEN05:29:10 two PASS. Actual SDK0.6.0 narrow package/lock pin underway; production resolver explicitly denies old27 unavailable refs. Internal SDK/runtime/admission/ledger/circuit/full checks pending. Minimal existing cache/eval-test receipt-owner discrimination authorized, no22.3 oracle/report retuning. No AC/Done/EU-processing/provider activation.
+
+ROOT read registered runtime feature RED05:31:27 (intentionally missingexecute baseline made no SDKcall) and GREEN05:31:53 realinternalAction/pinnedSDK/interceptedonePOST/test-onlyresolver; no historicalprivacy defect/liveprovider claim. EarlyROOT Action-lifetime refinement: awaitedfund before SDKrace/no detached ctxwrites, timeoutunknownhold, genuineauthoritative late internalsettlement once. PhysicalSDK absolutebudget distinct awaitednoncancellableDBoverhead; ignored-abort/currentrights/lateusage controls/fullchecks pending. No AC/Done.
+
+SOURCE8f3de12 frozen exact23 paths/current+committed hashes independentlyverified ROOT. Final15 focused/postconstants15 and exactfrozen618/34 PASS05:42:37, static/build/bundle/finalcodegen/existingEUDevready05:41:19/posttypesPASS. Actualsettings browser correctedPASS; originalEPERM/staleAgentChatSessionmock failures areenvironment/fixture, notproductRED. Lowconfidence partialanswers preserved/currentproof; timeoutno detachedwrites andunknownholds/lateauthoritative once. FreshSPEC jev_adapter_spec dispatched; freshQUALITY afterPASS. AllAC/manualDone remainopen; no actualcloudSDKHTTP/customer/EUapproval/humaneval activation claimed.
+
+Fresh independent SPEC FAIL: actual registered SDK HTTP200 JSONnull becomes provider_error via unguarded value.model; context internalQuery omits existing contextResult return validator. Original sole writer correction released; permanent regression RED then bounded fix/GREEN/full/static/fresh codegen/EU Dev required. Same SPEC must PASS before fresh QUALITY. Independent focused15/3 PASS and seven controls fivePASS/twoFAIL. No answer leak or usage forgiveness demonstrated. All AC/manual Done remain open.
+
+Original writer correction SOURCE72a412c exact3paths frozen and ROOT verified23current/committed SHA/20unchanged. Genuine permanentnull+validator REDtwofail05:54:27 thenGREENtwopass05:54:35; focused17/3/full620/34/static/build/bundle/newofficialcodegen/existingEUDevready05:56:23/posttypesPASS. InitialTS issuetest-only reflective method fixed no productioncast. SAME SPEC recheck released; freshQUALITY waitsPASS. No newfrontend/browser/liveprovider/EUapproval claimed. AllAC/manualDone open.
+
+SAME SPEC correction PASS atSOURCE72a412ca: unchanged7 independentcontrols7PASS+focused17PASS05:58:25; bothnullclassification andreturnvalidatorfindingsclosed; exact23current/committedSHA/tree/16logs verified. ROOTreadfullreceipt879cef29. FreshindependentQUALITY jev_adapter_quality released. Sourcefrozen, allAC/manualDoneopen; no actualprovider/EU/humanapproval.
+
+ROOT bounded software acceptance: correctedSOURCE72a412ca SAME SPEC7controlsPASS+freshQUALITY3independentsecurity/financecontrolsPASS/nofindings;17focused/full620/34/static/build/bundle/codegen/existingEUDev05:56:23. AC1–5softwareverified; actualEUprocessing/providercloudHTTP/customer/humanexpectedranges notapproved, defaultOFF andquestionspending28.2. StatusInProgress/manualDoneopen. Continue28.2actualquestions/math then28.3assessments/cache.
 <!-- SECTION:NOTES:END -->

@@ -6,7 +6,7 @@ title: >-
 status: In Progress
 assignee: []
 created_date: '2026-09-18 15:20'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 04:28'
 labels:
   - p08
   - jev
@@ -41,10 +41,10 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Identische gespeicherte semantische und deterministische Komponenten erzeugen unter derselben Formelversion denselben Score; Grenzwerte, Cold Start und fehlende Werte sind getestet.
-- [ ] #2 Jev trifft atomare semantische Entscheidungen; Scoreaggregation, Policies und Ausführung bleiben in Dispatch/Convex.
+- [x] #1 Identische gespeicherte semantische und deterministische Komponenten erzeugen unter derselben Formelversion denselben Score; Grenzwerte, Cold Start und fehlende Werte sind getestet.
+- [x] #2 Jev trifft atomare semantische Entscheidungen; Scoreaggregation, Policies und Ausführung bleiben in Dispatch/Convex.
 - [ ] #3 Unit- und Contract-Tests prüfen Normalisierung, deterministische Signale, Gewichtung, Confidence und fehlerhafte Antworten; das versionierte Eval-Dataset besitzt menschlich geprüfte Erwartungsbereiche.
-- [ ] #4 Keine Aussage zu Audience Fit oder künftiger Reichweite wird aus einem nicht vorhandenen Messsignal abgeleitet.
+- [x] #4 Keine Aussage zu Audience Fit oder künftiger Reichweite wird aus einem nicht vorhandenen Messsignal abgeleitet.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -53,10 +53,32 @@ Quelle: .docs/JEV_INTEGRATION.md. Geplante Arbeit; Umsetzung im freigegebenen Re
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Consume the reviewed28.1 adapter and define a genuine immutable ordered post question/normalization version.
+2. Introduce executable profile references through new immutable payloads with explicit review/select, preserving old profile meaning.
+3. Compute descriptive structure signals and deterministic dispatch-score-v1 with missing/low-confidence and assumed cold-start states.
+4. Add transparent technical fixtures and reproducible controls; leave human-reviewed expectation-range acceptance open.
+5. Run full checks/existing EU Dev, freeze source and independent SPEC then QUALITY; retain manual Done.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 2026-09-19 D04: Nutzer verlangt Intelligence bereits im Dispatch-MVP/R2. Release-Zuordnung aktualisiert; keine Umsetzung oder Provideraktivierung. Maßgeblich: .docs/decisions/release-scope.md.
 
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id — Intelligence. Hook/clarity/discussion/originality/natural CTA/structure/history dimensions, fixed weighted illustrative score, missing values and declared 50 cold-start standard. Grenze: All semantic values are hypothetical; no evaluated model, audience match or reach prediction. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+ROOT preparation only, actual implementation waits reviewed28.1 adapter/sourcecontract. Current TASK27 unavailable executable refs must not be silently reinterpreted; genuine new immutable profile payloads require explicit review/select. Whole ordered thread and descriptive media, no measured Audience Fit/reach. Actual AC3 includes HUMAN reviewed expected ranges; synthetic/AI technical fixtures do not satisfy that portion or justify whole checkbox. No SDK/provider activation or human acceptance claimed.
+
+Implementation release after accepted28.1SOURCE72a412ca SAME SPEC/freshQUALITYPASS. Freshsolewriter to implement immutable8choice/5fivelevelscore/3noul questions, explicitnewprofilecandidate through existingreview/select, wholethreaddeterministicstructure anddispatch-score-v1. No autoenable/provider/grants. HumanexpectedrangesAC3wholecheckbox remainsopen despite technicalfixtures;28.3durableassessment/current/cacheboundary later. Full/static/EUDev/freshSPECthenQUALITY beforesoftwareAC.
+
+ROOT read genuineprefeatureRED06:05:23 missingmathmodule/newresolverrejection; first25registeredtestsPASSreportedpendingfinalreceipt. tests/jev-fixture.ts narrowsharedtestsetupreuse authorized. EarlyWIPreviewrefinement: opaqueaccount/draft/versionIDs/proofhorizons stayserver-side notSDKsemanticstate; onlyactuallyusednetwork/context withcapabilitymetadata separate. UseversionedWEIGHTS incalculation. No executedhistoricalprivacyfailure claimed;finalchecks/freshSPECQUALITY/ACpending.
+
+SOURCEc2e81f78 exact19paths frozen/treefc58102c ROOT verifiedcurrent+committedSHA/21artifacts/indexclean. Final632/37 full06:13:07/static/build/bundle/actualOperations-profile mockedbrowser/EUDev06:12:23/posttypesPASS. Firstmisnamedgreen logtwo expectationfailures retained correctedfloat/XweightedURLmath nothumanoracle; firstcodegeninferencefixedexplicitInfer. Technical15casesSHA b69ce7fa allAI/human_review_pending/inferencefalse; WHOLEAC3 staysunchecked. FreshSPEC jev_post_analyzer_spec dispatched, QUALITY onlyafterPASS. No actualprovider/EU/manualDone/persistedassessmentclaim.
+
+FreshSPEC boundedsoftwarePASS SOURCEc2e81f78; ROOTfullreceipt316292bf read. Independent19current+committedSHA/blob/BASE/tree/21artifacts verified; focused38/7+5independentactualresolver/SDK/math/inflightcurrentcapabilityandidentitycontrolsPASS06:18:11/12. No blockingfindings. FreshQUALITY released; allAC/manualDonecurrentlyopen, WHOLEhumanAC3andEUprovideracceptance remainunapproved;28.3later.
+
+ROOT accepted bounded software at SOURCE c2e81f7891c395c91fab2f44b4afbd53af636806 after fresh SPEC and QUALITY PASS. Full632/37, focused38 plus SPEC5 and QUALITY2 independent controls; static/build/bundle/browser/codegen/existingEUDev06:12:23. Whole AC3 remains unchecked: AI technical fixtures do not replace human expected-range review. Actual provider/EU approval and manual Done remain open. Complete evidence .docs/reviews/task-28.2-post-analysis-validation.md.
 <!-- SECTION:NOTES:END -->

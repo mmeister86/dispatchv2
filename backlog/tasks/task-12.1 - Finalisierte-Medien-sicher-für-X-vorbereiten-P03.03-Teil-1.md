@@ -1,10 +1,10 @@
 ---
 id: TASK-12.1
 title: 'Finalisierte Medien sicher für X vorbereiten (P03.03, Teil 1)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-09-16 20:12'
+updated_date: '2026-10-05 12:17'
 labels:
   - p03
   - r1
@@ -30,9 +30,9 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P03.03. Der übergeord
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Abruf prüft Tenant, finale Objektidentität, erwarteten Inhalt und Medienbereitschaft; abgelaufene URLs werden erneuert.
+- [x] #1 Abruf prüft Tenant, finale Objektidentität, erwarteten Inhalt und Medienbereitschaft; abgelaufene URLs werden erneuert.
 - [ ] #2 Unterstützte Medien durchlaufen begrenzten block-/streamweisen Upload, asynchrone Verarbeitung und Verfallsprüfung innerhalb gemessener Runtime-Grenzen.
-- [ ] #3 Unterbrechung während Upload/Verarbeitung ist wiederaufnehmbar; Kosten des Transfers sind messbar.
+- [x] #3 Unterbrechung während Upload/Verarbeitung ist wiederaufnehmbar; Kosten des Transfers sind messbar.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -40,3 +40,28 @@ Quelle: .docs/dispatch-end-to-end-implementation-plan.md, P03.03. Der übergeord
 - [ ] #1 Relevante automatisierte Prüfungen und manuelle Abnahme sind im Task dokumentiert.
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Reuse reviewed editorial approval/schedule and R2 immutable-source guards plus TASK10 narrow internal credential access.
+2. Add bounded final-only retrieval, checksum validation before X receives bytes, durable chunk/processing/expiry/alt checkpoints and transfer measurements.
+3. Verify small synthetic foreign-source, stale generation, malformed bytes, interruption, processing, exact alt and expiry cases; record live runtime/EU gates separately.
+4. Commit scoped code on master, run relevant checks and update existing Dev only; independent SPEC then QUALITY before next publishing unit.
+<!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Schreibgeschützte Vorbereitung: aktuelle offizielle X-v2-Spezifikation enthält verschachteltes metadata.alt_text.text (max1000Zeichen), kein Legacy-top-level alt_text/media_id. Receipt /tmp/dispatch-x-current-docs.md. Keine externen authentifizierten/paid X-Aufrufe, keine Medien hochgeladen. Implementierung als eigene frische SDD-Einheit nach TASK-9/10.
+
+Freshimplementation starts after TASK9SPEC/QUALITYfe3af37 and TASK10SPEC/QUALITY75088c3. CurrentfirstOAuthpublishingcap remainsunverified/disabled; TASK12.1 mediaenginebehindexistingguards, TASK12.2 owns concreteexplicitfirst-write verification/consent path without fabricatedentitlement. Read-onlyR2reuse/currentXmetadata docs receipts and boundedbrief prepared. No actualXuploads/publicposts/Runtime/EU/manualevidence claimed; rootBacklogowner, no automaticDone.
+
+Independent SPEC PASS code9e885d9; documentation-only a69a439 distinguishes official append schema0..9999 from Dispatch cap0..999. Independent reviewer11 targeted tests and root full103 tests/14files passed. Implementer type/lint/build/bundle and existing Dev activation recorded. QUALITY review pending; .docs/reviews/task-12.1-x-media-validation.md records exact scope and remaining EU-R2/runtime/live-provider/manual gates. No actual upload/post/provider proof or Done claimed.
+
+QUALITY NEEDS_WORK a69a439: independent harness confirms caught transient R2 TimeoutError before any Xrequest permanently strands upload despite confirmed chunks. Same implementer fixing narrow read-error classification/bounded durable initialize-or-append retry; auth/config/namespace/validation remain permanent and uncertain Xwrites remain paused. Both reviews recheck before next publishing unit; no code-complete or Done claim.
+
+Read-recovery correction frozen ddd3ad4: narrow finalGET transient classification, native1/2/4sec retries max3 within deadline, same initialize/append phase and confirmedsegment, optionalreadRetries; permanent source/security/byte validation and uncertain Xwrites unchanged. Implementer109 tests/14files +type/lint/build/bundle and existingDevoncePASS, actual two-segment PNG reset/resume +nativecallback tested. IndependentSPEC thenQUALITY re-review pending.
+
+Final independent SPEC and QUALITY PASS ddd3ad4; each reviewer17 targetedtests/2filesPASS. Original independent read-timeout harness now preserves append/MEDIA_RETRIEVAL_RETRY/noXfetch. AC1/3 checked for isolated source/immutable-bytes/fresh-access/recovery and transfer-measurement code evidence; actual maximum-asset measured runtime/RSS/EU-R2/liveX/cost/manual gates remain open, AC2 unchecked and statusInProgress. Full109unit/type/lint/build/bundle/existingDevPASS. TASK12.2 starts next; BacklogDone requires explicit post-manual user confirmation.
+<!-- SECTION:NOTES:END -->

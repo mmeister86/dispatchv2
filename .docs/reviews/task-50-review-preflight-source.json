@@ -1,0 +1,76 @@
+{
+  "head": "1ec088cfb142d99e95efe9c1b04d674891e6a069",
+  "qualification": "Read-only preflight of listed stable seams; moving47 source is not accepted or frozen. Final49/47 source must be reconciled before50 implementation.",
+  "files": [
+    {
+      "file": "convex/editorial.ts",
+      "sha256": "88a477da03b6f392d203a020d00cdee742d88af10759f72aa531e3a73f338bc7",
+      "matchesHEAD": true
+    },
+    {
+      "file": "convex/lib/editorialFields.ts",
+      "sha256": "1201aa1a3429b34d5d35668a9346d965f6befe4fade89ffede070a0459d21806",
+      "matchesHEAD": true
+    },
+    {
+      "file": "convex/lib/authorization.ts",
+      "sha256": "79b67f03ac30349b8f6fa667b289bdfbea5bee3e4e65c92733dd7bc2fe61b3a4",
+      "matchesHEAD": true
+    },
+    {
+      "file": "convex/publishing.ts",
+      "sha256": "02b0b24f9779c42471d8dcc0d534f77291a3393c355b29eb81d26f2c61c939f6",
+      "matchesHEAD": true
+    },
+    {
+      "file": "convex/publishing/reconcile.ts",
+      "sha256": "a56ad26c9bf352f828d1e9c1a46e9a92e4d5160cbc91cd8eb582d0d1e198f851",
+      "matchesHEAD": true
+    },
+    {
+      "file": "convex/publishing/attempts.ts",
+      "sha256": "c91f323024eaf9c458d4a75029b24479c6aadf450d3f45dcfea25c24cb7eb64b",
+      "matchesHEAD": true
+    },
+    {
+      "file": "convex/publishing/media.ts",
+      "sha256": "585f92550b07108d6a36f90c5ed32d31dc98b3e830fd1ed94a82844b962b4aae",
+      "matchesHEAD": true
+    },
+    {
+      "file": "convex/integrations/x/oauth.ts",
+      "sha256": "6896e552ad4e2bd14045680410ed69e749aada9e942a38dd3e4656118711ab5b",
+      "matchesHEAD": true
+    },
+    {
+      "file": "convex/research/contentProof.ts",
+      "sha256": "cb9556683d2a2f60cdc29c6a2dc313d43881ee1b14ac9b4862cd24edd5dfbdbd",
+      "matchesHEAD": true
+    },
+    {
+      "file": "convex/research/contentCleanup.ts",
+      "sha256": "85ec0b25789902628d52f70f44a945f8f0fc64209c3229c15185a539026fd3e9",
+      "matchesHEAD": true
+    },
+    {
+      "file": "convex/planning/accept.ts",
+      "sha256": "faf1adcbdcd82678617ca8d28649af1f5501cc876e6ba55ac3692e2f2ac4660d",
+      "matchesHEAD": true
+    },
+    {
+      "file": "src/lib/editorial-mapping.ts",
+      "sha256": "c8e331cf11418a89d71dcba12975391c94bf81c3765c647b6d4c0b5d58b06090",
+      "matchesHEAD": true
+    },
+    {
+      "file": "src/lib/store.tsx",
+      "sha256": "af498afc459b483b4f817b20940afda2d08e193928a37064535f931e8e2b403a",
+      "matchesHEAD": true
+    },
+    {
+      "file": "src/pages/Team.tsx",
+      "sha256": "12ce3ce1d710d91c22f4a26eda4b2c6292faf8970cf00b700b2abf782bc5cf85",
+      "matchesHEAD": true
+    }
+  ]
+}

@@ -1,0 +1,321 @@
+{
+  "preparedAtUtc": "2026-10-06T23:55:22.857107+00:00",
+  "briefingBaselineHead": "0a8166bf08b52502f353dafeb4624308d3623087",
+  "observedHead": "0a8166bf08b52502f353dafeb4624308d3623087",
+  "status": "read-only source preflight; no tests run; not acceptance",
+  "stableInspectedFiles": [
+    {
+      "path": "convex/ai/jev/access.ts",
+      "sha256": "a07fc7baaa24d07fbe8032c2a1ff732721a20d26197e7e097e63490973afbc78",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/types.ts",
+      "sha256": "6a247bfa487fa8c5f603729d08d50d2d227a845b797546d957d87dda707a7ddf",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/client.ts",
+      "sha256": "170a33e4400252b7856581cdfe38f2daca2a5fb26c6ea91b85c653a30a56fb49",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/analyzePost.ts",
+      "sha256": "497de0a6d06bc871291f5219ef1ea3bce3234dc99593e07f4147cc1b5acecac2",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/normalize.ts",
+      "sha256": "8d4f4b04b28b19396a476294962656926290ef326e87cad6fafecdd3f8dad0ad",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/questions.ts",
+      "sha256": "cee47c6018f8ccfc3def13f4a327c05028078907a61f3601fec3d8c6e2d67135",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/questions/postAnalysis.ts",
+      "sha256": "37b6fdfd51d4c5b812fbdfb60cfb200b7bf1f2270c130224812fe972652315fb",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/resultFields.ts",
+      "sha256": "02deb1c02f17003b3844694e1ee07b81ba73ae41f9575a4f64e55ce1e4b9ca4a",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/thresholds.ts",
+      "sha256": "9e601bc59538588d876982942b7473254f02115079407d22d4a4c2ae54b1e720",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/accounting.ts",
+      "sha256": "2104b11840f0c1d469155f3e1f2a511f12378de978867c37389963d97ae5abf7",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/fields.ts",
+      "sha256": "e6263dd9df94ad5504177e9d5dc1037aa72aec5d7f21aa18ae9f1be6ea0e80a9",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/runs.ts",
+      "sha256": "15be9847ca9ad86f48ac5c02bf1dace8add95f7f79d190dfedc99c1dfb54724d",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/provider.ts",
+      "sha256": "b9b5d1cebdcdc0311225065a2bf2fdfdd4d5be0c2aa4a3e4ccdf88ff464b1001",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/sourceAccess.ts",
+      "sha256": "d19aac70b0f77f0046f14a9d81d1aee99923681ee4adbd2bf3607a38d752541b",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/contentCopies.ts",
+      "sha256": "3e1e67817f403f50444f080c4d78734199026337eda614fcae360822259efc93",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/conversations.ts",
+      "sha256": "b9dabf116b5e1a9f2cb56c214960a20a48e0f0e3a4e8e78c44ccd59482a5465d",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/conversationAccess.ts",
+      "sha256": "00d756de23ac11d73133baba2990f569ba2a6439350e9887fe1af96b27402bec",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/researchTools.ts",
+      "sha256": "d820d6b0093c16eae5f1b027e1619b3f46a0320d21c5a3cf5f70dee65e38e1d9",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/researchAgent.ts",
+      "sha256": "fa135f70f26b7f40d84b9444a0ffaa6872b8e8a3ca6d58086fa178b6cba0783b",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/content/ideas.ts",
+      "sha256": "79486c53a49514368029170bfc72de371481630b3be48ae53730d8b4406bf2e3",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/content/ideaFields.ts",
+      "sha256": "3cda7c89f3fca5dc5a2386fc981a8c52e7d0e0ac17b37f61f45c838532646b4b",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/research/contentProof.ts",
+      "sha256": "cb9556683d2a2f60cdc29c6a2dc313d43881ee1b14ac9b4862cd24edd5dfbdbd",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/research/contentCleanup.ts",
+      "sha256": "85ec0b25789902628d52f70f44a945f8f0fc64209c3229c15185a539026fd3e9",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/research/pipelineAccess.ts",
+      "sha256": "ca23e1bba37e3c3c5b15fedeb3fe811f7837c3e6588671896f64d56d28554fd6",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/research/providerAccess.ts",
+      "sha256": "bc7237dbca3ce9ddf971dc8bf19ef132bfa919a893f7ba329d83a1039dc0c6aa",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/intelligence/assessments.ts",
+      "sha256": "9bf6f781e5859a468b9e75ff3d235dccd0ab7f662ceb4977e9925c8458b2203b",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/intelligence/assessmentFields.ts",
+      "sha256": "6dc718d5c01f97a8e122ede28fef0ca19f3e5c2bd39c3e37dd6f985cd34517b5",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/intelligence/recommendations.ts",
+      "sha256": "64d41a4b18944048aea566881f96d0743bbea53ef25d6f8082efa1687506f71a",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/intelligence/profiles.ts",
+      "sha256": "322b9f27f6c1de855773a27f3f000b16187e5a1db2ab7a90c3c13c84f4057637",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/intelligence/profileUpdates.ts",
+      "sha256": "7efab3dc8d7f8a85254711688c955d958cbd086a4eafd3e95c7f89b40ff31842",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/intelligence/sharedFields.ts",
+      "sha256": "6048ed9b016458ddedb22a0a9372ba4fa3a45eb6afa842508e59814375b9a375",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/performance/knowledge.ts",
+      "sha256": "6c27c88796f8ee1a4da517efb0ae794c044062db55e135b591cc93b6f31d74d3",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/performance/calibration.ts",
+      "sha256": "b8c02ce527252d3301fa7df6637ef0ecddba1390a18b5d3a2b01b7c39a9687b5",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/performance/models.ts",
+      "sha256": "6682833169980ab5946204bac437a8887f1c4c56753a02e85ebb2bc162f25f80",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/lib/sourceProof.ts",
+      "sha256": "9a1732ca214e60caa5cfa739e33bf711eccc5702d1accfe67d135cec98440b26",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/lib/authorization.ts",
+      "sha256": "79b67f03ac30349b8f6fa667b289bdfbea5bee3e4e65c92733dd7bc2fe61b3a4",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/integrations/github/context.ts",
+      "sha256": "483f3bb017f588c38fbedf6cc2c6cb99316c9dae111dbcf8afa0ab6e51c6ca1b",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/integrations/github/contextAccess.ts",
+      "sha256": "a0df466b82e42de71118891ddef29f5a85a6e4ed4c3ab20ab057951e2c336e78",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/editorial.ts",
+      "sha256": "88a477da03b6f392d203a020d00cdee742d88af10759f72aa531e3a73f338bc7",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/publishing/reconcile.ts",
+      "sha256": "a56ad26c9bf352f828d1e9c1a46e9a92e4d5160cbc91cd8eb582d0d1e198f851",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "src/features/settings/models.tsx",
+      "sha256": "06f412a4d694ff77c2ddb6114bb633f60f825da0e6e422a5867428a48f2caf8f",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "src/features/settings/content-strategy.tsx",
+      "sha256": "5eec628878ec42705c323274578c64434b782d5537bf4315ea91c5b18565b376",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "src/features/ideas/ideas.tsx",
+      "sha256": "09fb12113dba12c6ccd19460cecd5b923c1eaef4f2b85367b6dbaf626417fe6a",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "src/features/intelligence/assessments.tsx",
+      "sha256": "f9d757eb173e28be9d4fa469ff73ea9fc9acdf4cb9723bec2f377446551e5051",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "src/pages/Settings.tsx",
+      "sha256": "53080cb4748b28307b01fe834ddd88cf82b56d39795d1e8df0f60bc7f8285587",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "src/pages/Ideas.tsx",
+      "sha256": "1388af55d9b5f05d34a1641eba908b87f807e67be483145685807436c4c496a9",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "src/pages/Drafts.tsx",
+      "sha256": "f1e9ae9f62523d38696c223c2b8c16ca507676854516665eaf6a7c06ecfa94b2",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "src/lib/store.tsx",
+      "sha256": "af498afc459b483b4f817b20940afda2d08e193928a37064535f931e8e2b403a",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "src/lib/editorial-mapping.ts",
+      "sha256": "c8e331cf11418a89d71dcba12975391c94bf81c3765c647b6d4c0b5d58b06090",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/client.test.ts",
+      "sha256": "5e091a533b510b672eee1d479defc34f9a5b211104b2c296eb8d82401e42a52c",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/analyzePost.test.ts",
+      "sha256": "c5d1baf2e4980405ffe4d40451a6ee58bbda0fa49405f7196a3b60339219f527",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/content/ideas.test.ts",
+      "sha256": "da116b1d97a3894c7beaa178e18ba8e2758def098c6edab29abae0cd0e8aea2a",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/normalize.test.ts",
+      "sha256": "700102cb93541f584dc3368f22370dcd9521a5ae40752358d70840a51e194487",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "convex/ai/jev/questions.test.ts",
+      "sha256": "04eed5e69de0bb6306e0c89f4f61040958b38657ba88b742eca99870dc58f72c",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "tests/model-configuration.browser.mjs",
+      "sha256": "1ed977a6a791ce773e0b268c3e4cf8116c6aa0e34ebc66d5966322ec847166bb",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "tests/ideas.browser.mjs",
+      "sha256": "8a215f0d0feebe22eead0d2809ce06d9d69930cb77fe214c7d6f3f7449f206ff",
+      "matchesObservedHead": true
+    },
+    {
+      "path": "tests/jev-assessments.browser.mjs",
+      "sha256": "4d131fa34920737272da7dffb67a334ed2b1ad32817bd7b57742fb456363d83e",
+      "matchesObservedHead": true
+    }
+  ],
+  "installedComponentSource": [
+    {
+      "path": "node_modules/@convex-dev/agent/package.json",
+      "sha256": "5e3add7ce8f6079c699956d3ec2181a5d8784ce02d098e6a572f06be8ee1a100"
+    },
+    {
+      "path": "node_modules/@convex-dev/agent/src/component/threads.ts",
+      "sha256": "74b8bc312af8dd60dcc081ef47b79a0d62f4d3297e47ec7d0c6e3903daf81358"
+    },
+    {
+      "path": "node_modules/@convex-dev/agent/src/component/messages.ts",
+      "sha256": "e287265f9a71e8e277a82c855d2699da73bcf4f95128e676c97a4069f0638263"
+    },
+    {
+      "path": "node_modules/@convex-dev/agent/src/component/files.ts",
+      "sha256": "8e130b8921e1c3df70ad575be8920cb2acc1e3bc917382d2bd5d9ba1d658f7c6"
+    },
+    {
+      "path": "node_modules/@convex-dev/agent/src/component/schema.ts",
+      "sha256": "f7042dde7cbd414dd98f73bab7aa17480d58f7956e16c84214685cfada9dc726"
+    }
+  ],
+  "readButExcludedFromStableHashAcceptance": [
+    "convex/schema.ts",
+    "convex/crons.ts",
+    "convex/ai/styleProfiles.ts"
+  ],
+  "exclusionReason": "47.2 sole-writer shared ownership/moving source; reconcile final 47,49,50 before releasing writer"
+}

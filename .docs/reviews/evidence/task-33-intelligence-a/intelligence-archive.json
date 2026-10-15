@@ -1,0 +1,12 @@
+{
+  "transport": "MOCKED; native backend proofs tested separately",
+  "actualRoutingAndVerificationJSON": true,
+  "normalizedAssessmentNineAnswersZeroAndNull": true,
+  "originalRoutingModelPolicyAndNoAttemptProvenance": true,
+  "secretFieldsStripped": true,
+  "scopeAndExpiryGuards": true,
+  "familyABAAndUnmount": true,
+  "accountSessionWorkspaceRoleABA": true,
+  "exactDraftAndSourceKindSelectors": true,
+  "ownEditorViewer": true
+}

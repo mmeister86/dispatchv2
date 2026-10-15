@@ -1,4 +1,11 @@
 packages:
-  - '.'
-storeDir: /Volumes/Speicher/Projekte/dispatch_v2/.pnpm-store
-cacheDir: /Volumes/Speicher/Projekte/dispatch_v2/.cache/pnpm
+  - "."
+storeDir: .pnpm-store
+cacheDir: .cache/pnpm
+allowBuilds:
+  esbuild: true
+  core-js: false
+patchedDependencies:
+  '@convex-dev/agent@0.6.4': patches/@convex-dev__agent@0.6.4.patch
+  "@convex-dev/better-auth@0.12.5": patches/@convex-dev__better-auth@0.12.5.patch
+  '@convex-dev/workflow@0.4.8': patches/@convex-dev__workflow@0.4.8.patch

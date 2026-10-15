@@ -1,0 +1,104 @@
+{
+  "unit": "TASK-33.1 unit4A retained Intelligence/Jev/Style archive",
+  "frozenAt": "2026-10-09T07:17:04.356648+00:00",
+  "baselineReportedByRoot": "eb32ad6",
+  "branchReportedByRoot": "codex/backend-research-summaries",
+  "files": [
+    {
+      "path": "convex/operations/exportIntelligence.ts",
+      "sha256": "0da4908239c6630237c1609788d18e355a01fa2e2886642a9cdddf433e49bad5",
+      "bytes": 47307,
+      "lines": 1495
+    },
+    {
+      "path": "convex/operations/exportIntelligence.test.ts",
+      "sha256": "e037a56512bd5dcab93b9db26e0cae7516c34f84bec3f93f7d9ad62bbe0e1ebc",
+      "bytes": 45943,
+      "lines": 1426
+    },
+    {
+      "path": "convex/schema.ts",
+      "sha256": "a560797bb95e89fbfc7c57fd6d69205caa5b09a42e8157d137876a5cf5a6d7e7",
+      "bytes": 44048,
+      "lines": 1298
+    },
+    {
+      "path": "convex/_generated/api.d.ts",
+      "sha256": "0f65f19710d0fd8cb88aa735dd1385bf9eb4ea048050a585af47755596464344",
+      "bytes": 19960,
+      "lines": 353
+    },
+    {
+      "path": "convex/ai/jev/routing.ts",
+      "sha256": "5c8a03fbfac73593f2b42f2b322d71f065459abd13bf9edc07852bf62aa178de",
+      "bytes": 46808,
+      "lines": 1483
+    },
+    {
+      "path": "convex/ai/jev/verify.ts",
+      "sha256": "5e85b5cd913e150b6ac2efa50589a00a9b16ed0c7a05eaa7fc7bf9ea6b0ef28a",
+      "bytes": 48307,
+      "lines": 1537
+    },
+    {
+      "path": "convex/ai/styleProfiles.ts",
+      "sha256": "54e2690294d822812af5a99396e28ff503d2097fca7e7aa674de757c8ccff9c0",
+      "bytes": 41597,
+      "lines": 1355
+    },
+    {
+      "path": "convex/intelligence/profiles.ts",
+      "sha256": "bbcba48f73b4260b8a12b8ab042ca26a7eee473e2d7b618b9b88bd03185db783",
+      "bytes": 18556,
+      "lines": 592
+    },
+    {
+      "path": "src/features/settings/data-archive.tsx",
+      "sha256": "3fd8ec11381f431af95dd8069073ad2996b3a82d581993bf2de45aa0bd1b8c0e",
+      "bytes": 42640,
+      "lines": 1128
+    },
+    {
+      "path": "tests/operations.browser.mjs",
+      "sha256": "1058b82320bdf40dab9cf40f0f1a13975849ae6c8757aa70ea2f4244db442a2d",
+      "bytes": 147324,
+      "lines": 4168
+    },
+    {
+      "path": "tests/jev-verification-fixture.ts",
+      "sha256": "c1ec5b61c22cd693cc0f59f603c484efce686f6418812757fe64f350721f3492",
+      "bytes": 9669,
+      "lines": 303
+    },
+    {
+      "path": "tests/intelligence-update-fixture.ts",
+      "sha256": "80cd02f43f93a3e2ef3f8211c09067c195541d4d6d47d7581502169590861b4b",
+      "bytes": 4506,
+      "lines": 158
+    },
+    {
+      "path": "tests/jev-routing-fixture.ts",
+      "sha256": "b3c9c70ff4b6c379e2f1d2078fe79ef523ca7b7224e8847f8bddfdba4411df38",
+      "bytes": 4779,
+      "lines": 156
+    },
+    {
+      "path": "convex/ai/jev/verify.test.ts",
+      "sha256": "2b27a7ff0ff7de8ad860295e728ac94487a6fea6da3cbf00c8fc8bed630f543d",
+      "bytes": 98196,
+      "lines": 2840
+    },
+    {
+      "path": "convex/intelligence/profileUpdates.test.ts",
+      "sha256": "61c44b17a2632f55cedf1d4c7b29cf6a5d03e14226b2f9d1ec089a825451ffd6",
+      "bytes": 22268,
+      "lines": 627
+    },
+    {
+      "path": "convex/ai/jev/routing.test.ts",
+      "sha256": "944f39e08551e4b6340d8c49dfbcd9d783ce682033c15118270abfe87b50138b",
+      "bytes": 59142,
+      "lines": 1800
+    }
+  ]
+}

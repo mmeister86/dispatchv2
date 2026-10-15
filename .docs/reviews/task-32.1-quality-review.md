@@ -1,0 +1,23 @@
+# TASK-32.1 distinct QUALITY final1 — scoped PASS
+
+Exact freeze `/tmp/dispatch-32.1-final1-freeze.json`, SHA256 `a8b6e42960b6ea58bd8a1c8d79c1e87948ba9894f09d89c54473bbb7cca03f16`; HEAD `2770662af52054b79c1972d75af51b0c0f23ac9c`. Independently before/after343 source/config hashes match; all340 unowned files match baseline, including backend, generated bindings, native tests and human .zcodeignore. No confirmed correctness/security/basic accessibility defect in this exact three-file UI scope.
+
+Read actual TASK32.1 CLI description/ACs/plan/DoD, complete scoped diff, real Settings conditional rendering and Toggle/Switch primitive, Overview warning, AppShell required inbox mount and native recipient/session/source list/get/read/dismiss seam, original legacy publishing notification receipt/transport semantics. No TASK32.2 source release or future preference capability is inferred.
+
+Cloud previously reached generic EmptyState. The new specific Cloud branch renders a static section with five optional switches false+disabled, clear unavailable/OFF labels and explicit no-preference-storage text. It has no state, storage, query/mutation/action or future schema/API. Existing content-map React element construction does not mount Demo hooks on the Cloud branch. The original Demo NotificationSettings function body was independently compared with HEAD and is byte-exact. Same role behavior and reload persistence are preserved.
+
+Existing required personal inbox is unchanged: native list selects current recipient/workspace, original source/current parent joins and session projection remain; UI masks foreign auth/session/expired source and preserves loaded-page count qualification and original action affordances. The browser opened the original drawer, checked assignment/exact draft link/read button, and performed no read/dismiss mutation. Existing native tests are unchanged; this is UI preservation evidence, not a fresh certification of backend notification delivery.
+
+Overview blocked wording now accurately covers withheld requests and transport problems with delivery unknown. Raw error strings are not returned to that warning. Original settings-integrations link remains. Legacy sent generates no delivery/read-success claim; unchanged notify stores HTTP outcome only. This unit activates no optional mail or provider call and changes no transport receipt authority.
+
+Basic accessibility/layout: actual existing labeled Radix switches retain accessible names, checked=false and disabled states. Clear section title/status descriptions supplement the disabled controls; warning uses role=alert and a named link. Independent1280/390 screenshots inspected; readable wrapping/vertical continuation and tested no horizontal overflow. No screenreader, contrast measurement or manual accessibility acceptance claim.
+
+## Fresh independent evidence
+
+`DISPATCH_HEALTH_EVIDENCE_DIR=/tmp/dispatch-32.1-quality-final1-browser node tests/operations.browser.mjs` —PASS with authorized localhost/headless-Chrome escalation. Unique own log `/tmp/dispatch-32.1-quality-final1-browser.log`, receipt `/tmp/dispatch-32.1-quality-final1-browser/receipt.json`, screenshots in that directory. Actual full App/Store/production CSS synthetic transport at1280/390; all4 Cloud roles off/disabled, no Cloud notification preference storage/domain writes, actual existing recipient inbox, safe blocked/sent semantics, Demo original toggle/reload/Viewer behavior. Prior Health sessionABA/account/expiry/refresh/privacy/partial/profile/calibration/Demo checks also pass. Provider requests[] and unexpected errors[]. No source/test fixture edits or remote domain mutations.
+
+Writer supporting TypeScript/build/format/diff logs were hash-verified against source-ready, not independently rerun or added to my browser result. All SPEC artifact hashes and old writer RED/intermediate logs were verified unchanged. Before/after343 hashes,340 protected baseline files, HEAD and human ignore hash match. Report/receipt bind these exact artifact bytes.
+
+## Qualification
+
+Scoped QUALITY PASS for frozen UI semantics/native-transport fixtures. Backend/native suites/codegen/Dev unchanged and not rerun for this unit; previous accepted native evidence remains historical, not a fresh suite claim. Root UI static/build/bundle/commit gates remain separate. No real email delivery/reachability, provider activation, production OCC, manual screenreader/manual userDone, Backlog mutation or future TASK32.2 acceptance. All source/docs/config/env/generated/old tests and prior review artifacts untouched. Manual Done and parent32 reliability/preferences work remain open.

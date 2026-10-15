@@ -1,3 +1,5 @@
+import { demoMode } from "@/lib/auth-client";
+import { MediaLibrary } from "@/features/drafts/media-library";
 import { useEffect, useRef, useState } from "react";
 import { ImagePlus, Plus, Sparkles, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,7 +37,7 @@ type UploadJob = {
 };
 const FILE_LIMIT = 2 * 1024 * 1024;
 const TOTAL_LIMIT = 3 * 1024 * 1024;
-export function MediaPage() {
+function DemoMediaPage() {
   const { state, mutate } = useStore();
   const editable = canEdit(state.role);
   const assets = state.media.filter(
@@ -933,4 +935,8 @@ export function MediaPage() {
       </Dialog>
     </div>
   );
+}
+
+export function MediaPage() {
+  return demoMode ? <DemoMediaPage /> : <MediaLibrary />;
 }

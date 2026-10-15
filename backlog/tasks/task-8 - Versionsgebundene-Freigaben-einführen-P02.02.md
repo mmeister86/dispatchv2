@@ -4,7 +4,7 @@ title: Versionsgebundene Freigaben einführen (P02.02)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 10:14'
 labels:
   - p02
   - r1
@@ -38,9 +38,9 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Eine freigegebene Version V1 erlaubt nicht das Senden von V2.
-- [ ] #2 Accountwechsel und Medienänderung erfordern neue Freigabe.
-- [ ] #3 Widerruf vor Publishing-Claim verhindert die Ausführung.
+- [x] #1 Eine freigegebene Version V1 erlaubt nicht das Senden von V2.
+- [x] #2 Accountwechsel und Medienänderung erfordern neue Freigabe.
+- [x] #3 Widerruf vor Publishing-Claim verhindert die Ausführung.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -49,8 +49,18 @@ Entscheidungen (Empfehlungen sind noch keine Freigaben):
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Freigaben und Reviews serverseitig an Version/Account und authentifizierte Person binden.
+2. Widerruf, neue Versionen und separate geplante Snapshots in der UI korrekt darstellen.
+3. Stale-Version-, Rollen-, Referenz- und Widerruftests ausführen.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /drafts/:id, /team, /plans. Explicit version/account approval and revoke, working-versus-scheduled snapshot distinction; content/account/media changes invalidate current approval. Grenze: Local domain operations only; no backend audit or publication claim. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Unabhängige SPEC/QUALITY PASS f041927. Exakte Version-/Account-Freigabe, Medien-Checksum-/Key-Snapshot, Widerruf vor Claim, alte geplante V1 trotz100 neuer Freigaben erreichbar und expliziter Austausch mit neuer Freigabe automatisiert geprüft. Kein Agent-Freigabetool oder stiller Terminwechsel. Manuelle Benutzerabnahme und echte Provider-Ausführung offen, nicht Done.
 <!-- SECTION:NOTES:END -->

@@ -1,3 +1,5 @@
+import { demoMode } from "@/lib/auth-client";
+import { RealResearch } from "@/features/research/profile-editor";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
@@ -130,6 +132,9 @@ const labels: Record<string, string> = {
   empty: "Keine Treffer",
 };
 export function ResearchPage() {
+  return demoMode ? <DemoResearch /> : <RealResearch />;
+}
+function DemoResearch() {
   const { state, createDraft, mutate } = useStore();
   const navigate = useNavigate();
   const editable = canEdit(state.role);
@@ -156,7 +161,7 @@ export function ResearchPage() {
   useEffect(() => {
     if (!activeRun || !editable) return;
     const snapshot = activeRun.profile ?? profile;
-    const timer = window.setTimeout(() => {
+    const timer = window.setTimeout(async () => {
       const outcome =
         activeRun.cost > snapshot.budget
           ? "budget"
@@ -193,7 +198,7 @@ export function ResearchPage() {
               !item.draftId ||
               !state.drafts.some((d) => d.id === item.draftId)
             )
-              item.draftId = createDraft(
+              item.draftId = await createDraft(
                 item.title,
                 item.interpretation,
                 `Research → ${item.source} → ${item.url} · Quelle: ${item.claim} · Interpretation: ${item.interpretation}`,
@@ -218,14 +223,14 @@ export function ResearchPage() {
         list.map((i) => (i.id === id ? { ...i, ...update } : i)),
       );
   };
-  function toDraft(item: ResearchItem) {
+  async function toDraft(item: ResearchItem) {
     if (!editable) return;
     if (item.draftId && state.drafts.some((d) => d.id === item.draftId)) {
       navigate(`/drafts/${item.draftId}`);
       return;
     }
     const source = `Research → ${item.source} → ${item.url} · Stand ${item.date} · Konfidenz ${item.confidence}% · Quelle: ${item.claim} · Interpretation: ${item.interpretation}`;
-    const id = createDraft(item.title, item.interpretation, source);
+    const id = await createDraft(item.title, item.interpretation, source);
     if (id) {
       patch(item.id, { draftId: id });
       navigate(`/drafts/${id}`);

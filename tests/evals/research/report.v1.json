@@ -1,0 +1,5253 @@
+{
+  "version": "research-evaluation/v1",
+  "executedCases": 12,
+  "executedProbes": 32,
+  "executedTechnicalChecks": 175,
+  "failedTechnicalChecks": 0,
+  "regressionCheckPassRate": 1,
+  "measuresScope": "Technical regression assertions only; excludes controlled semantic findings and live quality",
+  "measures": [
+    {
+      "measure": "funded-dispatches",
+      "passed": 61,
+      "denominator": 61
+    },
+    {
+      "measure": "source-pins",
+      "passed": 17,
+      "denominator": 17
+    },
+    {
+      "measure": "urls",
+      "passed": 17,
+      "denominator": 17
+    },
+    {
+      "measure": "quotes",
+      "passed": 15,
+      "denominator": 15
+    },
+    {
+      "measure": "review",
+      "passed": 17,
+      "denominator": 17
+    },
+    {
+      "measure": "availability",
+      "passed": 7,
+      "denominator": 7
+    },
+    {
+      "measure": "declared-relevance",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "rejected-id",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "rejected-url",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "rejected-quote",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "old-native-rejections",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "freshness",
+      "passed": 2,
+      "denominator": 2
+    },
+    {
+      "measure": "unsupported-claims",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "copy-origins",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "publication-history",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "history-negative-controls",
+      "passed": 5,
+      "denominator": 5
+    },
+    {
+      "measure": "repetition",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "missing-body",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "unknown-timing",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "lifecycle-hidden",
+      "passed": 3,
+      "denominator": 3
+    },
+    {
+      "measure": "lifecycle-finalization",
+      "passed": 3,
+      "denominator": 3
+    },
+    {
+      "measure": "isolation",
+      "passed": 2,
+      "denominator": 2
+    },
+    {
+      "measure": "inert-instructions",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "attack-sentinels",
+      "passed": 4,
+      "denominator": 4
+    },
+    {
+      "measure": "blocked-tool-attempts",
+      "passed": 4,
+      "denominator": 4
+    },
+    {
+      "measure": "no-trend",
+      "passed": 1,
+      "denominator": 1
+    },
+    {
+      "measure": "missing-coverage",
+      "passed": 2,
+      "denominator": 2
+    },
+    {
+      "measure": "pending-cost",
+      "passed": 3,
+      "denominator": 3
+    }
+  ],
+  "physicalInvocations": 61,
+  "externalRequests": 0,
+  "costProvenance": "synthetic fixture; intercepted HTTP; simulated token/cost receipts and configured estimates",
+  "configuredEstimateMicros": 1170,
+  "unknownEstimateAttempts": 5,
+  "heldMicros": 500,
+  "unresolvedAttempts": 5,
+  "providerBilledMicros": null,
+  "probes": [
+    {
+      "caseId": "R01-supported-review",
+      "probeId": "positive",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "availability",
+          "passed": true,
+          "detail": "Usable Review positive control via registered Workflow+Agent, two physical intercepted calls"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R02-relevance-mixed",
+      "probeId": "declared-selection",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010029aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "declared-relevance",
+          "passed": true,
+          "detail": "Controlled selection matches frozen labels; model relevance not evaluated"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R02-relevance-mixed",
+      "probeId": "declared-support-mismatch",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010029aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R03-attribution-negative",
+      "probeId": "id",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "rejected-id",
+          "passed": true,
+          "detail": "Unsupported controlled candidate rejected before evidence"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R03-attribution-negative",
+      "probeId": "url",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "rejected-url",
+          "passed": true,
+          "detail": "Unsupported controlled candidate rejected before evidence"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R03-attribution-negative",
+      "probeId": "quote",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "rejected-quote",
+          "passed": true,
+          "detail": "Unsupported controlled candidate rejected before evidence"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R04-freshness",
+      "probeId": "old-publication",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "old-native-rejections",
+          "passed": true,
+          "detail": "X rejects original old publication outside native seven-day access window; no fake material insertion"
+        }
+      ],
+      "physicalInvocations": 1,
+      "attempts": [
+        {
+          "state": "unknown",
+          "heldMicros": 100,
+          "estimatedMicros": null
+        }
+      ]
+    },
+    {
+      "caseId": "R04-freshness",
+      "probeId": "new-publication-old-event",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010029aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "freshness",
+          "passed": true,
+          "detail": "Known publication/event/observation kept separate; new publication cannot refresh old event"
+        },
+        {
+          "measure": "freshness",
+          "passed": true,
+          "detail": "Known publication/event/observation kept separate; new publication cannot refresh old event"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R05-contested",
+      "probeId": "unsupported-consequence",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010029aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "unsupported-claims",
+          "passed": true,
+          "detail": "Declared contested candidate remains Review with concrete gap; truth is not adjudicated"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R06-syndication",
+      "probeId": "one-origin",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010029aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "copy-origins",
+          "passed": true,
+          "detail": "Same exact reference text is one origin despite independent metadata hashes"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R07-published-theme",
+      "probeId": "confirmed-and-negative-history",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010052aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010058aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "publication-history",
+          "passed": true,
+          "detail": "Confirmed publishing positions 0 and 1 both count for same account"
+        },
+        {
+          "measure": "history-negative-controls",
+          "passed": true,
+          "detail": "unconfirmed-position-2"
+        },
+        {
+          "measure": "history-negative-controls",
+          "passed": true,
+          "detail": "first-write-verification"
+        },
+        {
+          "measure": "history-negative-controls",
+          "passed": true,
+          "detail": "foreign-account"
+        },
+        {
+          "measure": "history-negative-controls",
+          "passed": true,
+          "detail": "unconfirmed-thread"
+        },
+        {
+          "measure": "history-negative-controls",
+          "passed": true,
+          "detail": "Accepted idea and planned draft have no publication receipt; cannot enter confirmed history"
+        },
+        {
+          "measure": "repetition",
+          "passed": true,
+          "detail": "New source publication does not erase declared matching confirmed history"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R08-missing-material",
+      "probeId": "headline-only",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical web-search invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "missing-body",
+          "passed": true,
+          "detail": "Actual metadata-only Web adapter cannot expose invented article claim"
+        },
+        {
+          "measure": "unknown-timing",
+          "passed": true,
+          "detail": "Unknown publication and event remain unknown; observedAt is not publication"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "expiry",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "lifecycle-hidden",
+          "passed": true,
+          "detail": "expiry: protected old payload and pin hidden at current projection"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "withdrawn",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "lifecycle-hidden",
+          "passed": true,
+          "detail": "withdrawn: protected old payload and pin hidden at current projection"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "hash",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "lifecycle-hidden",
+          "passed": true,
+          "detail": "hash: protected old payload and pin hidden at current projection"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "pre-final-expiry",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "lifecycle-finalization",
+          "passed": true,
+          "detail": "expiry during intercepted physical generation prevents invalid finalization"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "pre-final-withdrawn",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "lifecycle-finalization",
+          "passed": true,
+          "detail": "withdrawn during intercepted physical generation prevents invalid finalization"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "pre-final-hash",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "lifecycle-finalization",
+          "passed": true,
+          "detail": "hash during intercepted physical generation prevents invalid finalization"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "foreign-tenant",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "isolation",
+          "passed": true,
+          "detail": "Foreign tenant current reference cannot expose protected payload"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "foreign-account",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "isolation",
+          "passed": true,
+          "detail": "Foreign account current reference cannot expose protected payload"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "inert-source-instructions",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "inert-instructions",
+          "passed": true,
+          "detail": "No research tools; policy/account/member sentinel hashes before=4c4da041f6551d12825c3d117f8f5ff1356e8fd6ac3212a6d16aed1cea498765, after=4c4da041f6551d12825c3d117f8f5ff1356e8fd6ac3212a6d16aed1cea498765; no human eligibility or exposed secret"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "tool-read_context",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "attack-sentinels",
+          "passed": true,
+          "detail": "Policy/account/member/evidence sentinel hashes before=64e062a2a111868351c44712060edf0b165b1390cee857bf0769f54c37161a10, after=64e062a2a111868351c44712060edf0b165b1390cee857bf0769f54c37161a10"
+        },
+        {
+          "measure": "blocked-tool-attempts",
+          "passed": true,
+          "detail": "Actual intercepted provider attempts read_context; research grants no executable model tools or follow-up call"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "tool-grant_tools",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "attack-sentinels",
+          "passed": true,
+          "detail": "Policy/account/member/evidence sentinel hashes before=64e062a2a111868351c44712060edf0b165b1390cee857bf0769f54c37161a10, after=64e062a2a111868351c44712060edf0b165b1390cee857bf0769f54c37161a10"
+        },
+        {
+          "measure": "blocked-tool-attempts",
+          "passed": true,
+          "detail": "Actual intercepted provider attempts grant_tools; research grants no executable model tools or follow-up call"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "tool-mutate_foreign",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "attack-sentinels",
+          "passed": true,
+          "detail": "Policy/account/member/evidence sentinel hashes before=64e062a2a111868351c44712060edf0b165b1390cee857bf0769f54c37161a10, after=64e062a2a111868351c44712060edf0b165b1390cee857bf0769f54c37161a10"
+        },
+        {
+          "measure": "blocked-tool-attempts",
+          "passed": true,
+          "detail": "Actual intercepted provider attempts mutate_foreign; research grants no executable model tools or follow-up call"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "tool-human_verify",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "attack-sentinels",
+          "passed": true,
+          "detail": "Policy/account/member/evidence sentinel hashes before=64e062a2a111868351c44712060edf0b165b1390cee857bf0769f54c37161a10, after=64e062a2a111868351c44712060edf0b165b1390cee857bf0769f54c37161a10"
+        },
+        {
+          "measure": "blocked-tool-attempts",
+          "passed": true,
+          "detail": "Actual intercepted provider attempts human_verify; research grants no executable model tools or follow-up call"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R11-no-trend",
+      "probeId": "cumulative-only",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010020aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010026aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "no-trend",
+          "passed": true,
+          "detail": "50000 cumulative reactions, one observation; injected rising 50% is replaced"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "empty",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010021aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical web-search invocation observes current sent reservation 0000000000000000010023aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "availability",
+          "passed": true,
+          "detail": "empty: actual empty/0 results/2 physical invocations; expected empty/0/2"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 0
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20
+        }
+      ]
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "x-unavailable",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010021aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical web-search invocation observes current sent reservation 0000000000000000010023aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010029aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "availability",
+          "passed": true,
+          "detail": "x-unavailable: actual partial/1 results/3 physical invocations; expected partial/1/3"
+        },
+        {
+          "measure": "missing-coverage",
+          "passed": true,
+          "detail": "Actual missing native operation remains named independently from usable partial Review"
+        },
+        {
+          "measure": "pending-cost",
+          "passed": true,
+          "detail": "Unavailable transport retains unresolved financial hold"
+        }
+      ],
+      "physicalInvocations": 3,
+      "attempts": [
+        {
+          "state": "unknown",
+          "heldMicros": 100,
+          "estimatedMicros": null
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "web-unavailable",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010021aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical web-search invocation observes current sent reservation 0000000000000000010023aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical generation invocation observes current sent reservation 0000000000000000010029aiAttempts, held 19000 synthetic micros"
+        },
+        {
+          "measure": "source-pins",
+          "passed": true,
+          "detail": "Current delivered pin/hash"
+        },
+        {
+          "measure": "urls",
+          "passed": true,
+          "detail": "URL from actual adapter source, never candidate string"
+        },
+        {
+          "measure": "quotes",
+          "passed": true,
+          "detail": "Literal delivered text; does not prove entailment"
+        },
+        {
+          "measure": "review",
+          "passed": true,
+          "detail": "No human verification/eligibility grant from model"
+        },
+        {
+          "measure": "availability",
+          "passed": true,
+          "detail": "web-unavailable: actual partial/1 results/3 physical invocations; expected partial/1/3"
+        },
+        {
+          "measure": "missing-coverage",
+          "passed": true,
+          "detail": "Actual missing native operation remains named independently from usable partial Review"
+        },
+        {
+          "measure": "pending-cost",
+          "passed": true,
+          "detail": "Unavailable transport retains unresolved financial hold"
+        }
+      ],
+      "physicalInvocations": 3,
+      "attempts": [
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10
+        },
+        {
+          "state": "unknown",
+          "heldMicros": 100,
+          "estimatedMicros": null
+        },
+        {
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30
+        }
+      ]
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "both-unavailable",
+      "checks": [
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical x-recent invocation observes current sent reservation 0000000000000000010021aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "funded-dispatches",
+          "passed": true,
+          "detail": "Physical web-search invocation observes current sent reservation 0000000000000000010023aiAttempts, held 100 synthetic micros"
+        },
+        {
+          "measure": "availability",
+          "passed": true,
+          "detail": "both-unavailable: actual failed/0 results/2 physical invocations; expected failed/0/2"
+        },
+        {
+          "measure": "pending-cost",
+          "passed": true,
+          "detail": "Unavailable transport retains unresolved financial hold"
+        }
+      ],
+      "physicalInvocations": 2,
+      "attempts": [
+        {
+          "state": "unknown",
+          "heldMicros": 100,
+          "estimatedMicros": null
+        },
+        {
+          "state": "unknown",
+          "heldMicros": 100,
+          "estimatedMicros": null
+        }
+      ]
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "budget",
+      "checks": [
+        {
+          "measure": "availability",
+          "passed": true,
+          "detail": "budget: actual budget_exhausted/0 results/0 physical invocations; expected budget_exhausted/0/0"
+        }
+      ],
+      "physicalInvocations": 0,
+      "attempts": []
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "cancel",
+      "checks": [
+        {
+          "measure": "availability",
+          "passed": true,
+          "detail": "cancel: actual cancelled/0 results/0 physical invocations; expected cancelled/0/0"
+        }
+      ],
+      "physicalInvocations": 0,
+      "attempts": []
+    }
+  ],
+  "manifest": {
+    "dataset": "dispatch-research-reference/v1",
+    "profile": {
+      "topic": "municipal heat-pump pilot",
+      "freshnessDays": 7,
+      "language": "de",
+      "region": "DE",
+      "audience": "Builders"
+    },
+    "permission": "Current synthetic Owner, own workspace/account only; policy/grant version synthetic-v1; no production rights approval",
+    "generationPolicy": {
+      "model": "synthetic/model",
+      "maxInputTokens": 16000,
+      "maxOutputTokens": 3000,
+      "maxAttempts": 3,
+      "maxToolSteps": 2,
+      "maxDurationMs": 120000,
+      "currency": "USD",
+      "inputMicrosPerMillion": 1000000,
+      "outputMicrosPerMillion": 1000000
+    },
+    "oracleHash": "573de70530be4b404be4d57938ceed746a44b7888dbab5f07ce2c5d2fdd979e6",
+    "oracleVersion": "dispatch-research-oracles/v1",
+    "executionStartedAt": "2026-10-05T23:48:25.259Z",
+    "candidateVersion": "controlled-candidate/v1",
+    "algorithmVersion": "research-semantic-v2/human-publication-age-v1",
+    "acceptedPipelineCommit": "3b518074bc2fb0bc6b5360ff5c00a23b90467318",
+    "clock": "2026-10-06T10:00:00Z",
+    "authorship": "AI contract-derived draft; human review open",
+    "sourceReferenceTextHashes": [
+      {
+        "id": "S1",
+        "version": 1,
+        "hash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344"
+      },
+      {
+        "id": "S2",
+        "version": 1,
+        "hash": "9cd992b487cdeb78cbb1ee164aba4fff8c7f5678dd92c365d8a6d862d1e8fdcb"
+      },
+      {
+        "id": "S3",
+        "version": 1,
+        "hash": "28b0c3b396d44f743f2971ed1edc7c0aeddf3a2a02acb968cdb8f1db6fce34af"
+      },
+      {
+        "id": "S4",
+        "version": 1,
+        "hash": "738b4eee4c6f634fbd2777b0574f6c938c29dc36e36be1af78a12e9523075ba0"
+      },
+      {
+        "id": "S5",
+        "version": 1,
+        "hash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344"
+      },
+      {
+        "id": "S6",
+        "version": 1,
+        "hash": "d1afbb1183faa5d12ca3ea2f0852c84f6cf010c8c0e6673a1d050141715e559f"
+      },
+      {
+        "id": "S7",
+        "version": 1,
+        "hash": "366d876aa2f14ade6c1915e5a7e6f7ae150b2afaee4364be5d63c3aec24e37a5"
+      },
+      {
+        "id": "S8",
+        "version": 1,
+        "hash": "e40b3735c72b9c2bcd9277d91f9f71f047debd307d5ae4058b416b5d0fff52f9"
+      },
+      {
+        "id": "S9",
+        "version": 1,
+        "hash": "750f598a18717aa90322cf226e8e7391e969430b5cefafbef089168ee7386ff0"
+      }
+    ],
+    "actualHandlers": [
+      "research.pipeline.start",
+      "ai.researchAgent.research",
+      "research.execute.operation",
+      "ai.researchTools",
+      "ai.runs",
+      "research.evidence.list",
+      "research.pipeline.results"
+    ],
+    "components": ["Workflow", "Workpool", "Agent"]
+  },
+  "overallConclusion": "LIMITED: controlled semantic mismatch remains Review; live quality and manual acceptance not evaluated",
+  "controlledSemanticFindings": [
+    {
+      "caseId": "R02-relevance-mixed",
+      "probeId": "declared-support-mismatch",
+      "measure": "declared-semantic-support",
+      "status": "FAIL",
+      "detail": "Exact baking-club quote may still accompany unrelated pilot claim as human Review. Literal provenance and generic Review are not semantic support. Human semantic review remains required; automatic support checking is not implemented."
+    }
+  ],
+  "controlledSemanticSupport": {
+    "supported": 0,
+    "denominator": 1,
+    "interpretation": "Controlled injected mismatch only; live model support not evaluated"
+  },
+  "unknowns": [
+    "Live model semantic relevance/support/factual truth",
+    "General topic similarity/syndication quality",
+    "Real provider quality/rights/full EU processing/pricing/global allocations",
+    "Provider invoice and live token receipt",
+    "Independent human acceptance and labels",
+    "Reference dates absent in S9 require explicit synthetic X transport publication; actual date is not reference truth",
+    "Web article body/publication unavailable",
+    "Old X publication rejected by adapter, not retained contextual freshness",
+    "No real demographic data/model: demographic fairness not evaluated"
+  ],
+  "skipped": [],
+  "executions": [
+    {
+      "caseId": "R01-supported-review",
+      "probeId": "positive",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "W78p7_Q4hZ1ALnGk66D9e9bjEXXYxDKMDliY2lC15jM",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800500,
+          "usableUntil": 1791281400500,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010028researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "W78p7_Q4hZ1ALnGk66D9e9bjEXXYxDKMDliY2lC15jM",
+          "url": "https://x.com/i/web/status/1001",
+          "quoteHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "gapCount": 2,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R02-relevance-mixed",
+      "probeId": "declared-selection",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010028agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 2,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 2
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1", "S2"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        },
+        {
+          "sourceId": "00000000000010023researchSources",
+          "referenceSourceId": "S2",
+          "materialHash": "NDk4MvY_8ylqLPv0qSk0FRP99g85iSH3faVgmDDZb84",
+          "actualUrl": "https://x.com/i/web/status/1002",
+          "referenceTextHash": "9cd992b487cdeb78cbb1ee164aba4fff8c7f5678dd92c365d8a6d862d1e8fdcb",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010031researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "url": "https://x.com/i/web/status/1001",
+          "quoteHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "gapCount": 2,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 2,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010029aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R02-relevance-mixed",
+      "probeId": "declared-support-mismatch",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010028agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 2,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 2
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1", "S2"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        },
+        {
+          "sourceId": "00000000000010023researchSources",
+          "referenceSourceId": "S2",
+          "materialHash": "NDk4MvY_8ylqLPv0qSk0FRP99g85iSH3faVgmDDZb84",
+          "actualUrl": "https://x.com/i/web/status/1002",
+          "referenceTextHash": "9cd992b487cdeb78cbb1ee164aba4fff8c7f5678dd92c365d8a6d862d1e8fdcb",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010031researchEvidence",
+          "sourceId": "00000000000010023researchSources",
+          "materialHash": "NDk4MvY_8ylqLPv0qSk0FRP99g85iSH3faVgmDDZb84",
+          "url": "https://x.com/i/web/status/1002",
+          "claim": "The municipal heat-pump pilot opened with 20 homes.",
+          "quoteHash": "9cd992b487cdeb78cbb1ee164aba4fff8c7f5678dd92c365d8a6d862d1e8fdcb",
+          "gapCount": 2,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 2,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010029aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R03-attribution-negative",
+      "probeId": "id",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R03-attribution-negative",
+      "probeId": "url",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R03-attribution-negative",
+      "probeId": "quote",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R04-freshness",
+      "probeId": "old-publication",
+      "orderId": "000000000000010018researchOrders",
+      "runId": null,
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": "RESEARCH_SOURCE_WINDOW_INVALID",
+          "state": "unknown"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 0,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 0
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S3"],
+      "delivered": [],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "unknown",
+          "heldMicros": 100,
+          "estimatedMicros": null,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R04-freshness",
+      "probeId": "new-publication-old-event",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010028agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 2,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 2
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1", "S6"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        },
+        {
+          "sourceId": "00000000000010023researchSources",
+          "referenceSourceId": "S6",
+          "materialHash": "KzCSNCEKYeixSUE0Spx3qVw7yG1wvFbQ0BHuWnImdoE",
+          "actualUrl": "https://x.com/i/web/status/1006",
+          "referenceTextHash": "d1afbb1183faa5d12ca3ea2f0852c84f6cf010c8c0e6673a1d050141715e559f",
+          "publishedAt": 1791277200000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010033researchEvidence",
+          "sourceId": "00000000000010023researchSources",
+          "materialHash": "KzCSNCEKYeixSUE0Spx3qVw7yG1wvFbQ0BHuWnImdoE",
+          "url": "https://x.com/i/web/status/1006",
+          "quoteHash": "d1afbb1183faa5d12ca3ea2f0852c84f6cf010c8c0e6673a1d050141715e559f",
+          "gapCount": 2,
+          "eventAt": 1728032400000,
+          "eventQuote": "A retrospective published today describes the pilot opening on 2024-10-04.",
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        },
+        {
+          "state": "review",
+          "evidenceId": "0000000000010031researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "url": "https://x.com/i/web/status/1001",
+          "quoteHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "gapCount": 2,
+          "eventAt": 1791104400000,
+          "eventQuote": "The municipal heat-pump pilot opened on 2026-10-04 with 20 homes.",
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 2,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010029aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R05-contested",
+      "probeId": "unsupported-consequence",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010028agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 2,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 2
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1", "S4"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        },
+        {
+          "sourceId": "00000000000010023researchSources",
+          "referenceSourceId": "S4",
+          "materialHash": "kTSCN8dJ9J7tWyInvvWpfJz75nwOcNqZWJdj0jVBdoY",
+          "actualUrl": "https://x.com/i/web/status/1004",
+          "referenceTextHash": "738b4eee4c6f634fbd2777b0574f6c938c29dc36e36be1af78a12e9523075ba0",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010033researchEvidence",
+          "sourceId": "00000000000010023researchSources",
+          "materialHash": "kTSCN8dJ9J7tWyInvvWpfJz75nwOcNqZWJdj0jVBdoY",
+          "url": "https://x.com/i/web/status/1004",
+          "quoteHash": "738b4eee4c6f634fbd2777b0574f6c938c29dc36e36be1af78a12e9523075ba0",
+          "gapCount": 3,
+          "supportGap": "Sources disagree (20 versus 30); no independent funding eligibility evidence",
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        },
+        {
+          "state": "review",
+          "evidenceId": "0000000000010031researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "url": "https://x.com/i/web/status/1001",
+          "quoteHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "gapCount": 3,
+          "supportGap": "Sources disagree (20 versus 30); no independent funding eligibility evidence",
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 2,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010029aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R06-syndication",
+      "probeId": "one-origin",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010028agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 2,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 2
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1", "S5"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        },
+        {
+          "sourceId": "00000000000010023researchSources",
+          "referenceSourceId": "S5",
+          "materialHash": "Qn7AL37zmUIy1j7D4dqOqLZP9mKFuQH1ErkkVLlXpIk",
+          "actualUrl": "https://x.com/i/web/status/1005",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791190800000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010031researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "url": "https://x.com/i/web/status/1001",
+          "quoteHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "gapCount": 3,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 2,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010029aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R07-published-theme",
+      "probeId": "confirmed-and-negative-history",
+      "orderId": "000000000000010050researchOrders",
+      "runId": "00000000000000000010057agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010053researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "gkGiWqycmasWQL_yUZpkspn4hmyG2gTQNYJmIbYPSps",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800300,
+          "usableUntil": 1791281400300,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010060researchEvidence",
+          "sourceId": "00000000000010053researchSources",
+          "materialHash": "gkGiWqycmasWQL_yUZpkspn4hmyG2gTQNYJmIbYPSps",
+          "url": "https://x.com/i/web/status/1001",
+          "quoteHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "gapCount": 3,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010052aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010058aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R08-missing-material",
+      "probeId": "headline-only",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["web-search"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "web-search",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010007aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "gS9XOCLd26S1nBx1VnNx6n3KyPD-xMCyuN3VA16RTZ8",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S7"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S7",
+          "materialHash": "HqeFMZ3Grl1JOAdXRR37KwNyCJ7lLSIWk1dpwgiyyIw",
+          "actualUrl": "https://example.test/headline-only",
+          "referenceTextHash": null,
+          "publishedAt": null,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "gS9XOCLd26S1nBx1VnNx6n3KyPD-xMCyuN3VA16RTZ8"
+        }
+      ],
+      "attemptedTools": ["web_search"],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010028researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "HqeFMZ3Grl1JOAdXRR37KwNyCJ7lLSIWk1dpwgiyyIw",
+          "url": "https://example.test/headline-only",
+          "quoteHash": null,
+          "gapCount": 4,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010007aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": 0.00002,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "expiry",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010028researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "url": "https://x.com/i/web/status/1001",
+          "quoteHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "gapCount": 2,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "withdrawn",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010028researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "url": "https://x.com/i/web/status/1001",
+          "quoteHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "gapCount": 2,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "hash",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010028researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "url": "https://x.com/i/web/status/1001",
+          "quoteHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "gapCount": 2,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "pre-final-expiry",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "pre-final-withdrawn",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "cancelled",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R09-source-lifecycle",
+      "probeId": "pre-final-hash",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "foreign-tenant",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "foreign-account",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "inert-source-instructions",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S9"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S9",
+          "materialHash": "DQAwJYDgiJKPfHKRzfwGYQf7WOdrxoHCLZAEmW4p8ro",
+          "actualUrl": "https://x.com/i/web/status/1009",
+          "referenceTextHash": "750f598a18717aa90322cf226e8e7391e969430b5cefafbef089168ee7386ff0",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010028researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "DQAwJYDgiJKPfHKRzfwGYQf7WOdrxoHCLZAEmW4p8ro",
+          "url": "https://x.com/i/web/status/1009",
+          "quoteHash": "750f598a18717aa90322cf226e8e7391e969430b5cefafbef089168ee7386ff0",
+          "gapCount": 2,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "tool-read_context",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S9"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S9",
+          "materialHash": "DQAwJYDgiJKPfHKRzfwGYQf7WOdrxoHCLZAEmW4p8ro",
+          "actualUrl": "https://x.com/i/web/status/1009",
+          "referenceTextHash": "750f598a18717aa90322cf226e8e7391e969430b5cefafbef089168ee7386ff0",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "tool-grant_tools",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S9"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S9",
+          "materialHash": "DQAwJYDgiJKPfHKRzfwGYQf7WOdrxoHCLZAEmW4p8ro",
+          "actualUrl": "https://x.com/i/web/status/1009",
+          "referenceTextHash": "750f598a18717aa90322cf226e8e7391e969430b5cefafbef089168ee7386ff0",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "tool-mutate_foreign",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S9"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S9",
+          "materialHash": "DQAwJYDgiJKPfHKRzfwGYQf7WOdrxoHCLZAEmW4p8ro",
+          "actualUrl": "https://x.com/i/web/status/1009",
+          "referenceTextHash": "750f598a18717aa90322cf226e8e7391e969430b5cefafbef089168ee7386ff0",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R10-isolation-injection",
+      "probeId": "tool-human_verify",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S9"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S9",
+          "materialHash": "DQAwJYDgiJKPfHKRzfwGYQf7WOdrxoHCLZAEmW4p8ro",
+          "actualUrl": "https://x.com/i/web/status/1009",
+          "referenceTextHash": "750f598a18717aa90322cf226e8e7391e969430b5cefafbef089168ee7386ff0",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R11-no-trend",
+      "probeId": "cumulative-only",
+      "orderId": "000000000000010018researchOrders",
+      "runId": "00000000000000000010025agentRuns",
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S8"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010021researchSources",
+          "referenceSourceId": "S8",
+          "materialHash": "gKykE_X2LyIMLuUyRdtwyVG-vOjOXbY6Nov1EGR1N38",
+          "actualUrl": "https://x.com/i/web/status/1008",
+          "referenceTextHash": "e40b3735c72b9c2bcd9277d91f9f71f047debd307d5ae4058b416b5d0fff52f9",
+          "publishedAt": 1791190800000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": [],
+      "outcome": "completed",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010028researchEvidence",
+          "sourceId": "00000000000010021researchSources",
+          "materialHash": "gKykE_X2LyIMLuUyRdtwyVG-vOjOXbY6Nov1EGR1N38",
+          "url": "https://x.com/i/web/status/1008",
+          "quoteHash": "e40b3735c72b9c2bcd9277d91f9f71f047debd307d5ae4058b416b5d0fff52f9",
+          "gapCount": 2,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010020aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010026aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010014aiBudgets",
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "empty",
+      "orderId": "000000000000010019researchOrders",
+      "runId": null,
+      "profileVersionId": "000010018researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent", "web-search"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "empty"
+        },
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "empty"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 0,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 0
+        },
+        {
+          "delivered": 0,
+          "omitted": 0,
+          "operation": "web-search",
+          "selected": 0
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010007aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        },
+        {
+          "budgetIds": [
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "fingerprint": "AcjuIAbgI0fS_hvbOhKf_EsHNbAYHPpLpE9eK1NCUuw",
+          "policyId": "0000010006researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": [],
+      "delivered": [],
+      "attemptedTools": ["web_search"],
+      "outcome": "empty",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010021aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 0,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010007aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 0,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010023aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": 0.00002,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "x-unavailable",
+      "orderId": "000000000000010019researchOrders",
+      "runId": "00000000000000000010028agentRuns",
+      "profileVersionId": "000010018researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent", "web-search"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": "RESEARCH_PROVIDER_UNAVAILABLE",
+          "state": "unknown"
+        },
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 0,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 0
+        },
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "web-search",
+          "selected": 1
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010007aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        },
+        {
+          "budgetIds": [
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "fingerprint": "AcjuIAbgI0fS_hvbOhKf_EsHNbAYHPpLpE9eK1NCUuw",
+          "policyId": "0000010006researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010024researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "Gsy6Q-1sMcRXw2JU7LJegI1nVIzUT5dVhu_jF9GR7B0",
+          "actualUrl": "https://example.test/pilot",
+          "referenceTextHash": null,
+          "publishedAt": null,
+          "observedAt": 1791280800300,
+          "usableUntil": 1791281400300,
+          "sourceGeneration": 1,
+          "policyId": "0000010006researchSourcePolicies",
+          "policyFingerprint": "AcjuIAbgI0fS_hvbOhKf_EsHNbAYHPpLpE9eK1NCUuw"
+        }
+      ],
+      "attemptedTools": ["web_search"],
+      "outcome": "partial",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010031researchEvidence",
+          "sourceId": "00000000000010024researchSources",
+          "materialHash": "Gsy6Q-1sMcRXw2JU7LJegI1nVIzUT5dVhu_jF9GR7B0",
+          "url": "https://example.test/pilot",
+          "quoteHash": null,
+          "gapCount": 4,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010021aiAttempts",
+          "owner": "native-search",
+          "state": "unknown",
+          "heldMicros": 100,
+          "estimatedMicros": null,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010007aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010023aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 20,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": 0.00002,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010029aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets",
+            "00000000000000000010017aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "web-unavailable",
+      "orderId": "000000000000010019researchOrders",
+      "runId": "00000000000000000010028agentRuns",
+      "profileVersionId": "000010018researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent", "web-search"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": null,
+          "state": "completed"
+        },
+        {
+          "cacheHit": false,
+          "reason": "RESEARCH_PROVIDER_UNAVAILABLE",
+          "state": "unknown"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 1,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 1
+        },
+        {
+          "delivered": 0,
+          "omitted": 0,
+          "operation": "web-search",
+          "selected": 0
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010007aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        },
+        {
+          "budgetIds": [
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "fingerprint": "AcjuIAbgI0fS_hvbOhKf_EsHNbAYHPpLpE9eK1NCUuw",
+          "policyId": "0000010006researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [
+        {
+          "sourceId": "00000000000010024researchSources",
+          "referenceSourceId": "S1",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "actualUrl": "https://x.com/i/web/status/1001",
+          "referenceTextHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "publishedAt": 1791104400000,
+          "observedAt": 1791280800200,
+          "usableUntil": 1791281400200,
+          "sourceGeneration": 1,
+          "policyId": "0000010005researchSourcePolicies",
+          "policyFingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM"
+        }
+      ],
+      "attemptedTools": ["web_search"],
+      "outcome": "partial",
+      "emitted": [
+        {
+          "state": "review",
+          "evidenceId": "0000000000010031researchEvidence",
+          "sourceId": "00000000000010024researchSources",
+          "materialHash": "sPxTdxsCgjSDVe7xIZ2WpL3FKliYoJJZdS5LRvFsDZE",
+          "url": "https://x.com/i/web/status/1001",
+          "quoteHash": "ddfc83503b4a78aaff30f3cd3aec46f2b47d8e873ca4504cd4440789683c4344",
+          "gapCount": 2,
+          "eventAt": null,
+          "eventQuote": null,
+          "dynamics": "Aktuell diskutiert; keine gelieferte Zeitreihe oder nachgewiesene Zunahme.",
+          "automaticEligible": false
+        }
+      ],
+      "attempts": [
+        {
+          "id": "0000000000000000010021aiAttempts",
+          "owner": "native-search",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 10,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010007aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": 1,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010023aiAttempts",
+          "owner": "native-search",
+          "state": "unknown",
+          "heldMicros": 100,
+          "estimatedMicros": null,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010029aiAttempts",
+          "state": "settled",
+          "heldMicros": 0,
+          "estimatedMicros": 30,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010015aiBudgets",
+            "00000000000000000010016aiBudgets",
+            "00000000000000000010017aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": 10,
+          "outputTokens": 20,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "both-unavailable",
+      "orderId": "000000000000010019researchOrders",
+      "runId": null,
+      "profileVersionId": "000010018researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent", "web-search"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": "RESEARCH_PROVIDER_UNAVAILABLE",
+          "state": "unknown"
+        },
+        {
+          "cacheHit": false,
+          "reason": "RESEARCH_PROVIDER_UNAVAILABLE",
+          "state": "unknown"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 0,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 0
+        },
+        {
+          "delivered": 0,
+          "omitted": 0,
+          "operation": "web-search",
+          "selected": 0
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010007aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        },
+        {
+          "budgetIds": [
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "fingerprint": "AcjuIAbgI0fS_hvbOhKf_EsHNbAYHPpLpE9eK1NCUuw",
+          "policyId": "0000010006researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [],
+      "attemptedTools": ["web_search"],
+      "outcome": "failed",
+      "emitted": [],
+      "attempts": [
+        {
+          "id": "0000000000000000010021aiAttempts",
+          "owner": "native-search",
+          "state": "unknown",
+          "heldMicros": 100,
+          "estimatedMicros": null,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010007aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        },
+        {
+          "id": "0000000000000000010023aiAttempts",
+          "owner": "native-search",
+          "state": "unknown",
+          "heldMicros": 100,
+          "estimatedMicros": null,
+          "billedMicros": null,
+          "budgetIds": [
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets",
+            "00000000000000000010010aiBudgets"
+          ],
+          "currency": "USD",
+          "policyVersion": "synthetic-v1",
+          "units": null,
+          "inputTokens": null,
+          "outputTokens": null,
+          "reportedCost": null,
+          "reportedCurrency": null,
+          "reportedCostInvalid": false
+        }
+      ]
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "budget",
+      "orderId": "000000000000010018researchOrders",
+      "runId": null,
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 1
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": "RESEARCH_BUDGET_EXHAUSTED",
+          "state": "budget_exhausted"
+        }
+      ],
+      "sourceCoverage": [
+        {
+          "delivered": 0,
+          "omitted": 0,
+          "operation": "x-recent",
+          "selected": 0
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [],
+      "attemptedTools": [],
+      "outcome": "budget_exhausted",
+      "emitted": [],
+      "attempts": []
+    },
+    {
+      "caseId": "R12-availability-limits",
+      "probeId": "cancel",
+      "orderId": "000000000000010018researchOrders",
+      "runId": null,
+      "profileVersionId": "000010017researchProfileVersions",
+      "workspaceId": "0000000000000000010000workspaces",
+      "accountId": "000000000000010004socialAccounts",
+      "cap": {
+        "currency": "USD",
+        "limitMicros": 20000
+      },
+      "operations": ["x-recent"],
+      "nativeOutcomes": [
+        {
+          "cacheHit": false,
+          "reason": "RESEARCH_QUEUED",
+          "state": "unknown"
+        }
+      ],
+      "approvals": [
+        {
+          "budgetIds": [
+            "00000000000000000010006aiBudgets",
+            "00000000000000000010008aiBudgets",
+            "00000000000000000010009aiBudgets"
+          ],
+          "fingerprint": "cTrcjvsNC35zt5zlPGjiNRANeYRL_wax1PKMMuLWBcM",
+          "policyId": "0000010005researchSourcePolicies"
+        }
+      ],
+      "sourceVersions": ["S1"],
+      "delivered": [],
+      "attemptedTools": [],
+      "outcome": "cancelled",
+      "emitted": [],
+      "attempts": []
+    }
+  ]
+}

@@ -1,5 +1,6 @@
+import { GithubSources } from "@/features/settings/github";
 import { useState, type ReactNode } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   Check,
@@ -11,6 +12,15 @@ import {
   Mail,
   Search,
 } from "lucide-react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
+import {
+  authClient,
+  demoMode,
+  backendConfigured,
+  returnPath,
+  authPath,
+} from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -49,7 +59,8 @@ function PublicLayout({ children }: { children: ReactNode }) {
           <Link to="/login">Anmelden</Link>
           <Button asChild size="sm">
             <Link to="/signup">
-              Demo starten <ArrowRight size={14} />
+              {demoMode ? "Demo starten" : "Workspace starten"}{" "}
+              <ArrowRight size={14} />
             </Link>
           </Button>
         </nav>
@@ -60,7 +71,7 @@ function PublicLayout({ children }: { children: ReactNode }) {
         <div className="flex gap-5">
           <Link to="/help">Hilfe</Link>
           <Link to="/legal">Rechtliche Hinweise</Link>
-          <span>Lokale Produktdemo</span>
+          <span>{demoMode ? "Lokale Produktdemo" : "Dispatch Vorschau"}</span>
         </div>
       </footer>
     </div>
@@ -261,9 +272,9 @@ export function LandingPage() {
         </section>
         <div className="mb-16">
           <DemoNote>
-            Diese Vorschau läuft im Browser mit Beispieldaten. Scores zeigen
-            lokale Orientierungshilfen, keine garantierte Reichweite. KI,
-            Live-Publishing, Zahlungen und E-Mail-Versand sind nicht angebunden.
+            {demoMode
+              ? "Diese Vorschau läuft im Browser mit Beispieldaten. Scores zeigen lokale Orientierungshilfen, keine garantierte Reichweite. KI, Live-Publishing, Zahlungen und E-Mail-Versand sind nicht angebunden."
+              : "Konto, E-Mail-Bestätigung und Workspace-Profil sind angebunden. Inhalte, Social-Verbindungen, KI, Publishing und Zahlungen werden noch eingerichtet."}
           </DemoNote>
         </div>
       </main>
@@ -278,6 +289,21 @@ const authTitles: Record<AuthMode, string> = {
   verify: "Ein kleiner letzter Schritt.",
 };
 export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
+  const [params] = useSearchParams();
+  return <AuthForm key={`${mode}:${params.get("token") ?? ""}`} mode={mode} />;
+}
+
+function AuthForm({ mode }: { mode: AuthMode }) {
+  const [params] = useSearchParams();
+  const token = params.get("token");
+  const newPassword = mode === "reset" && !!token;
+  const destination = returnPath(params.get("returnTo"));
+  // Build-time mode never changes during a React session.
+  const capabilities =
+    !demoMode && backendConfigured
+      ? useQuery(api.auth.capabilities, {})
+      : undefined;
+
   const navigate = useNavigate();
   const { state, setState } = useStore();
   const [email, setEmail] = useState("");
@@ -295,7 +321,69 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
     privateConsent: false,
     events: ["Releases", "Pull Requests"],
   });
+  const submitReal = async () => {
+    if (busy) return;
+    setError("");
+    if (!backendConfigured) {
+      setError("Die Authentifizierung ist noch nicht konfiguriert.");
+      return;
+    }
+    if (mode === "signup" && !consent) {
+      setError("Bestätige bitte die Datenschutzhinweise.");
+      return;
+    }
+    setBusy(true);
+    const invitationReturn = /^\/team\/invitations\/[^/?#]+(?:[?#]|$)/.test(
+      destination,
+    );
+    const callbackURL = `${import.meta.env.VITE_SITE_URL}${invitationReturn ? destination : authPath("/onboarding", destination)}`;
+    try {
+      const result =
+        mode === "signup"
+          ? await authClient.signUp.email({
+              email,
+              password,
+              name: email.split("@")[0],
+              callbackURL,
+            })
+          : mode === "login"
+            ? await authClient.signIn.email({ email, password, callbackURL })
+            : newPassword
+              ? await authClient.resetPassword({
+                  newPassword: password,
+                  token: token!,
+                })
+              : mode === "reset"
+                ? await authClient.requestPasswordReset({
+                    email,
+                    redirectTo: `${import.meta.env.VITE_SITE_URL}${authPath("/reset-password", destination)}`,
+                  })
+                : await authClient.sendVerificationEmail({
+                    email,
+                    callbackURL,
+                  });
+      if (result.error) {
+        setError(
+          result.error.message ??
+            "Anfrage fehlgeschlagen. Bitte erneut versuchen.",
+        );
+        return;
+      }
+      if (mode === "login") navigate(destination);
+      else if (mode === "signup") navigate(authPath("/verify", destination));
+      else setSuccess(true);
+    } catch {
+      setError("Der Server ist nicht erreichbar. Bitte erneut versuchen.");
+    } finally {
+      setBusy(false);
+    }
+  };
   const submit = () => {
+    if (!demoMode) {
+      void submitReal();
+      return;
+    }
+
     if (busy) return;
     setError("");
     if (scenario === "expired") {
@@ -336,7 +424,7 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
           ...s,
           preferences: { ...s.preferences, onboardingDone: false },
         }));
-        navigate("/verify");
+        navigate(authPath("/verify", destination));
       } else
         navigate(
           state.preferences.onboardingDone ? "/overview" : "/onboarding",
@@ -372,7 +460,9 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
           </div>
         </div>
         <p className="muted text-xs mb-0">
-          Alles bleibt lokal in diesem Browser. Keine echte Authentifizierung.
+          {demoMode
+            ? "Alles bleibt lokal in diesem Browser. Keine echte Authentifizierung."
+            : "Dein Konto und dein Workspace werden sicher gespeichert."}
         </p>
       </aside>
       <main className="flex items-center justify-center p-6 sm:p-12">
@@ -390,35 +480,64 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
               : mode === "reset"
                 ? "Passwort zurücksetzen"
                 : mode === "verify"
-                  ? "Demo-Bestätigung"
+                  ? demoMode
+                    ? "Demo-Bestätigung"
+                    : "E-Mail bestätigen"
                   : "Willkommen zurück"}
           </span>
           <h2 className="text-3xl mt-3 mb-4">{authTitles[mode]}</h2>
           <p className="muted text-sm leading-relaxed mb-7">
-            {mode === "login"
-              ? "Öffne deinen lokalen Workspace. Verwende eine Beispieladresse und ein beliebiges Demo-Passwort mit 8 Zeichen."
-              : mode === "signup"
-                ? "Richte dein Profil in der Produktdemo ein. Es wird kein echtes Konto erstellt."
-                : mode === "reset"
-                  ? "Teste den Ablauf zur Wiederherstellung. Eine E-Mail wird nicht versendet."
-                  : "In der echten Anwendung würde hier deine E-Mail bestätigt. Du kannst den Schritt lokal simulieren."}
+            {demoMode
+              ? mode === "login"
+                ? "Öffne deinen lokalen Workspace. Verwende eine Beispieladresse und ein beliebiges Demo-Passwort mit 8 Zeichen."
+                : mode === "signup"
+                  ? "Richte dein Profil in der Produktdemo ein. Es wird kein echtes Konto erstellt."
+                  : mode === "reset"
+                    ? "Teste den Ablauf zur Wiederherstellung. Eine E-Mail wird nicht versendet."
+                    : "In der echten Anwendung würde hier deine E-Mail bestätigt. Du kannst den Schritt lokal simulieren."
+              : mode === "login"
+                ? "Melde dich mit deiner bestätigten E-Mail-Adresse an."
+                : mode === "signup"
+                  ? "Erstelle dein Konto. Wir senden dir einen Link zur E-Mail-Bestätigung."
+                  : newPassword
+                    ? "Wähle ein neues Passwort. Der Link ist nur einmal gültig."
+                    : mode === "reset"
+                      ? "Wir senden dir einen Link, mit dem du dein Passwort zurücksetzen kannst."
+                      : "Öffne den Bestätigungslink in deiner E-Mail. Du kannst hier einen neuen Link anfordern."}
           </p>
           {success ? (
             <div role="status" className="stack">
               <CheckCircle2 size={28} className="text-[#527548]" />
               <h3>
-                {mode === "reset"
-                  ? "Demo-Anfrage vorbereitet"
-                  : "Demo-Bestätigung erfolgreich"}
+                {!demoMode
+                  ? newPassword
+                    ? "Passwort gespeichert"
+                    : mode === "reset"
+                      ? "Anfrage angenommen"
+                      : "Bestätigungslink angefordert"
+                  : mode === "reset"
+                    ? "Demo-Anfrage vorbereitet"
+                    : "Demo-Bestätigung erfolgreich"}
               </h3>
               <p className="muted text-sm">
-                {mode === "reset"
-                  ? "Es wurde kein Reset-Link versendet. Für die Demo kannst du mit einem beliebigen Passwort ab 8 Zeichen fortfahren."
-                  : "Dein nächster Schritt: ein Profil, das zu dir passt."}
+                {!demoMode
+                  ? newPassword
+                    ? "Du kannst dich jetzt mit deinem neuen Passwort anmelden."
+                    : "Wenn ein passendes Konto existiert, erhältst du eine E-Mail. Öffne den Link, um fortzufahren."
+                  : mode === "reset"
+                    ? "Es wurde kein Reset-Link versendet. Für die Demo kannst du mit einem beliebigen Passwort ab 8 Zeichen fortfahren."
+                    : "Dein nächster Schritt: ein Profil, das zu dir passt."}
               </p>
               <Button asChild>
-                <Link to={mode === "reset" ? "/login" : "/onboarding"}>
-                  {mode === "reset" ? "Zur Anmeldung" : "Profil einrichten"}
+                <Link
+                  to={authPath(
+                    !demoMode || mode === "reset" ? "/login" : "/onboarding",
+                    destination,
+                  )}
+                >
+                  {!demoMode || mode === "reset"
+                    ? "Zur Anmeldung"
+                    : "Profil einrichten"}
                   <ArrowRight size={15} />
                 </Link>
               </Button>
@@ -431,7 +550,7 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
                 submit();
               }}
             >
-              {mode !== "verify" && (
+              {(!demoMode || mode !== "verify") && !newPassword && (
                 <Field label="E-Mail-Adresse">
                   <Input
                     type="email"
@@ -444,12 +563,22 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
                   />
                 </Field>
               )}
-              {(mode === "login" || mode === "signup") && (
-                <Field label="Demo-Passwort">
+              {(mode === "login" || mode === "signup" || newPassword) && (
+                <Field
+                  label={
+                    demoMode
+                      ? "Demo-Passwort"
+                      : newPassword
+                        ? "Neues Passwort"
+                        : "Passwort"
+                  }
+                >
                   <Input
                     type="password"
                     autoComplete={
-                      mode === "signup" ? "new-password" : "current-password"
+                      mode === "signup" || newPassword
+                        ? "new-password"
+                        : "current-password"
                     }
                     required
                     minLength={8}
@@ -462,7 +591,7 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
               )}
               {mode === "login" && (
                 <Link
-                  to="/reset-password"
+                  to={authPath("/reset-password", destination)}
                   className="text-xs font-semibold text-right -mt-2"
                 >
                   Passwort vergessen?
@@ -480,9 +609,14 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
                   <span>
                     Ich habe die{" "}
                     <Link className="underline" to="/legal">
-                      Demo- und Datenschutzhinweise
+                      {demoMode
+                        ? "Demo- und Datenschutzhinweise"
+                        : "Datenschutzhinweise"}
                     </Link>{" "}
-                    gelesen. Angaben werden ausschließlich lokal verwendet.
+                    gelesen.{" "}
+                    {demoMode
+                      ? "Angaben werden ausschließlich lokal verwendet."
+                      : "Angaben werden für mein Konto und meinen Workspace verarbeitet."}
                   </span>
                 </label>
               )}
@@ -494,13 +628,23 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
               <Button disabled={busy}>
                 {busy
                   ? "Einen Moment…"
-                  : mode === "signup"
-                    ? "Demo-Profil anlegen"
-                    : mode === "reset"
-                      ? "Reset-Ablauf simulieren"
-                      : mode === "verify"
-                        ? "Bestätigung simulieren"
-                        : "Demo anmelden"}
+                  : !demoMode
+                    ? mode === "signup"
+                      ? "Konto anlegen"
+                      : mode === "login"
+                        ? "Anmelden"
+                        : newPassword
+                          ? "Passwort speichern"
+                          : mode === "reset"
+                            ? "Reset-Link anfordern"
+                            : "Bestätigungslink erneut senden"
+                    : mode === "signup"
+                      ? "Demo-Profil anlegen"
+                      : mode === "reset"
+                        ? "Reset-Ablauf simulieren"
+                        : mode === "verify"
+                          ? "Bestätigung simulieren"
+                          : "Demo anmelden"}
                 <ArrowRight size={15} />
               </Button>
               {(mode === "login" || mode === "signup") && (
@@ -508,8 +652,32 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
                   <Button
                     type="button"
                     variant="outline"
-                    disabled={busy}
+                    disabled={busy || (!demoMode && !capabilities?.githubLogin)}
                     onClick={() => {
+                      if (!demoMode) {
+                        if (mode === "signup" && !consent) {
+                          setError("Bestätige zuerst die Datenschutzhinweise.");
+                          return;
+                        }
+                        setBusy(true);
+                        void authClient.signIn
+                          .social({
+                            provider: "github",
+                            callbackURL: `${import.meta.env.VITE_SITE_URL}${destination}`,
+                          })
+                          .then((result) => {
+                            if (result.error)
+                              setError(
+                                result.error.message ??
+                                  "GitHub-Anmeldung fehlgeschlagen.",
+                              );
+                          })
+                          .catch(() =>
+                            setError("GitHub-Anmeldung fehlgeschlagen."),
+                          )
+                          .finally(() => setBusy(false));
+                        return;
+                      }
                       if (mode === "signup" && !consent) {
                         setError(
                           "Bestätige zuerst die Hinweise zur lokalen Demo.",
@@ -525,15 +693,22 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
                     }}
                   >
                     <GitBranch size={15} />
-                    GitHub-Anmeldung simulieren
+                    {demoMode
+                      ? "GitHub-Anmeldung simulieren"
+                      : "Mit GitHub anmelden"}
                   </Button>
                   <p className="text-xs muted mb-0">
-                    Nur Demo-Anmeldung. Repository-Zugriff benötigt anschließend
-                    eine eigene Zustimmung.
+                    {demoMode
+                      ? "Nur Demo-Anmeldung."
+                      : capabilities?.githubLogin
+                        ? "GitHub-Anmeldung ist verfügbar."
+                        : "GitHub-Anmeldung ist noch nicht konfiguriert."}{" "}
+                    Repository-Zugriff benötigt anschließend eine eigene
+                    Zustimmung.
                   </p>
                 </>
               )}
-              {mode === "login" && (
+              {demoMode && mode === "login" && (
                 <Button
                   type="button"
                   variant="outline"
@@ -548,44 +723,57 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
                   Ohne Eingaben direkt zur Demo
                 </Button>
               )}
-              <details className="text-xs muted">
-                <summary className="cursor-pointer">
-                  Demo-Fehlerzustände testen
-                </summary>
-                <select
-                  aria-label="Auth Demo Szenario"
-                  className="native-select mt-3"
-                  value={scenario}
-                  onChange={(e) => {
-                    setScenario(e.target.value);
-                    setError("");
-                  }}
-                >
-                  <option value="normal">Normaler Ablauf</option>
-                  <option value="error">Anmeldefehler</option>
-                  <option value="expired">Sitzung abgelaufen</option>
-                </select>
-              </details>
+              {demoMode && (
+                <details className="text-xs muted">
+                  <summary className="cursor-pointer">
+                    Demo-Fehlerzustände testen
+                  </summary>
+                  <select
+                    aria-label="Auth Demo Szenario"
+                    className="native-select mt-3"
+                    value={scenario}
+                    onChange={(e) => {
+                      setScenario(e.target.value);
+                      setError("");
+                    }}
+                  >
+                    <option value="normal">Normaler Ablauf</option>
+                    <option value="error">Anmeldefehler</option>
+                    <option value="expired">Sitzung abgelaufen</option>
+                  </select>
+                </details>
+              )}
             </form>
           )}
           <p className="text-xs muted mt-7 leading-relaxed">
             {mode === "login" ? (
               <>
                 Noch kein Profil?{" "}
-                <Link className="font-semibold text-foreground" to="/signup">
-                  Demo starten
+                <Link
+                  className="font-semibold text-foreground"
+                  to={authPath("/signup", destination)}
+                >
+                  {demoMode ? "Demo starten" : "Konto anlegen"}
                 </Link>
               </>
             ) : (
-              <Link className="font-semibold text-foreground" to="/login">
+              <Link
+                className="font-semibold text-foreground"
+                to={authPath("/login", destination)}
+              >
                 Zur Anmeldung
               </Link>
             )}
           </p>
           <div className="mt-8">
             <DemoNote>
-              Keine Live-Anmeldung, OAuth-Anfragen oder E-Mails. Passwörter
-              werden nicht gespeichert.
+              {demoMode
+                ? "Keine Live-Anmeldung, OAuth-Anfragen oder E-Mails. Passwörter werden nicht gespeichert."
+                : !backendConfigured
+                  ? "Die Verbindung zur Authentifizierung fehlt."
+                  : capabilities?.restrictedSender
+                    ? "E-Mails verwenden vorerst den eingeschränkten Resend-Testabsender. Die Zustellung an andere Empfänger benötigt einen verifizierten Absender."
+                    : "E-Mail und Passwort sind unabhängig von GitHub nutzbar."}
             </DemoNote>
           </div>
         </div>
@@ -594,15 +782,24 @@ export function AuthPage({ mode = "login" }: { mode?: AuthMode }) {
   );
 }
 export function OnboardingPage() {
-  const { state, setState } = useStore();
+  const { state, setState, saveProfile, onboardingStep } = useStore();
   const navigate = useNavigate();
-  const [step, setStep] = useLocalState("onboarding-step", 0);
-  const [project, setProject] = useLocalState("onboarding-project", {
+  const [params] = useSearchParams();
+  const [busy, setBusy] = useState(false);
+  const [step, setStep] = demoMode
+    ? useLocalState("onboarding-step", 0)
+    : useState(onboardingStep);
+  const initialProject = {
     name:
       state.workspaces.find((w) => w.id === state.activeWorkspaceId)?.name ??
       "",
-    description: "Build in public, mit Substanz.",
-  });
+    description:
+      state.workspaces.find((w) => w.id === state.activeWorkspaceId)
+        ?.description ?? "",
+  };
+  const [project, setProject] = demoMode
+    ? useLocalState("onboarding-project", initialProject)
+    : useState(initialProject);
   const [github, setGitBranch] = useWorkspaceLocalState("github", {
     login: false,
     installed: false,
@@ -611,43 +808,68 @@ export function OnboardingPage() {
     privateConsent: false,
     events: ["Releases", "Pull Requests"],
   });
-  const profile = state.preferences;
+  const [profile, setProfile] = useState(state.preferences);
   const admin = state.role === "Owner" || state.role === "Admin";
   const editable = state.role !== "Viewer";
   const change = (patch: Partial<typeof profile>) => {
-    if (editable)
-      setState((s) => ({ ...s, preferences: { ...s.preferences, ...patch } }));
+    if (editable) {
+      setProfile((p) => ({ ...p, ...patch }));
+      if (demoMode)
+        setState((s) => ({
+          ...s,
+          preferences: { ...s.preferences, ...patch },
+        }));
+    }
   };
-  const finish = () => {
-    if (editable)
-      setState((s) => ({
-        ...s,
-        preferences: { ...s.preferences, onboardingDone: true },
-        workspaces: s.workspaces.map((w) =>
-          w.id === s.activeWorkspaceId && project.name.trim() && admin
-            ? {
-                ...w,
-                name: project.name.trim(),
-                description: project.description,
-              }
-            : w,
-        ),
-      }));
-    setStep(0);
-    navigate("/overview");
+  const persist = async (nextStep: number, complete = false) => {
+    if (!editable || busy) return false;
+    setBusy(true);
+    const ok = await saveProfile(
+      { ...profile, onboardingDone: complete },
+      admin ? project : undefined,
+      nextStep,
+    );
+    setBusy(false);
+    if (ok) setStep(nextStep);
+    return ok;
+  };
+  const finish = async () => {
+    if (await persist(0, true)) navigate(returnPath(params.get("returnTo")));
+  };
+  const defer = async () => {
+    if (await persist(step, false))
+      navigate(returnPath(params.get("returnTo")));
   };
   const steps = [
     "Dein Projekt",
     "Deine Stimme",
-    "Deine Quellen",
-    "Dein erster Kanal",
+    demoMode ? "Deine Quellen" : "Deine Quellen (optional)",
+    demoMode ? "Dein erster Kanal" : "Dein erster Kanal (optional)",
   ];
+  if (!demoMode && state.role === "Viewer")
+    return (
+      <main className="mx-auto max-w-xl p-6 sm:p-12 stack">
+        <Brand />
+        <h1>Dein Workspace ist bereit</h1>
+        <p className="muted">
+          Als Viewer kannst du die Inhalte deines Workspaces ansehen.
+        </p>
+        <Button asChild>
+          <Link to={returnPath(params.get("returnTo"))}>Zum Workspace</Link>
+        </Button>
+      </main>
+    );
   return (
     <div className="min-h-screen max-w-4xl mx-auto px-5 sm:px-10 py-8">
       <header className="flex gap-4 justify-between items-center mb-12">
         <Brand />
-        <Button variant="ghost" size="sm" onClick={finish}>
-          Später einrichten
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={defer}
+          disabled={busy || !editable}
+        >
+          {busy ? "Wird gespeichert…" : "Später einrichten"}
           <ArrowRight size={14} />
         </Button>
       </header>
@@ -660,7 +882,11 @@ export function OnboardingPage() {
                 <span
                   className={`h-7 w-7 flex items-center justify-center rounded-full text-xs ${i === step ? "bg-primary text-primary-foreground" : i < step ? "bg-[#e8f0e5] text-[#30613e]" : "bg-secondary muted"}`}
                 >
-                  {i < step ? <Check size={13} /> : i + 1}
+                  {i < step && (demoMode || i < 2) ? (
+                    <Check size={13} />
+                  ) : (
+                    i + 1
+                  )}
                 </span>
                 <span
                   className={`text-sm ${i === step ? "font-semibold" : "muted"}`}
@@ -671,8 +897,10 @@ export function OnboardingPage() {
             ))}
           </ol>
           <p className="muted text-xs leading-relaxed mt-8">
-            Jeder Schritt wird lokal gespeichert. Du kannst jederzeit
-            zurückkommen.
+            {demoMode
+              ? "Jeder Schritt wird lokal gespeichert."
+              : "Mit Weiter speicherst du jeden Schritt in deinem Workspace."}{" "}
+            Du kannst jederzeit zurückkommen.
           </p>
         </aside>
         <main>
@@ -698,14 +926,16 @@ export function OnboardingPage() {
                 ? "Gute Inhalte verbinden das, was dich beschäftigt, mit den Menschen, die du erreichen möchtest."
                 : step === 2
                   ? "Verknüpfe deine Arbeit optional mit Dispatch. Zugriff auf private Inhalte erfordert deine ausdrückliche Zustimmung."
-                  : "Verbinde einen Kanal als lokale Simulation. Du kannst alle Kanäle später in den Einstellungen ergänzen."}
+                  : demoMode
+                    ? "Verbinde einen Kanal als lokale Simulation. Du kannst alle Kanäle später in den Einstellungen ergänzen."
+                    : "Du kannst jetzt ohne Social-Account starten und später einen Kanal verbinden."}
           </p>
           <form
             className="stack"
             onSubmit={(e) => {
               e.preventDefault();
-              if (step === 3) finish();
-              else setStep((s) => Math.min(3, s + 1));
+              if (step === 3) void finish();
+              else void persist(Math.min(3, step + 1));
             }}
           >
             {step === 0 && (
@@ -794,152 +1024,169 @@ export function OnboardingPage() {
                 </div>
               </>
             )}
-            {step === 2 && (
-              <>
-                <div className="surface p-5">
-                  <div className="flex gap-3 items-center mb-4">
-                    <GitBranch size={24} />
-                    <div>
-                      <h3 className="mb-1">GitHub, wenn du möchtest</h3>
-                      <p className="muted text-xs mb-0">
-                        Anmeldung und Repository-Zugriff bleiben getrennt.
-                      </p>
+            {step === 2 &&
+              (demoMode ? (
+                <>
+                  <div className="surface p-5">
+                    <div className="flex gap-3 items-center mb-4">
+                      <GitBranch size={24} />
+                      <div>
+                        <h3 className="mb-1">GitHub, wenn du möchtest</h3>
+                        <p className="muted text-xs mb-0">
+                          Anmeldung und Repository-Zugriff bleiben getrennt.
+                        </p>
+                      </div>
                     </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!admin}
+                        onClick={() =>
+                          setGitBranch((g) => ({ ...g, login: !g.login }))
+                        }
+                      >
+                        {github.login
+                          ? "Demo-Anmeldung trennen"
+                          : "GitHub-Login simulieren"}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        disabled={!admin || !github.login}
+                        onClick={() =>
+                          setGitBranch((g) => ({
+                            ...g,
+                            installed: !g.installed,
+                          }))
+                        }
+                      >
+                        {github.installed
+                          ? "Repository-App entfernen"
+                          : "Repository-Zugriff simulieren"}
+                      </Button>
+                    </div>
+                    {github.installed && (
+                      <>
+                        <p className="text-xs font-medium mt-5">
+                          Beispiel-Repository: dispatch/calendar · Releases und
+                          Pull Requests
+                        </p>
+                        <label className="flex gap-2 items-start text-xs leading-relaxed">
+                          <input
+                            type="checkbox"
+                            className="mt-0.5"
+                            disabled={!admin}
+                            checked={github.privateConsent}
+                            onChange={(e) =>
+                              setGitBranch({
+                                ...github,
+                                privateConsent: e.target.checked,
+                              })
+                            }
+                          />
+                          Privaten Kontext ausdrücklich erlauben. Er darf nicht
+                          automatisch veröffentlicht werden.
+                        </label>
+                      </>
+                    )}
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <DemoNote>
+                    GitHub ist optional. Keine externe Anmeldung oder
+                    Datenabfrage.
+                  </DemoNote>
+                </>
+              ) : (
+                <GithubSources key={`github:${state.activeWorkspaceId}`} />
+              ))}
+            {step === 3 &&
+              (demoMode ? (
+                <>
+                  <div className="surface p-5">
+                    <div className="flex gap-3 items-center mb-5">
+                      <span className="bg-foreground text-background w-8 h-8 rounded-md flex items-center justify-center font-semibold">
+                        𝕏
+                      </span>
+                      <div>
+                        <h3 className="mb-1">Dein X-Account</h3>
+                        <p className="muted text-xs mb-0">
+                          Eine lokale Verbindung zum Ausprobieren.
+                        </p>
+                      </div>
+                    </div>
                     <Button
                       type="button"
                       variant="outline"
                       disabled={!admin}
-                      onClick={() =>
-                        setGitBranch((g) => ({ ...g, login: !g.login }))
-                      }
+                      onClick={() => {
+                        if (!admin) return;
+                        const account = state.accounts.find(
+                          (a) =>
+                            a.workspaceId === state.activeWorkspaceId &&
+                            a.channel === "X",
+                        );
+                        if (account)
+                          setState((s) => ({
+                            ...s,
+                            accounts: s.accounts.map((a) =>
+                              a.id === account.id
+                                ? { ...a, connected: !a.connected }
+                                : a,
+                            ),
+                            activeAccountId: account.id,
+                          }));
+                        else {
+                          const id = uid("acc");
+                          setState((s) => ({
+                            ...s,
+                            accounts: [
+                              ...s.accounts,
+                              {
+                                id,
+                                workspaceId: s.activeWorkspaceId,
+                                name: s.preferences.name,
+                                handle: "@dein-demo-profil",
+                                channel: "X",
+                                connected: true,
+                                color: "#2d332e",
+                              },
+                            ],
+                            activeAccountId: id,
+                          }));
+                        }
+                      }}
                     >
-                      {github.login
-                        ? "Demo-Anmeldung trennen"
-                        : "GitHub-Login simulieren"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={!admin || !github.login}
-                      onClick={() =>
-                        setGitBranch((g) => ({ ...g, installed: !g.installed }))
-                      }
-                    >
-                      {github.installed
-                        ? "Repository-App entfernen"
-                        : "Repository-Zugriff simulieren"}
-                    </Button>
-                  </div>
-                  {github.installed && (
-                    <>
-                      <p className="text-xs font-medium mt-5">
-                        Beispiel-Repository: dispatch/calendar · Releases und
-                        Pull Requests
-                      </p>
-                      <label className="flex gap-2 items-start text-xs leading-relaxed">
-                        <input
-                          type="checkbox"
-                          className="mt-0.5"
-                          disabled={!admin}
-                          checked={github.privateConsent}
-                          onChange={(e) =>
-                            setGitBranch({
-                              ...github,
-                              privateConsent: e.target.checked,
-                            })
-                          }
-                        />
-                        Privaten Kontext ausdrücklich erlauben. Er darf nicht
-                        automatisch veröffentlicht werden.
-                      </label>
-                    </>
-                  )}
-                </div>
-                <DemoNote>
-                  GitHub ist optional. Keine externe Anmeldung oder
-                  Datenabfrage.
-                </DemoNote>
-              </>
-            )}
-            {step === 3 && (
-              <>
-                <div className="surface p-5">
-                  <div className="flex gap-3 items-center mb-5">
-                    <span className="bg-foreground text-background w-8 h-8 rounded-md flex items-center justify-center font-semibold">
-                      𝕏
-                    </span>
-                    <div>
-                      <h3 className="mb-1">Dein X-Account</h3>
-                      <p className="muted text-xs mb-0">
-                        Eine lokale Verbindung zum Ausprobieren.
-                      </p>
-                    </div>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={!admin}
-                    onClick={() => {
-                      if (!admin) return;
-                      const account = state.accounts.find(
+                      {state.accounts.some(
                         (a) =>
                           a.workspaceId === state.activeWorkspaceId &&
-                          a.channel === "X",
-                      );
-                      if (account)
-                        setState((s) => ({
-                          ...s,
-                          accounts: s.accounts.map((a) =>
-                            a.id === account.id
-                              ? { ...a, connected: !a.connected }
-                              : a,
-                          ),
-                          activeAccountId: account.id,
-                        }));
-                      else {
-                        const id = uid("acc");
-                        setState((s) => ({
-                          ...s,
-                          accounts: [
-                            ...s.accounts,
-                            {
-                              id,
-                              workspaceId: s.activeWorkspaceId,
-                              name: s.preferences.name,
-                              handle: "@dein-demo-profil",
-                              channel: "X",
-                              connected: true,
-                              color: "#2d332e",
-                            },
-                          ],
-                          activeAccountId: id,
-                        }));
-                      }
-                    }}
-                  >
-                    {state.accounts.some(
-                      (a) =>
-                        a.workspaceId === state.activeWorkspaceId &&
-                        a.channel === "X" &&
-                        a.connected,
-                    )
-                      ? "Demo-X-Verbindung trennen"
-                      : "X-Verbindung simulieren"}
-                  </Button>
-                </div>
-                <DemoNote>
-                  Du entscheidest vor jeder Veröffentlichung. Diese Demo sendet
-                  keine Beiträge.
-                </DemoNote>
-              </>
-            )}
+                          a.channel === "X" &&
+                          a.connected,
+                      )
+                        ? "Demo-X-Verbindung trennen"
+                        : "X-Verbindung simulieren"}
+                    </Button>
+                  </div>
+                  <DemoNote>
+                    Du entscheidest vor jeder Veröffentlichung. Diese Demo
+                    sendet keine Beiträge.
+                  </DemoNote>
+                </>
+              ) : (
+                <Section
+                  title="Dein erster Kanal"
+                  description="Es ist noch kein Social-Account verbunden. Du kannst deinen Workspace bereits einrichten."
+                >
+                  <p className="muted text-sm">
+                    Verbindungen werden später separat freigegeben. Es werden
+                    keine Beiträge automatisch veröffentlicht.
+                  </p>
+                </Section>
+              ))}
             <div className="flex flex-wrap justify-between gap-3 border-t pt-6 mt-3">
               <Button
                 variant="ghost"
                 type="button"
-                disabled={step === 0}
+                disabled={busy || step === 0}
                 onClick={() => setStep((s) => Math.max(0, s - 1))}
               >
                 <ChevronLeft size={15} />
@@ -950,13 +1197,19 @@ export function OnboardingPage() {
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() => (step === 3 ? finish() : setStep(3))}
+                    onClick={() =>
+                      step === 3 ? void defer() : void persist(3)
+                    }
                   >
                     Überspringen
                   </Button>
                 )}
-                <Button>
-                  {step === 3 ? "Workspace öffnen" : "Weiter"}
+                <Button disabled={busy || !editable}>
+                  {busy
+                    ? "Wird gespeichert…"
+                    : step === 3
+                      ? "Workspace öffnen"
+                      : "Weiter"}
                   <ArrowRight size={15} />
                 </Button>
               </div>
@@ -1165,28 +1418,31 @@ export function LegalPage() {
             einem öffentlichen Launch müssen Verantwortliche und verbindliche
             Rechtstexte ergänzt und geprüft werden.
           </DemoNote>
-          <Section title="Was diese Demo macht">
+          <Section
+            title={
+              demoMode ? "Was diese Demo macht" : "Was diese Vorschau macht"
+            }
+          >
             <p className="muted text-sm leading-relaxed mb-0">
-              Dispatch zeigt einen Content-Workflow mit lokal gespeicherten
-              Beispieldaten. Es gibt keine Live-Authentifizierung, KI-Anbindung,
-              Zahlungen, E-Mails oder Veröffentlichungen an Social-Plattformen.
-              Eine Demo-Registrierung begründet kein Kundenkonto oder
-              Vertragsverhältnis.
+              {demoMode
+                ? "Dispatch zeigt einen Content-Workflow mit lokal gespeicherten Beispieldaten. Es gibt keine Live-Authentifizierung, KI-Anbindung, Zahlungen, E-Mails oder Veröffentlichungen an Social-Plattformen. Eine Demo-Registrierung begründet kein Kundenkonto oder Vertragsverhältnis."
+                : "Dispatch verarbeitet Konto, Sitzungen, Workspace-Zugehörigkeit und Profil in Convex mit Better Auth. Verifikations- und Reset-E-Mails werden über Resend versendet. Social-Publishing, KI und Zahlungen sind noch nicht verfügbar."}
             </p>
           </Section>
-          <Section title="Lokale Daten & Speicherung">
+          <Section
+            title={
+              demoMode ? "Lokale Daten & Speicherung" : "Daten & Speicherung"
+            }
+          >
             <p className="muted text-sm leading-relaxed">
-              Profileinstellungen, Entwürfe, Medien-Metadaten, Team-Demo und
-              Nutzungspräferenzen werden im lokalen Speicher deines Browsers
-              abgelegt. Es werden keine Passwörter oder OAuth-Tokens
-              gespeichert. Eingegebene Texte bleiben in dieser lokalen
-              Anwendung. Browserdaten löschen entfernt diese Speicherung.
+              {demoMode
+                ? "Profileinstellungen, Entwürfe, Medien-Metadaten, Team-Demo und Nutzungspräferenzen werden im lokalen Speicher deines Browsers abgelegt. Es werden keine Passwörter oder OAuth-Tokens gespeichert. Eingegebene Texte bleiben in dieser lokalen Anwendung. Browserdaten löschen entfernt diese Speicherung."
+                : "Kontodaten und Workspace-Profile werden serverseitig gespeichert. Better Auth verwaltet Passwort-Hashes und Sitzungen. Der Browser speichert für die Cross-Domain-Anmeldung ein Sitzungscookie im lokalen Speicher; Browserdaten löschen meldet dich lokal ab und löscht keine Cloud-Daten."}
             </p>
             <p className="muted text-sm leading-relaxed mb-0">
-              Ein JSON-Export ist unter Einstellungen → Daten & Sicherheit
-              möglich. Lokale Workspace-Löschung und Kontodaten-Löschung
-              benötigen eine ausdrückliche Bestätigung. Veröffentlichtes auf
-              externen Plattformen wird nicht gelöscht.
+              {demoMode
+                ? "Ein JSON-Export ist unter Einstellungen → Daten & Sicherheit möglich. Lokale Workspace-Löschung und Kontodaten-Löschung benötigen eine ausdrückliche Bestätigung. Veröffentlichtes auf externen Plattformen wird nicht gelöscht."
+                : "Export, Kontolöschung und weitere Datenverwaltung werden noch angebunden. Es wurden keine Social-Beiträge veröffentlicht."}
             </p>
           </Section>
           <Section title="Quellen & Rechte">

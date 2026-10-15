@@ -4,7 +4,7 @@ title: Kalender und erste betriebliche Rückmeldung liefern (P03.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 10:14'
 labels:
   - p03
   - r1
@@ -37,9 +37,9 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
 - [ ] #1 J02 und J08 funktionieren im freigegebenen Testaccount.
-- [ ] #2 veröffentlichte Posts sind nicht verschiebbar.
-- [ ] #3 ein Fehler ist ohne Zugriff auf Backend-Logs verständlich.
-- [ ] #4 R1 ist ein interner Meilenstein, noch nicht das vollständige Produktversprechen.
+- [x] #2 veröffentlichte Posts sind nicht verschiebbar.
+- [x] #3 ein Fehler ist ohne Zugriff auf Backend-Logs verständlich.
+- [x] #4 R1 ist ein interner Meilenstein, noch nicht das vollständige Produktversprechen.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -48,8 +48,22 @@ Voraussetzung: Der betroffene Umfang und offene Entscheidungen müssen vor Begin
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Reaktive Kalenderansichten auf Convex-Termine umstellen.
+2. Echte gespeicherte Betriebszustände darstellen; simulierte Publishing-Ergebnisse im realen Modus entfernen.
+3. Snapshot-/Zeitzonen- und Navigationsprüfungen durchführen.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /calendar. Week/month/agenda views, account/status filters, unscheduled drafts, move/cancel dialogs and keyboard alternative to dragging; successful/partial/uncertain statuses and next actions. Grenze: No real calendar jobs or critical email delivery. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Implementierung 9376587/6eea458: persistente Versionstermine und begrenzte Kalenderansichten, Root prüfte35Tests und vollständigen Typecheck erfolgreich. Unabhängige SPEC-Prüfung fand Kalender-Zeitzonenabweichung (Browser-Zeitzone vs. Profilzone) und generische statt konkreter Provider-Konfigurationshinweise; Korrektur läuft vor Freigabe der nächsten Einheit. J02/J08 im echten Testaccount weiterhin offene spätere Provider-Abnahme, keine Aufgabe geschlossen.
+
+SPEC-Nachprüfung 2079e68 bestanden:40UnitTests, LA/Berlin-Kalender-E2E und Bundle-Test unabhängig geprüft. QUALITY hat weitere Repros bestätigt:101 aktive Termine lassen Composer/Liste scheitern; alte geplante Freigabe verschwindet nach100 neuen aus dem Widerruf-UI; Kommentarantwort kann neu eingegebenen Text löschen. Minimaler Fix durch denselben Implementer läuft; nächste Provider-Einheit startet erst nach Nachprüfungen.
+
+Finale SPEC und QUALITY PASS f041927:42UnitTests, echte Kommentar-Race-E2E, LA/Berlin-Kalenderprüfung, Havana-DST und separate Overlimit-/alteApproval-Repros. Published-Terminsperre, konkrete Konfigurationsfehler ohne Logs und R1-Abgrenzung geprüft. Dev-Push12:10:28 erfolgreich. AC1 J02/J08 im echten freigegebenen Testaccount weiterhin offen bis Provider-Einheit; kein öffentlicher Testpost/E-Mailversand. Nachweis .docs/reviews/task-7-8-11-13-editorial-validation.md. Status bleibt In Progress.
 <!-- SECTION:NOTES:END -->

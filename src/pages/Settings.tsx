@@ -1,3 +1,18 @@
+import { NativeArchiveExport } from "@/features/settings/data-archive";
+import { NativeDataControls } from "@/features/settings/data-controls";
+import { NativeMediaExport } from "@/features/settings/media-export";
+import { NativeIdentityExport } from "@/features/settings/identity-export";
+import { NativeAttachmentExport } from "@/features/settings/attachment-export";
+import { NativeNotificationSettings } from "@/features/settings/notifications";
+import {
+  NativeProfileExport,
+  NativePreferencesExport,
+  WorkspaceVersionsExport,
+} from "@/features/settings/data-export";
+import { ContentStrategy } from "@/features/settings/content-strategy";
+import { IntelligenceProfiles } from "@/features/intelligence/profiles";
+import { GithubSources } from "@/features/settings/github";
+import { ModelConfiguration } from "@/features/settings/models";
 import {
   cloneElement,
   isValidElement,
@@ -6,6 +21,8 @@ import {
   type ReactElement,
   type ReactNode,
 } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowUpRight,
@@ -38,7 +55,10 @@ import {
 } from "@/components/shared";
 import { useStore, useWorkspaceLocalState } from "@/lib/store";
 import { disconnectAccount, uid, now, type Channel } from "@/lib/model";
+import { demoMode } from "@/lib/auth-client";
+import { EmptyState } from "@/components/shared";
 import { toast } from "sonner";
+import { SocialAccounts } from "@/features/settings/social-accounts";
 
 export function Field({
   label,
@@ -104,7 +124,7 @@ const navigation = [
 ];
 export function SettingsPage() {
   const { tab = "profile" } = useParams();
-  const { state } = useStore();
+  const { state, nativeScope } = useStore();
   const admin = state.role === "Owner" || state.role === "Admin";
   const content: Record<string, ReactNode> = {
     profile: <ProfileSettings />,
@@ -147,36 +167,140 @@ export function SettingsPage() {
               Abrechnung und Richtlinien benötigen Owner- oder Admin-Rechte.
             </DemoNote>
           )}
-          {content[tab] ?? (
-            <Section title="Bereich nicht gefunden">
-              <Link to="/settings/profile">Zum Profil</Link>
-            </Section>
+          {!demoMode && tab === "integrations" ? (
+            <IntegrationGuidance />
+          ) : !demoMode && tab === "strategy" ? (
+            <ContentStrategy />
+          ) : !demoMode && tab === "notifications" ? (
+            <CloudNotificationSettings />
+          ) : !demoMode && tab === "data" ? (
+            <>
+              <NativeProfileExport key={nativeScope} />
+              <NativePreferencesExport key={`preferences:${nativeScope}`} />
+              <NativeArchiveExport key={`archive:${nativeScope}`} />
+              <NativeIdentityExport key={`identity:${nativeScope}`} />
+              <NativeAttachmentExport key={`attachments:${nativeScope}`} />
+              {admin && <NativeMediaExport key={`media:${nativeScope}`} />}
+              <NativeDataControls
+                key={`deletion:${nativeScope}`}
+                workspaceId={state.activeWorkspaceId}
+                name={
+                  state.workspaces.find((w) => w.id === state.activeWorkspaceId)
+                    ?.name ?? "Workspace"
+                }
+                owner={state.role === "Owner"}
+              />
+              {admin && (
+                <>
+                  <WorkspaceVersionsExport key={`versions:${nativeScope}`} />
+                </>
+              )}
+            </>
+          ) : !demoMode && !["profile", "workspaces"].includes(tab) ? (
+            <EmptyState
+              title="Dieser Bereich wird noch angebunden"
+              description="Es wurden keine Verbindungen oder Einstellungen simuliert. Dein Profil und deine Workspaces sind bereits verfügbar."
+            />
+          ) : (
+            (content[tab] ?? (
+              <Section title="Bereich nicht gefunden">
+                <Link to="/settings/profile">Zum Profil</Link>
+              </Section>
+            ))
           )}
         </div>
       </div>
     </>
   );
 }
+function IntegrationGuidance() {
+  const { state } = useStore();
+  const readiness = useQuery(api.auth.capabilities, {});
+  return (
+    <>
+      <SocialAccounts key={state.activeWorkspaceId} />
+      <GithubSources key={`github:${state.activeWorkspaceId}`} />
+      <ModelConfiguration key={`models:${state.activeWorkspaceId}`} />
+      <Section
+        title="Kritische E-Mail-Benachrichtigungen"
+        description="Zustellprobleme bleiben im Kalender und Überblick sichtbar."
+      >
+        <Status
+          tone={
+            readiness?.emailDelivery && !readiness.restrictedSender
+              ? "green"
+              : "orange"
+          }
+        >
+          {!readiness
+            ? "Konfiguration wird geladen …"
+            : !readiness.emailDelivery
+              ? "RESEND_API_KEY fehlt"
+              : readiness.restrictedSender
+                ? "AUTH_EMAIL_FROM fehlt"
+                : "Absender und Zugang konfiguriert"}
+        </Status>
+        <ol className="mt-4 list-decimal space-y-2 pl-5 text-sm">
+          <li>
+            Die Administration hinterlegt RESEND_API_KEY und einen freigegebenen
+            Absender als AUTH_EMAIL_FROM im Convex-Deployment. SITE_URL muss auf
+            die App-Adresse zeigen.
+          </li>
+          <li>
+            Der Absender muss beim E-Mail-Provider für den Versand freigegeben
+            sein. Ohne eigenen konfigurierten Absender bleibt die kritische
+            Publishing-Benachrichtigung sichtbar blockiert.
+          </li>
+          <li>
+            Bei einem Zustellfehler die Provider-Konfiguration prüfen. Eine
+            gespeicherte Benachrichtigung ist erst als gesendet markiert, wenn
+            der Provider den Versand bestätigt; diese Seite löst keine
+            Test-E-Mail oder Wiederholung aus.
+          </li>
+        </ol>
+      </Section>
+      <Section
+        title="Medien & weitere Provider"
+        description="R2-Medien und GitHub-Repository-Zugriff werden separat aktiviert."
+      >
+        <p className="text-sm">
+          Für R2 fehlen noch der verifizierte Upload-/Finalisierungsflow und
+          autorisierte Vorschauen. Die Administration benötigt den vorgesehenen
+          Bucket und dessen serverseitige S3-Zugangskonfiguration. Es werden
+          hier keine Ressourcen angelegt.
+        </p>
+        <p className="mb-0 text-sm">
+          GitHub-Anmeldung und Repository-Zugriff sind getrennte Berechtigungen.
+          Repository-Zugriff benötigt den separaten App-Verbindungsflow und eine
+          ausdrückliche Auswahl der erlaubten Repositories.
+        </p>
+      </Section>
+    </>
+  );
+}
 function ProfileSettings() {
-  const { state, setState } = useStore();
+  const { state, saveProfile } = useStore();
   const [profile, setProfile] = useState(state.preferences);
+  const [busy, setBusy] = useState(false);
   const readOnly = state.role === "Viewer";
   return (
     <>
+      {!demoMode && <IntelligenceProfiles audienceOnly />}
       <Section
         title="Dein Profil"
         description="So möchtest du arbeiten — und so soll Dispatch dich verstehen."
       >
         <form
           className="stack"
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             e.preventDefault();
-            if (readOnly) return;
-            setState((s) => ({
-              ...s,
-              preferences: { ...s.preferences, ...profile },
-            }));
-            toast.success("Profil lokal gespeichert.");
+            if (readOnly || busy) return;
+            setBusy(true);
+            if (await saveProfile(profile))
+              toast.success(
+                demoMode ? "Profil lokal gespeichert." : "Profil gespeichert.",
+              );
+            setBusy(false);
           }}
         >
           <div className="form-grid">
@@ -253,22 +377,39 @@ function ProfileSettings() {
             />
           </Field>
           <div className="flex items-center gap-3">
-            <Button disabled={readOnly}>Änderungen speichern</Button>
+            <Button disabled={readOnly || busy}>
+              {busy ? "Wird gespeichert…" : "Änderungen speichern"}
+            </Button>
             <span className="muted text-xs">
-              Gilt für dein lokales Demo-Profil.
+              {demoMode
+                ? "Gilt für dein lokales Demo-Profil."
+                : "Gilt für dein Profil im aktiven Workspace."}
             </span>
           </div>
         </form>
       </Section>
       <DemoNote>
-        Sprache und Zeitzone sind Profileinstellungen. Die Demo-Oberfläche
-        bleibt auf Deutsch.
+        Sprache und Zeitzone sind Profileinstellungen. Die Oberfläche bleibt
+        vorerst auf Deutsch.
       </DemoNote>
+      <Section
+        title="Projekt & Einrichtung"
+        description="Projektbeschreibung und restliche Einrichtung kannst du jederzeit im Setup bearbeiten. Quellen und Kanäle bleiben optional."
+      >
+        <Button variant="outline" asChild>
+          <Link to="/onboarding">
+            {state.preferences.onboardingDone
+              ? "Projekt und Einrichtung bearbeiten"
+              : "Einrichtung fortsetzen"}
+          </Link>
+        </Button>
+      </Section>
     </>
   );
 }
 function WorkspaceSettings({ admin }: { admin: boolean }) {
-  const { state, setState } = useStore();
+  const { state, createWorkspace } = useStore();
+  const [busy, setBusy] = useState(false);
   const [name, setName] = useState("");
   return (
     <Section
@@ -295,25 +436,15 @@ function WorkspaceSettings({ admin }: { admin: boolean }) {
       </div>
       <form
         className="flex flex-wrap gap-2 mt-5"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          if (!admin || !name.trim()) return;
-          const id = uid("ws");
-          setState((s) => ({
-            ...s,
-            workspaces: [
-              ...s.workspaces,
-              {
-                id,
-                name: name.trim(),
-                description: "Eigener lokaler Marken-Workspace",
-              },
-            ],
-          }));
-          setName("");
-          toast.success(
-            "Workspace erstellt. Über den Workspace-Schalter öffnen.",
-          );
+          if (!admin || !name.trim() || busy) return;
+          setBusy(true);
+          if (await createWorkspace(name.trim())) {
+            setName("");
+            toast.success("Workspace erstellt.");
+          }
+          setBusy(false);
         }}
       >
         <Input
@@ -1076,6 +1207,9 @@ function StrategySettings({ admin }: { admin: boolean }) {
       </Section>
     </>
   );
+}
+function CloudNotificationSettings() {
+  return <NativeNotificationSettings />;
 }
 function NotificationSettings() {
   const { state } = useStore();

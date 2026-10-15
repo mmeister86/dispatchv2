@@ -4,7 +4,7 @@ title: Publisher mit Einzelpost-Checkpoints und Abgleich bauen (P03.03)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-05 14:07'
 labels:
   - p03
   - r1
@@ -44,9 +44,9 @@ Großes Paket: Die zugeordneten Unteraufgaben liefern die Implementierung in beg
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Prozessabbruch nach Beitrag 2 eines Threads wiederholt Beitrag 1 und 2 nicht.
-- [ ] #2 Timeout nach möglichem Provider-Erfolg löst keinen automatischen Blind-Retry aus.
-- [ ] #3 Endergebnis enthält Inhaltssnapshot und externe Links.
+- [x] #1 Prozessabbruch nach Beitrag 2 eines Threads wiederholt Beitrag 1 und 2 nicht.
+- [x] #2 Timeout nach möglichem Provider-Erfolg löst keinen automatischen Blind-Retry aus.
+- [x] #3 Endergebnis enthält Inhaltssnapshot und externe Links.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -55,8 +55,26 @@ Großes Paket: Die zugeordneten Unteraufgaben liefern die Implementierung in beg
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Nach TASK-9/10 den bestehenden generation-/versionsgebundenen Claim und checkSend übernehmen.
+2. TASK-12.1: finalisierte R2-Bytes erneut prüfen, begrenzte X-Medienübertragung und dauerhafte Processing-/Verfallszustände integrieren.
+3. TASK-12.2: pro Threadposition vor dem nicht idempotenten Request einen dauerhaften Versuch anlegen, jeden bestätigten externen Post sofort speichern, keine automatischen Schreib-Retries.
+4. TASK-12.3: transiente/permanente/unklare Ergebnisse trennen; bekannte IDs abgleichen, unbekannte mögliche Effekte pausieren und nur explizit sicher fehlende Positionen fortsetzen.
+5. Crash nach Position2, Timeout nach möglichem Erfolg, Widerruf/Disconnect/Generationswechsel und aktualisierte UI-Aktionen prüfen; echten Testversand nur mit konkret freigegebenem Account/Inhalt.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /calendar?view=agenda. Immutable publication snapshots, per-post confirmed/unconfirmed thread states, partial/uncertain/error results, mock reconciliation and targeted continuation. Grenze: No external posts, provider retries or crash recovery proof; IDs are explicitly demo IDs. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Delegatedfirst-write setup decision recorded .docs/decisions/first-write-verification.md for TASK12.2: freshOAuth scopes/identity do notprovewrite, normalcap remainsfalse; avoidcircularrequirement with explicitimmediate exactversion/account human approval+separateconfirmation of visible publishing toverifyaccess. Reusepurpose-boundapproval/schedule/checkpoints, no generalbypass/modelauthority/fakeproof; onlymatchingcurrentconnection confirmedAPIwrite enablesstandardcap, unknownoutcomepause/reconcile. TASK12.1 mediaenginefirst behindguards,12.2 ownsbootstrapintegration. No rootliveprobe/publicpostauthorized/performed; manualaccount/content/providergatesopen.
+
+Clarified first-write evidence: capability activation requires validated actual Dispatch credentialed POST response/current connection. A later read-only exact candidate lookup can reconcile an existing piece but cannot prove it used those API credentials (manual samecontent possible), and never enables publishing capability. Explicit approved remaining position/newproofjob may later supply actualwriteevidence. Decision .docs/decisions/first-write-verification.md; no provider calls performed.
+
+TASK12.1 final ddd3ad4 and TASK12.2 final eddf1a2 each independent SPEC/QUALITY PASS. Publishing uses durable native per-position claims/confirmedIDs, explicit persisted first-write consent, realweightedtext, initial continuation in same claim transaction, actualmedia-key receipts and persistent idempotent abort/unresolved account barriers. No POST automatic retry or read-only capability proof. TASK12.3 now begins after both reviews; parent code/manual acceptance remains open.
+
+Integrierter Publishing-Code: TASK12.1 ddd3ad4,12.2 eddf1a2,12.3 7734008 jeweils unabhängig SPEC/QUALITY PASS. Dauerhafte Einzelpost-Intents/IDs, keine automatische POST-Wiederholung, Abgleich strikt anhand tatsächlicher Evidenz und explizite versions-/identitätsgebundene Missing-only-Fortsetzung mit bestätigter Prefix-Kette; vollständige gespeicherte Snapshots/Links. AC1–3 isoliert in verifizierten Code/Tests erfüllt, einschließlich Abbruch nach bestätigt1/2 und möglichem Erfolg/Timeout; keine Live-/manuelle Provider-/Medien-/Kostenabnahme. Reviewnachweis .docs/reviews/task-12.3-x-reconciliation-validation.md. Tasks bleiben In Progress bis ausdrücklicher Nutzerabnahme.
 <!-- SECTION:NOTES:END -->

@@ -1,0 +1,59 @@
+{
+  "task": "TASK-32.5",
+  "head": "9566961c7a3d255eed15c94aeb93f5dc26b058b3",
+  "freezeSha256": "05f777e4d351fd8f1122897a9514e252f11430a12387a64aa4cfce7e00e37822",
+  "checks": {
+    "whole-native3": {
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-root-whole-native3.log",
+      "logSha256": "4b8b521137e9cc96c7bd701ecff48d7b98cb700a3f71917b180a146e6333ea34"
+    },
+    "app-tsc3": {
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-root-app-tsc3.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "convex-tsc3": {
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-root-convex-tsc3.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "lint3": {
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-root-lint3.log",
+      "logSha256": "075032625a9a1437c9ba8b2d522c9f642ae833e13e69b883f3ee440263acc942"
+    },
+    "owned-format3": {
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-root-owned-format3.log",
+      "logSha256": "17aa973d3f004560237d9a95171210b0671deff23d61628eecf7322ff5938f20"
+    },
+    "diff3": {
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-root-diff3.log",
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "bundle-native3": {
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-root-bundle-native3.log",
+      "logSha256": "088bf63a283e2db50ba236391c6d4a28c81d865f5b6496af31347335f26ae8df"
+    },
+    "browser3": {
+      "exitCode": 0,
+      "log": "/tmp/dispatch-32.5-root-browser3.log",
+      "logSha256": "3e8588062f218b249b8bba99b0ae410f0107fe124860187bec2041a897e75f8e"
+    }
+  },
+  "reviews": {
+    "spec3": {
+      "verdict": "PASS",
+      "sha256": "e7a7f41a808e33ab703ca5da7346e34642f726ac609ec5bee814d4b523501afe"
+    },
+    "quality3": {
+      "verdict": "PASS",
+      "sha256": "10810740787fdc002880ea0d851741f2dfc5e427c4ed345b39ff557f0318df7e"
+    }
+  },
+  "sourceUnchanged": true,
+  "browserReceiptSha256": "d1b82fe6ecaeee656929380564babfe5c1ee1b14c002ace997ed849513fa1e58"
+}

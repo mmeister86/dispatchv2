@@ -1,0 +1,90 @@
+# TASK-23.3 — Research Inbox and explicit automatic handoff validation
+
+## Release and ownership
+
+Functional BASE/ROOT release734dce2a16a29e70143aefeb0d4f67e1873d88a6 after accepted TASK23.2 SOURCEeb4feb0 (corecaec14dd), fresh SPEC/QUALITY and same UI-copy delta PASS. Fresh sole Backend Architect implementer research_inbox_integration owns source; ROOT owns task/review/global metadata. Full scoped release /tmp/dispatch-task23.3-release-brief.md and trusted current chat/schedule maps are supplied. In Progress, all AC/manual Done open.
+
+Scope: existing account-scoped paged Inbox with current time/source/perspective/review/disposition details; awaited ignore/archive/content and actual own-Agent attach/re-research; new marked scheduled-only count1..5 automatic handoff after current finite human eligible assessment. Old configs/v1/prepared/source-only/terminal orders stay inert. One-shot actual selection/result receipts, honest underfill, no automatic approval/schedule/publication. Shared current proof and exact provenance, bounded native/content cleanup and financial receipts remain. No new Inbox/messages/finance store or generic queue/engine.
+
+## First Inbox contract RED/GREEN — intermediate bytes
+
+ROOT read `/tmp/task23-3-inbox-original-red.log`03:59:11: actual registered test fails because public research/evidence.inbox export is absent. This is an executed missing-feature contract RED, not a historical privacy disclosure. `/tmp/task23-3-inbox-green.log`03:59:43 reports **9/9 tests in1 file PASS**, account compound-index pagination/current evidence projection and stable actor/key disposition receipts distinct from Review/run state; proof precedes replay. Implementer initial20 count was a reporting error, acknowledged and corrected to actual retained9 receipt.
+
+Attachment, re-research lineage, marked eligible automatic consumer, actual affected browser/full/static/codegen/Dev and final source/fresh reviews remain pending. No software AC or Done claim.
+
+
+## Attachment intermediate GREEN and marked-auto original RED
+
+ROOT read `/tmp/task23-3-attach-green.log`04:00:34: **10/10 tests in1 file PASS**, including previous9 and actual native thread/message attachment with stable separate receipt, current whole-history/evidence reproof and execution barrier. Final UI/full source acceptance is not implied.
+
+ROOT read `/tmp/task23-3-auto-original-red.log`04:02:30 before auto implementation: the new marked scheduled J04 test fails because old config validator rejects explicit bounded-editorial-v1 option. Executed missing-feature contract RED, not a privacy defect. Implementer has honestly stated re-research lineage was written before its tests; upcoming lineage controls are validation-only, not retrospectively described as TDD RED. It reports inherited proof through native orderAuthority and shared32 material authority plus existing copy link order target; registered lineage verification remains pending.
+
+ROOT clarified captured Owner/Admin activation authority must be current at automatic content insertion: demotion to Editor cannot pass merely through ordinary editable membership; in-flight original usage still settles once. Reuse current activation authorization. No AC/Done.
+
+
+## Registered J04, actual Inbox browser and no-GitHub lineage validation
+
+ROOT read marked-auto first GREEN `/tmp/task23-3-auto-first-check.log`04:03:33:1 selected registered test PASS. New scheduled v2/native+Agent workflow waits for actual human review, then returns1 unapproved Draft under captured max3; second review cannot fill/duplicate. Intermediate affected `/tmp/task23-3-relevant-first.log`04:03:43 is229/5 PASS, types PASS. These precede later source corrections and are not final readiness.
+
+ROOT read actual React Inbox GREEN `/tmp/task23-3-inbox-browser-first-green.log`: mocked Convex transport, current pagination/detail clocks, awaited handoff/attach stable lost acknowledgment, retained created thread receipt, actual returned links and expiry dirty-buffer removal. `/tmp/task23-3-inbox-browser-original-red.log` is only sandbox listen EPERM, NOT a product RED; actual missing-UI assertion RED after authorized local launch is separately retained `/tmp/task23-3-inbox-browser-actual-original-red.log`.
+
+`/tmp/task23-3-authority-lineage-validation-green.log`04:08:09:6 selected/1 file PASS (auto demotion/save/pause/native-revoke controls, explicit lineage/current parent retry, child counted in shared32 before new physical I/O). Earlier `/tmp/task23-3-auto-negatives-lineage-validation.log`04:07:30 has4 PASS and a targetedFixture undefined typo: fixture failure, not product RED. ROOT read separate `/tmp/task23-3-actual-lineage-validation.log`04:10:08:1 actual registered no-GitHub parent two-source native+semantic→new-topic native+semantic→Draft with inherited finite horizon; secondary parent withdrawal immediately masks child and actual SDK cleanup retains4 settled receipts. Lineage checks are honestly implementation-first validation, not retroactive TDD.
+
+Implementer additionally found insertion errors must abort automatic consume transaction rather than be caught after partial writes; correction/remaining full/static/UI checks underway. No final freeze, software AC or Done.
+
+
+## Later self-review and actual unresolved-usage correction
+
+Implementer found sibling currentEvidence author/reviewer checks missing on selected-order pipeline.results, inherited horizons needed on manual annotations, and exact attach-intent alias dedupe must retain old deadline. These are reported code findings/corrections, not fabricated historical REDs. First full589/30 PASS04:10:54, later590/30 PASS04:14:05 retained separately. New native pending/foreign/deleting attachment control and explicit Inbox Owner→Viewer→Owner stale-ack epoch fence added; reported five affected actual browser fixtures PASS. Existing profile browser failure `/tmp/task23-3-profile-browser.log` was a React fixture commit chronology error; separate after-committedRole GREEN `/tmp/task23-3-profile-browser-after-commit-wait.log` retained. No claim of a demonstrated prior profile product bug.
+
+ROOT read `/tmp/task23-3-auto-money-original-red.log`04:17:38: actual unresolved native usage nevertheless produced a proposal (expected empty ideas). Executed before shared existing orderLiability insertion guard. Separate `/tmp/task23-3-auto-money-green.log`04:17:57 passes selected regression; `/tmp/task23-3-full-money-final.log`04:17:59 **591/30 PASS**, type/lint/affected format/build/bundle also inspected PASS. Auto refuses unknown usage/over-cap with distinct reason, no false successful frozen receipt; existing single ledger/late settlement retained. Additional exact under-cap recovery/over-cap late native receipt controls are validation-only where no preimplementation RED exists, still underway.
+
+Official codegen first PASS without binding delta preceded the final backend money change, so new final codegen/posttypes and EUDev after green are required. Source window CLOSED; no AC/Done.
+
+
+## Final593 readiness before SOURCE freeze
+
+ROOT read final `/tmp/task23-3-frozen-all.log`: **593/593 tests30 files PASS04:22:47**. Final static/type/lint/format/build/bundle, official codegen/posttypes, five actual React browsers and postDev type receipts read PASS; codegen produced no binding diff. Existing EU Dev ready **04:23:46** `/tmp/task23-3-frozen-eu-dev.log`. All provider HTTP intercepted in registered tests, browser Convex transport mocked, user5173 preserved.
+
+Genuine final status RED `/tmp/task23-3-reason-original-red.log`04:22:24: after actual unknown native receipt settled, stale unresolved-usage reason persisted with no eligible human assessment. Separate GREEN04:22:45 restores awaiting-human-review reason through same consumer. Known under-cap one-shot recovery and over-cap late receipt validation preserve holds/receipts and leave selection absent on exceeded cap. No new queue. Wrong content browser filename MODULE_NOT_FOUND is retained as command error; corrected actual content receipt is distinct, not product RED.
+
+ROOT independently verifies exact24 current SOURCE hashes against `/tmp/task23-3-frozen-source-inventory.json`, RAW SHA934dfff62f931c2f943f61ced1b96c9f28be6c56575ef76a617893942bcddd0b; index empty, diffcheck PASS, source owned scope only. Scoped SOURCE commit window/freeze then fresh SPEC→QUALITY required; no AC/Done.
+
+
+## SOURCE freeze and fresh SPEC dispatch
+
+SOURCE **e99c56eae5e0169e93c2d4513479018e8c90b202** on master, exact24 approved functional paths, inventory rawSHA934dfff62f931c2f943f61ced1b96c9f28be6c56575ef76a617893942bcddd0b verified before staging. ROOT independently reads scoped commit and clean tree/index. Sandbox Git index denial was environmental, command-specific authorized local commit succeeded; no unrelated paths. Fresh Backend Architect research_inbox_spec reviews from functional BASE734dce2 with complete requirements/actual contract/source inventory/real checks and chronology. Fresh QUALITY follows only after SPEC PASS. No AC/Done.
+
+
+## Fresh SPEC findings while SOURCE stays frozen
+
+Reviewer verifies24 source hashes. ROOT clarified an overbroad review-prompt phrase: all native executionFinished barriers are required BEFORE NEW append, while returning an already committed receipt is allowed during a later unfinished incarnation after current owner/account/active-thread/full history/evidence proof. Replay/intent alias must not append native content, fund new work, forgive holds or renew original horizon. Existing release/source contract already uses this distinction. Original independent failing replay expectation `/tmp/dispatch-spec-independent-replay.log`04:27:08 remains unchanged as prompt ambiguity evidence, not a fixed product bug; reviewer adds actual invariant controls and new-intent barrier probe.
+
+Fresh reviewer independently reproduces a genuine physical cleanup gap `/tmp/dispatch-spec-independent-manual-cleanup.log`04:28:10: public evidence.create on actual no-GitHub reResearch child stays state review with protected payload after ancestor secondary-source withdrawal and pipeline.purge reports complete. Current reads are fenced; retained physical manual payload and its downstream handoff copies are the issue. Existing purge only scans modelOrigin.runId, omitting manual descendants newly admitted with inherited proof. Root read the actual failing log, accepted this as required correction, and asks reviewer to finish all findings against frozen e99c56e before original implementer edits. Minimal bounded existing order-index/all-evidence retirement/copy cleanup planned, no new engine. No AC/Done, QUALITY not started.
+
+
+## Complete fresh SPEC NEEDS_FIXES; original correction released
+
+ROOT read full `/tmp/dispatch-research-inbox-spec-receipt.md`: one P1 manual-descendant physical cleanup defect at pipeline.ts438/468, all24 source hashes and94/2 registered PASS. Expanded original actual RED `/tmp/dispatch-spec-independent-manual-copy-cleanup.log`04:29:35 drains due work and proves current reads fenced but manual payload/Idea note/Draft text and copyflags retained, cleanup complete,295900ms until expiry. Earlier diagnostic duplicate-variable parse error is separate reviewer fixture error, not product RED. Clarified exact/alias receipt replay preserves IDs/native messages/source horizons/financial receipts; new intent blocked, independent PASS04:28:42. No replay code fix.
+
+ROOT releases original sole implementer to only pipeline.ts and existing pipeline.test.ts: bounded existing order-index ALL evidence retirement and matching pending/completion scan, reuse contentCleanup.evidence propagation, preserve native deletion/late usage/confirmed receipts. Permanent actual public manual annotation+real handoff regression must reproduce RED then verify physical erasure before expiry separately from read fence. New final relevant/full/static/codegen/EUDev required; original24 SOURCE/593 receipts retained, correction separate inventory. Source window closed until readiness. SAME SPEC re-review then fresh QUALITY, no AC/Done.
+
+
+## Original writer correction RED and bounded continuation
+
+ROOT read genuine correctionRED /tmp/task23-3-correction-original-red.log04:38:16: actual manual child physical state review after read fence. Two owned-path correction uses existing order index for all review evidence and matching continuation; historical complete marker cannot suppress remaining rows. Permanent actual registered21manual+model continuation GREEN04:39:07; separately controlled historical-complete input variant and95/2 affectedPASS04:40:19 reported. No API/UI/index/finance-store change, original5 frozen browser receipts reused honestly for backend-only purge selection. Final594/30/staticGREEN reported, codegen/EUDev/posttype readiness pending. Sourcewindowclosed, SAME SPEC thenfreshQUALITY; no AC/Done.
+
+
+## Corrected SOURCE freeze and SAME SPEC recheck
+
+ROOT independently reverified corrected SOURCE d9caca72ba34ae2f90ab9e98bf18965defcbb89e exact2 path bytes against rawinventorye7c1d9b66925e3c4532058fac67ba28a5ad06f372b317ce882840ecedc2fdee8, scopedcommit and clean tree/index. Readfinal95/2 affected04:40:19,594/30full04:40:30, types/lint/2pathformat/build/bundle/officialcodegen/posttype PASS and existingEUDev04:41:35/posttypePASS. Original24inventory/593/e99c56e receipts retained, unchangedUI/API fivebrowserreceipts honestlyreused. SAME SPEC dispatched original independentphysicalcopyprobe/newcontinuation/historicalcomplete guard recheck; freshQUALITYonlyafterPASS. Sourcewindowclosed/no AC/Done.
+
+
+## SAME SPEC correction PASS; fresh QUALITY
+
+ROOT read complete SAME SPEC correctionPASS /tmp/dispatch-research-inbox-spec-correction-receipt.md SHA62deff98ee4fc52a25f7e805fbc275ab2689cd57cfd945c4e7182e4f90a68651: all24 actualSOURCEd9caca72bytes match2overrides+22original. Unmodified independent manualchild/copiedcontentREDs and clarifiedsafe replay now3PASS04:43:26; correctedactual95/2PASS04:43:27. Bounded20all-order retirement/matchingremain+historicalcomplete guard solvesrootcause, existingcopy/native/finance preserved. Broad594/static/Dev inspected, fiveunchangedUIbrowserreceipts reusedhonestly. Fresh independent AppSec quality research_inbox_quality dispatched entire24pathscope fromBASE734dce2; noAC/Done untilfinalQUALITY.
+
+
+## Fresh QUALITY PASS and software acceptance
+
+ROOT read complete freshQUALITY PASS SHAa877ff2feaca7bb4bec0605d43d31fb036a479eaa238bc4d014477f73ca98fba entire24pathscope SOURCEd9caca72 vsBASE734dce2, all24hashesverifiedtwice/noCriticalImportantactionableMinor. Independent95/2PASS04:46:04 +3automatic negativecontrolsPASS04:47:02 expiredhumanassessment/unattestedsupport/archivedproposal noIdeasDrafts/selection absent/exactfinance unchanged. SAME SPEC correctionPASS includesunchangedoriginal3probes04:43:26/95registered04:43:27. Corrected594full/static/codegen/EUDev04:41:35 andfiveunchangedUIbrowserreceipts honestlyreused. All23.3AC1–4 SOFTWARE checked; actualregistered/intercepted transports plusmockedConvexbrowser, notlive/authenticated/manual. Parent23AC1–3software checked noautomaticapproval/schedule/publish. BothremainInProgress/DoDmanual open. NextfreshTASK27released profileboundaryonly; noanalyzer/EUactivation.

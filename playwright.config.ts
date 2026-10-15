@@ -11,7 +11,7 @@ export default defineConfig({
   expect: { timeout: 8000 },
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:5173",
+    baseURL: "http://127.0.0.1:5174",
     headless: true,
     viewport: { width: 1440, height: 1000 },
     reducedMotion: "reduce",
@@ -24,9 +24,9 @@ export default defineConfig({
     },
   },
   webServer: {
-    command: "pnpm dev",
-    url: "http://127.0.0.1:5173",
-    reuseExistingServer: true,
+    command: "VITE_DEMO_MODE=true pnpm dev --port 5174",
+    url: "http://127.0.0.1:5174",
+    reuseExistingServer: false,
     timeout: 15000,
   },
 });

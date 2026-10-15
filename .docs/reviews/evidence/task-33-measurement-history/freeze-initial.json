@@ -1,0 +1,44 @@
+{
+  "unit": "TASK33.1-4B1",
+  "baseline": "21584404c1df35c79af4016a65f78a00a76119e9",
+  "files": [
+    {
+      "path": "convex/operations/exportIntelligence.ts",
+      "sha256": "c599171782762bfa656880a38e0c2eebfe21b55c46aad23fea30f5cd0b9bdefd"
+    },
+    {
+      "path": "convex/operations/exportMeasurements.test.ts",
+      "sha256": "8abc20fa42c8bfd938de78d0c1ec33a776e969960fe03decd0415b77a7806498"
+    },
+    {
+      "path": "convex/schema.ts",
+      "sha256": "d40fb1825f82a62695514342b21b4c0b57a89feb7a62efa4827f40cb74b2bd95"
+    },
+    {
+      "path": "convex/performance/models.ts",
+      "sha256": "39cbd127222e777e8a9719068feb1e5ef9ab915390d82b10b7ea9757ca352e1c"
+    },
+    {
+      "path": "src/features/settings/data-archive.tsx",
+      "sha256": "5ff16f51ceb619a6d3af2fbe2214493f4bbb27a2b07523ed573a8c2ffb14416e"
+    },
+    {
+      "path": "tests/operations.browser.mjs",
+      "sha256": "9bf6b657cdb04320c7d5f2dd43949ec84bf7d0364b53b1bb7696330c744f2484"
+    },
+    {
+      "path": "tests/performance-export-fixture.ts",
+      "sha256": "859476c395f6ed7a7f367e29f1a086296eec9ef1f3dbaa17089520abc60b7cbd"
+    },
+    {
+      "path": "convex/performance/collect.test.ts",
+      "sha256": "21668719d32ab5d24983f05d2ab846b2324f2c46f89d297ef081672bd7063568"
+    },
+    {
+      "path": "convex/performance/snapshots.test.ts",
+      "sha256": "2ae8e3d94cad4953c0b9686f3714b55f1fc0260a92110bb628380a85fad21d36"
+    }
+  ],
+  "frozen": true,
+  "aggregateSha256": "88ac52e0b958466dcfef5896d5fdab606a314c7b489f50a85317f4f435e6f02c"
+}

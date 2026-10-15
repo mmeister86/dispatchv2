@@ -4,7 +4,7 @@ title: Algorithmuswissen kontrolliert aktualisieren (P11.04)
 status: In Progress
 assignee: []
 created_date: '2026-09-16 20:12'
-updated_date: '2026-10-04 19:25'
+updated_date: '2026-10-06 15:16'
 labels:
   - p11
   - r5
@@ -40,8 +40,8 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Ein fremder Repository-Commit verändert keine produktive Bewertung ohne interne Prüfung.
-- [ ] #2 Eine fehlerhafte Aktivierung kann rückgängig gemacht werden.
+- [x] #1 Ein fremder Repository-Commit verändert keine produktive Bewertung ohne interne Prüfung.
+- [x] #2 Eine fehlerhafte Aktivierung kann rückgängig gemacht werden.
 <!-- AC:END -->
 
 ## Definition of Done
@@ -50,8 +50,38 @@ Modulübergreifende Pflicht: Neue Daten und Jobs in Tenant-/Account-Prüfung, Da
 - [ ] #2 Der Nutzer hat nach manueller Prüfung ausdrücklich bestätigt, dass dieser Task auf Done gesetzt werden darf.
 <!-- DOD:END -->
 
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. TASK-43.3 einfrieren und separate frische SPEC/QUALITY abschließen; danach erst denselben Quellgraph erweitern.
+2. Den bestehenden Profil-/Jev-/Kalibrierungs-/Publishingpfad und offizielle GitHub-Verträge gemäß .docs/algorithm-source-update-contract.md verwenden.
+3. Begrenzten manuellen öffentlichen Quellencheck mit aktuellen Rollen, Scope, reserviertem Versuch, exaktem Replay, Cooldown und sichtbaren Fehler-/Teilergebnissen implementieren; weder Profilwahl noch ihre Revision verändern.
+4. Unveränderliche Änderungsvorschläge oder vollständige Same-SHA-Neubeobachtung, getrennte menschliche Interpretation und serverseitige reine Referenzprüfung aufnehmen. Bestehende Varianten/Formel unverändert lassen.
+5. Neues Draft-Profil aus exakten Belegen erstellen, native Review-Sperre und separate Auswahl verwenden; gültigen historischen Rollback und historische Score-/Cache-/Modell-/Publishing-Invarianz prüfen.
+6. Reale Operations-Oberfläche mit Desktop/390px/Demo prüfen; vollständige native Tests, Typen, scoped Format/Lint, Build/Bundle/Codegen und vorhandenes EU Dev. Quellen einfrieren, frische SPEC dann QUALITY, lokale master-Commits.
+7. Neue Datenreferenzen im TASK-33/36-Inventar dokumentieren; tatsächliche Rechte, empirische Qualität und manuelle Done-Abnahme bleiben offen.
+<!-- SECTION:PLAN:END -->
+
 ## Implementation Notes
 
 <!-- SECTION:NOTES:BEGIN -->
 TASK-69: UI-Anteil als interaktive shadcn/React-Mock-Oberfläche auf master umgesetzt. Ansichten: /operations — Algorithmusprofile. Mock before/after source statement, interpretation, affected rule, review/evaluation, activate/discard/rollback and version log. Grenze: No actual source monitoring, verified algorithm knowledge or production assessment changes. Nachweise und manuelle Prüffälle: .docs/ui-backlog-coverage.md und .docs/reviews/task-69-ui-validation.md. Kein echter Provider-/Recherche-/KI-/Publishing-Betrieb; gemischte Backend-Kriterien bleiben offen. Status bis zur ausdrücklichen Nutzerabnahme In Progress.
+
+Vorbereitung: Öffentliche X-Quellen wurden schreibgeschützt geprüft (2026-10-05). Aktueller Primärquellen-Pin xai-org/x-algorithm b412112d03f27acbfd668e0cc040abcafa1080c1 vom 2026-10-03. Report /tmp/dispatch-algorithm-source-review.md enthält unveränderliche Quellenlinks, 13 Datei-SHA256-Prüfsummen und Update-/Rollback-Vertrag. Der öffentliche Code beweist weder aktuelle Produktionskonfiguration noch Reichweitenvorhersagen; dispatch-score-v1 bleibt getrennte redaktionelle Heuristik. Noch kein Profil aktiviert, keine Aufgabe geschlossen.
+
+Root hat den öffentlichen Quellenbericht geprüft und unter übertragener Entscheidungsfreiheit den Snapshot x-public-context-v1 als Informationskontext ausgewählt: public_code, productionState unknown, scoringInfluence none. Dauerhafter Bericht .docs/reviews/task-27-44-public-x-source-review.md; Entscheidung .docs/decisions/analysis-contract.md. Keine technische Profilaktivierung, kein Analyzer-/Datenpfad-Tor geöffnet; Source-Update-Implementierung bleibt offen.
+
+Fortsetzungsdesign 2026-10-06: .docs/algorithm-source-update-contract.md. Read-only Explorer-Seammap /tmp/dispatch-continuation-44-design.md durch Root geprüft. Context7 GitHub REST resolve + zwei Docs-Fetches und offizielle fehlende Limitdetails geprüft. 13 öffentliche Dateien am ursprünglichen immutable SHA erneut gelesen: alle HTTP200, SHA256 exakt unverändert, 233297 Bytes insgesamt, Maximum55021. Kein Profil/Deadline/Revision verändert. Quellbeobachtung darf profiles.finish nicht aufrufen; echte Jev-Zulassung prüft die Auswahlrevision. Implementation wartet auf den einzigen TASK43.3-Writer und frische unabhängige Reviews.
+
+Neue reale read-only Beobachtung: öffentlicher HEAD e62790c99484b51424c2eccc488ed4e7517e8778 (2026-10-06T04:59:30Z),103 changed paths, sieben von13 bestehenden Nachweishashes geändert, alle13 HTTP200. Bericht .docs/reviews/task-44-source-observation-2026-10-06.md. Compare574391 Bytes; Link nur first, kein next; ein echter vollständiger Quellenvergleich passt in Transportlimits, nicht in alle UI-Ausschnitte. Vertrag trennt deshalb strukturelle Vollständigkeit von bewusst begrenzten Ausschnitten und expliziter menschlicher Prüfung vollständiger immutable Links. Strukturelle Lücken bleiben nicht übersteuerbar. Kein tatsächliches Profil/Review/Score/Deadline verändert, keine App-Prüfquittung erfunden.
+
+Root präzisiert aktuellen Evaluation-Nachweis: unabhängige Evaluator-/Review-Akteure bleiben möglich. Ein enger direkter Proof im bestehenden profiles.ts prüft exakte neue Profil-/Proposal-/Eval-/Variant-/Quellbindung und aktuelle Evaluator-Owner/Admin-Rechte; Legacy-Pin sofort unverändert. Wiederverwendung bei review, usable/get/select/rollback sowie bestehenden Jev current/availability-Pfaden verhindert spätere Rechteentzugs-Umgehung ohne neuen Modulzyklus oder registrierten Action-Aufruf. Historische Ergebnisse bleiben unverändert.
+
+Implementierung nach akzeptiertem43.3 und exaktem EUDev freigegeben: soleSourceWriter source_updates_implementer; Root besitzt Verträge/Backlog/Runbook/Inventar/Commits/Dev. Scope .docs/algorithm-source-update-contract.md inklusive engem aktuellen Eval-Proof in profiles/Jev. Bestehende Ausgangsquellen HEAD8a8ac46 sauber. Kein43-Modell-/Assessment-/Publishing-/Finance-Source-Umbau benötigt; vorhandene Modelle bleiben immutable und neue Profilidentität muss statischen Fallback beweisen. Frisches SPEC dann separate QUALITY erst nach Source-Freeze; noch keine AC-/Done-Abnahme.
+
+Frisches SPEC PASS:50 registered+4 own native adversaries/actual styledDesktop390/Demo;35 freeze/context hashes exakt. Separate QUALITY läuft. Root+QUALITY identifizieren factual UI-Seam: inspected unknown terminal receipt gewinnt korrekt gegen delayed completion, aber reservierte requests0/bytes0 sind dann keine bestätigt-null Trafficzahlen. Vertrag präzisiert pending/unknown counts als unquittiert/unknown; terminal outcome/replay bleibtimmutable, normale acknowledged failed responses zählen echteBytes. Source-Fix erst durch soleWriter nach originaler QUALITY-Reproduktion, keine AC-/Done-Abnahme.
+
+Separate QUALITY original native prospective race bestätigt: paused new-head check→pending exactreplay exposes checkId→sameActor eval existing valid proposal under proposal-checkId→finish erzeugt evaluation/proposal mit gleichem by_command actor/key; evalReplay wirft unique-more-than-one. Zweiter echter Fix: shared public key() reserviert server-owned proposal- prefix vor write/I/O, interne generatedProposalkeys bleiben. Kein tatsächlich deployter TASK44-Datenstand, daher kein Backfill/Migration erfunden. Initial QUALITY FAIL bleibt erhalten; nach initialFinal nur derselbe soleWriter, dann SPEC-/distinctQUALITY-Recheck vor SourceCommit/EUDev.
+
+Software-Nachweis TASK-44 an 7427f01: korrigierter Freeze11Source/24Context, Full869/47 plus statische/build/bundle/drei styledBrowserChecks. InitialQUALITYFAIL mit zwei P2 bleibt erhalten: prospectiveFutureProposalKey und unbekannteTransportzahlen. SharedKeyGuard reserviert proposal- vorI/O/Write; pending/unknown zeigt ungeklärteZahlen statt falschem0/0. Frisches correctedSPEC22/5Original und correctedQUALITY68/4Original+actualStyledBrowser PASS; Root kompletteReports und35Live/CopyHashes,13RawWriterLogs,20Final/19InitialQualityArtifacts geprüft. Natives exaktesbestehendesEUDev an accurate-lion-749.eu-west-1.convex.cloud UTC2026-10-06T15:15:11 exit0,35Hashes unverändertnachCodegen. AC1/2 ausschließlich softwarequalifiziert inklusive tatsächlichgültigerhistorischerPairRollback/SourceCheckSelectionInvarianz. Keine echtenAppCheck/Profilwahl/Grant/Policy/Modell/ProviderAktivierung; manual/live/Done/full33/36 bleiben offen. Dauerhaft .docs/reviews/task-44-source-updates-validation.md; nächster schmaler48Seam vor45.
 <!-- SECTION:NOTES:END -->
