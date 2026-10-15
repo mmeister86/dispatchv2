@@ -735,3 +735,63 @@ test("empty all-to-selected removal blocks late discovery, fresh explicit resync
     parseEvent("installation", { action: "unsuspend", installation }),
   ).toBe(null);
 });
+test("retention sweep deletes old processed receipts and GUIDs, keeps fresh/pending and signals", async () => {
+  vi.useFakeTimers();
+  const f = await sourceFixture();
+  const oldGuid = crypto.randomUUID();
+  const freshGuid = crypto.randomUUID();
+  expect((await send(f, push, "push", oldGuid)).status).toBe(202);
+  expect(
+    (await send(f, { ...push, after: "3".repeat(40) }, "push", freshGuid))
+      .status,
+  ).toBe(202);
+  await processAll(f);
+  const receipts = await f.t.run((ctx) =>
+    ctx.db.query("githubWebhookReceipts").collect(),
+  );
+  expect(receipts).toHaveLength(2);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("githubSignals").collect()),
+  ).toHaveLength(2);
+  const old = receipts.find((r) => r.guid === oldGuid)!;
+  const fresh = receipts.find((r) => r.guid === freshGuid)!;
+  expect(old.state).toBe("processed");
+  await f.t.run((ctx) =>
+    ctx.db.patch(old._id, { latestReceivedAt: Date.now() - 31 * 86400000 }),
+  );
+  // An old but still-pending receipt is never swept.
+  const pendingGuid = crypto.randomUUID();
+  expect(
+    (await send(f, { ...push, after: "4".repeat(40) }, "push", pendingGuid))
+      .status,
+  ).toBe(202);
+  const pending = (
+    await f.t.run((ctx) => ctx.db.query("githubWebhookReceipts").collect())
+  ).find((r) => r.guid === pendingGuid)!;
+  expect(pending.state).toBe("pending");
+  await f.t.run((ctx) =>
+    ctx.db.patch(pending._id, {
+      latestReceivedAt: Date.now() - 31 * 86400000,
+    }),
+  );
+  await f.t.mutation(internal.integrations.github.deliveries.sweep, {
+    cursor: null,
+  });
+  expect(await f.t.run((ctx) => ctx.db.get(old._id))).toBeNull();
+  const guidRow = (guid: string) =>
+    f.t.run((ctx) =>
+      ctx.db
+        .query("githubDeliveryGuids")
+        .withIndex("by_guid", (q) => q.eq("guid", guid))
+        .unique(),
+    );
+  expect(await guidRow(oldGuid)).toBeNull();
+  expect(await guidRow(freshGuid)).not.toBeNull();
+  expect(await guidRow(pendingGuid)).not.toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.get(fresh._id))).not.toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.get(pending._id))).not.toBeNull();
+  // Signals are never touched by the sweep.
+  expect(
+    await f.t.run((ctx) => ctx.db.query("githubSignals").collect()),
+  ).toHaveLength(2);
+});

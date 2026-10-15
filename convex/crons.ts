@@ -27,6 +27,12 @@ crons.interval(
   {},
 );
 crons.interval(
+  "GitHub processed receipt retention cleanup",
+  { minutes: 15 },
+  internal.integrations.github.deliveries.sweep,
+  { cursor: null },
+);
+crons.interval(
   "GitHub failed delivery detection",
   { minutes: 15 },
   internal.integrations.github.recovery.scan,

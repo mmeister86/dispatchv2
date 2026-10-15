@@ -506,3 +506,34 @@ export const resume = internalMutation({
     return null;
   },
 });
+// Processed receipts are only re-resolved inside the 24h recovery window
+// (recovery.ts stops the provider scan at startedAt − 24h), so receipts
+// processed over 30 days ago — plus their GUID alias rows — are removed here.
+// Pending receipts are never touched; githubSignals are never touched.
+const receiptRetention = 30 * 86400000;
+export const sweep = internalMutation({
+  args: { cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const cutoff = Date.now() - receiptRetention;
+    const page = await ctx.db
+      .query("githubWebhookReceipts")
+      .paginate({ cursor: a.cursor, numItems: 25 });
+    for (const r of page.page) {
+      if (r.state !== "processed" || r.latestReceivedAt >= cutoff) continue;
+      for (const g of await ctx.db
+        .query("githubDeliveryGuids")
+        .filter((q) => q.eq(q.field("receiptId"), r._id))
+        .collect())
+        await ctx.db.delete(g._id);
+      await ctx.db.delete(r._id);
+    }
+    if (!page.isDone)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.integrations.github.deliveries.sweep,
+        { cursor: page.continueCursor },
+      );
+    return null;
+  },
+});
