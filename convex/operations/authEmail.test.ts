@@ -34,6 +34,24 @@ test("auth email bounds a hanging provider with a 10s abort instead of stalling 
   }
 });
 
+test("auth email releases the provider body on a failed delivery too", async () => {
+  const failed = new Response("upstream error", { status: 502 });
+  const cancel = vi.spyOn(failed.body!, "cancel");
+  const delivery = vi.spyOn(globalThis, "fetch").mockResolvedValue(failed);
+  try {
+    await expect(
+      sendEmail(
+        "candidate@example.test",
+        "Subject",
+        "https://example.test/verify",
+      ),
+    ).rejects.toThrow("Auth email delivery failed (502)");
+    expect(cancel).toHaveBeenCalledTimes(1);
+  } finally {
+    delivery.mockRestore();
+  }
+});
+
 test("auth email releases the provider body after delivery", async () => {
   const ok = new Response("{}", { status: 200 });
   const cancel = vi.spyOn(ok.body!, "cancel");

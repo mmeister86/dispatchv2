@@ -42,6 +42,26 @@ import {
   type Workspace,
 } from "./model";
 const KEY = "dispatch-demo-v1";
+function isValidTimezone(timezone: string) {
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: timezone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+// Version fields read unconditionally (currentVersion/draftValid/editDraft):
+// number, text and mediaIds. Anything else stays permissive so valid
+// app-written state always loads.
+function isValidVersion(v: unknown) {
+  if (typeof v !== "object" || v === null) return false;
+  const entry = v as { number?: unknown; text?: unknown; mediaIds?: unknown };
+  return (
+    typeof entry.number === "number" &&
+    Array.isArray(entry.text) &&
+    Array.isArray(entry.mediaIds)
+  );
+}
 export function readState(): AppState {
   try {
     const raw = localStorage.getItem(KEY);
@@ -61,13 +81,19 @@ export function readState(): AppState {
         // Intl/formatDate call sites; fall back to seed unless both are strings.
         typeof s.preferences?.name === "string" &&
         typeof s.preferences?.timezone === "string" &&
+        isValidTimezone(s.preferences.timezone) &&
         // currentVersion() throws on drafts without versions (Overview review
         // filter); Schedule.at is required for the upcoming sort comparator.
         s.drafts.every(
           (d: { versions?: unknown }) =>
-            Array.isArray(d?.versions) && d.versions.length > 0,
+            Array.isArray(d?.versions) &&
+            d.versions.length > 0 &&
+            d.versions.every(isValidVersion),
         ) &&
-        s.schedules.every((x: { at?: unknown }) => typeof x?.at === "string")
+        s.schedules.every(
+          (x: { at?: unknown }) =>
+            typeof x?.at === "string" && !Number.isNaN(Date.parse(x.at)),
+        )
       )
         return s;
     }

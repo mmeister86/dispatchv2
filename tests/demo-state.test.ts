@@ -57,3 +57,39 @@ test("schedule without at falls back to seed instead of breaking the sort", () =
   const state = readState();
   expect(state.schedules.every((s) => typeof s.at === "string")).toBe(true);
 });
+
+test("invalid timezone falls back to seed instead of crashing Intl call sites", () => {
+  const seed = createSeed();
+  stubStorage(
+    JSON.stringify({
+      ...seed,
+      preferences: { ...seed.preferences, timezone: "Mars/Olympus" },
+    }),
+  );
+  expect(readState()).toEqual(seed);
+});
+
+test("schedule with an unparseable at falls back to seed", () => {
+  const seed = createSeed();
+  stubStorage(
+    JSON.stringify({
+      ...seed,
+      schedules: [{ ...seed.schedules[0], at: "kein Datum" }],
+    }),
+  );
+  expect(readState()).toEqual(seed);
+});
+
+test.each([[null], [{}]])(
+  "draft with malformed version %j falls back to seed",
+  (version) => {
+    const seed = createSeed();
+    stubStorage(
+      JSON.stringify({
+        ...seed,
+        drafts: [{ ...seed.drafts[0], versions: [version] }],
+      }),
+    );
+    expect(readState()).toEqual(seed);
+  },
+);

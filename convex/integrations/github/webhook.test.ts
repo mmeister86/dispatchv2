@@ -647,6 +647,24 @@ test("revoke_user flag cleanup resumes across invocations while the barrier bite
     cursor: null,
   });
 });
+test("revoke_user for an unknown identity completes instead of reprocessing the empty scan", async () => {
+  vi.useFakeTimers();
+  const f = await sourceFixture();
+  const body = {
+    action: "revoked",
+    sender: { id: 999, type: "User", login: "stranger" },
+  };
+  expect(
+    (await send(f, body, "github_app_authorization", crypto.randomUUID()))
+      .status,
+  ).toBe(202);
+  await processAll(f);
+  // The !target branch advances with the page cursor (null when done) so the
+  // outer scan terminates instead of looping on a stale cursor.
+  expect(
+    await f.t.run((ctx) => ctx.db.query("githubWebhookReceipts").first()),
+  ).toMatchObject({ state: "processed", cursor: null });
+});
 test("empty all-to-selected removal blocks late discovery, fresh explicit resync works and added doesn't restore", async () => {
   vi.useFakeTimers();
   const f = await sourceFixture();

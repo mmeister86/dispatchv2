@@ -394,9 +394,15 @@ export const process = internalMutation({
           .paginate({ numItems: 1, cursor: sub.c });
         const target = page.page[0];
         if (!target) {
-          cursor = page.isDone
-            ? null
-            : encodeRevokeCursor({ c: sub.c, conn: null, rc: null });
+          if (!page.isDone) {
+            if (page.continueCursor === sub.c)
+              throw new ConvexError("GITHUB_DELIVERY_CURSOR_STALLED");
+            cursor = encodeRevokeCursor({
+              c: page.continueCursor,
+              conn: null,
+              rc: null,
+            });
+          } else cursor = null;
           done = page.isDone;
         } else if (!needsWork(target)) {
           cursor = encodeRevokeCursor({
@@ -525,12 +531,12 @@ export const sweep = internalMutation({
       if (r.state !== "processed" || r.latestReceivedAt >= cutoff) continue;
       const referenced = await ctx.db
         .query("githubSignals")
-        .filter((q) => q.eq(q.field("receiptId"), r._id))
+        .withIndex("by_receiptId", (q) => q.eq("receiptId", r._id))
         .first();
       if (referenced) continue;
       for (const g of await ctx.db
         .query("githubDeliveryGuids")
-        .filter((q) => q.eq(q.field("receiptId"), r._id))
+        .withIndex("by_receiptId", (q) => q.eq("receiptId", r._id))
         .collect())
         await ctx.db.delete(g._id);
       await ctx.db.delete(r._id);

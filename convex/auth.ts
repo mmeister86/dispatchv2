@@ -41,8 +41,10 @@ export async function sendEmail(to: string, subject: string, url: string) {
       text: `${subject}\n\n${url}\n\nFalls du dies nicht angefordert hast, ignoriere diese E-Mail.`,
     }),
   });
-  if (!response.ok)
+  if (!response.ok) {
+    await response.body?.cancel();
     throw new Error(`Auth email delivery failed (${response.status})`);
+  }
   await response.body?.cancel();
 }
 export const createAuth = (ctx: GenericCtx<DataModel>) => {

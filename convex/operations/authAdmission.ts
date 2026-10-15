@@ -1,6 +1,7 @@
 import { createFunctionHandle } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { components, internal } from "../_generated/api";
+import type { Id } from "../_generated/dataModel";
 import {
   internalMutation,
   internalQuery,
@@ -1003,6 +1004,75 @@ export const purgeNativePage = internalMutation({
 // below only deletes rows 30 days past expiry. Native session rows are never
 // touched here; recoverLease already reaps them at lease expiry.
 const admissionRetention = 30 * 86400000;
+// Leases-phase child drain: permits and session links are deleted in bounded
+// 25-row takes with the current lease + stage checkpointed in the existing
+// cursor string (same JSON-cursor style as the revoke fan-out), so one
+// invocation never collects an unbounded link set. No new args, and only one
+// paginated query per invocation (Convex allows a single `.paginate()` per
+// function execution; child reads use `.take()`). A mid-lease cursor re-scans
+// from the saved outer position, which is idempotent because drained leases
+// are deleted and skipped ones re-skip.
+const leaseChildPage = 25;
+type LeaseDrainCursor = {
+  v: 1;
+  c: string | null;
+  lease: Id<"authLeases">;
+  stage: "permits" | "sessions";
+};
+function decodeLeaseDrain(cursor: string | null): LeaseDrainCursor | null {
+  if (!cursor) return null;
+  try {
+    const o = JSON.parse(cursor) as Partial<LeaseDrainCursor> & {
+      v?: unknown;
+    };
+    if (
+      typeof o === "object" &&
+      o !== null &&
+      o.v === 1 &&
+      typeof o.lease === "string" &&
+      (o.c === null || o.c === undefined || typeof o.c === "string") &&
+      (o.stage === "permits" || o.stage === "sessions")
+    )
+      return {
+        v: 1,
+        c: o.c ?? null,
+        lease: o.lease as Id<"authLeases">,
+        stage: o.stage,
+      };
+  } catch {
+    // Legacy/opaque outer pagination cursor; resume the outer scan with it.
+  }
+  return null;
+}
+function encodeLeaseDrain(s: LeaseDrainCursor): string {
+  return JSON.stringify(s);
+}
+// Deletes one bounded step for a lease. A full take means links may remain,
+// so the caller reschedules the same lease; a short take means that stage is
+// drained (deleting the lease once sessions drain).
+async function drainLeaseStep(
+  ctx: MutationCtx,
+  leaseId: Id<"authLeases">,
+  stage: "permits" | "sessions",
+): Promise<"permits" | "sessions" | "done"> {
+  if (stage === "permits") {
+    const permits = await ctx.db
+      .query("authWritePermits")
+      .withIndex("by_leaseId", (q) => q.eq("leaseId", leaseId))
+      .take(leaseChildPage);
+    for (const permit of permits) await ctx.db.delete(permit._id);
+    if (permits.length === leaseChildPage) return "permits";
+    stage = "sessions";
+  }
+  const sessions = await ctx.db
+    .query("authLeaseSessions")
+    .withIndex("by_leaseId", (q) => q.eq("leaseId", leaseId))
+    .take(leaseChildPage);
+  for (const session of sessions) await ctx.db.delete(session._id);
+  if (sessions.length === leaseChildPage) return "sessions";
+  await ctx.db.delete(leaseId);
+  return "done";
+}
 export const sweep = internalMutation({
   args: {
     cursor: v.union(v.string(), v.null()),
@@ -1016,22 +1086,59 @@ export const sweep = internalMutation({
   handler: async (ctx, a) => {
     const cutoff = Date.now() - admissionRetention;
     if (a.phase === "leases") {
+      const stalled = decodeLeaseDrain(a.cursor);
+      if (stalled) {
+        const lease = await ctx.db.get(stalled.lease);
+        if (lease && lease.state !== "active" && lease.expiresAt < cutoff) {
+          const stage = await drainLeaseStep(ctx, lease._id, stalled.stage);
+          await ctx.scheduler.runAfter(
+            0,
+            internal.operations.authAdmission.sweep,
+            stage === "done"
+              ? { cursor: stalled.c, phase: "leases" }
+              : {
+                  cursor: encodeLeaseDrain({
+                    v: 1,
+                    c: stalled.c,
+                    lease: lease._id,
+                    stage,
+                  }),
+                  phase: "leases",
+                },
+          );
+        } else
+          // Lease gone or no longer eligible: resume the outer scan.
+          await ctx.scheduler.runAfter(
+            0,
+            internal.operations.authAdmission.sweep,
+            { cursor: stalled.c, phase: "leases" },
+          );
+        return null;
+      }
       const page = await ctx.db
         .query("authLeases")
         .paginate({ cursor: a.cursor, numItems: 50 });
       for (const lease of page.page) {
         if (lease.state === "active" || lease.expiresAt >= cutoff) continue;
-        for (const permit of await ctx.db
-          .query("authWritePermits")
-          .withIndex("by_leaseId", (q) => q.eq("leaseId", lease._id))
-          .collect())
-          await ctx.db.delete(permit._id);
-        for (const session of await ctx.db
-          .query("authLeaseSessions")
-          .withIndex("by_leaseId", (q) => q.eq("leaseId", lease._id))
-          .collect())
-          await ctx.db.delete(session._id);
-        await ctx.db.delete(lease._id);
+        const stage = await drainLeaseStep(ctx, lease._id, "permits");
+        if (stage !== "done") {
+          // The same lease continues next invocation; the saved outer
+          // cursor re-scans this page, which is idempotent.
+          await ctx.scheduler.runAfter(
+            0,
+            internal.operations.authAdmission.sweep,
+            {
+              cursor: encodeLeaseDrain({
+                v: 1,
+                c: a.cursor,
+                lease: lease._id,
+                stage,
+              }),
+              phase: "leases",
+            },
+          );
+          return null;
+        }
       }
       await ctx.scheduler.runAfter(
         0,
