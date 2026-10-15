@@ -1028,6 +1028,12 @@ export function useStore() {
   if (!s) throw new Error("StoreProvider fehlt");
   return s;
 }
+// Harmless per-device UI prefs stay in localStorage even in cloud mode;
+// everything else remains backend-owned. Keys arrive workspace-scoped
+// (`<workspaceId>-notification-read`), hence the suffix match.
+export function isLocalUiPrefKey(key: string) {
+  return key === "theme" || key.endsWith("-notification-read");
+}
 export function useLocalState<T>(
   key: string,
   initial: T,
@@ -1035,7 +1041,7 @@ export function useLocalState<T>(
   const [value, setValue] = useState<T>(() => {
     try {
       const raw =
-        demoMode || key === "theme"
+        demoMode || isLocalUiPrefKey(key)
           ? localStorage.getItem(`dispatch-${key}`)
           : null;
       return raw ? JSON.parse(raw) : initial;
@@ -1051,7 +1057,7 @@ export function useLocalState<T>(
     let next = initial;
     try {
       const raw =
-        demoMode || key === "theme"
+        demoMode || isLocalUiPrefKey(key)
           ? localStorage.getItem(`dispatch-${key}`)
           : null;
       if (raw) next = JSON.parse(raw);
@@ -1063,7 +1069,7 @@ export function useLocalState<T>(
   }, [key]);
   const persist = useCallback<React.Dispatch<React.SetStateAction<T>>>(
     (update) => {
-      if (!demoMode && key !== "theme") {
+      if (!demoMode && !isLocalUiPrefKey(key)) {
         unavailable();
         return;
       }
