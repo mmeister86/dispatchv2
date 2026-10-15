@@ -383,22 +383,19 @@ test("archive retains archived ideas, every idea revision and feedback plus orig
     "editorialReviewCommands",
   ]) {
     const r = await f.signed.query(shared, { ...f.args, family });
-    expect(r.data.selection.rows, family).toHaveLength(1);
+    if (family === "ideaVersions") {
+      // One batched page emits every revision in creation order.
+      expect(
+        r.data.selection.rows.map((row: { number: number }) => row.number),
+      ).toEqual([1, 2]);
+    } else {
+      expect(r.data.selection.rows, family).toHaveLength(1);
+    }
     expect(JSON.stringify(r.data)).not.toMatch(
       /PRIVATE_|fingerprint|commandKey|candidateCount|shortages|historyContext|preferenceId|providerIdentity|jobId/,
     );
     if (family === "ideas")
       expect(r.data.selection.rows[0].status).toBe("archived");
-    if (family === "ideaVersions") {
-      expect(r.data.selection.rows[0].number).toBe(1);
-      const next = await f.signed.query(shared, {
-        ...f.args,
-        family,
-        cursor: r.cursor,
-        creationUpperBound: r.creationUpperBound,
-      });
-      expect(next.data.selection.rows[0].number).toBe(2);
-    }
     if (family === "editorialReviewDecisions")
       expect(r.data.selection.rows[0].active).toBe(false);
   }
@@ -538,7 +535,15 @@ test("actual configured series, versions, commands, semantic bindings and retain
     "contentPlanItems",
   ]) {
     const r = await f.signed.query(shared, { ...args, family });
-    expect(r.data.selection.rows, family).toHaveLength(1);
+    if (family === "semanticPlanBindings") {
+      // One batched page emits every binding of the retained item.
+      expect(r.data.selection.rows, family).toHaveLength(3);
+    } else if (family === "contentPlanItems") {
+      // One batched page emits every retained item.
+      expect(r.data.selection.rows, family).toHaveLength(2);
+    } else {
+      expect(r.data.selection.rows, family).toHaveLength(1);
+    }
     expect(r.proofValidUntil).toBeLessThanOrEqual(r.observedAt + 30000);
     expect(JSON.stringify(r.data)).not.toMatch(
       /Synthetic retained original history|ciphertext|fingerprint|Fingerprint|commandKey|vectorCount|candidateCount|historyFrom|historyTo|preferenceId/,
@@ -603,8 +608,10 @@ test("original idea source horizon expires between pages and cannot be renewed b
     ...f.args,
     family: "ideaVersions",
   });
-  expect(first.data.selection.rows).toHaveLength(1);
+  // One batched page emits both revisions while their shared proof holds.
+  expect(first.data.selection.rows).toHaveLength(2);
   expect(first.proofValidUntil).toBe(1800000005000);
+  expect(first.isDone).toBe(true);
   vi.advanceTimersByTime(5000);
   const next = await f.signed.query(shared, {
     ...f.args,

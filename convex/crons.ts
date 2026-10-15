@@ -27,6 +27,12 @@ crons.interval(
   {},
 );
 crons.interval(
+  "GitHub processed receipt retention cleanup",
+  { minutes: 15 },
+  internal.integrations.github.deliveries.sweep,
+  { cursor: null },
+);
+crons.interval(
   "GitHub failed delivery detection",
   { minutes: 15 },
   internal.integrations.github.recovery.scan,
@@ -97,6 +103,12 @@ crons.interval(
   { minutes: 15 },
   internal.team.sweep,
   { cursor: null, phase: "invitations" },
+);
+crons.interval(
+  "Auth admission retention cleanup",
+  { minutes: 15 },
+  internal.operations.authAdmission.sweep,
+  { cursor: null, phase: "leases" },
 );
 crons.interval(
   "Exact editorial review proof cleanup",

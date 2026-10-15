@@ -56,7 +56,6 @@ test("native media manifest includes every lifecycle row across continuation wit
       cursor,
       creationUpperBound: bound,
     });
-    expect(r.data.selection.rows.length).toBeLessThanOrEqual(1);
     for (const row of r.data.selection.rows) ids.push(row.id);
     expect(JSON.stringify(r)).not.toMatch(
       /objectKey|checksum|temporaryKey|bucket|r2AccountId|lease|media@example.test/,
@@ -65,6 +64,7 @@ test("native media manifest includes every lifecycle row across continuation wit
     cursor = r.cursor;
     bound = r.creationUpperBound;
   }
+  // One batched page emits every lifecycle row exactly once.
   expect(new Set(ids).size).toBe(3);
 });
 test("native records reject scope/session/role and malformed continuation or irrelevant selectors", async () => {
@@ -249,8 +249,9 @@ test("native experiment declaration and assignments export original protected sp
     accountId,
     experimentId,
   });
-  expect(assignment.data.selection.rows).toHaveLength(1);
-  expect(assignment.isDone).toBe(false);
+  // One batched page emits both assignments; the tail page is empty.
+  expect(assignment.data.selection.rows).toHaveLength(2);
+  expect(assignment.isDone).toBe(true);
   const next = await f.signed.query(page, {
     ...a,
     family: "experimentAssignments",
@@ -260,5 +261,6 @@ test("native experiment declaration and assignments export original protected sp
     creationUpperBound: assignment.creationUpperBound,
   });
   expect(next.isDone).toBe(true);
+  expect(next.data.selection.rows).toEqual([]);
   expect(result).toBeDefined();
 });

@@ -7,7 +7,12 @@ import {
   requireRole,
 } from "../lib/authorization";
 import { role } from "../schema";
-import { numeric, proofContext } from "./exportShared";
+import {
+  EXPORT_PAGE_CANDIDATES,
+  EXPORT_PAGE_MAX_BYTES,
+  numeric,
+  proofContext,
+} from "./exportShared";
 import {
   attemptFields as generationFields,
   generationReservationFields,
@@ -584,6 +589,7 @@ export const page = workspaceQuery({
     budgetScope: v.optional(budgetScope),
     cursor: v.union(v.string(), v.null()),
     creationUpperBound: v.union(v.number(), v.null()),
+    narrowPage: v.optional(v.boolean()),
   },
   returns: v.object({
     authId: v.string(),
@@ -671,11 +677,11 @@ export const page = workspaceQuery({
       throw new ConvexError("EXPORT_REQUEST_INVALID");
     const ws = original.workspace._id,
       ctx = proofContext(original, ws),
-      creationUpperBound = a.creationUpperBound ?? observedAt,
-      opts = { numItems: 1, cursor: a.cursor };
+      creationUpperBound = a.creationUpperBound ?? observedAt;
     requireReference(ws, await ctx.db.get(a.accountId));
     let selected: { continueCursor: string; isDone: boolean };
     const rows: Infer<typeof row>[] = [];
+    const narrow = a.narrowPage === true;
     switch (a.family) {
       case "ownFinanceRuns": {
         const p = await ctx.db
@@ -688,7 +694,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(
@@ -713,7 +723,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(
@@ -738,7 +752,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const t of p.page) {
           binding(
@@ -770,7 +788,11 @@ export const page = workspaceQuery({
             q.eq("runId", r._id).lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const t of p.page) {
           binding(
@@ -801,7 +823,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const t of p.page) {
           binding(
@@ -827,7 +853,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(
@@ -859,7 +889,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const o of p.page) {
           binding(
@@ -900,7 +934,11 @@ export const page = workspaceQuery({
             q.eq("runId", r._id).lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const t of p.page) {
           binding(
@@ -925,7 +963,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const t of p.page) {
           binding(
@@ -1004,11 +1046,13 @@ export const page = workspaceQuery({
     numeric(result);
     const now = Date.now();
     numeric(now);
-    if (
-      now < observedAt ||
-      now >= result.proofValidUntil ||
-      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024
-    )
+    const sizeOver =
+      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024;
+    // A multi-row page that only overflows in combination is retryable one
+    // row at a time; a lone oversized row keeps the terminal error below.
+    if (sizeOver && !narrow && rows.length > 1)
+      throw new ConvexError("EXPORT_PAGE_OVERSIZED");
+    if (now < observedAt || now >= result.proofValidUntil || sizeOver)
       throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
     return result;
   },

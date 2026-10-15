@@ -43,7 +43,7 @@ async function pages(f: Fixture, family: string) {
       cursor,
       creationUpperBound,
     });
-    expect(p.data.selection.rows.length).toBeLessThanOrEqual(1);
+    expect(p.data.selection.rows.length).toBeLessThanOrEqual(25);
     expect(
       new TextEncoder().encode(JSON.stringify(p)).length,
     ).toBeLessThanOrEqual(65536);

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { CircleHelp, ArrowUpRight, X as XIcon } from "lucide-react";
 import { Link } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { cn } from "cn";
 import { useStore } from "@/lib/store";
 import type { PublishStatus } from "@/lib/model";
 export function PageHeader({

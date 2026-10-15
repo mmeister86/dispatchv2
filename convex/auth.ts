@@ -24,11 +24,12 @@ export function authOrigins(siteUrl: string) {
   }
   return origins;
 }
-async function sendEmail(to: string, subject: string, url: string) {
+export async function sendEmail(to: string, subject: string, url: string) {
   if (!process.env.RESEND_API_KEY)
     throw new Error("Auth email delivery is not configured");
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
+    signal: AbortSignal.timeout(10_000),
     headers: {
       Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
       "Content-Type": "application/json",
@@ -40,8 +41,11 @@ async function sendEmail(to: string, subject: string, url: string) {
       text: `${subject}\n\n${url}\n\nFalls du dies nicht angefordert hast, ignoriere diese E-Mail.`,
     }),
   });
-  if (!response.ok)
+  if (!response.ok) {
+    await response.body?.cancel();
     throw new Error(`Auth email delivery failed (${response.status})`);
+  }
+  await response.body?.cancel();
 }
 export const createAuth = (ctx: GenericCtx<DataModel>) => {
   const siteUrl = process.env.SITE_URL;

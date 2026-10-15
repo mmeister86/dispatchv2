@@ -879,3 +879,239 @@ test("second deletion refreshes email cooldown", async () => {
   }
   expect(result).toBeNull();
 });
+
+test("admission retention sweep deletes stale rows and keeps fresh ones", async () => {
+  const t = setup();
+  await t.mutation(internal.operations.authAdmission.initialize, {});
+  const stale = Date.now() - 31 * 86400000;
+  const ids = await t.run(async (ctx) => {
+    const fresh = await ctx.db.insert("authLeases", {
+      startedAt: Date.now(),
+      originalStartedAt: Date.now(),
+      expiresAt: Date.now() + 60000,
+      path: "/sign-up/email",
+      source: "current",
+      proven: true,
+      generation: "fresh",
+      state: "complete",
+    });
+    const waiting = await ctx.db.insert("authLeases", {
+      startedAt: stale,
+      originalStartedAt: stale,
+      expiresAt: stale,
+      path: "/sign-up/email",
+      source: "current",
+      proven: false,
+      generation: "waiting",
+      state: "active",
+    });
+    const retired = await ctx.db.insert("authLeases", {
+      startedAt: stale,
+      originalStartedAt: stale,
+      expiresAt: stale,
+      path: "/sign-up/email",
+      source: "current",
+      proven: true,
+      generation: "retired",
+      state: "revoked",
+    });
+    const permit = await ctx.db.insert("authWritePermits", {
+      nonce: "retired-nonce",
+      leaseId: retired,
+      model: "session",
+      operation: "create",
+      operationDigest: "synthetic",
+      consumed: true,
+    });
+    const link = await ctx.db.insert("authLeaseSessions", {
+      leaseId: retired,
+      authId: "synthetic",
+      sessionId: "synthetic",
+      generation: "retired",
+    });
+    const issuance = await ctx.db.insert("authEmailIssuance", {
+      tokenDigest: "retired",
+      authId: "synthetic",
+      generation: "retired",
+      issuedAt: stale,
+      expiresAt: stale,
+      leaseId: retired,
+    });
+    const journal = await ctx.db.insert("authVerificationJournal", {
+      nativeId: "retired",
+      identifierDigest: "retired",
+      createdAt: stale,
+      expiresAt: stale,
+      producer: "unproven",
+      consumed: true,
+    });
+    const heldJournal = await ctx.db.insert("authVerificationJournal", {
+      nativeId: "held",
+      identifierDigest: "held",
+      createdAt: stale,
+      expiresAt: stale,
+      producer: "unproven",
+      consumed: false,
+    });
+    const liveIssuance = await ctx.db.insert("authEmailIssuance", {
+      tokenDigest: "live",
+      authId: "synthetic",
+      generation: "fresh",
+      issuedAt: Date.now(),
+      expiresAt: Date.now() + 60000,
+      leaseId: fresh,
+    });
+    return {
+      fresh,
+      waiting,
+      retired,
+      permit,
+      link,
+      issuance,
+      journal,
+      heldJournal,
+      liveIssuance,
+    };
+  });
+  await t.mutation(internal.operations.authAdmission.sweep, {
+    cursor: null,
+    phase: "leases",
+  });
+  await t.mutation(internal.operations.authAdmission.sweep, {
+    cursor: null,
+    phase: "issuance",
+  });
+  await t.mutation(internal.operations.authAdmission.sweep, {
+    cursor: null,
+    phase: "journal",
+  });
+  const remaining = await t.run(async (ctx) => ({
+    retired: await ctx.db.get(ids.retired),
+    permit: await ctx.db.get(ids.permit),
+    link: await ctx.db.get(ids.link),
+    issuance: await ctx.db.get(ids.issuance),
+    journal: await ctx.db.get(ids.journal),
+    heldJournal: await ctx.db.get(ids.heldJournal),
+    fresh: await ctx.db.get(ids.fresh),
+    waiting: await ctx.db.get(ids.waiting),
+    liveIssuance: await ctx.db.get(ids.liveIssuance),
+  }));
+  expect(remaining.retired).toBeNull();
+  expect(remaining.permit).toBeNull();
+  expect(remaining.link).toBeNull();
+  expect(remaining.issuance).toBeNull();
+  expect(remaining.journal).toBeNull();
+  // Unconsumed proofs still back live erasure evidence and survive the sweep.
+  expect(remaining.heldJournal).not.toBeNull();
+  expect(remaining.fresh).not.toBeNull();
+  expect(remaining.waiting).not.toBeNull();
+  expect(remaining.liveIssuance).not.toBeNull();
+  // A deleted lease stays fail-closed: no new permit can be issued against it.
+  await expect(
+    t.mutation(internal.operations.authAdmission.issuePermit, {
+      leaseId: ids.retired,
+      nonce: crypto.randomUUID(),
+      model: "session",
+      operation: "create",
+      operationDigest: "synthetic",
+    }),
+  ).rejects.toThrow("AUTH_REQUEST_EXPIRED");
+});
+
+test("leases sweep drains oversized link sets across continuations without skipping the next lease", async () => {
+  vi.useFakeTimers();
+  const t = setup();
+  await t.mutation(internal.operations.authAdmission.initialize, {});
+  const stale = Date.now() - 31 * 86400000;
+  const ids = await t.run(async (ctx) => {
+    const big = await ctx.db.insert("authLeases", {
+      startedAt: stale,
+      originalStartedAt: stale,
+      expiresAt: stale,
+      path: "/sign-up/email",
+      source: "current",
+      proven: true,
+      generation: "big",
+      state: "revoked",
+    });
+    const small = await ctx.db.insert("authLeases", {
+      startedAt: stale,
+      originalStartedAt: stale,
+      expiresAt: stale,
+      path: "/sign-up/email",
+      source: "current",
+      proven: true,
+      generation: "small",
+      state: "revoked",
+    });
+    // More children than the 25-row child page bound.
+    for (let n = 0; n < 30; n++) {
+      await ctx.db.insert("authWritePermits", {
+        nonce: `big-permit-${n}`,
+        leaseId: big,
+        model: "session",
+        operation: "create",
+        operationDigest: "synthetic",
+        consumed: true,
+      });
+      await ctx.db.insert("authLeaseSessions", {
+        leaseId: big,
+        authId: "synthetic",
+        sessionId: `big-session-${n}`,
+        generation: "big",
+      });
+    }
+    const smallPermit = await ctx.db.insert("authWritePermits", {
+      nonce: "small-permit",
+      leaseId: small,
+      model: "session",
+      operation: "create",
+      operationDigest: "synthetic",
+      consumed: true,
+    });
+    const smallLink = await ctx.db.insert("authLeaseSessions", {
+      leaseId: small,
+      authId: "synthetic",
+      sessionId: "small-session",
+      generation: "small",
+    });
+    return { big, small, smallPermit, smallLink };
+  });
+  await t.mutation(internal.operations.authAdmission.sweep, {
+    cursor: null,
+    phase: "leases",
+  });
+  // One invocation only drains a bounded child page; the lease survives.
+  const mid = await t.run(async (ctx) => ({
+    big: await ctx.db.get(ids.big),
+    permits: await ctx.db
+      .query("authWritePermits")
+      .withIndex("by_leaseId", (q) => q.eq("leaseId", ids.big))
+      .collect(),
+  }));
+  expect(mid.big).not.toBeNull();
+  expect(mid.permits).toHaveLength(5);
+  await t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(1));
+  const remaining = await t.run(async (ctx) => ({
+    big: await ctx.db.get(ids.big),
+    small: await ctx.db.get(ids.small),
+    smallPermit: await ctx.db.get(ids.smallPermit),
+    smallLink: await ctx.db.get(ids.smallLink),
+    bigPermits: await ctx.db
+      .query("authWritePermits")
+      .withIndex("by_leaseId", (q) => q.eq("leaseId", ids.big))
+      .collect(),
+    bigSessions: await ctx.db
+      .query("authLeaseSessions")
+      .withIndex("by_leaseId", (q) => q.eq("leaseId", ids.big))
+      .collect(),
+  }));
+  expect(remaining.bigPermits).toEqual([]);
+  expect(remaining.bigSessions).toEqual([]);
+  expect(remaining.big).toBeNull();
+  // The second lease on the same outer page is drained too, not skipped.
+  expect(remaining.smallPermit).toBeNull();
+  expect(remaining.smallLink).toBeNull();
+  expect(remaining.small).toBeNull();
+  vi.useRealTimers();
+});

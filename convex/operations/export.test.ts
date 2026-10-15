@@ -469,7 +469,7 @@ test("registered versions omits whole missing withdrawn expired rows but foreign
     "workspaceId",
   ]);
 });
-test("native cursor advances one raw candidate including empty pages, excludes later insertions, and propagates native resource failure", async () => {
+test("batched cursor skips withdrawn rows in-page, excludes later insertions, and propagates native resource failure", async () => {
   vi.useFakeTimers();
   vi.setSystemTime(1800000000000);
   const f = await versionFixture();
@@ -484,6 +484,12 @@ test("native cursor advances one raw candidate including empty pages, excludes l
   });
   vi.setSystemTime(1800000000200);
   const first = await f.signed.query(versions, f.pageArgs);
+  // One authenticated round-trip emits every in-ceiling row: the withdrawn
+  // v2 is skipped inside the page instead of consuming a whole page.
+  expect(
+    first.data.versions.map((v: { versionNumber: number }) => v.versionNumber),
+  ).toEqual([1, 3]);
+  expect(first.isDone).toBe(true);
   vi.setSystemTime(1800000001000);
   await f.t.run(async (ctx) => {
     const { _id, _creationTime, ...v } = f.version;
@@ -495,14 +501,7 @@ test("native cursor advances one raw candidate including empty pages, excludes l
     creationUpperBound: first.creationUpperBound,
   });
   expect(second.data.versions).toEqual([]);
-  expect(second.isDone).toBe(false);
-  const third = await f.signed.query(versions, {
-    ...f.pageArgs,
-    cursor: second.cursor,
-    creationUpperBound: first.creationUpperBound,
-  });
-  expect(third.data.versions[0].versionNumber).toBe(3);
-  expect(third.isDone).toBe(true);
+  expect(second.isDone).toBe(true);
   await expect(
     f.signed.run((ctx) =>
       ctx.runQuery(versions, f.pageArgs, {
@@ -510,6 +509,177 @@ test("native cursor advances one raw candidate including empty pages, excludes l
       }),
     ),
   ).rejects.toThrow();
+});
+test("batched versions page caps raw candidates per request and drains in two round-trips", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1800000000000);
+  const f = await versionFixture();
+  await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...v } = f.version;
+    for (let number = 2; number <= 30; number++)
+      await ctx.db.insert("draftVersions", { ...v, number });
+  });
+  vi.setSystemTime(1800000000200);
+  // A full 25-row batched page fits in a bounded per-request query budget
+  // (measured ~57 database queries for this fixture).
+  const first = await f.signed.run((ctx) =>
+    ctx.runQuery(versions, f.pageArgs, {
+      transactionLimits: { databaseQueries: 100 },
+    }),
+  );
+  // Per-request candidate cap: 30 rows take exactly two round-trips, not 30.
+  expect(first.data.versions).toHaveLength(25);
+  expect(
+    first.data.versions.map((v: { versionNumber: number }) => v.versionNumber),
+  ).toEqual(Array.from({ length: 25 }, (_, i) => i + 1));
+  expect(first.isDone).toBe(false);
+  const second = await f.signed.query(versions, {
+    ...f.pageArgs,
+    cursor: first.cursor,
+    creationUpperBound: first.creationUpperBound,
+  });
+  expect(
+    second.data.versions.map((v: { versionNumber: number }) => v.versionNumber),
+  ).toEqual([26, 27, 28, 29, 30]);
+  expect(second.isDone).toBe(true);
+});
+test("batched versions page truncates on raw byte budget and resumes without loss", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1800000000000);
+  const f = await versionFixture();
+  await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...v } = f.version;
+    for (let number = 2; number <= 10; number++)
+      await ctx.db.insert("draftVersions", {
+        ...v,
+        number,
+        content: {
+          ...v.content,
+          text: [`payload-${number}-` + "x".repeat(5000)],
+        },
+      });
+  });
+  vi.setSystemTime(1800000000200);
+  const seen: number[] = [];
+  let cursor: string | null = null,
+    bound: number | null = null,
+    isDone = false,
+    pages = 0;
+  while (!isDone && pages < 8) {
+    const r: {
+      data: { versions: { versionNumber: number }[] };
+      cursor: string;
+      creationUpperBound: number;
+      isDone: boolean;
+    } = await f.signed.query(versions, {
+      ...f.pageArgs,
+      cursor,
+      creationUpperBound: bound,
+    });
+    pages++;
+    seen.push(...r.data.versions.map((v) => v.versionNumber));
+    cursor = r.cursor;
+    bound = r.creationUpperBound;
+    isDone = r.isDone;
+  }
+  // The byte budget splits the export across pages, but every row arrives once, in order.
+  expect(pages).toBeGreaterThan(1);
+  expect(seen).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  expect(isDone).toBe(true);
+});
+test("batched oversize window fails with a retryable code and drains completely one row at a time", async () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(1800000000000);
+  const f = await versionFixture();
+  await f.t.run(async (ctx) => {
+    const { _id, _creationTime, ...v } = f.version;
+    for (let number = 2; number <= 8; number++)
+      await ctx.db.insert("draftVersions", {
+        ...v,
+        number,
+        content: { ...v.content, text: ["x".repeat(3000)] },
+      });
+    await ctx.db.insert("draftVersions", {
+      ...v,
+      number: 9,
+      content: { ...v.content, text: ["x".repeat(45000)] },
+    });
+  });
+  vi.setSystemTime(1800000000200);
+  // Individually healthy rows whose combination overflows the DTO cannot
+  // advance with wide pages: the same cursor throws identically.
+  await expect(f.signed.query(versions, f.pageArgs)).rejects.toThrow(
+    "EXPORT_PAGE_OVERSIZED",
+  );
+  // Opt-in narrow pages (the old one-row behavior for this window only)
+  // export every row exactly once, in order.
+  const seen: number[] = [];
+  let cursor: string | null = null,
+    bound: number | null = null,
+    isDone = false,
+    pages = 0;
+  while (!isDone && pages < 16) {
+    const r: {
+      data: { versions: { versionNumber: number }[] };
+      cursor: string;
+      creationUpperBound: number;
+      isDone: boolean;
+    } = await f.signed.query(versions, {
+      ...f.pageArgs,
+      narrowPage: true,
+      cursor,
+      creationUpperBound: bound,
+    });
+    pages++;
+    expect(r.data.versions.length).toBeLessThanOrEqual(1);
+    seen.push(...r.data.versions.map((v) => v.versionNumber));
+    cursor = r.cursor;
+    bound = r.creationUpperBound;
+    isDone = r.isDone;
+  }
+  expect(seen).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  expect(isDone).toBe(true);
+  // A lone oversized row keeps the terminal error, narrow or not: bloat the
+  // last row past the wire limit, re-export the healthy prefix one row at a
+  // time, then watch the poisoned tail fail exactly as before.
+  await f.t.run(async (ctx) => {
+    const last = (await ctx.db
+      .query("draftVersions")
+      .withIndex("by_workspaceId", (q) => q.eq("workspaceId", f.workspaceId))
+      .order("desc")
+      .first())!;
+    await ctx.db.patch(last._id, {
+      content: { ...last.content, text: ["y".repeat(70000)] },
+    });
+  });
+  const prefix: number[] = [];
+  let c2: string | null = null,
+    b2: number | null = null;
+  for (let i = 0; i < 8; i++) {
+    const r: {
+      data: { versions: { versionNumber: number }[] };
+      cursor: string;
+      creationUpperBound: number;
+      isDone: boolean;
+    } = await f.signed.query(versions, {
+      ...f.pageArgs,
+      narrowPage: true,
+      cursor: c2,
+      creationUpperBound: b2,
+    });
+    prefix.push(...r.data.versions.map((v) => v.versionNumber));
+    c2 = r.cursor;
+    b2 = r.creationUpperBound;
+  }
+  expect(prefix).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+  await expect(
+    f.signed.query(versions, {
+      ...f.pageArgs,
+      narrowPage: true,
+      cursor: c2,
+      creationUpperBound: b2,
+    }),
+  ).rejects.toThrow("EXPORT_DATA_UNAVAILABLE");
 });
 test("shared versions rejects nonfinite legacy numbers and entire oversized UTF8 wire without truncation", async () => {
   const f = await versionFixture();

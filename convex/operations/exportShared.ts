@@ -425,6 +425,24 @@ export function numeric(value: unknown): void {
   if (value && typeof value === "object")
     for (const item of Object.values(value)) numeric(item);
 }
+// Batched export pages: one authenticated round-trip walks at most
+// EXPORT_PAGE_CANDIDATES raw candidates and reads at most
+// EXPORT_PAGE_MAX_BYTES of raw documents — the backend truncates the window
+// there with an exact continueCursor, so the page stays bounded and the
+// authoritative 64KB whole-result check each endpoint keeps stays last.
+// Component-backed listings (agent/workflow/auth subqueries run in their own
+// executions) additionally stop adding rows once their JSON passes
+// EXPORT_ROWS_JSON_BUDGET (4KB of headroom under that 64KB check), which only
+// ever ends a page early, never admits an oversized one.
+export const EXPORT_PAGE_CANDIDATES = 25;
+export const EXPORT_PAGE_MAX_BYTES = 32 * 1024;
+const EXPORT_ROWS_JSON_BUDGET = 60 * 1024;
+export function exportRowsOverBudget(rows: unknown[]): boolean {
+  return (
+    new TextEncoder().encode(JSON.stringify(rows)).length >
+    EXPORT_ROWS_JSON_BUDGET
+  );
+}
 function unavailable(): never {
   throw new ConvexError("EXPORT_SOURCE_UNAVAILABLE");
 }
@@ -552,6 +570,7 @@ export const shared = workspaceQuery({
     family,
     cursor: v.union(v.string(), v.null()),
     creationUpperBound: v.union(v.number(), v.null()),
+    narrowPage: v.optional(v.boolean()),
   },
   returns: v.object({
     authId: v.string(),
@@ -739,6 +758,8 @@ export const shared = workspaceQuery({
       }
       return row;
     };
+    const emittedRows: unknown[] = [];
+    const narrow = a.narrowPage === true;
     const page = await ctx.db
       .query(a.family)
       .withIndex("by_workspaceId", (q) =>
@@ -747,10 +768,13 @@ export const shared = workspaceQuery({
           .lte("_creationTime", creationUpperBound),
       )
       .order("asc")
-      .paginate({ numItems: 1, cursor: a.cursor });
-    if (page.page.length > 1) throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
-    let selection: Infer<typeof payload> = { family: a.family, rows: [] };
+      .paginate({
+        numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+        cursor: a.cursor,
+        maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+      });
     for (const row of page.page) {
+      let selection: Infer<typeof payload> = { family: a.family, rows: [] };
       try {
         if ("sourceUnavailable" in row && row.sourceUnavailable) unavailable();
         if ("researchProofUntil" in row) horizon(row.researchProofUntil);
@@ -1325,7 +1349,12 @@ export const shared = workspaceQuery({
       } catch (error) {
         knownLoss(error);
       }
+      if (selection.rows.length > 0) emittedRows.push(selection.rows[0]);
     }
+    const selection = {
+      family: a.family,
+      rows: emittedRows,
+    } as unknown as Infer<typeof payload>;
     const result = {
       authId: original.user.authId,
       sessionId,
@@ -1345,10 +1374,13 @@ export const shared = workspaceQuery({
       },
     };
     numeric(result);
-    if (
-      proofValidUntil <= Date.now() ||
-      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024
-    )
+    const sizeOver =
+      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024;
+    // A multi-row page that only overflows in combination is retryable one
+    // row at a time; a lone oversized row keeps the terminal error below.
+    if (sizeOver && !narrow && emittedRows.length > 1)
+      throw new ConvexError("EXPORT_PAGE_OVERSIZED");
+    if (proofValidUntil <= Date.now() || sizeOver)
       throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
     return result;
   },

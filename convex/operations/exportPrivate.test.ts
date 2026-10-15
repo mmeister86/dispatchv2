@@ -197,18 +197,20 @@ test("completed native empty research exposes public order and actual Workflow j
   expect(metrics.functionsScheduled.used).toBe(0);
   expect(metrics.documentsRead.used).toBeLessThan(150);
   expect(fetch).not.toHaveBeenCalled();
-  expect(a.data.selection.rows[0]).toMatchObject({
-    orderId,
-    stage: "reserve",
-    kind: "function",
-  });
-  const b = await f.signed.query(endpoint("workflowSteps"), {
-    ...args,
-    orderId,
-    cursor: a.cursor,
-  });
-  expect(b.data.selection.rows[0]).toMatchObject({ stage: "prepare" });
-  expect(JSON.stringify([a.data, b.data])).not.toMatch(
+  expect(a.data.selection.rows.map((r: { stage: string }) => r.stage)).toEqual([
+    "reserve",
+    "prepare",
+    "execute.operation",
+    "select",
+    "bindModel",
+    "cluster",
+    "assess",
+    "evidence",
+    "inbox",
+    "finish",
+  ]);
+  expect(a.isDone).toBe(true);
+  expect(JSON.stringify(a.data)).not.toMatch(
     /workflowId|stepId|workId|args|runResult|handle|executionKey/,
   );
 });
@@ -440,6 +442,67 @@ test("private wire rejects unsafe numbers, oversize UTF8 and native thread subst
     f.signed.query(endpoint("conversationMessages"), a),
   ).rejects.toThrow("REFERENCE_ACCESS_DENIED");
 });
+test("batched private oversize window fails retryable and drains completely one row at a time", async () => {
+  const f = await chat();
+  const ids = [f.conversationId];
+  for (let i = 0; i < 6; i++)
+    ids.push(
+      await f.signed.mutation(api.ai.conversations.create, {
+        workspaceId: f.workspaceId,
+        accountId: f.accountId,
+        operationKey: `narrow-private-${i}`,
+      }),
+    );
+  await f.t.run(async (ctx) => {
+    for (const [i, id] of ids.entries()) {
+      // Fresh creates are inactive until first send; activate directly so
+      // every candidate is export-eligible like the archive fixture's.
+      await ctx.db.patch(id, {
+        state: "active",
+        title: "t".repeat(i < 6 ? 3500 : 45000),
+      });
+    }
+  });
+  vi.setSystemTime(Date.now() + 1000);
+  const a = {
+    ...f.args,
+    accountId: f.accountId,
+    cursor: null,
+    selectionUpperBound: null,
+  };
+  // Individually healthy rows whose combination overflows the DTO cannot
+  // advance with wide pages: the same cursor throws identically.
+  await expect(f.signed.query(endpoint("conversations"), a)).rejects.toThrow(
+    "EXPORT_PAGE_OVERSIZED",
+  );
+  // Opt-in narrow pages export every row exactly once, in creation order.
+  const seen: string[] = [];
+  let cursor: string | null = null,
+    bound: number | null = null,
+    isDone = false,
+    pages = 0;
+  while (!isDone && pages < 16) {
+    const r: {
+      data: { selection: { rows: { conversationId: string }[] } };
+      cursor: string;
+      selectionUpperBound: number;
+      isDone: boolean;
+    } = await f.signed.query(endpoint("conversations"), {
+      ...a,
+      narrowPage: true,
+      cursor,
+      selectionUpperBound: bound,
+    });
+    pages++;
+    expect(r.data.selection.rows.length).toBeLessThanOrEqual(1);
+    seen.push(...r.data.selection.rows.map((row) => row.conversationId));
+    cursor = r.cursor;
+    bound = r.selectionUpperBound;
+    isDone = r.isDone;
+  }
+  expect(seen).toEqual(ids);
+  expect(isDone).toBe(true);
+});
 test("immutable own discovery pages ignore unrelated actors and updatedAt changes", async () => {
   const f = await chat();
   const second = await f.signed.mutation(api.ai.conversations.create, {
@@ -455,6 +518,11 @@ test("immutable own discovery pages ignore unrelated actors and updatedAt change
     selectionUpperBound: null,
   };
   const first = await f.signed.query(endpoint("conversations"), args);
+  expect(
+    first.data.selection.rows
+      .map((r: { conversationId: string }) => r.conversationId)
+      .sort(),
+  ).toEqual([f.conversationId, second].sort());
   await f.t.run(async (ctx) => {
     const { _id, _creationTime, ...row } = (await ctx.db.get(
       f.conversationId,
@@ -482,8 +550,15 @@ test("immutable own discovery pages ignore unrelated actors and updatedAt change
     cursor: first.cursor,
     selectionUpperBound: first.selectionUpperBound,
   });
-  expect(next.data.selection.rows[0].conversationId).toBe(second);
+  expect(next.data.selection.rows).toEqual([]);
+  expect(next.isDone).toBe(true);
   expect(JSON.stringify(next)).not.toContain("SECRET_FOREIGN");
+  const fresh = await f.signed.query(endpoint("conversations"), args);
+  expect(
+    fresh.data.selection.rows
+      .map((r: { conversationId: string }) => r.conversationId)
+      .sort(),
+  ).toEqual([f.conversationId, second].sort());
 });
 test("source withdrawal, foreign research bindings and provider authority revoke later pages", async () => {
   const f = await researchMaterial();
@@ -626,9 +701,20 @@ test("real native journal rejects foreign original args and unknown stages befor
     1000,
   );
   const args = { ...(await request(f)), orderId, cursor: null };
-  expect(
-    (await f.signed.query(endpoint("workflowSteps"), args)).data.selection.rows,
-  ).toHaveLength(1);
+  const steps = (await f.signed.query(endpoint("workflowSteps"), args)).data
+    .selection.rows;
+  expect(steps.map((r: { stage: string }) => r.stage)).toEqual([
+    "reserve",
+    "prepare",
+    "execute.operation",
+    "select",
+    "bindModel",
+    "cluster",
+    "assess",
+    "evidence",
+    "inbox",
+    "finish",
+  ]);
   const corrupt = componentsGeneric().workflow.fixture
     .corrupt as FunctionReference<"mutation">;
   await f.t.mutation(corrupt, { mode: "owner" });
@@ -767,14 +853,14 @@ test("discovery skips positively withdrawn roots and reaches the next eligible c
     selectionUpperBound: null,
   };
   const first = await f.signed.query(endpoint("conversations"), a);
-  expect(first.data.selection.rows).toEqual([]);
-  expect(first.isDone).toBe(false);
-  const next = await f.signed.query(endpoint("conversations"), {
-    ...a,
-    cursor: first.cursor,
-    selectionUpperBound: first.selectionUpperBound,
-  });
-  expect(next.data.selection.rows[0].conversationId).toBe(nextId);
+  // The withdrawn root is skipped inside the batched page; the live
+  // conversation is emitted by the same round-trip.
+  expect(
+    first.data.selection.rows.map(
+      (r: { conversationId: string }) => r.conversationId,
+    ),
+  ).toEqual([nextId]);
+  expect(first.isDone).toBe(true);
   await expect(
     f.signed.query(endpoint("conversationMessages"), {
       ...f.args,
@@ -815,13 +901,12 @@ test("discovery skips explicitly cleaned research while a direct parent read rej
     selectionUpperBound: null,
   };
   const first = await f.signed.query(endpoint("targetedOrders"), a);
-  expect(first.data.selection.rows).toEqual([]);
-  const next = await f.signed.query(endpoint("targetedOrders"), {
-    ...a,
-    cursor: first.cursor,
-    selectionUpperBound: first.selectionUpperBound,
-  });
-  expect(next.data.selection.rows[0].orderId).toBe(nextId);
+  // The cleaned-up order is skipped inside the batched page; the live order
+  // is emitted by the same round-trip.
+  expect(
+    first.data.selection.rows.map((r: { orderId: string }) => r.orderId),
+  ).toEqual([nextId]);
+  expect(first.isDone).toBe(true);
   await expect(
     f.signed.query(endpoint("orderSources"), {
       ...f.args,
@@ -865,13 +950,14 @@ test("discovery omits positively removed attached Research material and advances
     selectionUpperBound: null,
   };
   const first = await f.signed.query(endpoint("conversations"), a);
-  expect(first.data.selection.rows).toEqual([]);
-  const next = await f.signed.query(endpoint("conversations"), {
-    ...a,
-    cursor: first.cursor,
-    selectionUpperBound: first.selectionUpperBound,
-  });
-  expect(next.data.selection.rows[0].conversationId).toBe(nextId);
+  // The conversation pinned to removed Research material is skipped inside
+  // the batched page; the live conversation is emitted by the same round-trip.
+  expect(
+    first.data.selection.rows.map(
+      (r: { conversationId: string }) => r.conversationId,
+    ),
+  ).toEqual([nextId]);
+  expect(first.isDone).toBe(true);
 });
 test("evidence exports retained perspective, provenance and actual human inbox decisions", async () => {
   const f = await researchMaterial();
@@ -899,6 +985,9 @@ test("evidence exports retained perspective, provenance and actual human inbox d
     orderId: f.orderId,
     cursor: null,
   });
+  // One batched page emits the retained parent and its human review child
+  // in creation order.
+  expect(p.data.selection.rows).toHaveLength(2);
   expect(p.data.selection.rows[0]).toMatchObject({
     actorId: e.actorId,
     annotationActorId: e.annotationActorId,
@@ -913,17 +1002,13 @@ test("evidence exports retained perspective, provenance and actual human inbox d
   expect(JSON.stringify(p.data)).not.toMatch(
     /inboxCommands|commandKey|fingerprint|outputHash/,
   );
-  const child = await f.signed.query(endpoint("orderEvidence"), {
-    ...f.args,
-    orderId: f.orderId,
-    cursor: p.cursor,
-  });
-  expect(child.data.selection.rows[0]).toMatchObject({
+  expect(p.data.selection.rows[1]).toMatchObject({
     evidenceId: childId,
     parentEvidenceId: f.evidenceId,
     perspective: e.payload!.perspective,
     assessment: { reason: "Retained human review", reviewerId: f.userId },
   });
+  expect(p.isDone).toBe(true);
 });
 test("native original order choices and re-research provenance are retained", async () => {
   const f = await researchMaterial();
@@ -1131,14 +1216,20 @@ test("actual automatic handoff receipt and retained results export without resum
     cursor: null,
     selectionUpperBound: null,
   });
-  expect(skipped.data.selection.rows).toEqual([]);
+  // The order whose handoff result went unavailable is skipped inside the
+  // batched page; the live follow-up order is emitted by the same round-trip.
+  expect(
+    skipped.data.selection.rows.map((r: { orderId: string }) => r.orderId),
+  ).toEqual([nextId]);
+  expect(skipped.isDone).toBe(true);
   const next = await f.signed.query(endpoint("publicOrders"), {
     ...f.args,
     profileId: f.profileId,
     cursor: skipped.cursor,
     selectionUpperBound: skipped.selectionUpperBound,
   });
-  expect(next.data.selection.rows[0].orderId).toBe(nextId);
+  expect(next.data.selection.rows).toEqual([]);
+  expect(next.isDone).toBe(true);
 });
 
 test("blocked native human Research retains its original config without provider authority", async () => {
@@ -1254,15 +1345,11 @@ test.each([
       selectionUpperBound: null,
     };
     const first = await f.signed.query(endpoint("conversationOperations"), a);
-    expect(first.data.selection.rows).toEqual([]);
-    expect(first.isDone).toBe(false);
-    const next = await f.signed.query(endpoint("conversationOperations"), {
-      ...a,
-      cursor: first.cursor,
-      selectionUpperBound: first.selectionUpperBound,
-    });
-    expect(next.data.selection.rows).toHaveLength(1);
-    expect(next.data.selection.rows[0].operationId).not.toBe(firstOp._id);
+    // The lost operation is skipped inside the batched page; the eligible
+    // follow-up is emitted by the same round-trip.
+    expect(first.data.selection.rows).toHaveLength(1);
+    expect(first.data.selection.rows[0].operationId).not.toBe(firstOp._id);
+    expect(first.isDone).toBe(true);
     await expect(
       f.signed.query(endpoint("conversationRuns"), {
         ...f.args,

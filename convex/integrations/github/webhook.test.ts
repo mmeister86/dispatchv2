@@ -541,6 +541,130 @@ test("known GUID revocation replay is idempotent; identical-body new GUID after 
     await f.t.run((ctx) => ctx.db.query("githubWebhookReceipts").first()),
   ).toMatchObject({ revocationSequence: 2, ambiguousRevocation: true });
 });
+test("revoke_user flag cleanup resumes across invocations while the barrier bites immediately", async () => {
+  vi.useFakeTimers();
+  const f = await sourceFixture();
+  // 30 selected repositories: one 25-repository slice cannot finish them.
+  await f.t.run(async (ctx) => {
+    for (let n = 1; n < 30; n++)
+      await ctx.db.insert("githubRepositories", {
+        workspaceId: f.workspaceId,
+        providerId: `20${n}`,
+        installationId: "50",
+        fullName: `fixture/project-${n}`,
+        private: true,
+        selected: true,
+        access: true,
+        monitoring: true,
+        content: false,
+        communicableContext: "explicit context",
+        purposeActorId: f.userId,
+        purposeAt: Date.now() - 1000,
+        purposeVersion: 1,
+        connectionGeneration: 1,
+        generation: 1,
+        verifiedAt: Date.now() - 1000,
+        proofExpiresAt: Date.now() + 900000,
+        updatedAt: Date.now(),
+      });
+  });
+  const body = {
+    action: "revoked",
+    sender: { id: 7, type: "User", login: "fixture" },
+  };
+  expect(
+    (await send(f, body, "github_app_authorization", crypto.randomUUID()))
+      .status,
+  ).toBe(202);
+  // The durable barrier applies in record, before any process invocation.
+  await expect(
+    f.t.query(internal.integrations.github.repositories.source, {
+      workspaceId: f.workspaceId,
+      repositoryId: f.repositories[0],
+      generation: 1,
+      purpose: "monitoring",
+    }),
+  ).rejects.toThrow("SOURCE_DISABLED");
+  const receipt = (await f.t.run((ctx) =>
+    ctx.db.query("githubWebhookReceipts").first(),
+  ))!;
+  const flags = () =>
+    f.t.run(async (ctx) => {
+      const rows = await ctx.db
+        .query("githubRepositories")
+        .withIndex("by_workspaceId_and_selected", (q) =>
+          q.eq("workspaceId", f.workspaceId).eq("selected", true),
+        )
+        .collect();
+      return {
+        open: rows.filter((r) => r.monitoring || r.access).length,
+        closed: rows.filter((r) => !r.monitoring && !r.access).length,
+      };
+    });
+  // First step flags the connection and checkpoints; no repository page yet
+  // (only one paginated query runs per invocation).
+  await f.t.mutation(internal.integrations.github.deliveries.process, {
+    receiptId: receipt._id,
+  });
+  expect(await flags()).toMatchObject({ open: 30, closed: 0 });
+  expect(await f.t.run((ctx) => ctx.db.get(receipt._id))).toMatchObject({
+    state: "pending",
+    processedCount: 0,
+  });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(receipt._id)))!.cursor,
+  ).not.toBeNull();
+  expect(
+    await f.t.run((ctx) =>
+      ctx.db
+        .query("githubConnections")
+        .withIndex("by_workspaceId", (q) => q.eq("workspaceId", f.workspaceId))
+        .unique(),
+    ),
+  ).toMatchObject({ status: "reauth_required" });
+  // Second invocation closes the first 25-repository slice.
+  await f.t.mutation(internal.integrations.github.deliveries.process, {
+    receiptId: receipt._id,
+  });
+  expect(await flags()).toMatchObject({ open: 5, closed: 25 });
+  expect(await f.t.run((ctx) => ctx.db.get(receipt._id))).toMatchObject({
+    state: "pending",
+    processedCount: 0,
+  });
+  // Third invocation finishes the remaining flags.
+  await f.t.mutation(internal.integrations.github.deliveries.process, {
+    receiptId: receipt._id,
+  });
+  expect(await flags()).toMatchObject({ open: 0, closed: 30 });
+  expect(await f.t.run((ctx) => ctx.db.get(receipt._id))).toMatchObject({
+    state: "pending",
+    processedCount: 1,
+  });
+  await processAll(f);
+  expect(await f.t.run((ctx) => ctx.db.get(receipt._id))).toMatchObject({
+    state: "processed",
+    processedCount: 1,
+    cursor: null,
+  });
+});
+test("revoke_user for an unknown identity completes instead of reprocessing the empty scan", async () => {
+  vi.useFakeTimers();
+  const f = await sourceFixture();
+  const body = {
+    action: "revoked",
+    sender: { id: 999, type: "User", login: "stranger" },
+  };
+  expect(
+    (await send(f, body, "github_app_authorization", crypto.randomUUID()))
+      .status,
+  ).toBe(202);
+  await processAll(f);
+  // The !target branch advances with the page cursor (null when done) so the
+  // outer scan terminates instead of looping on a stale cursor.
+  expect(
+    await f.t.run((ctx) => ctx.db.query("githubWebhookReceipts").first()),
+  ).toMatchObject({ state: "processed", cursor: null });
+});
 test("empty all-to-selected removal blocks late discovery, fresh explicit resync works and added doesn't restore", async () => {
   vi.useFakeTimers();
   const f = await sourceFixture();
@@ -628,4 +752,88 @@ test("empty all-to-selected removal blocks late discovery, fresh explicit resync
   expect(
     parseEvent("installation", { action: "unsuspend", installation }),
   ).toBe(null);
+});
+test("retention sweep deletes only unreferenced old processed receipts and GUIDs", async () => {
+  vi.useFakeTimers();
+  const f = await sourceFixture();
+  const oldGuid = crypto.randomUUID();
+  const freshGuid = crypto.randomUUID();
+  expect((await send(f, push, "push", oldGuid)).status).toBe(202);
+  expect(
+    (await send(f, { ...push, after: "3".repeat(40) }, "push", freshGuid))
+      .status,
+  ).toBe(202);
+  await processAll(f);
+  // A blocked receipt processes without producing any signal.
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.repositories[0], { monitoring: false, content: false }),
+  );
+  const unreferencedGuid = crypto.randomUUID();
+  expect(
+    (
+      await send(
+        f,
+        { ...push, after: "5".repeat(40) },
+        "push",
+        unreferencedGuid,
+      )
+    ).status,
+  ).toBe(202);
+  await processAll(f);
+  const receipts = await f.t.run((ctx) =>
+    ctx.db.query("githubWebhookReceipts").collect(),
+  );
+  expect(receipts).toHaveLength(3);
+  expect(
+    await f.t.run((ctx) => ctx.db.query("githubSignals").collect()),
+  ).toHaveLength(2);
+  const old = receipts.find((r) => r.guid === oldGuid)!;
+  const fresh = receipts.find((r) => r.guid === freshGuid)!;
+  const unreferenced = receipts.find((r) => r.guid === unreferencedGuid)!;
+  expect(old.state).toBe("processed");
+  expect(unreferenced.state).toBe("processed");
+  // Age both processed receipts past retention; only the signal-referenced
+  // one must survive.
+  await f.t.run(async (ctx) => {
+    for (const id of [old._id, unreferenced._id])
+      await ctx.db.patch(id, { latestReceivedAt: Date.now() - 31 * 86400000 });
+  });
+  // An old but still-pending receipt is never swept.
+  const pendingGuid = crypto.randomUUID();
+  expect(
+    (await send(f, { ...push, after: "4".repeat(40) }, "push", pendingGuid))
+      .status,
+  ).toBe(202);
+  const pending = (
+    await f.t.run((ctx) => ctx.db.query("githubWebhookReceipts").collect())
+  ).find((r) => r.guid === pendingGuid)!;
+  expect(pending.state).toBe("pending");
+  await f.t.run((ctx) =>
+    ctx.db.patch(pending._id, {
+      latestReceivedAt: Date.now() - 31 * 86400000,
+    }),
+  );
+  await f.t.mutation(internal.integrations.github.deliveries.sweep, {
+    cursor: null,
+  });
+  // Referenced old receipt and its GUID survive; unreferenced one is gone.
+  expect(await f.t.run((ctx) => ctx.db.get(old._id))).not.toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.get(unreferenced._id))).toBeNull();
+  const guidRow = (guid: string) =>
+    f.t.run((ctx) =>
+      ctx.db
+        .query("githubDeliveryGuids")
+        .withIndex("by_guid", (q) => q.eq("guid", guid))
+        .unique(),
+    );
+  expect(await guidRow(oldGuid)).not.toBeNull();
+  expect(await guidRow(unreferencedGuid)).toBeNull();
+  expect(await guidRow(freshGuid)).not.toBeNull();
+  expect(await guidRow(pendingGuid)).not.toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.get(fresh._id))).not.toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.get(pending._id))).not.toBeNull();
+  // Signals are never touched by the sweep.
+  expect(
+    await f.t.run((ctx) => ctx.db.query("githubSignals").collect()),
+  ).toHaveLength(2);
 });

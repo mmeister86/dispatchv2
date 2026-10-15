@@ -43,8 +43,9 @@ test("native own upload sessions paginate all lifecycle states without keys or f
     ...a,
     family: "ownUploadSessions",
   });
-  expect(first.isDone).toBe(false);
-  expect(first.data.selection.rows).toHaveLength(1);
+  // One batched page emits every lifecycle state; the tail page is empty.
+  expect(first.isDone).toBe(true);
+  expect(first.data.selection.rows).toHaveLength(2);
   expect(JSON.stringify(first.data)).not.toMatch(
     /requestId|temporaryKey|objectKey|checksum|bucket|userId/,
   );
@@ -55,9 +56,7 @@ test("native own upload sessions paginate all lifecycle states without keys or f
     creationUpperBound: first.creationUpperBound,
   });
   expect(second.isDone).toBe(true);
-  expect(second.data.selection.rows[0].id).not.toBe(
-    first.data.selection.rows[0].id,
-  );
+  expect(second.data.selection.rows).toEqual([]);
   const session = await f.t.run((ctx) =>
     ctx.db.query("mediaUploadSessions").first(),
   );
@@ -193,7 +192,9 @@ test("own verified contact prefix returns invitations without foreign contact in
     ...a,
     family: "ownReceivedInvitations",
   });
-  expect(r.data.selection.rows).toHaveLength(1);
+  // One batched page emits both own invitations; the foreign contact stays out.
+  expect(r.data.selection.rows).toHaveLength(2);
+  expect(r.isDone).toBe(true);
   expect(JSON.stringify(r)).not.toContain("foreign-contact");
   const next = await f.signed.query(page, {
     ...a,
@@ -202,6 +203,7 @@ test("own verified contact prefix returns invitations without foreign contact in
     creationUpperBound: r.creationUpperBound,
   });
   expect(next.isDone).toBe(true);
+  expect(next.data.selection.rows).toEqual([]);
   expect(JSON.stringify(next)).not.toContain("foreign-contact");
 });
 test("native draft media references preserve ordered original alt and fail unrelated selectors", async () => {

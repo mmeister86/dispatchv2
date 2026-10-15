@@ -53,6 +53,46 @@ async function closeRepository(
     updatedAt: Date.now(),
   });
 }
+// revoke_user fan-out checkpoint: the outer connection scan advances one
+// connection per invocation (c always points between connections) while an
+// in-progress connection is referenced by id with its own repository cursor.
+// Stored in the existing receipt cursor string, so no schema change; a plain
+// opaque cursor from before this change resumes as the outer scan position.
+function decodeRevokeCursor(cursor: string | null): {
+  c: string | null;
+  conn: Id<"githubConnections"> | null;
+  rc: string | null;
+} {
+  if (cursor)
+    try {
+      const o = JSON.parse(cursor) as {
+        v?: unknown;
+        c?: unknown;
+        conn?: unknown;
+        rc?: unknown;
+      };
+      if (typeof o === "object" && o !== null && o.v === 1)
+        return {
+          c: typeof o.c === "string" ? o.c : null,
+          conn:
+            typeof o.conn === "string"
+              ? (o.conn as Id<"githubConnections">)
+              : null,
+          rc: typeof o.rc === "string" ? o.rc : null,
+        };
+    } catch {
+      // Legacy opaque pagination cursor; resume the outer scan with it.
+    }
+  else return { c: null, conn: null, rc: null };
+  return { c: cursor, conn: null, rc: null };
+}
+function encodeRevokeCursor(s: {
+  c: string | null;
+  conn: Id<"githubConnections"> | null;
+  rc: string | null;
+}): string {
+  return JSON.stringify({ v: 1, c: s.c, conn: s.conn, rc: s.rc });
+}
 async function applyRevocation(
   ctx: MutationCtx,
   receiptId: Id<"githubWebhookReceipts">,
@@ -303,12 +343,14 @@ export const process = internalMutation({
       processedCount = r.processedCount,
       blockedCount = r.blockedCount;
     if (f.kind === "revoke_user") {
-      const page = await ctx.db
-        .query("githubConnections")
-        .withIndex("by_identity", (q) => q.eq("identity", f.identity))
-        .paginate({ numItems: 20, cursor: r.cursor });
-      for (const c of page.page) {
-        if ((c.authorizedSequence ?? 0) >= r.revocationSequence) continue;
+      // One paginated query per invocation (a Convex limit): outer-connection
+      // steps and repository steps alternate. Each writes at most one
+      // connection flag plus one 25-repository page. The durable barrier
+      // already applied in record, so only flag cleanup is eventual here.
+      const sub = decodeRevokeCursor(r.cursor);
+      const needsWork = (c: Doc<"githubConnections">) =>
+        (c.authorizedSequence ?? 0) < r.revocationSequence;
+      const flagConnection = async (c: Doc<"githubConnections">) => {
         if (c.status !== "reauth_required" || c.envelope)
           await ctx.db.patch(c._id, {
             status: "reauth_required",
@@ -321,17 +363,64 @@ export const process = internalMutation({
               : "GITHUB_AUTHORIZATION_REVOKED",
             updatedAt: Date.now(),
           });
-        for (const source of await ctx.db
-          .query("githubRepositories")
-          .withIndex("by_workspaceId_and_selected", (q) =>
-            q.eq("workspaceId", c.workspaceId).eq("selected", true),
-          )
-          .take(100))
-          await closeRepository(ctx, source, r.revocationSequence);
-        processedCount++;
+      };
+      if (sub.conn) {
+        const target = await ctx.db.get(sub.conn);
+        if (target && target.identity === f.identity && needsWork(target)) {
+          const repos = await ctx.db
+            .query("githubRepositories")
+            .withIndex("by_workspaceId_and_selected", (q) =>
+              q.eq("workspaceId", target.workspaceId).eq("selected", true),
+            )
+            .paginate({ numItems: 25, cursor: sub.rc });
+          for (const source of repos.page)
+            await closeRepository(ctx, source, r.revocationSequence);
+          if (repos.isDone) processedCount++;
+          cursor = encodeRevokeCursor({
+            c: sub.c,
+            conn: repos.isDone ? null : target._id,
+            rc: repos.isDone ? null : repos.continueCursor,
+          });
+        } else {
+          // Closed, moved, or re-authorized since the checkpoint; resume the
+          // outer scan, which already points past this connection.
+          cursor = encodeRevokeCursor({ c: sub.c, conn: null, rc: null });
+        }
+        done = false;
+      } else {
+        const page = await ctx.db
+          .query("githubConnections")
+          .withIndex("by_identity", (q) => q.eq("identity", f.identity))
+          .paginate({ numItems: 1, cursor: sub.c });
+        const target = page.page[0];
+        if (!target) {
+          if (!page.isDone) {
+            if (page.continueCursor === sub.c)
+              throw new ConvexError("GITHUB_DELIVERY_CURSOR_STALLED");
+            cursor = encodeRevokeCursor({
+              c: page.continueCursor,
+              conn: null,
+              rc: null,
+            });
+          } else cursor = null;
+          done = page.isDone;
+        } else if (!needsWork(target)) {
+          cursor = encodeRevokeCursor({
+            c: page.continueCursor,
+            conn: null,
+            rc: null,
+          });
+          done = false;
+        } else {
+          await flagConnection(target);
+          cursor = encodeRevokeCursor({
+            c: page.continueCursor,
+            conn: target._id,
+            rc: null,
+          });
+          done = false;
+        }
       }
-      cursor = page.continueCursor;
-      done = page.isDone;
     } else {
       const query =
         f.kind === "push" || f.kind === "release"
@@ -420,6 +509,44 @@ export const resume = internalMutation({
       );
       await ctx.db.patch(r._id, { dueAt: Date.now() + 60000 });
     }
+    return null;
+  },
+});
+// Processed receipts are only re-resolved inside the 24h recovery window
+// (recovery.ts stops the provider scan at startedAt − 24h), so receipts
+// processed over 30 days ago — plus their GUID alias rows — are removed here,
+// unless a githubSignals row still references the receipt: context and export
+// reads re-verify the receipt, so referenced receipts survive regardless of
+// age. Pending receipts are never touched; githubSignals are never touched.
+const receiptRetention = 30 * 86400000;
+export const sweep = internalMutation({
+  args: { cursor: v.union(v.string(), v.null()) },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const cutoff = Date.now() - receiptRetention;
+    const page = await ctx.db
+      .query("githubWebhookReceipts")
+      .paginate({ cursor: a.cursor, numItems: 25 });
+    for (const r of page.page) {
+      if (r.state !== "processed" || r.latestReceivedAt >= cutoff) continue;
+      const referenced = await ctx.db
+        .query("githubSignals")
+        .withIndex("by_receiptId", (q) => q.eq("receiptId", r._id))
+        .first();
+      if (referenced) continue;
+      for (const g of await ctx.db
+        .query("githubDeliveryGuids")
+        .withIndex("by_receiptId", (q) => q.eq("receiptId", r._id))
+        .collect())
+        await ctx.db.delete(g._id);
+      await ctx.db.delete(r._id);
+    }
+    if (!page.isDone)
+      await ctx.scheduler.runAfter(
+        0,
+        internal.integrations.github.deliveries.sweep,
+        { cursor: page.continueCursor },
+      );
     return null;
   },
 });

@@ -26,7 +26,12 @@ import {
   requireReference,
 } from "../lib/authorization";
 import { role } from "../schema";
-import { numeric, proofContext } from "./exportShared";
+import {
+  EXPORT_PAGE_CANDIDATES,
+  EXPORT_PAGE_MAX_BYTES,
+  numeric,
+  proofContext,
+} from "./exportShared";
 import { assetFields, accountFields } from "../lib/editorialFields";
 import { connectionFields } from "../integrations/github/fields";
 import {
@@ -946,6 +951,7 @@ export const page = workspaceQuery({
     profileId: v.optional(v.id("researchProfiles")),
     cursor: v.union(v.string(), v.null()),
     creationUpperBound: v.union(v.number(), v.null()),
+    narrowPage: v.optional(v.boolean()),
   },
   returns: v.object({
     authId: v.string(),
@@ -1036,8 +1042,7 @@ export const page = workspaceQuery({
       throw new ConvexError("EXPORT_REQUEST_INVALID");
     const ws = original.workspace._id,
       ctx = proofContext(original, ws),
-      creationUpperBound = a.creationUpperBound ?? observedAt,
-      opts = { numItems: 1, cursor: a.cursor };
+      creationUpperBound = a.creationUpperBound ?? observedAt;
     if (a.accountId) requireReference(ws, await ctx.db.get(a.accountId));
     if (a.profileId) {
       const p = await ctx.db.get(a.profileId);
@@ -1051,6 +1056,7 @@ export const page = workspaceQuery({
     };
     let selected: { continueCursor: string; isDone: boolean };
     const rows: Infer<typeof row>[] = [];
+    const narrow = a.narrowPage === true;
     switch (a.family) {
       case "mediaManifest": {
         const p = await ctx.db
@@ -1059,7 +1065,11 @@ export const page = workspaceQuery({
             q.eq("workspaceId", ws).lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           rows.push({
@@ -1077,7 +1087,11 @@ export const page = workspaceQuery({
             q.eq("workspaceId", ws).lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           if (r.xEvidence?.writeProof) {
@@ -1139,7 +1153,11 @@ export const page = workspaceQuery({
             q.eq("workspaceId", ws).lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           rows.push({
@@ -1160,7 +1178,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           rows.push({
@@ -1181,7 +1203,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           const policy = await ctx.db.get(r.policyId);
@@ -1204,7 +1230,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           rows.push({
@@ -1226,7 +1256,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           rows.push({
@@ -1248,7 +1282,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           rows.push({
@@ -1270,7 +1308,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           rows.push({
@@ -1291,7 +1333,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           if (r.currentVersionId) {
@@ -1325,7 +1371,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           rows.push({
@@ -1346,7 +1396,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           rows.push({
@@ -1373,7 +1427,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           rows.push({
@@ -1395,7 +1453,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(r.accountId === a.accountId);
@@ -1438,7 +1500,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(r.accountId === a.accountId);
@@ -1561,7 +1627,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(r.accountId === a.accountId);
@@ -1663,7 +1733,11 @@ export const page = workspaceQuery({
               .lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(r.accountId === a.accountId);
@@ -1728,7 +1802,11 @@ export const page = workspaceQuery({
                 .lte("_creationTime", creationUpperBound),
             )
             .order("asc")
-            .paginate(opts);
+            .paginate({
+              numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+              cursor: a.cursor,
+              maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+            });
           selected = p;
           for (const r of p.page) {
             binding(r.accountId === a.accountId && r.experimentId === e._id);
@@ -1747,7 +1825,11 @@ export const page = workspaceQuery({
                 .lte("_creationTime", creationUpperBound),
             )
             .order("asc")
-            .paginate(opts);
+            .paginate({
+              numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+              cursor: a.cursor,
+              maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+            });
           selected = p;
           for (const r of p.page) {
             binding(r.accountId === a.accountId && r.experimentId === e._id);
@@ -1804,7 +1886,11 @@ export const page = workspaceQuery({
                 .lte("_creationTime", creationUpperBound),
             )
             .order("asc")
-            .paginate(opts);
+            .paginate({
+              numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+              cursor: a.cursor,
+              maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+            });
           selected = p;
           for (const r of p.page) {
             binding(
@@ -1842,7 +1928,11 @@ export const page = workspaceQuery({
             q.eq("workspaceId", ws).lte("_creationTime", creationUpperBound),
           )
           .order("asc")
-          .paginate(opts);
+          .paginate({
+            numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page)
           rows.push({
@@ -1880,11 +1970,13 @@ export const page = workspaceQuery({
     numeric(result);
     const now = Date.now();
     numeric(now);
-    if (
-      now < observedAt ||
-      now >= result.proofValidUntil ||
-      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024
-    )
+    const sizeOver =
+      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024;
+    // A multi-row page that only overflows in combination is retryable one
+    // row at a time; a lone oversized row keeps the terminal error below.
+    if (sizeOver && a.narrowPage !== true && rows.length > 1)
+      throw new ConvexError("EXPORT_PAGE_OVERSIZED");
+    if (now < observedAt || now >= result.proofValidUntil || sizeOver)
       throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
     return result;
   },

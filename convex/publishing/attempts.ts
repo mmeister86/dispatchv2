@@ -48,41 +48,57 @@ export const claim = internalMutation({
       s.abortRequestedAt !== undefined
     )
       return null;
-    const history = await ctx.db
+    const rows = await ctx.db
       .query("xPostAttempts")
       .withIndex("by_scheduleId_and_generation_and_position", (q) =>
-        q.eq("scheduleId", s._id),
+        q.eq("scheduleId", s._id).eq("generation", s.generation),
       )
-      .take(101);
-    if (
-      history.length > 100 ||
-      history.some(
-        (c) =>
-          c.generation !== s.generation &&
-          ["unknown", "sending"].includes(c.stage),
-      )
-    ) {
+      .collect();
+    if (rows.length > 100) {
       await failure(ctx, s, "X_RECONCILIATION_REQUIRED");
       await ctx.db.patch(s._id, { state: "reconciliation_required" });
       return null;
     }
-    const rows = history.filter((c) => c.generation === s.generation);
-    const posts = s.externalPosts ?? [];
-    if (
-      posts.some(
-        (p, i) =>
-          p.position !== i ||
-          !history.some(
-            (c) =>
-              c._id === p.attemptId &&
-              c.position === p.position &&
-              c.stage === "confirmed" &&
-              c.externalId === p.externalId &&
-              c.versionId === s.versionId &&
-              c.accountId === s.accountId,
-          ),
+    // Bounded cross-generation safety scan: an older generation stuck in
+    // sending/unknown still blocks, but settled history never bricks a fresh generation.
+    const blocked = await ctx.db
+      .query("xPostAttempts")
+      .withIndex("by_scheduleId_and_generation_and_position", (q) =>
+        q.eq("scheduleId", s._id),
       )
-    ) {
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("generation"), s.generation),
+          q.or(
+            q.eq(q.field("stage"), "unknown"),
+            q.eq(q.field("stage"), "sending"),
+          ),
+        ),
+      )
+      .first();
+    if (blocked) {
+      await failure(ctx, s, "X_RECONCILIATION_REQUIRED");
+      await ctx.db.patch(s._id, { state: "reconciliation_required" });
+      return null;
+    }
+    const posts = s.externalPosts ?? [];
+    // Checkpoints survive explicit continuation across generations, so each
+    // confirmed post is re-resolved by id instead of via the current-generation scan.
+    let conflict = posts.some((p, i) => p.position !== i);
+    for (const p of posts) {
+      if (conflict) break;
+      const a = await ctx.db.get(p.attemptId);
+      if (
+        !a ||
+        a.position !== p.position ||
+        a.stage !== "confirmed" ||
+        a.externalId !== p.externalId ||
+        a.versionId !== s.versionId ||
+        a.accountId !== s.accountId
+      )
+        conflict = true;
+    }
+    if (conflict) {
       await failure(ctx, s, "X_POST_CHECKPOINT_CONFLICT");
       return null;
     }
@@ -104,16 +120,24 @@ export const claim = internalMutation({
     try {
       const ver = await preflight(ctx, s),
         account = await ctx.db.get(s.accountId);
-      if (
-        history.some(
-          (c) =>
-            c.workspaceId !== s.workspaceId ||
-            c.versionId !== s.versionId ||
-            c.accountId !== s.accountId ||
-            c.providerIdentity !== account?.providerIdentity,
+      // Cross-generation connection check (same scope as the old history
+      // scan, but early-exit instead of capped): any attempt recorded under a
+      // different workspace/version/account/binding fails the claim.
+      const drifted = await ctx.db
+        .query("xPostAttempts")
+        .withIndex("by_scheduleId_and_generation_and_position", (q) =>
+          q.eq("scheduleId", s._id),
         )
-      )
-        throw new ConvexError("ACCOUNT_CONNECTION_CHANGED");
+        .filter((q) =>
+          q.or(
+            q.neq(q.field("workspaceId"), s.workspaceId),
+            q.neq(q.field("versionId"), s.versionId),
+            q.neq(q.field("accountId"), s.accountId),
+            q.neq(q.field("providerIdentity"), account?.providerIdentity),
+          ),
+        )
+        .first();
+      if (drifted) throw new ConvexError("ACCOUNT_CONNECTION_CHANGED");
       if (!account || account.provider !== "X")
         throw new ConvexError("PUBLISHER_NOT_CONFIGURED");
       if (position >= ver.content.text.length) {

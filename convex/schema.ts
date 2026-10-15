@@ -961,10 +961,13 @@ export default defineSchema({
     guid: v.string(),
     digest: v.string(),
     receiptId: v.id("githubWebhookReceipts"),
-  }).index("by_guid", ["guid"]),
+  })
+    .index("by_guid", ["guid"])
+    .index("by_receiptId", ["receiptId"]),
   githubSignals: defineTable(signalFields)
     .index("by_public_workspace", ["workspaceId", "private"])
     .index("by_workspaceId_and_eventKey", ["workspaceId", "eventKey"])
+    .index("by_receiptId", ["receiptId"])
     .index("by_workspaceId_and_receivedAt", ["workspaceId", "receivedAt"]),
   githubRecoveries: defineTable(recoveryFields)
     .index("by_workspaceId", ["workspaceId"])
