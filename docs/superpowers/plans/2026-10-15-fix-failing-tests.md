@@ -223,3 +223,35 @@ git commit -m "fix(tests): shrink styleProfiles mixed workload to bounded size"
 ```
 
 ---
+
+### Task 7: styleProfiles read-limit tests — per-test timeout for borderline variants
+
+**Files:**
+- Modify: `convex/ai/styleProfiles.test.ts` (test "native read limits preserve every authorized32-node row" at :1290, variants small/large/mixed)
+
+**Interfaces:**
+- Consumes: nothing new. Measured on the pristine file (stash-verified during Task 6): variants need 3988/5428/6041 ms against vitest's 5 s default — same defect class as Task 5. The sibling disjoint test in the same file already carries a 900000 timeout; this test carries none.
+- Produces: `convex/ai/styleProfiles.test.ts` passing at the default timeout (no runner flags).
+
+- [ ] **Step 1: Reproduce**
+
+Run: `timeout 600 ./node_modules/.bin/vitest run convex/ai/styleProfiles.test.ts -t "native read limits"`
+Expected: at least one of (large)/(mixed) fails with "Test timed out in 5000ms" (machine-dependent; (small) passes).
+
+- [ ] **Step 2: Add the trailing per-test timeout**
+
+Append the trailing timeout argument to that single `test(...)` call in repo style: `}, 30000);` (≈5× the slowest measured variant). Change nothing else — no data, no assertions, no other test.
+
+- [ ] **Step 3: Verify**
+
+Run: `timeout 1200 ./node_modules/.bin/vitest run convex/ai/styleProfiles.test.ts`
+Expected: all tests pass at the default timeout, no runner flags.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add convex/ai/styleProfiles.test.ts
+git commit -m "fix(tests): allow 30s for styleProfiles read-limit tests"
+```
+
+---
