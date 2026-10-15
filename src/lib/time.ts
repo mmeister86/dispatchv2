@@ -1,18 +1,29 @@
 /** Resolve wall-clock inputs explicitly; DST gaps have no match, overlaps have two. */
+// One formatter per timezone: construction parses the CLDR data, so reusing
+// the instance keeps the Calendar month view (per schedule per day) linear.
+const wallClockFormatters = new Map<string, Intl.DateTimeFormat>();
+function wallClockFormat(timeZone: string): Intl.DateTimeFormat {
+  let format = wallClockFormatters.get(timeZone);
+  if (!format) {
+    format = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    });
+    wallClockFormatters.set(timeZone, format);
+  }
+  return format;
+}
 export function resolveLocalTime(value: string, timeZone: string): string[] {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
   if (!m) return [];
   const [, year, month, day, hour, minute] = m.map(Number);
   const approximate = Date.UTC(year, month - 1, day, hour, minute);
-  const format = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  });
+  const format = wallClockFormat(timeZone);
   const matches: string[] = [];
   for (let offset = -14 * 60; offset <= 14 * 60; offset += 15) {
     const date = new Date(approximate + offset * 60000);
@@ -29,15 +40,7 @@ export function resolveLocalTime(value: string, timeZone: string): string[] {
 }
 export function localInput(value: string, timeZone: string): string {
   const parts = Object.fromEntries(
-    new Intl.DateTimeFormat("en-CA", {
-      timeZone,
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-      hourCycle: "h23",
-    })
+    wallClockFormat(timeZone)
       .formatToParts(new Date(value))
       .map((p) => [p.type, p.value]),
   );

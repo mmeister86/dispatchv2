@@ -14,7 +14,7 @@ import {
 } from "@/features/drafts/first-write-confirmation";
 import { textCount, textWithinLimit } from "../../shared/xText";
 import { MediaPreview } from "@/features/drafts/media-preview";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo } from "react";
 import {
   Link,
   useBlocker,
@@ -157,6 +157,20 @@ export function DraftsPage() {
   const [query, setQuery] = useState("");
   const filter = params.get("filter") ?? "all";
   const [channel, setChannel] = useState("all");
+  // Group once per render so the status filters and row lookups below resolve
+  // per draft without scanning all schedules per draft per keystroke.
+  // Insertion order is preserved, so find/some semantics are unchanged.
+  const { schedulesByDraft, scheduledDraftIds } = useMemo(() => {
+    const byDraft = new Map<string, typeof state.schedules>();
+    const scheduled = new Set<string>();
+    for (const s of state.schedules) {
+      const group = byDraft.get(s.draftId);
+      if (group) group.push(s);
+      else byDraft.set(s.draftId, [s]);
+      if (s.status === "scheduled") scheduled.add(s.draftId);
+    }
+    return { schedulesByDraft: byDraft, scheduledDraftIds: scheduled };
+  }, [state.schedules]);
   const drafts = state.drafts
     .filter((d) => d.workspaceId === state.activeWorkspaceId)
     .filter((d) =>
@@ -174,14 +188,10 @@ export function DraftsPage() {
         filter === "all" ||
         (filter === "review" && !approved(d)) ||
         (filter === "approved" && approved(d)) ||
-        (filter === "scheduled" &&
-          state.schedules.some(
-            (s) => s.draftId === d.id && s.status === "scheduled",
-          )) ||
+        (filter === "scheduled" && scheduledDraftIds.has(d.id)) ||
         (["published", "failed", "partial", "uncertain"].includes(filter) &&
-          state.schedules.some(
-            (s) => s.draftId === d.id && s.status === filter,
-          )),
+          (schedulesByDraft.get(d.id)?.some((s) => s.status === filter) ??
+            false)),
     );
   return (
     <div className="fade-in">
@@ -279,9 +289,9 @@ export function DraftsPage() {
                 const a = state.accounts.find((a) => a.id === d.accountId);
                 const v = currentVersion(d);
                 const unavailable = !demoMode && v.sourceUnavailable;
-                const scheduled = state.schedules.find(
-                  (s) => s.draftId === d.id && s.status === "scheduled",
-                );
+                const scheduled = schedulesByDraft
+                  .get(d.id)
+                  ?.find((s) => s.status === "scheduled");
                 return (
                   <tr key={d.id} className="hover:bg-muted/40">
                     <td className="min-w-64">

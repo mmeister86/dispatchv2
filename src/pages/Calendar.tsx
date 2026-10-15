@@ -1,6 +1,6 @@
 import { NativeReview } from "@/features/drafts/review";
 import { PublishingRecovery } from "@/features/drafts/publishing-recovery";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import {
   ChevronLeft,
@@ -149,6 +149,19 @@ function CalendarContent({
       (account === "all" || s.accountId === account) &&
       (status === "all" || s.status === status),
   );
+  // Bucket once per render: one civilDate call per schedule instead of one
+  // per schedule per day (each call reuses the cached timezone formatter).
+  const slotsByDay = useMemo(() => {
+    const byDay = new Map<string, typeof schedules>();
+    for (const s of schedules) {
+      const key = civilDate(s.at, zone);
+      const slots = byDay.get(key);
+      if (slots) slots.push(s);
+      else byDay.set(key, [s]);
+    }
+    return byDay;
+  }, [schedules, zone]);
+  const today = civilDate(new Date().toISOString(), zone);
   const currentDetail = detail
     ? calendarSchedules.find((s) => s.id === detail.id)
     : undefined;
@@ -353,7 +366,7 @@ function CalendarContent({
                   {label}
                   {view === "week" && (
                     <span
-                      className={`mx-auto mt-2 grid size-8 place-items-center rounded-full text-lg font-semibold ${days[i] === civilDate(new Date().toISOString(), zone) ? "bg-primary text-primary-foreground" : "text-foreground"}`}
+                      className={`mx-auto mt-2 grid size-8 place-items-center rounded-full text-lg font-semibold ${days[i] === today ? "bg-primary text-primary-foreground" : "text-foreground"}`}
                     >
                       {Number(days[i].slice(-2))}
                     </span>
@@ -364,11 +377,8 @@ function CalendarContent({
             <div className="grid grid-cols-7">
               {days.map((day) => {
                 const key = day;
-                const slots = schedules.filter(
-                  (s) => civilDate(s.at, zone) === key,
-                );
-                const isToday =
-                  key === civilDate(new Date().toISOString(), zone);
+                const slots = slotsByDay.get(key) ?? [];
+                const isToday = key === today;
                 return (
                   <div
                     key={key}

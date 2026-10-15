@@ -4,6 +4,7 @@ import {
   useEffect,
   useState,
   useCallback,
+  useMemo,
   useRef,
   type ReactNode,
 } from "react";
@@ -679,144 +680,174 @@ function WorkspaceDataStore({
         proofExpiresAt: v.sourceProofUntil!,
       })),
   );
-  const projectBundle = <T extends NonNullable<typeof detail>>(b: T): T => {
-    const review = b.review,
-      stageUntil =
-        review?.stageSourceUntil === undefined
-          ? review?.sourceUntil
-          : review.stageSourceUntil;
-    return {
-      ...b,
-      review:
-        review &&
-        (stageUntil === null ||
-          (stageUntil !== undefined && stageUntil > contentClock))
-          ? {
-              ...review,
-              approvalId:
-                review.sourceUntil === null || review.sourceUntil > contentClock
-                  ? review.approvalId
-                  : null,
-            }
-          : null,
-      versions: b.versions.map((v) =>
-        v.sourceUnavailable ||
-        (v.sourceProofUntil !== undefined && v.sourceProofUntil <= contentClock)
-          ? {
-              ...v,
-              sourceUnavailable: true,
-              content: {
-                ...v.content,
-                title: "",
-                text: v.content.text.map(() => ""),
-                media: v.content.media.map((ref) => ({ ...ref, alt: "" })),
-                pillar: "",
-                strategy: "",
-              },
-              reason: "",
-            }
-          : v,
-      ),
-      comments: b.comments.map((c) => {
-        const v = b.versions.find((v) => v._id === c.versionId);
-        return c.sourceUnavailable ||
-          (c.sourceProofUntil !== undefined &&
-            c.sourceProofUntil <= contentClock) ||
-          (v?.sourceProofUntil !== undefined &&
+  const projectBundle = useCallback(
+    <T extends NonNullable<typeof detail>>(b: T): T => {
+      const review = b.review,
+        stageUntil =
+          review?.stageSourceUntil === undefined
+            ? review?.sourceUntil
+            : review.stageSourceUntil;
+      // One version lookup per bundle: the comment and schedule joins below
+      // resolve against this map instead of scanning b.versions per row.
+      const byVersion = new Map(b.versions.map((v) => [v._id, v]));
+      return {
+        ...b,
+        review:
+          review &&
+          (stageUntil === null ||
+            (stageUntil !== undefined && stageUntil > contentClock))
+            ? {
+                ...review,
+                approvalId:
+                  review.sourceUntil === null ||
+                  review.sourceUntil > contentClock
+                    ? review.approvalId
+                    : null,
+              }
+            : null,
+        versions: b.versions.map((v) =>
+          v.sourceUnavailable ||
+          (v.sourceProofUntil !== undefined &&
             v.sourceProofUntil <= contentClock)
-          ? { ...c, text: "" }
-          : c;
+            ? {
+                ...v,
+                sourceUnavailable: true,
+                content: {
+                  ...v.content,
+                  title: "",
+                  text: v.content.text.map(() => ""),
+                  media: v.content.media.map((ref) => ({ ...ref, alt: "" })),
+                  pillar: "",
+                  strategy: "",
+                },
+                reason: "",
+              }
+            : v,
+        ),
+        comments: b.comments.map((c) => {
+          const v = byVersion.get(c.versionId);
+          return c.sourceUnavailable ||
+            (c.sourceProofUntil !== undefined &&
+              c.sourceProofUntil <= contentClock) ||
+            (v?.sourceProofUntil !== undefined &&
+              v.sourceProofUntil <= contentClock)
+            ? { ...c, text: "" }
+            : c;
+        }),
+      };
+    },
+    [contentClock],
+  );
+  const ownedBundle = useCallback(
+    (b: NonNullable<typeof detail>) =>
+      `${b.authId}:${b.sessionId}` === sessionScope,
+    [sessionScope],
+  );
+  // Projections rebuild only when a query result they consume changes; every
+  // input read inside is listed in the dep array so the memo never goes stale.
+  const { onboardingStep } = snapshot.preferences;
+  const state: AppState = useMemo(() => {
+    const safeList = list.results.filter(ownedBundle).map(projectBundle);
+    const fullDetail =
+      detail && ownedBundle(detail)
+        ? {
+            ...detail,
+            assets: [
+              ...detail.assets,
+              ...history.results.flatMap((v) => v.assets),
+            ],
+            versions: [
+              ...new Map(
+                [...detail.versions, ...history.results].map((v) => [v._id, v]),
+              ).values(),
+            ].sort((a, b) => a.number - b.number),
+          }
+        : null;
+    const workspace = snapshot.workspaces.find(
+      (w) => w.id === snapshot.activeWorkspaceId,
+    );
+    const { onboardingStep: _ignored, ...preferences } = snapshot.preferences;
+    return {
+      ...emptyState,
+      workspaces: snapshot.workspaces.map(({ role, ...w }) => w),
+      activeWorkspaceId: snapshot.activeWorkspaceId,
+      role: workspace?.role ?? "Viewer",
+      preferences,
+      activeAccountId: resources?.accounts.some(
+        (a) => a._id === selectedAccount,
+      )
+        ? selectedAccount
+        : "",
+      accounts: (resources?.accounts ?? []).map((a) => ({
+        id: a._id,
+        workspaceId: a.workspaceId,
+        name: a.name,
+        handle: a.handle,
+        channel: a.provider,
+        connected: a.connection === "connected",
+        connection: a.connection,
+        xEvidence: a.xEvidence,
+        color: "#6b7c5d",
+        capability: a.capability,
+      })),
+      media: [
+        ...new Map(
+          [
+            ...(resources?.assets ?? []),
+            ...mediaInventory.results,
+            ...list.results.flatMap((b) => b.assets),
+            ...(fullDetail?.assets ?? []),
+          ].map((a) => [a._id, a]),
+        ).values(),
+      ].map((a) => ({
+        id: a._id,
+        workspaceId: a.workspaceId,
+        name: a.name,
+        type: a.type,
+        url: "",
+        alt: a.defaultAlt ?? "",
+        size: a.size,
+        status: a.state,
+        uploadSessionId: a.uploadSessionId,
+        mime: a.mime,
+        origin: "R2",
+      })),
+      drafts: [
+        ...safeList.filter((b) => b.draft._id !== detail?.draft._id),
+        ...(fullDetail ? [projectBundle(fullDetail)] : []),
+      ].map(draftView),
+      schedules: [
+        ...safeList.filter((b) => b.draft._id !== detail?.draft._id),
+        ...(fullDetail ? [projectBundle(fullDetail)] : []),
+      ].flatMap((b) => {
+        // One version lookup per bundle instead of a find per schedule.
+        const byVersion = new Map(b.versions.map((v) => [v._id, v]));
+        return b.schedules.map((x) =>
+          scheduleView(
+            x,
+            byVersion.get(x.versionId) ?? {
+              ...b.versions.at(-1)!,
+              _id: x.versionId,
+              number: 0,
+              mediaChecksums: [],
+              content: { ...b.versions.at(-1)!.content, text: [], media: [] },
+            },
+            b.frozenReviews?.find((p) => p.scheduleId === x._id),
+          ),
+        );
       }),
     };
-  };
-  const ownedBundle = (b: NonNullable<typeof detail>) =>
-    `${b.authId}:${b.sessionId}` === sessionScope;
-  const safeList = list.results.filter(ownedBundle).map(projectBundle);
-  const fullDetail =
-    detail && ownedBundle(detail)
-      ? {
-          ...detail,
-          assets: [
-            ...detail.assets,
-            ...history.results.flatMap((v) => v.assets),
-          ],
-          versions: [
-            ...new Map(
-              [...detail.versions, ...history.results].map((v) => [v._id, v]),
-            ).values(),
-          ].sort((a, b) => a.number - b.number),
-        }
-      : null;
-  const workspace = snapshot.workspaces.find(
-    (w) => w.id === snapshot.activeWorkspaceId,
-  );
-  const { onboardingStep, ...preferences } = snapshot.preferences;
-  const state: AppState = {
-    ...emptyState,
-    workspaces: snapshot.workspaces.map(({ role, ...w }) => w),
-    activeWorkspaceId: snapshot.activeWorkspaceId,
-    role: workspace?.role ?? "Viewer",
-    preferences,
-    activeAccountId: resources?.accounts.some((a) => a._id === selectedAccount)
-      ? selectedAccount
-      : "",
-    accounts: (resources?.accounts ?? []).map((a) => ({
-      id: a._id,
-      workspaceId: a.workspaceId,
-      name: a.name,
-      handle: a.handle,
-      channel: a.provider,
-      connected: a.connection === "connected",
-      connection: a.connection,
-      xEvidence: a.xEvidence,
-      color: "#6b7c5d",
-      capability: a.capability,
-    })),
-    media: [
-      ...new Map(
-        [
-          ...(resources?.assets ?? []),
-          ...mediaInventory.results,
-          ...list.results.flatMap((b) => b.assets),
-          ...(fullDetail?.assets ?? []),
-        ].map((a) => [a._id, a]),
-      ).values(),
-    ].map((a) => ({
-      id: a._id,
-      workspaceId: a.workspaceId,
-      name: a.name,
-      type: a.type,
-      url: "",
-      alt: a.defaultAlt ?? "",
-      size: a.size,
-      status: a.state,
-      uploadSessionId: a.uploadSessionId,
-      mime: a.mime,
-      origin: "R2",
-    })),
-    drafts: [
-      ...safeList.filter((b) => b.draft._id !== detail?.draft._id),
-      ...(fullDetail ? [projectBundle(fullDetail)] : []),
-    ].map(draftView),
-    schedules: [
-      ...safeList.filter((b) => b.draft._id !== detail?.draft._id),
-      ...(fullDetail ? [projectBundle(fullDetail)] : []),
-    ].flatMap((b) =>
-      b.schedules.map((x) =>
-        scheduleView(
-          x,
-          b.versions.find((v) => v._id === x.versionId) ?? {
-            ...b.versions.at(-1)!,
-            _id: x.versionId,
-            number: 0,
-            mediaChecksums: [],
-            content: { ...b.versions.at(-1)!.content, text: [], media: [] },
-          },
-          b.frozenReviews?.find((p) => p.scheduleId === x._id),
-        ),
-      ),
-    ),
-  };
+  }, [
+    snapshot,
+    selectedAccount,
+    resources,
+    list.results,
+    detail,
+    history.results,
+    mediaInventory.results,
+    ownedBundle,
+    projectBundle,
+  ]);
   const command = async (fn: () => Promise<unknown>) => {
     try {
       await fn();
