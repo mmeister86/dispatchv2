@@ -397,13 +397,29 @@ export function WorkspaceVersionsExport() {
     try {
       const requestKey = crypto.randomUUID();
       const sent = position.current;
-      const result = await convex.query(api.operations.export.versions, {
-        workspaceId: workspaceId as Id<"workspaces">,
-        expectedAuthId: authId,
-        requestKey,
-        cursor: sent.cursor,
-        creationUpperBound: sent.creationUpperBound,
-      });
+      const loadPage = (narrow: boolean) =>
+        convex.query(api.operations.export.versions, {
+          workspaceId: workspaceId as Id<"workspaces">,
+          expectedAuthId: authId,
+          requestKey,
+          cursor: sent.cursor,
+          creationUpperBound: sent.creationUpperBound,
+          ...(narrow ? { narrowPage: true } : {}),
+        });
+      type Page = Awaited<ReturnType<typeof loadPage>>;
+      let result: Page;
+      try {
+        result = await loadPage(false);
+      } catch (error) {
+        // A healthy multi-row window that only overflows in combination is
+        // retried once, one row at a time, from the same cursor.
+        if (
+          (error as { data?: unknown })?.data !== "EXPORT_PAGE_OVERSIZED" ||
+          !stillCurrent()
+        )
+          throw error;
+        result = await loadPage(true);
+      }
       if (!stillCurrent()) return;
       const now = Date.now();
       if (
@@ -417,7 +433,7 @@ export function WorkspaceVersionsExport() {
         result.role !== role ||
         result.data.format !== "dispatch-workspace-draft-versions" ||
         result.data.version !== 1 ||
-        result.data.versions.length > 1 ||
+        result.data.versions.length > 25 ||
         typeof result.cursor !== "string" ||
         (!result.isDone && (!result.cursor || result.cursor === sent.cursor)) ||
         typeof result.isDone !== "boolean" ||

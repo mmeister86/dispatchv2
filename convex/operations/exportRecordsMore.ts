@@ -141,6 +141,7 @@ export async function morePage(
   a: {
     family: MoreFamily;
     cursor: string | null;
+    narrowPage?: boolean;
     version?:
       | { kind: "draft"; id: Id<"draftVersions"> }
       | { kind: "idea"; id: Id<"ideaVersions"> };
@@ -152,7 +153,7 @@ export async function morePage(
   horizon: (n: number | null) => void,
 ) {
   const opts = {
-      numItems: EXPORT_PAGE_CANDIDATES,
+      numItems: a.narrowPage === true ? 1 : EXPORT_PAGE_CANDIDATES,
       cursor: a.cursor,
       maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
     },

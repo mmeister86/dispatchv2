@@ -128,6 +128,7 @@ export const versions = workspaceQuery({
     requestKey: v.string(),
     cursor: v.union(v.string(), v.null()),
     creationUpperBound: v.union(v.number(), v.null()),
+    narrowPage: v.optional(v.boolean()),
   },
   returns: v.object({
     requestKey: v.string(),
@@ -178,6 +179,7 @@ export const versions = workspaceQuery({
     )
       throw new ConvexError("EXPORT_REQUEST_INVALID");
     const creationUpperBound = a.creationUpperBound ?? observedAt;
+    const narrow = a.narrowPage === true;
     let proofValidUntil = observedAt + 30_000;
     const rows = [];
     const page = await ctx.db
@@ -189,7 +191,7 @@ export const versions = workspaceQuery({
       )
       .order("asc")
       .paginate({
-        numItems: EXPORT_PAGE_CANDIDATES,
+        numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
         cursor: a.cursor,
         maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
       });
@@ -256,6 +258,12 @@ export const versions = workspaceQuery({
         versions: rows,
       },
     };
+    const sizeOver =
+      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024;
+    // A multi-row page that only overflows in combination is retryable one
+    // row at a time; a lone oversized row keeps the terminal error below.
+    if (sizeOver && !narrow && rows.length > 1)
+      throw new ConvexError("EXPORT_PAGE_OVERSIZED");
     if (
       ![
         observedAt,
@@ -264,7 +272,7 @@ export const versions = workspaceQuery({
         ...rows.flatMap((r) => [r.versionNumber, r.createdAt]),
       ].every((n) => Number.isFinite(n) && !Object.is(n, -0)) ||
       proofValidUntil <= Date.now() ||
-      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024
+      sizeOver
     )
       throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
     return result;

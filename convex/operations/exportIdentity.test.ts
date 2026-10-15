@@ -213,8 +213,6 @@ test("batched native cursor emits in-ceiling rows and omits newly created rows b
     // Every created row arrives exactly once (plus the admitted fixture
     // credential); the late insert is excluded.
     expect(received).toBe(seen.size);
-    // Every created row arrives exactly once (plus the admitted fixture
-    // credential); the late insert is excluded.
     expect(seen.size).toBeGreaterThanOrEqual(30);
     for (let i = 0; i < 30; i++)
       expect([...seen.values()]).toContain(`account-${i}`);

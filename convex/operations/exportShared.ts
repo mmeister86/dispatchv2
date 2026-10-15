@@ -570,6 +570,7 @@ export const shared = workspaceQuery({
     family,
     cursor: v.union(v.string(), v.null()),
     creationUpperBound: v.union(v.number(), v.null()),
+    narrowPage: v.optional(v.boolean()),
   },
   returns: v.object({
     authId: v.string(),
@@ -758,6 +759,7 @@ export const shared = workspaceQuery({
       return row;
     };
     const emittedRows: unknown[] = [];
+    const narrow = a.narrowPage === true;
     const page = await ctx.db
       .query(a.family)
       .withIndex("by_workspaceId", (q) =>
@@ -767,7 +769,7 @@ export const shared = workspaceQuery({
       )
       .order("asc")
       .paginate({
-        numItems: EXPORT_PAGE_CANDIDATES,
+        numItems: narrow ? 1 : EXPORT_PAGE_CANDIDATES,
         cursor: a.cursor,
         maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
       });
@@ -1372,10 +1374,13 @@ export const shared = workspaceQuery({
       },
     };
     numeric(result);
-    if (
-      proofValidUntil <= Date.now() ||
-      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024
-    )
+    const sizeOver =
+      new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024;
+    // A multi-row page that only overflows in combination is retryable one
+    // row at a time; a lone oversized row keeps the terminal error below.
+    if (sizeOver && !narrow && emittedRows.length > 1)
+      throw new ConvexError("EXPORT_PAGE_OVERSIZED");
+    if (proofValidUntil <= Date.now() || sizeOver)
       throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
     return result;
   },

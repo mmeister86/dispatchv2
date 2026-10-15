@@ -48,6 +48,7 @@ const correlation = {
   expectedAuthId: v.string(),
   expectedSessionId: v.string(),
   requestKey: v.string(),
+  narrowPage: v.optional(v.boolean()),
 };
 const paging = { cursor: v.union(v.string(), v.null()) };
 const bounded = {
@@ -332,11 +333,13 @@ async function begin(
       numeric(result);
       const now = Date.now();
       numeric(now);
-      if (
-        now < observedAt ||
-        proofValidUntil <= now ||
-        new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024
-      )
+      const sizeOver =
+        new TextEncoder().encode(JSON.stringify(result)).length > 64 * 1024;
+      // A multi-row page that only overflows in combination is retryable one
+      // row at a time; a lone oversized row keeps the terminal error below.
+      if (sizeOver && a.narrowPage !== true && rows.length > 1)
+        throw new ConvexError("EXPORT_PAGE_OVERSIZED");
+      if (now < observedAt || proofValidUntil <= now || sizeOver)
         throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
       return result;
     },

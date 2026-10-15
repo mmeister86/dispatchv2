@@ -1219,7 +1219,7 @@ export function NativeArchiveExport() {
     setStatus("");
     revoke();
   }, [scope]);
-  const download = async () => {
+  const download = async (narrow = false) => {
     if (inFlight.current || !authId || !sessionId || !ready) return;
     inFlight.current = true;
     if (done) {
@@ -1243,6 +1243,7 @@ export function NativeArchiveExport() {
     try {
       const requestKey = crypto.randomUUID();
       const sent = position.current;
+      const narrowArg = narrow ? { narrowPage: true as const } : {};
       const common = {
         workspaceId: workspaceId as Id<"workspaces">,
         expectedAuthId: authId,
@@ -1275,18 +1276,24 @@ export function NativeArchiveExport() {
             ...common,
             accountId: parent.accountId,
             ...bounds,
+            ...narrowArg,
           });
           break;
         case "conversationMessages":
           raw = await convex.query(
             api.operations.exportPrivate.conversationMessages,
-            { ...common, ...parent, cursor: sent.cursor },
+            {
+              ...common,
+              ...parent,
+              cursor: sent.cursor,
+              ...narrowArg,
+            },
           );
           break;
         case "conversationOperations":
           raw = await convex.query(
             api.operations.exportPrivate.conversationOperations,
-            { ...common, ...parent, ...bounds },
+            { ...common, ...parent, ...bounds, ...narrowArg },
           );
           break;
         case "conversationRuns":
@@ -1303,7 +1310,7 @@ export function NativeArchiveExport() {
         case "targetedOrders":
           raw = await convex.query(
             api.operations.exportPrivate.targetedOrders,
-            { ...common, ...parent, ...bounds },
+            { ...common, ...parent, ...bounds, ...narrowArg },
           );
           break;
         case "publicOrders":
@@ -1311,6 +1318,7 @@ export function NativeArchiveExport() {
             ...common,
             profileId: profileId as Id<"researchProfiles">,
             ...bounds,
+            ...narrowArg,
           });
           break;
         case "orderSources":
@@ -1325,18 +1333,20 @@ export function NativeArchiveExport() {
           raw = await convex.query(api.operations.exportPrivate.orderEvidence, {
             ...common,
             ...research,
+            ...narrowArg,
           });
           break;
         case "researchMessages":
           raw = await convex.query(
             api.operations.exportPrivate.researchMessages,
-            { ...common, ...research },
+            { ...common, ...research, ...narrowArg },
           );
           break;
         case "workflowSteps":
           raw = await convex.query(api.operations.exportPrivate.workflowSteps, {
             ...common,
             ...research,
+            ...narrowArg,
           });
           break;
         default:
@@ -1360,6 +1370,7 @@ export function NativeArchiveExport() {
                   : {}),
                 cursor: sent.cursor,
                 creationUpperBound: sent.creationUpperBound,
+                ...narrowArg,
               })
             : financeFamily
               ? await convex.query(financeQuery, {
@@ -1392,6 +1403,7 @@ export function NativeArchiveExport() {
                     : {}),
                   cursor: sent.cursor,
                   creationUpperBound: sent.creationUpperBound,
+                  ...narrowArg,
                 })
               : remainingFamily
                 ? await convex.query(remainingQuery, {
@@ -1422,6 +1434,7 @@ export function NativeArchiveExport() {
                       : {}),
                     cursor: sent.cursor,
                     creationUpperBound: sent.creationUpperBound,
+                    ...narrowArg,
                   })
                 : intelligenceFamily
                   ? await convex.query(api.operations.exportIntelligence.page, {
@@ -1438,12 +1451,14 @@ export function NativeArchiveExport() {
                         : {}),
                       cursor: sent.cursor,
                       creationUpperBound: sent.creationUpperBound,
+                      ...narrowArg,
                     })
                   : await convex.query(api.operations.exportShared.shared, {
                       ...common,
                       family: family as SharedFamily,
                       cursor: sent.cursor,
                       creationUpperBound: sent.creationUpperBound,
+                      ...narrowArg,
                     });
       }
       const result = {
@@ -1484,7 +1499,7 @@ export function NativeArchiveExport() {
               : raw.version !== null))) ||
         result.data.version !== 1 ||
         result.data.selection.family !== family ||
-        result.data.selection.rows.length > 1 ||
+        result.data.selection.rows.length > 25 ||
         typeof result.cursor !== "string" ||
         (!result.isDone && (!result.cursor || result.cursor === sent.cursor)) ||
         typeof result.isDone !== "boolean" ||
@@ -1646,7 +1661,18 @@ export function NativeArchiveExport() {
         epoch,
       };
       setDone(result.isDone);
-    } catch {
+    } catch (error) {
+      // A healthy multi-row window that only overflows in combination is
+      // retried once, one row at a time, from the same cursor.
+      if (
+        !narrow &&
+        stillCurrent() &&
+        (error as { data?: unknown })?.data === "EXPORT_PAGE_OVERSIZED"
+      ) {
+        inFlight.current = false;
+        setBusy(false);
+        return download(true);
+      }
       if (stillCurrent()) {
         revoke();
         setError(
@@ -1959,7 +1985,7 @@ export function NativeArchiveExport() {
       <Button
         variant="outline"
         disabled={busy || !authId || !sessionId || !ready}
-        onClick={download}
+        onClick={() => download()}
       >
         <Download size={15} />
         {done
