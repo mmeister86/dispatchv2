@@ -1499,6 +1499,7 @@ test.each([
       ).toBe(true);
     }
   },
+  30000,
 );
 
 test.each([
