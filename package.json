@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b && tsc -p convex/tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:evals": "vitest run --config vitest.evals.config.ts",
+    "test:browser": "for f in tests/*.browser.mjs; do node \"$f\" || exit 1; done",
     "test:e2e": "playwright test",
     "test:e2e:auth": "playwright test --config playwright.auth.config.ts",
     "preview": "vite preview --host 127.0.0.1",
