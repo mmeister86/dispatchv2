@@ -541,6 +541,112 @@ test("known GUID revocation replay is idempotent; identical-body new GUID after 
     await f.t.run((ctx) => ctx.db.query("githubWebhookReceipts").first()),
   ).toMatchObject({ revocationSequence: 2, ambiguousRevocation: true });
 });
+test("revoke_user flag cleanup resumes across invocations while the barrier bites immediately", async () => {
+  vi.useFakeTimers();
+  const f = await sourceFixture();
+  // 30 selected repositories: one 25-repository slice cannot finish them.
+  await f.t.run(async (ctx) => {
+    for (let n = 1; n < 30; n++)
+      await ctx.db.insert("githubRepositories", {
+        workspaceId: f.workspaceId,
+        providerId: `20${n}`,
+        installationId: "50",
+        fullName: `fixture/project-${n}`,
+        private: true,
+        selected: true,
+        access: true,
+        monitoring: true,
+        content: false,
+        communicableContext: "explicit context",
+        purposeActorId: f.userId,
+        purposeAt: Date.now() - 1000,
+        purposeVersion: 1,
+        connectionGeneration: 1,
+        generation: 1,
+        verifiedAt: Date.now() - 1000,
+        proofExpiresAt: Date.now() + 900000,
+        updatedAt: Date.now(),
+      });
+  });
+  const body = {
+    action: "revoked",
+    sender: { id: 7, type: "User", login: "fixture" },
+  };
+  expect(
+    (await send(f, body, "github_app_authorization", crypto.randomUUID()))
+      .status,
+  ).toBe(202);
+  // The durable barrier applies in record, before any process invocation.
+  await expect(
+    f.t.query(internal.integrations.github.repositories.source, {
+      workspaceId: f.workspaceId,
+      repositoryId: f.repositories[0],
+      generation: 1,
+      purpose: "monitoring",
+    }),
+  ).rejects.toThrow("SOURCE_DISABLED");
+  const receipt = (await f.t.run((ctx) =>
+    ctx.db.query("githubWebhookReceipts").first(),
+  ))!;
+  const flags = () =>
+    f.t.run(async (ctx) => {
+      const rows = await ctx.db
+        .query("githubRepositories")
+        .withIndex("by_workspaceId_and_selected", (q) =>
+          q.eq("workspaceId", f.workspaceId).eq("selected", true),
+        )
+        .collect();
+      return {
+        open: rows.filter((r) => r.monitoring || r.access).length,
+        closed: rows.filter((r) => !r.monitoring && !r.access).length,
+      };
+    });
+  // First step flags the connection and checkpoints; no repository page yet
+  // (only one paginated query runs per invocation).
+  await f.t.mutation(internal.integrations.github.deliveries.process, {
+    receiptId: receipt._id,
+  });
+  expect(await flags()).toMatchObject({ open: 30, closed: 0 });
+  expect(await f.t.run((ctx) => ctx.db.get(receipt._id))).toMatchObject({
+    state: "pending",
+    processedCount: 0,
+  });
+  expect(
+    (await f.t.run((ctx) => ctx.db.get(receipt._id)))!.cursor,
+  ).not.toBeNull();
+  expect(
+    await f.t.run((ctx) =>
+      ctx.db
+        .query("githubConnections")
+        .withIndex("by_workspaceId", (q) => q.eq("workspaceId", f.workspaceId))
+        .unique(),
+    ),
+  ).toMatchObject({ status: "reauth_required" });
+  // Second invocation closes the first 25-repository slice.
+  await f.t.mutation(internal.integrations.github.deliveries.process, {
+    receiptId: receipt._id,
+  });
+  expect(await flags()).toMatchObject({ open: 5, closed: 25 });
+  expect(await f.t.run((ctx) => ctx.db.get(receipt._id))).toMatchObject({
+    state: "pending",
+    processedCount: 0,
+  });
+  // Third invocation finishes the remaining flags.
+  await f.t.mutation(internal.integrations.github.deliveries.process, {
+    receiptId: receipt._id,
+  });
+  expect(await flags()).toMatchObject({ open: 0, closed: 30 });
+  expect(await f.t.run((ctx) => ctx.db.get(receipt._id))).toMatchObject({
+    state: "pending",
+    processedCount: 1,
+  });
+  await processAll(f);
+  expect(await f.t.run((ctx) => ctx.db.get(receipt._id))).toMatchObject({
+    state: "processed",
+    processedCount: 1,
+    cursor: null,
+  });
+});
 test("empty all-to-selected removal blocks late discovery, fresh explicit resync works and added doesn't restore", async () => {
   vi.useFakeTimers();
   const f = await sourceFixture();

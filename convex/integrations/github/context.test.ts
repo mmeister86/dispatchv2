@@ -664,15 +664,8 @@ test.each(closures)(
     await approve(f);
     const guid = crypto.randomUUID();
     expect((await send(f, payload, event, guid)).status).toBe(202);
-    const receipt = await f.t.run((ctx) =>
-      ctx.db
-        .query("githubDeliveryGuids")
-        .withIndex("by_guid", (q) => q.eq("guid", guid))
-        .unique(),
-    );
-    await f.t.mutation(internal.integrations.github.deliveries.process, {
-      receiptId: receipt!.receiptId,
-    });
+    // revoke_user flag cleanup spans several bounded slices; drain them all.
+    await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(1));
     const closed = await f.t.run((ctx) => ctx.db.get(f.repositories[0]));
     expect(closed).toMatchObject({
       access: false,
@@ -698,9 +691,7 @@ test.each(closures)(
     await expect(approve(f)).rejects.toThrow("SOURCE_DISABLED");
     expect(await f.t.run((ctx) => ctx.db.get(f.signal._id))).toEqual(f.signal);
     expect((await send(f, payload, event, guid)).status).toBe(202);
-    await f.t.mutation(internal.integrations.github.deliveries.process, {
-      receiptId: receipt!.receiptId,
-    });
+    await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(1));
     expect(await f.t.run((ctx) => ctx.db.get(f.repositories[0]))).toEqual(
       closed,
     );
