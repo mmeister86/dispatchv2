@@ -956,6 +956,10 @@ test.each(["ready", "running", "stopped", "completed", "failed"] as const)(
   async (state) => {
     const f = await fixture(),
       runId = await f.send();
+    // Settle the scheduled executor first: otherwise it interleaves with the
+    // patch below and its failed-writer clobbers the `running` variant.
+    vi.useFakeTimers();
+    await f.t.finishAllScheduledFunctions(vi.runAllTimers);
     const identity = await f.t.run(async (ctx) => {
       const user = await ctx.runMutation(components.betterAuth.adapter.create, {
         input: {
