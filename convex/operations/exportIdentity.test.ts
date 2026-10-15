@@ -85,11 +85,36 @@ test("own native Auth models are explicitly projected without credentials or for
     "oauthApplication",
     "oauthConsent",
     "oauthAccessToken",
-  ]) {
-    const r = await f.signed.query(page, { ...f.args, model });
-    expect(r.data.rows).toHaveLength(1);
-    expect(JSON.stringify(r.data)).not.toMatch(/SENTINEL|foreign-user/);
-    expect(r.data.excluded).toContain("bearer_tokens");
+  ] as const) {
+    // One batched page emits every own record; foreign records stay excluded.
+    const rows: { recordId: string; data: unknown }[] = [];
+    let cursor: string | null = null,
+      creationUpperBound: number | null = null,
+      isDone = false;
+    for (let i = 0; !isDone && i < 8; i++) {
+      const r: {
+        data: {
+          rows: { recordId: string; data: unknown }[];
+          excluded: string[];
+        };
+        cursor: string | null;
+        creationUpperBound: number;
+        isDone: boolean;
+      } = await f.signed.query(page, {
+        ...f.args,
+        model,
+        cursor,
+        creationUpperBound,
+      });
+      rows.push(...r.data.rows);
+      cursor = r.cursor;
+      creationUpperBound = r.creationUpperBound;
+      isDone = r.isDone;
+      expect(r.data.excluded).toContain("bearer_tokens");
+    }
+    expect(isDone).toBe(true);
+    expect(rows.length).toBeGreaterThan(0);
+    expect(JSON.stringify(rows)).not.toMatch(/SENTINEL|foreign-user/);
   }
 });
 test("identity/session/workspace guards and fixed selectors reject forged scope", async () => {
@@ -119,11 +144,11 @@ test("identity/session/workspace guards and fixed selectors reject forged scope"
     f.signed.query(page, { ...f.args, model: "user" }),
   ).rejects.toThrow("WORKSPACE_INACTIVE");
 });
-test("one-record native cursor continues and omits newly created rows beyond original ceiling", async () => {
+test("batched native cursor emits in-ceiling rows and omits newly created rows beyond original ceiling", async () => {
   vi.useFakeTimers();
   try {
     const f = await setup();
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 30; i++) {
       vi.setSystemTime(Date.now() + 1000);
       await f.t.run((ctx) =>
         ctx.runMutation(components.betterAuth.adapter.create, {
@@ -141,16 +166,9 @@ test("one-record native cursor continues and omits newly created rows beyond ori
       );
     }
     const first = await f.signed.query(page, { ...f.args, model: "account" });
-    expect(first.data.rows).toHaveLength(1);
+    // Per-request candidate cap: at most 25 rows per round-trip.
+    expect(first.data.rows).toHaveLength(25);
     expect(first.isDone).toBe(false);
-    const second = await f.signed.query(page, {
-      ...f.args,
-      model: "account",
-      cursor: first.cursor,
-      creationUpperBound: first.creationUpperBound,
-    });
-    expect(second.data.rows).toHaveLength(1);
-    expect(second.data.rows[0].recordId).not.toBe(first.data.rows[0].recordId);
     vi.setSystemTime(Date.now() + 1000);
     await f.t.run((ctx) =>
       ctx.runMutation(components.betterAuth.adapter.create, {
@@ -166,39 +184,41 @@ test("one-record native cursor continues and omits newly created rows beyond ori
         },
       }),
     );
-    const third = await f.signed.query(page, {
-      ...f.args,
-      model: "account",
-      cursor: second.cursor,
-      creationUpperBound: first.creationUpperBound,
-    });
-    const last = await f.signed.query(page, {
-      ...f.args,
-      model: "account",
-      cursor: third.cursor,
-      creationUpperBound: first.creationUpperBound,
-    });
-    // The admitted credential account from the fixture occupies one
-    // in-ceiling page; drain it before asserting the tail is empty.
-    let end = last.data.rows.length
-      ? await f.signed.query(page, {
-          ...f.args,
-          model: "account",
-          cursor: last.cursor,
-          creationUpperBound: first.creationUpperBound,
-        })
-      : last;
-    expect(end.data.rows).toEqual([]);
-    for (let i = 0; !end.isDone && i < 8; i++) {
-      end = await f.signed.query(page, {
+    const seen = new Map(
+      first.data.rows.map(
+        (r: { recordId: string; data: { accountId: string } }) => [
+          r.recordId,
+          r.data.accountId,
+        ],
+      ),
+    );
+    let received = first.data.rows.length;
+    let cursor: string | null = first.cursor,
+      bound: number | null = first.creationUpperBound,
+      isDone = first.isDone;
+    for (let i = 0; !isDone && i < 8; i++) {
+      const r = await f.signed.query(page, {
         ...f.args,
         model: "account",
-        cursor: end.cursor,
-        creationUpperBound: first.creationUpperBound,
+        cursor,
+        creationUpperBound: bound,
       });
-      expect(end.data.rows).toEqual([]);
+      received += r.data.rows.length;
+      for (const row of r.data.rows) seen.set(row.recordId, row.data.accountId);
+      cursor = r.cursor;
+      bound = r.creationUpperBound;
+      isDone = r.isDone;
     }
-    expect(end.isDone).toBe(true);
+    expect(isDone).toBe(true);
+    // Every created row arrives exactly once (plus the admitted fixture
+    // credential); the late insert is excluded.
+    expect(received).toBe(seen.size);
+    // Every created row arrives exactly once (plus the admitted fixture
+    // credential); the late insert is excluded.
+    expect(seen.size).toBeGreaterThanOrEqual(30);
+    for (let i = 0; i < 30; i++)
+      expect([...seen.values()]).toContain(`account-${i}`);
+    expect([...seen.values()]).not.toContain("late-account");
   } finally {
     vi.useRealTimers();
   }

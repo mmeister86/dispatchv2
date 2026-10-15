@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { workspaceQuery } from "../lib/authorization";
 import { components } from "../_generated/api";
 import { role } from "../schema";
+import { EXPORT_PAGE_CANDIDATES, exportRowsOverBudget } from "./exportShared";
 
 const string = v.optional(v.union(v.string(), v.null()));
 const number = v.optional(v.union(v.number(), v.null()));
@@ -149,56 +150,75 @@ export const page = workspaceQuery({
       ...(a.model === "user" ? [] : ["userId"]),
       ...keys[a.model],
     ];
-    const p = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-      model: a.model,
-      where: [
-        {
-          field: a.model === "user" ? "_id" : "userId",
-          operator: "eq",
-          value: ctx.user.authId,
-        },
-      ],
-      select: projection,
-      paginationOpts: { cursor: a.cursor, numItems: 1 },
-    });
+    let fetchCursor: string | null = a.cursor;
+    let selected: { continueCursor: string; isDone: boolean } | null = null;
     const rows: {
       recordId: string;
       data: Record<string, string | number | boolean | null>;
     }[] = [];
-    for (const r of p.page) {
-      const row = r as Record<string, unknown>;
-      if (
-        (a.model === "user" ? row._id : row.userId) !== ctx.user.authId ||
-        typeof row._id !== "string" ||
-        typeof row._creationTime !== "number" ||
-        !Number.isFinite(row._creationTime)
-      )
-        throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
-      if (row._creationTime > bound) continue;
-      const data: Record<string, string | number | boolean | null> = {};
-      for (const key of keys[a.model]) {
-        const value = row[key];
-        if (value === undefined) continue;
+    for (
+      let candidates = 0;
+      candidates < EXPORT_PAGE_CANDIDATES && !selected?.isDone;
+      candidates++
+    ) {
+      const prior = selected;
+      const p = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+        model: a.model,
+        where: [
+          {
+            field: a.model === "user" ? "_id" : "userId",
+            operator: "eq",
+            value: ctx.user.authId,
+          },
+        ],
+        select: projection,
+        paginationOpts: { cursor: fetchCursor, numItems: 1 },
+      });
+      fetchCursor = p.continueCursor;
+      selected = p;
+      const mark = rows.length;
+      for (const r of p.page) {
+        const row = r as Record<string, unknown>;
         if (
-          value !== null &&
-          typeof value !== "string" &&
-          typeof value !== "boolean" &&
-          typeof value !== "number"
+          (a.model === "user" ? row._id : row.userId) !== ctx.user.authId ||
+          typeof row._id !== "string" ||
+          typeof row._creationTime !== "number" ||
+          !Number.isFinite(row._creationTime)
         )
           throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
-        if (typeof value === "number" && !Number.isFinite(value))
-          throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
-        data[key] = value;
+        if (row._creationTime > bound) continue;
+        const data: Record<string, string | number | boolean | null> = {};
+        for (const key of keys[a.model]) {
+          const value = row[key];
+          if (value === undefined) continue;
+          if (
+            value !== null &&
+            typeof value !== "string" &&
+            typeof value !== "boolean" &&
+            typeof value !== "number"
+          )
+            throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
+          if (typeof value === "number" && !Number.isFinite(value))
+            throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
+          data[key] = value;
+        }
+        rows.push({ recordId: row._id, data });
       }
-      rows.push({ recordId: row._id, data });
+      if (mark > 0 && rows.length > mark && exportRowsOverBudget(rows)) {
+        // Leave this candidate for the next page; the cursor stays at the last kept row.
+        while (rows.length > mark) rows.pop();
+        selected = prior;
+        break;
+      }
     }
+    const committed = selected!;
     const result = {
       authId: ctx.user.authId,
       sessionId: a.expectedSessionId,
       requestKey: a.requestKey,
       workspaceId: ctx.workspace._id,
-      cursor: p.isDone ? null : p.continueCursor,
-      isDone: p.isDone,
+      cursor: committed.isDone ? null : committed.continueCursor,
+      isDone: committed.isDone,
       creationUpperBound: bound,
       observedAt,
       role: ctx.membership.role,

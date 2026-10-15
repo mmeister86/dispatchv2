@@ -1,4 +1,5 @@
 import { ConvexError, v, type Infer, type Validator } from "convex/values";
+import type { FunctionReturnType } from "convex/server";
 import { components } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { QueryCtx } from "../_generated/server";
@@ -8,7 +9,13 @@ import {
   requireWorkspace,
   workspaceQuery,
 } from "../lib/authorization";
-import { numeric, proofContext } from "./exportShared";
+import {
+  EXPORT_PAGE_CANDIDATES,
+  EXPORT_PAGE_MAX_BYTES,
+  exportRowsOverBudget,
+  numeric,
+  proofContext,
+} from "./exportShared";
 import { role } from "../schema";
 import {
   conversationAccess,
@@ -422,6 +429,7 @@ export const conversations = workspaceQuery({
   handler: async (original, a) => {
     const s = await begin(original, a);
     requireReference(original.workspace._id, await s.ctx.db.get(a.accountId));
+    const rows: Infer<typeof conversationRow>[] = [];
     const p = await s.ctx.db
       .query("conversations")
       .withIndex("by_workspaceId_and_accountId_and_actorId", (q) =>
@@ -432,8 +440,11 @@ export const conversations = workspaceQuery({
           .lte("_creationTime", s.selectionUpperBound!),
       )
       .order("asc")
-      .paginate({ numItems: 1, cursor: a.cursor });
-    const rows: Infer<typeof conversationRow>[] = [];
+      .paginate({
+        numItems: EXPORT_PAGE_CANDIDATES,
+        cursor: a.cursor,
+        maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+      });
     for (const c of p.page) {
       binding(c.accountId === a.accountId && c.actorId === original.user._id);
       if (c.state !== "active") continue;
@@ -512,7 +523,10 @@ export const conversations = workspaceQuery({
             version.researchProofUntil <= Date.now());
       }
       if (withdrawn) continue;
-      await conversation(s, { accountId: a.accountId, conversationId: c._id });
+      await conversation(s, {
+        accountId: a.accountId,
+        conversationId: c._id,
+      });
       rows.push({
         conversationId: c._id,
         accountId: c.accountId,
@@ -524,7 +538,9 @@ export const conversations = workspaceQuery({
         state: c.state,
       });
     }
-    return s.finish("conversations", rows, p, { accountId: a.accountId });
+    return s.finish("conversations", rows, p, {
+      accountId: a.accountId,
+    });
   },
 });
 async function messages(
@@ -538,41 +554,63 @@ async function messages(
     threadId,
   });
   binding(thread && thread.userId === actorId);
-  const p = await s.ctx.runQuery(
-    components.agent.messages.listMessagesByThreadId,
-    { threadId, order: "asc", paginationOpts: { numItems: 1, cursor } },
-  );
+  let fetchCursor: string | null = cursor;
+  let selected: { continueCursor: string; isDone: boolean } | null = null;
   const rows: Omit<Infer<typeof messageRow>, "conversationId" | "orderId">[] =
     [];
-  for (const m of p.page) {
-    numeric(m);
-    binding(m.threadId === threadId && (!m.userId || m.userId === actorId));
-    const role = m.message?.role;
-    if (
-      (role !== "user" && role !== "assistant") ||
-      (research && role !== "assistant")
-    )
-      continue;
-    const content = m.message!.content;
-    const text =
-      typeof content === "string"
-        ? content
-        : content
-            .filter((p) => p.type === "text")
-            .map((p) => (p as { text: string }).text)
-            .join("");
-    if (!text) continue;
-    rows.push({
-      messageId: m._id,
-      _creationTime: m._creationTime,
-      order: m.order,
-      stepOrder: m.stepOrder,
-      status: m.status,
-      role,
-      text,
-    });
+  for (
+    let candidates = 0;
+    candidates < EXPORT_PAGE_CANDIDATES && !selected?.isDone;
+    candidates++
+  ) {
+    const prior = selected;
+    const mark = rows.length;
+    const p = await s.ctx.runQuery(
+      components.agent.messages.listMessagesByThreadId,
+      {
+        threadId,
+        order: "asc",
+        paginationOpts: { numItems: 1, cursor: fetchCursor },
+      },
+    );
+    fetchCursor = p.continueCursor;
+    selected = p;
+    for (const m of p.page) {
+      numeric(m);
+      binding(m.threadId === threadId && (!m.userId || m.userId === actorId));
+      const role = m.message?.role;
+      if (
+        (role !== "user" && role !== "assistant") ||
+        (research && role !== "assistant")
+      )
+        continue;
+      const content = m.message!.content;
+      const text =
+        typeof content === "string"
+          ? content
+          : content
+              .filter((p) => p.type === "text")
+              .map((p) => (p as { text: string }).text)
+              .join("");
+      if (!text) continue;
+      rows.push({
+        messageId: m._id,
+        _creationTime: m._creationTime,
+        order: m.order,
+        stepOrder: m.stepOrder,
+        status: m.status,
+        role,
+        text,
+      });
+    }
+    if (mark > 0 && rows.length > mark && exportRowsOverBudget(rows)) {
+      // Leave this candidate for the next page; the cursor stays at the last kept row.
+      while (rows.length > mark) rows.pop();
+      selected = prior;
+      break;
+    }
   }
-  return { p, rows };
+  return { p: selected!, rows };
 }
 export const conversationMessages = workspaceQuery({
   args: { ...correlation, ...own, ...paging },
@@ -595,14 +633,18 @@ export const conversationOperations = workspaceQuery({
   handler: async (original, a) => {
     const s = await begin(original, a),
       c = await conversation(s, a);
+    const rows: Infer<typeof operationRow>[] = [];
     const p = await s.ctx.db
       .query("chatOperations")
       .withIndex("by_conversationId_and_createdAt", (q) =>
         q.eq("conversationId", c._id).lte("createdAt", s.selectionUpperBound!),
       )
       .order("asc")
-      .paginate({ numItems: 1, cursor: a.cursor });
-    const rows: Infer<typeof operationRow>[] = [];
+      .paginate({
+        numItems: EXPORT_PAGE_CANDIDATES,
+        cursor: a.cursor,
+        maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+      });
     for (const op of p.page) {
       if (!(await operationProof(s, c, op, true))) continue;
       rows.push({
@@ -900,6 +942,7 @@ export const targetedOrders = workspaceQuery({
   handler: async (original, a) => {
     const s = await begin(original, a),
       c = await conversation(s, a);
+    const rows: Infer<typeof orderRow>[] = [];
     const p = await s.ctx.db
       .query("researchOrders")
       .withIndex("by_targetedChat_conversationId_and_createdAt", (q) =>
@@ -908,8 +951,11 @@ export const targetedOrders = workspaceQuery({
           .lte("createdAt", s.selectionUpperBound!),
       )
       .order("asc")
-      .paginate({ numItems: 1, cursor: a.cursor });
-    const rows: Infer<typeof orderRow>[] = [];
+      .paginate({
+        numItems: EXPORT_PAGE_CANDIDATES,
+        cursor: a.cursor,
+        maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+      });
     for (const o of p.page) {
       binding(
         o.accountId === c.accountId &&
@@ -946,6 +992,7 @@ export const publicOrders = workspaceQuery({
       original.workspace._id,
       await s.ctx.db.get(profile.accountId),
     );
+    const rows: Infer<typeof orderRow>[] = [];
     const p = await s.ctx.db
       .query("researchOrders")
       .withIndex("by_public_profile_createdAt", (q) =>
@@ -955,8 +1002,11 @@ export const publicOrders = workspaceQuery({
           .lte("createdAt", s.selectionUpperBound!),
       )
       .order("asc")
-      .paginate({ numItems: 1, cursor: a.cursor });
-    const rows: Infer<typeof orderRow>[] = [];
+      .paginate({
+        numItems: EXPORT_PAGE_CANDIDATES,
+        cursor: a.cursor,
+        maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+      });
     for (const o of p.page) {
       binding(
         !o.targetedChat &&
@@ -1042,12 +1092,16 @@ export const orderEvidence = workspaceQuery({
     const s = await begin(original, a),
       o = await orderOwner(s, a.orderId);
     await material(s, o);
+    const rows: Infer<typeof evidenceRow>[] = [];
     const p = await s.ctx.db
       .query("researchEvidence")
       .withIndex("by_orderId_and_createdAt", (q) => q.eq("orderId", o._id))
       .order("asc")
-      .paginate({ numItems: 1, cursor: a.cursor });
-    const rows: Infer<typeof evidenceRow>[] = [];
+      .paginate({
+        numItems: EXPORT_PAGE_CANDIDATES,
+        cursor: a.cursor,
+        maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+      });
     for (const e of p.page) {
       binding(e.orderId === o._id && e.accountId === o.accountId);
       if (e.state === "removed" || !e.payload || e.retentionUntil <= Date.now())
@@ -1221,53 +1275,75 @@ export const workflowSteps = workspaceQuery({
     )
       unavailable();
     s.horizon(pipe.retentionUntil);
-    const p = await s.ctx.runQuery(components.workflow.workflow.listSteps, {
-      workflowId: pipe.workflowId,
-      order: "asc",
-      paginationOpts: { numItems: 1, cursor: a.cursor },
-    });
+    let fetchCursor: string | null = a.cursor;
+    let selected: { continueCursor: string; isDone: boolean } | null = null;
     const rows: Infer<typeof stepRow>[] = [];
-    for (const r of p.page) {
-      numeric(r);
-      const stage = stages[r.name];
-      binding(
-        r.workflowId === pipe.workflowId &&
-          r.kind === "function" &&
-          stage &&
-          r.args &&
-          typeof r.args === "object" &&
-          !Array.isArray(r.args),
-      );
-      const args = r.args as Record<string, unknown>;
-      if (stage === "provider.execute") {
-        binding(Object.keys(args).length === 1 && args.runId === pipe.runId);
-        await researchRun(s, o);
-      } else {
-        binding(
-          args.orderId === o._id &&
-            Number.isSafeInteger(args.generation) &&
-            Number(args.generation) > 0 &&
-            Object.keys(args).length ===
-              (stage === "execute.operation" ? 3 : 2),
-        );
-        if (stage === "execute.operation")
-          binding(
-            o.native!.operations.includes(
-              args.operation as Infer<typeof operation>,
-            ),
-          );
-      }
-      rows.push({
-        orderId: o._id,
-        stepNumber: r.stepNumber,
-        stage,
-        kind: "function",
-        startedAt: r.startedAt,
-        completedAt: r.completedAt,
-        resultKind: r.runResult?.kind ?? "pending",
+    for (
+      let candidates = 0;
+      candidates < EXPORT_PAGE_CANDIDATES && !selected?.isDone;
+      candidates++
+    ) {
+      const prior = selected;
+      const mark = rows.length;
+      // Annotate the component result: this call's generic inference does not
+      // survive the accumulation loop below (TS7022), so pin it explicitly.
+      const p: FunctionReturnType<
+        typeof components.workflow.workflow.listSteps
+      > = await s.ctx.runQuery(components.workflow.workflow.listSteps, {
+        workflowId: pipe.workflowId,
+        order: "asc",
+        paginationOpts: { numItems: 1, cursor: fetchCursor },
       });
+      fetchCursor = p.continueCursor;
+      selected = p;
+      for (const r of p.page) {
+        numeric(r);
+        const stage = stages[r.name];
+        binding(
+          r.workflowId === pipe.workflowId &&
+            r.kind === "function" &&
+            stage &&
+            r.args &&
+            typeof r.args === "object" &&
+            !Array.isArray(r.args),
+        );
+        const args = r.args as Record<string, unknown>;
+        if (stage === "provider.execute") {
+          binding(Object.keys(args).length === 1 && args.runId === pipe.runId);
+          await researchRun(s, o);
+        } else {
+          binding(
+            args.orderId === o._id &&
+              Number.isSafeInteger(args.generation) &&
+              Number(args.generation) > 0 &&
+              Object.keys(args).length ===
+                (stage === "execute.operation" ? 3 : 2),
+          );
+          if (stage === "execute.operation")
+            binding(
+              o.native!.operations.includes(
+                args.operation as Infer<typeof operation>,
+              ),
+            );
+        }
+        rows.push({
+          orderId: o._id,
+          stepNumber: r.stepNumber,
+          stage,
+          kind: "function",
+          startedAt: r.startedAt,
+          completedAt: r.completedAt,
+          resultKind: r.runResult?.kind ?? "pending",
+        });
+      }
+      if (mark > 0 && rows.length > mark && exportRowsOverBudget(rows)) {
+        while (rows.length > mark) rows.pop();
+        selected = prior;
+        break;
+      }
     }
-    return s.finish("workflowSteps", rows, p, {
+    const committed = selected!;
+    return s.finish("workflowSteps", rows, committed, {
       orderId: o._id,
       accountId: o.accountId,
     });

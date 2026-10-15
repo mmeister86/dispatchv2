@@ -2,6 +2,7 @@ import { draftResearchProof } from "../research/contentProof";
 import { ConvexError, v } from "convex/values";
 import { requireRole, workspaceQuery } from "../lib/authorization";
 import { profile, role } from "../schema";
+import { EXPORT_PAGE_CANDIDATES, EXPORT_PAGE_MAX_BYTES } from "./exportShared";
 const data = v.object({
   format: v.literal("dispatch-self-profile"),
   version: v.literal(1),
@@ -177,6 +178,8 @@ export const versions = workspaceQuery({
     )
       throw new ConvexError("EXPORT_REQUEST_INVALID");
     const creationUpperBound = a.creationUpperBound ?? observedAt;
+    let proofValidUntil = observedAt + 30_000;
+    const rows = [];
     const page = await ctx.db
       .query("draftVersions")
       .withIndex("by_workspaceId", (q) =>
@@ -185,10 +188,11 @@ export const versions = workspaceQuery({
           .lte("_creationTime", creationUpperBound),
       )
       .order("asc")
-      .paginate({ numItems: 1, cursor: a.cursor });
-    if (page.page.length > 1) throw new ConvexError("EXPORT_DATA_UNAVAILABLE");
-    let proofValidUntil = observedAt + 30_000;
-    const rows = [];
+      .paginate({
+        numItems: EXPORT_PAGE_CANDIDATES,
+        cursor: a.cursor,
+        maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+      });
     for (const ver of page.page) {
       if (ver.workspaceId !== ctx.workspace._id)
         throw new ConvexError("REFERENCE_ACCESS_DENIED");

@@ -95,16 +95,20 @@ test("native run discovery continues with stable bound and rejects account/sessi
   const firstRun = await f.create();
   await f.create();
   const first = await f.signed.query(page, { ...a, family: "ownFinanceRuns" });
-  expect(first.data.selection.rows).toHaveLength(1);
+  // One batched page emits both runs with distinct identities; the tail page
+  // is empty and the bound stays stable across continuation.
+  expect(first.data.selection.rows).toHaveLength(2);
+  expect(first.data.selection.rows[0].id).not.toBe(
+    first.data.selection.rows[1].id,
+  );
   const second = await f.signed.query(page, {
     ...a,
     family: "ownFinanceRuns",
     cursor: first.cursor,
     creationUpperBound: first.creationUpperBound,
   });
-  expect(second.data.selection.rows[0].id).not.toBe(
-    first.data.selection.rows[0].id,
-  );
+  expect(second.data.selection.rows).toEqual([]);
+  expect(second.isDone).toBe(true);
   await expect(
     f.signed.query(page, {
       ...a,

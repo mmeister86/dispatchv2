@@ -24,7 +24,12 @@ import {
   workspaceQuery,
 } from "../lib/authorization";
 import { role } from "../schema";
-import { numeric, proofContext } from "./exportShared";
+import {
+  EXPORT_PAGE_CANDIDATES,
+  EXPORT_PAGE_MAX_BYTES,
+  numeric,
+  proofContext,
+} from "./exportShared";
 import { source as assessmentSource } from "../intelligence/assessments";
 import { analyzerReceipt } from "../ai/jev/access";
 import {
@@ -1543,7 +1548,6 @@ export const page = workspaceQuery({
     };
     let selected: { continueCursor: string; isDone: boolean };
     const rows: Infer<typeof row>[] = [];
-    const opts = { numItems: 1, cursor: a.cursor };
     switch (a.family) {
       case "historyPosts":
       case "historyJobs":
@@ -1561,7 +1565,11 @@ export const page = workspaceQuery({
               .eq("accountId", a.accountId!)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const value of p.page) {
           binding(value.workspaceId === ws && value.accountId === a.accountId);
@@ -1604,12 +1612,20 @@ export const page = workspaceQuery({
                 r.maxResults,
               ])
                 binding(Number.isSafeInteger(n) && n >= 0);
-              rows.push({ ...base, id: r._id, ...pick(r, historyPolicyKeys) });
+              rows.push({
+                ...base,
+                id: r._id,
+                ...pick(r, historyPolicyKeys),
+              });
               break;
             }
             case "historyControls": {
               const r = value as Doc<"historyControls">;
-              rows.push({ ...base, id: r._id, ...pick(r, historyControlKeys) });
+              rows.push({
+                ...base,
+                id: r._id,
+                ...pick(r, historyControlKeys),
+              });
               break;
             }
             case "historyJobs": {
@@ -1784,7 +1800,11 @@ export const page = workspaceQuery({
               .eq("draftId", a.draftId!)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           const ver = await draftReferences(
@@ -1837,7 +1857,11 @@ export const page = workspaceQuery({
               .eq("actorId", original.user._id)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(r.actorId === original.user._id);
@@ -1882,7 +1906,11 @@ export const page = workspaceQuery({
               .eq("kind", a.kind!)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           await updateReferences(ctx, r);
@@ -1926,7 +1954,11 @@ export const page = workspaceQuery({
               .eq("surface", "for_you")
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page)
           rows.push({ id: r._id, ...pick(r, audienceKeys) });
@@ -1945,7 +1977,11 @@ export const page = workspaceQuery({
               .eq("surface", "for_you")
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           for (const id of [r.algorithmId, r.audienceId])
@@ -1967,7 +2003,11 @@ export const page = workspaceQuery({
               .eq("accountId", a.accountId!)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           if (r.baseVersionId)
@@ -2011,7 +2051,11 @@ export const page = workspaceQuery({
               .eq("accountId", a.accountId!)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           if (r.selectedVersionId) {
@@ -2042,7 +2086,11 @@ export const page = workspaceQuery({
               .eq("accountId", a.accountId!)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           if (r.versionId) await scoped(ctx, r.versionId, ws, a.accountId);
@@ -2069,7 +2117,11 @@ export const page = workspaceQuery({
               .eq("accountId", a.accountId!)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           const base = await scoped(ctx, r.baseVersionId, ws, a.accountId),
@@ -2139,7 +2191,11 @@ export const page = workspaceQuery({
               .eq("verification.actorId", original.user._id)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           requireReference(ws, await ctx.db.get(r.accountId));
@@ -2165,7 +2221,11 @@ export const page = workspaceQuery({
               .eq("actorId", original.user._id)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(r.actorId === original.user._id);
@@ -2282,7 +2342,11 @@ export const page = workspaceQuery({
               .eq("surface", "for_you")
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(r.workspaceId === ws && r.accountId === a.accountId);
@@ -2300,7 +2364,11 @@ export const page = workspaceQuery({
               .eq("actorId", original.user._id)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(
@@ -2357,7 +2425,11 @@ export const page = workspaceQuery({
               .eq("actorId", original.user._id)
               .lte("_creationTime", creationUpperBound),
           )
-          .paginate(opts);
+          .paginate({
+            numItems: EXPORT_PAGE_CANDIDATES,
+            cursor: a.cursor,
+            maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+          });
         selected = p;
         for (const r of p.page) {
           binding(r.actorId === original.user._id && r.workspaceId === ws);

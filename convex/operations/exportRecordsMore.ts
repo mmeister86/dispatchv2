@@ -7,6 +7,7 @@ import {
   recoveryFields,
 } from "../integrations/github/signalFields";
 import { checkSource } from "../integrations/github/repositories";
+import { EXPORT_PAGE_CANDIDATES, EXPORT_PAGE_MAX_BYTES } from "./exportShared";
 import { checkRecoverySource } from "../integrations/github/recoveryState";
 import {
   candidateProof,
@@ -150,7 +151,11 @@ export async function morePage(
   email: string | null,
   horizon: (n: number | null) => void,
 ) {
-  const opts = { numItems: 1, cursor: a.cursor },
+  const opts = {
+      numItems: EXPORT_PAGE_CANDIDATES,
+      cursor: a.cursor,
+      maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
+    },
     rows: Infer<typeof moreRow>[] = [];
   const walk = materialWalk();
   if (a.family === "mediaVersionReferences") {

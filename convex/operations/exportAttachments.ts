@@ -3,6 +3,7 @@ import { workspaceQuery, requireWorkspace } from "../lib/authorization";
 import { internalQuery, type QueryCtx } from "../_generated/server";
 import { components } from "../_generated/api";
 import { ownedAttachmentThread } from "./exportPrivate";
+import { EXPORT_PAGE_CANDIDATES, exportRowsOverBudget } from "./exportShared";
 import { role } from "../schema";
 export const parent = v.union(
   v.object({
@@ -255,14 +256,8 @@ export const list = workspaceQuery({
       ...a,
       workspaceId: ctx.workspace._id,
     });
-    const p = await ctx.runQuery(
-      components.agent.messages.listMessagesByThreadId,
-      {
-        threadId: proof.threadId,
-        order: "asc",
-        paginationOpts: { cursor: a.cursor, numItems: 1 },
-      },
-    );
+    let fetchCursor: string | null = a.cursor;
+    let selected: { continueCursor: string; isDone: boolean } | null = null;
     const rows: {
       messageId: string;
       stored: number;
@@ -271,47 +266,72 @@ export const list = workspaceQuery({
         disposition: "inline" | "stored-reference" | "unsupported-reference";
       }[];
     }[] = [];
-    for (const m of p.page) {
-      if (
-        m.threadId !== proof.threadId ||
-        (m.userId && m.userId !== proof.actorId)
-      )
-        denied();
-      if (
-        !m.message ||
-        !["user", "assistant"].includes(m.message.role) ||
-        (a.parent.kind === "research" && m.message.role !== "assistant")
-      )
-        continue;
-      const stored = m.fileIds?.length ?? 0;
-      if (stored > 25) throw new ConvexError("EXPORT_ATTACHMENT_TOO_LARGE");
-      const aliases = new Set<string>();
-      for (const fileId of m.fileIds ?? []) {
-        const f = await ctx.runQuery(components.agent.files.get, { fileId });
-        if (!f) denied();
-        const id = ctx.db.system.normalizeId("_storage", f.storageId);
-        if (!id) denied();
-        const url = await ctx.storage.getUrl(id);
-        if (url) aliases.add(url);
-      }
-      const inline: (typeof rows)[number]["inline"] = [];
-      if (Array.isArray(m.message.content))
-        m.message.content.forEach((part, index) => {
-          if (part.type !== "file" && part.type !== "image") return;
-          const value = part.type === "file" ? part.data : part.image;
-          inline.push({
-            index,
-            disposition:
-              typeof value === "string" && aliases.has(value)
-                ? "stored-reference"
-                : inlineBytes(value)
-                  ? "inline"
-                  : "unsupported-reference",
+    for (
+      let candidates = 0;
+      candidates < EXPORT_PAGE_CANDIDATES && !selected?.isDone;
+      candidates++
+    ) {
+      const prior = selected;
+      const p = await ctx.runQuery(
+        components.agent.messages.listMessagesByThreadId,
+        {
+          threadId: proof.threadId,
+          order: "asc",
+          paginationOpts: { cursor: fetchCursor, numItems: 1 },
+        },
+      );
+      fetchCursor = p.continueCursor;
+      selected = p;
+      const mark = rows.length;
+      for (const m of p.page) {
+        if (
+          m.threadId !== proof.threadId ||
+          (m.userId && m.userId !== proof.actorId)
+        )
+          denied();
+        if (
+          !m.message ||
+          !["user", "assistant"].includes(m.message.role) ||
+          (a.parent.kind === "research" && m.message.role !== "assistant")
+        )
+          continue;
+        const stored = m.fileIds?.length ?? 0;
+        if (stored > 25) throw new ConvexError("EXPORT_ATTACHMENT_TOO_LARGE");
+        const aliases = new Set<string>();
+        for (const fileId of m.fileIds ?? []) {
+          const f = await ctx.runQuery(components.agent.files.get, { fileId });
+          if (!f) denied();
+          const id = ctx.db.system.normalizeId("_storage", f.storageId);
+          if (!id) denied();
+          const url = await ctx.storage.getUrl(id);
+          if (url) aliases.add(url);
+        }
+        const inline: (typeof rows)[number]["inline"] = [];
+        if (Array.isArray(m.message.content))
+          m.message.content.forEach((part, index) => {
+            if (part.type !== "file" && part.type !== "image") return;
+            const value = part.type === "file" ? part.data : part.image;
+            inline.push({
+              index,
+              disposition:
+                typeof value === "string" && aliases.has(value)
+                  ? "stored-reference"
+                  : inlineBytes(value)
+                    ? "inline"
+                    : "unsupported-reference",
+            });
           });
-        });
-      if (stored || inline.length)
-        rows.push({ messageId: m._id, stored, inline });
+        if (stored || inline.length)
+          rows.push({ messageId: m._id, stored, inline });
+      }
+      if (mark > 0 && rows.length > mark && exportRowsOverBudget(rows)) {
+        // Leave this candidate for the next page; the cursor stays at the last kept row.
+        while (rows.length > mark) rows.pop();
+        selected = prior;
+        break;
+      }
     }
+    const committed = selected!;
     return {
       authId: proof.authId,
       sessionId: proof.sessionId,
@@ -319,8 +339,8 @@ export const list = workspaceQuery({
       role: proof.role,
       proofValidUntil: proof.proofValidUntil,
       workspaceId: ctx.workspace._id,
-      cursor: p.continueCursor,
-      isDone: p.isDone,
+      cursor: committed.continueCursor,
+      isDone: committed.isDone,
       rows,
     };
   },

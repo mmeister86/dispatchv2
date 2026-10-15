@@ -583,6 +583,14 @@ test("native public source check, proposal and independent evaluation remain exa
     family: "algorithmProfiles",
     accountId: f.scope.accountId,
   });
+  // One batched page already emits the retired draft profile; the tail page
+  // is empty.
+  expect(
+    profiles.data.selection.rows.find(
+      (r: { id: string }) => r.id === draft.algorithmId,
+    ),
+  ).toMatchObject({ id: draft.algorithmId, status: "retired" });
+  expect(profiles.isDone).toBe(true);
   const next = await f.signed.query(page, {
     ...args,
     family: "algorithmProfiles",
@@ -590,10 +598,8 @@ test("native public source check, proposal and independent evaluation remain exa
     cursor: profiles.cursor,
     creationUpperBound: profiles.creationUpperBound,
   });
-  expect(next.data.selection.rows[0]).toMatchObject({
-    id: draft.algorithmId,
-    status: "retired",
-  });
+  expect(next.data.selection.rows).toEqual([]);
+  expect(next.isDone).toBe(true);
 });
 test("native composite first, repair child and final results keep original envelope after deadline", async () => {
   const f = await repairableComposite(),
@@ -844,7 +850,9 @@ test("native creation bound excludes records added between pages", async () => {
     ...f.args,
     family: "ownAssessmentRequests",
   });
-  expect(first.data.selection.rows).toHaveLength(1);
+  // One batched page emits both in-ceiling requests.
+  expect(first.data.selection.rows).toHaveLength(2);
+  expect(first.isDone).toBe(true);
   vi.advanceTimersByTime(100);
   await f.signed.mutation(internal.intelligence.assessments.prepare, {
     workspaceId: f.workspaceId,
@@ -859,9 +867,10 @@ test("native creation bound excludes records added between pages", async () => {
     cursor: first.cursor,
     creationUpperBound: first.creationUpperBound,
   });
-  expect(second.data.selection.rows).toHaveLength(1);
+  // The record added between pages stays outside the original ceiling; the
+  // drained tail page is empty.
+  expect(second.data.selection.rows).toEqual([]);
   expect(second.isDone).toBe(true);
-  expect(second.cursor).not.toBe(first.cursor);
 });
 test.each([NaN, Infinity, -0])(
   "whole candidate fails on non-JSON numeric value %s",
@@ -1443,28 +1452,24 @@ test("native retained style maximum graph sentinel fails the final candidate ins
     await ctx.db.insert("styleProfileVersions", { ...r, baseVersionId: _id });
   });
   vi.advanceTimersByTime(1);
-  let cursor: string | null = null,
-    creationUpperBound: number | null = null;
-  for (let i = 0; i < 32; i++) {
-    const p: any = await f.signed.query(page, {
-      ...f.args,
-      family: "styleVersions",
-      accountId: f.request.accountId,
-      cursor,
-      creationUpperBound,
-    });
-    expect(p.data.selection.rows).toHaveLength(1);
-    expect(p.isDone).toBe(false);
-    cursor = p.cursor;
-    creationUpperBound = p.creationUpperBound;
-  }
+  const first: any = await f.signed.query(page, {
+    ...f.args,
+    family: "styleVersions",
+    accountId: f.request.accountId,
+    cursor: null,
+    creationUpperBound: null,
+  });
+  // The per-request candidate cap emits the first 25 revisions; walking the
+  // over-limit duplicate on the next page still fails closed.
+  expect(first.data.selection.rows).toHaveLength(25);
+  expect(first.isDone).toBe(false);
   await expect(
     f.signed.query(page, {
       ...f.args,
       family: "styleVersions",
       accountId: f.request.accountId,
-      cursor,
-      creationUpperBound,
+      cursor: first.cursor,
+      creationUpperBound: first.creationUpperBound,
     }),
   ).rejects.toThrow("STYLE_ANCESTRY_LIMIT");
 });
