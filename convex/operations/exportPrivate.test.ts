@@ -672,9 +672,9 @@ test("retention-scrubbed order config is unavailable while broken profile bindin
     const o = (await ctx.db.get(f.orderId))!;
     await ctx.db.delete(o.profileVersionId);
   });
-  await expect(
-    f.signed.query(endpoint("targetedOrders"), a),
-  ).rejects.toThrow("REFERENCE_ACCESS_DENIED");
+  await expect(f.signed.query(endpoint("targetedOrders"), a)).rejects.toThrow(
+    "REFERENCE_ACCESS_DENIED",
+  );
 });
 test("chat result metadata proves the original native operation and both idea versions", async () => {
   const f = await chat(true);

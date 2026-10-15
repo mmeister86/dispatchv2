@@ -72,7 +72,9 @@ test("public deletion requires fixed native guard and cannot start a partially p
       confirmation: "delete-workspace",
     }),
   ).rejects.toThrow("FIXED_GUARD_REQUIRED");
-  expect((await t.run((ctx) => ctx.db.get(workspaceId)))!.lifecycle).toBeUndefined();
+  expect(
+    (await t.run((ctx) => ctx.db.get(workspaceId)))!.lifecycle,
+  ).toBeUndefined();
 });
 test("bounded populated workspace deletion removes drafts and descendants and preserves another tenant", async () => {
   const f = await fixture();
