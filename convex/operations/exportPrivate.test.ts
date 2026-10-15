@@ -442,6 +442,67 @@ test("private wire rejects unsafe numbers, oversize UTF8 and native thread subst
     f.signed.query(endpoint("conversationMessages"), a),
   ).rejects.toThrow("REFERENCE_ACCESS_DENIED");
 });
+test("batched private oversize window fails retryable and drains completely one row at a time", async () => {
+  const f = await chat();
+  const ids = [f.conversationId];
+  for (let i = 0; i < 6; i++)
+    ids.push(
+      await f.signed.mutation(api.ai.conversations.create, {
+        workspaceId: f.workspaceId,
+        accountId: f.accountId,
+        operationKey: `narrow-private-${i}`,
+      }),
+    );
+  await f.t.run(async (ctx) => {
+    for (const [i, id] of ids.entries()) {
+      // Fresh creates are inactive until first send; activate directly so
+      // every candidate is export-eligible like the archive fixture's.
+      await ctx.db.patch(id, {
+        state: "active",
+        title: "t".repeat(i < 6 ? 3500 : 45000),
+      });
+    }
+  });
+  vi.setSystemTime(Date.now() + 1000);
+  const a = {
+    ...f.args,
+    accountId: f.accountId,
+    cursor: null,
+    selectionUpperBound: null,
+  };
+  // Individually healthy rows whose combination overflows the DTO cannot
+  // advance with wide pages: the same cursor throws identically.
+  await expect(f.signed.query(endpoint("conversations"), a)).rejects.toThrow(
+    "EXPORT_PAGE_OVERSIZED",
+  );
+  // Opt-in narrow pages export every row exactly once, in creation order.
+  const seen: string[] = [];
+  let cursor: string | null = null,
+    bound: number | null = null,
+    isDone = false,
+    pages = 0;
+  while (!isDone && pages < 16) {
+    const r: {
+      data: { selection: { rows: { conversationId: string }[] } };
+      cursor: string;
+      selectionUpperBound: number;
+      isDone: boolean;
+    } = await f.signed.query(endpoint("conversations"), {
+      ...a,
+      narrowPage: true,
+      cursor,
+      selectionUpperBound: bound,
+    });
+    pages++;
+    expect(r.data.selection.rows.length).toBeLessThanOrEqual(1);
+    seen.push(...r.data.selection.rows.map((row) => row.conversationId));
+    cursor = r.cursor;
+    bound = r.selectionUpperBound;
+    isDone = r.isDone;
+  }
+  expect(seen).toEqual(ids);
+  expect(isDone).toBe(true);
+});
 test("immutable own discovery pages ignore unrelated actors and updatedAt changes", async () => {
   const f = await chat();
   const second = await f.signed.mutation(api.ai.conversations.create, {

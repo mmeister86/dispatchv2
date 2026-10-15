@@ -444,7 +444,7 @@ export const conversations = workspaceQuery({
       )
       .order("asc")
       .paginate({
-        numItems: EXPORT_PAGE_CANDIDATES,
+        numItems: a.narrowPage === true ? 1 : EXPORT_PAGE_CANDIDATES,
         cursor: a.cursor,
         maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
       });
@@ -644,7 +644,7 @@ export const conversationOperations = workspaceQuery({
       )
       .order("asc")
       .paginate({
-        numItems: EXPORT_PAGE_CANDIDATES,
+        numItems: a.narrowPage === true ? 1 : EXPORT_PAGE_CANDIDATES,
         cursor: a.cursor,
         maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
       });
@@ -955,7 +955,7 @@ export const targetedOrders = workspaceQuery({
       )
       .order("asc")
       .paginate({
-        numItems: EXPORT_PAGE_CANDIDATES,
+        numItems: a.narrowPage === true ? 1 : EXPORT_PAGE_CANDIDATES,
         cursor: a.cursor,
         maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
       });
@@ -1006,7 +1006,7 @@ export const publicOrders = workspaceQuery({
       )
       .order("asc")
       .paginate({
-        numItems: EXPORT_PAGE_CANDIDATES,
+        numItems: a.narrowPage === true ? 1 : EXPORT_PAGE_CANDIDATES,
         cursor: a.cursor,
         maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
       });
@@ -1101,7 +1101,7 @@ export const orderEvidence = workspaceQuery({
       .withIndex("by_orderId_and_createdAt", (q) => q.eq("orderId", o._id))
       .order("asc")
       .paginate({
-        numItems: EXPORT_PAGE_CANDIDATES,
+        numItems: a.narrowPage === true ? 1 : EXPORT_PAGE_CANDIDATES,
         cursor: a.cursor,
         maximumBytesRead: EXPORT_PAGE_MAX_BYTES,
       });
