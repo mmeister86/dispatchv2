@@ -41,7 +41,7 @@ import {
   type Workspace,
 } from "./model";
 const KEY = "dispatch-demo-v1";
-function readState(): AppState {
+export function readState(): AppState {
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) {
@@ -56,7 +56,10 @@ function readState(): AppState {
           s.ideas,
           s.media,
         ].every(Array.isArray) &&
-        s.preferences
+        // preferences.name feeds .slice() in App.tsx and timezone feeds
+        // Intl/formatDate call sites; fall back to seed unless both are strings.
+        typeof s.preferences?.name === "string" &&
+        typeof s.preferences?.timezone === "string"
       )
         return s;
     }
