@@ -879,3 +879,129 @@ test("second deletion refreshes email cooldown", async () => {
   }
   expect(result).toBeNull();
 });
+
+test("admission retention sweep deletes stale rows and keeps fresh ones", async () => {
+  const t = setup();
+  await t.mutation(internal.operations.authAdmission.initialize, {});
+  const stale = Date.now() - 31 * 86400000;
+  const ids = await t.run(async (ctx) => {
+    const fresh = await ctx.db.insert("authLeases", {
+      startedAt: Date.now(),
+      originalStartedAt: Date.now(),
+      expiresAt: Date.now() + 60000,
+      path: "/sign-up/email",
+      source: "current",
+      proven: true,
+      generation: "fresh",
+      state: "complete",
+    });
+    const waiting = await ctx.db.insert("authLeases", {
+      startedAt: stale,
+      originalStartedAt: stale,
+      expiresAt: stale,
+      path: "/sign-up/email",
+      source: "current",
+      proven: false,
+      generation: "waiting",
+      state: "active",
+    });
+    const retired = await ctx.db.insert("authLeases", {
+      startedAt: stale,
+      originalStartedAt: stale,
+      expiresAt: stale,
+      path: "/sign-up/email",
+      source: "current",
+      proven: true,
+      generation: "retired",
+      state: "revoked",
+    });
+    const permit = await ctx.db.insert("authWritePermits", {
+      nonce: "retired-nonce",
+      leaseId: retired,
+      model: "session",
+      operation: "create",
+      operationDigest: "synthetic",
+      consumed: true,
+    });
+    const link = await ctx.db.insert("authLeaseSessions", {
+      leaseId: retired,
+      authId: "synthetic",
+      sessionId: "synthetic",
+      generation: "retired",
+    });
+    const issuance = await ctx.db.insert("authEmailIssuance", {
+      tokenDigest: "retired",
+      authId: "synthetic",
+      generation: "retired",
+      issuedAt: stale,
+      expiresAt: stale,
+      leaseId: retired,
+    });
+    const journal = await ctx.db.insert("authVerificationJournal", {
+      nativeId: "retired",
+      identifierDigest: "retired",
+      createdAt: stale,
+      expiresAt: stale,
+      producer: "unproven",
+      consumed: true,
+    });
+    const liveIssuance = await ctx.db.insert("authEmailIssuance", {
+      tokenDigest: "live",
+      authId: "synthetic",
+      generation: "fresh",
+      issuedAt: Date.now(),
+      expiresAt: Date.now() + 60000,
+      leaseId: fresh,
+    });
+    return {
+      fresh,
+      waiting,
+      retired,
+      permit,
+      link,
+      issuance,
+      journal,
+      liveIssuance,
+    };
+  });
+  await t.mutation(internal.operations.authAdmission.sweep, {
+    cursor: null,
+    phase: "leases",
+  });
+  await t.mutation(internal.operations.authAdmission.sweep, {
+    cursor: null,
+    phase: "issuance",
+  });
+  await t.mutation(internal.operations.authAdmission.sweep, {
+    cursor: null,
+    phase: "journal",
+  });
+  const remaining = await t.run(async (ctx) => ({
+    retired: await ctx.db.get(ids.retired),
+    permit: await ctx.db.get(ids.permit),
+    link: await ctx.db.get(ids.link),
+    issuance: await ctx.db.get(ids.issuance),
+    journal: await ctx.db.get(ids.journal),
+    fresh: await ctx.db.get(ids.fresh),
+    waiting: await ctx.db.get(ids.waiting),
+    liveIssuance: await ctx.db.get(ids.liveIssuance),
+  }));
+  expect(remaining.retired).toBeNull();
+  expect(remaining.permit).toBeNull();
+  expect(remaining.link).toBeNull();
+  expect(remaining.issuance).toBeNull();
+  expect(remaining.journal).toBeNull();
+  expect(remaining.fresh).not.toBeNull();
+  expect(remaining.waiting).not.toBeNull();
+  expect(remaining.liveIssuance).not.toBeNull();
+  // A deleted lease stays fail-closed: no new permit can be issued against it.
+  await expect(
+    t.mutation(internal.operations.authAdmission.issuePermit, {
+      leaseId: ids.retired,
+      nonce: crypto.randomUUID(),
+      model: "session",
+      operation: "create",
+      operationDigest: "synthetic",
+    }),
+  ).rejects.toThrow("AUTH_REQUEST_EXPIRED");
+});

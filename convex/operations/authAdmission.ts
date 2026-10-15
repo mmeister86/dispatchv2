@@ -996,3 +996,76 @@ export const purgeNativePage = internalMutation({
     return { processed: page.count };
   },
 });
+
+// Expired admission rows are never read as authority: every reader treats a
+// missing lease/proof as unproven or denied (see consumePermit, issuePermit,
+// recordEmailIssuance, finishLease, beginLease, recoverLease), so the sweep
+// below only deletes rows 30 days past expiry. Native session rows are never
+// touched here; recoverLease already reaps them at lease expiry.
+const admissionRetention = 30 * 86400000;
+export const sweep = internalMutation({
+  args: {
+    cursor: v.union(v.string(), v.null()),
+    phase: v.union(
+      v.literal("leases"),
+      v.literal("issuance"),
+      v.literal("journal"),
+    ),
+  },
+  returns: v.null(),
+  handler: async (ctx, a) => {
+    const cutoff = Date.now() - admissionRetention;
+    if (a.phase === "leases") {
+      const page = await ctx.db
+        .query("authLeases")
+        .paginate({ cursor: a.cursor, numItems: 50 });
+      for (const lease of page.page) {
+        if (lease.state === "active" || lease.expiresAt >= cutoff) continue;
+        for (const permit of await ctx.db
+          .query("authWritePermits")
+          .withIndex("by_leaseId", (q) => q.eq("leaseId", lease._id))
+          .collect())
+          await ctx.db.delete(permit._id);
+        for (const session of await ctx.db
+          .query("authLeaseSessions")
+          .withIndex("by_leaseId", (q) => q.eq("leaseId", lease._id))
+          .collect())
+          await ctx.db.delete(session._id);
+        await ctx.db.delete(lease._id);
+      }
+      await ctx.scheduler.runAfter(
+        0,
+        internal.operations.authAdmission.sweep,
+        page.isDone
+          ? { cursor: null, phase: "issuance" }
+          : { cursor: page.continueCursor, phase: "leases" },
+      );
+    } else if (a.phase === "issuance") {
+      const page = await ctx.db
+        .query("authEmailIssuance")
+        .paginate({ cursor: a.cursor, numItems: 50 });
+      for (const row of page.page)
+        if (row.expiresAt < cutoff) await ctx.db.delete(row._id);
+      await ctx.scheduler.runAfter(
+        0,
+        internal.operations.authAdmission.sweep,
+        page.isDone
+          ? { cursor: null, phase: "journal" }
+          : { cursor: page.continueCursor, phase: "issuance" },
+      );
+    } else {
+      const page = await ctx.db
+        .query("authVerificationJournal")
+        .paginate({ cursor: a.cursor, numItems: 50 });
+      for (const row of page.page)
+        if (row.expiresAt < cutoff) await ctx.db.delete(row._id);
+      if (!page.isDone)
+        await ctx.scheduler.runAfter(
+          0,
+          internal.operations.authAdmission.sweep,
+          { cursor: page.continueCursor, phase: "journal" },
+        );
+    }
+    return null;
+  },
+});

@@ -99,6 +99,12 @@ crons.interval(
   { cursor: null, phase: "invitations" },
 );
 crons.interval(
+  "Auth admission retention cleanup",
+  { minutes: 15 },
+  internal.operations.authAdmission.sweep,
+  { cursor: null, phase: "leases" },
+);
+crons.interval(
   "Exact editorial review proof cleanup",
   { minutes: 15 },
   internal.editorial.reviews.sweep,
