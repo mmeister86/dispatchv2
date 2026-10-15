@@ -508,8 +508,10 @@ export const resume = internalMutation({
 });
 // Processed receipts are only re-resolved inside the 24h recovery window
 // (recovery.ts stops the provider scan at startedAt − 24h), so receipts
-// processed over 30 days ago — plus their GUID alias rows — are removed here.
-// Pending receipts are never touched; githubSignals are never touched.
+// processed over 30 days ago — plus their GUID alias rows — are removed here,
+// unless a githubSignals row still references the receipt: context and export
+// reads re-verify the receipt, so referenced receipts survive regardless of
+// age. Pending receipts are never touched; githubSignals are never touched.
 const receiptRetention = 30 * 86400000;
 export const sweep = internalMutation({
   args: { cursor: v.union(v.string(), v.null()) },
@@ -521,6 +523,11 @@ export const sweep = internalMutation({
       .paginate({ cursor: a.cursor, numItems: 25 });
     for (const r of page.page) {
       if (r.state !== "processed" || r.latestReceivedAt >= cutoff) continue;
+      const referenced = await ctx.db
+        .query("githubSignals")
+        .filter((q) => q.eq(q.field("receiptId"), r._id))
+        .first();
+      if (referenced) continue;
       for (const g of await ctx.db
         .query("githubDeliveryGuids")
         .filter((q) => q.eq(q.field("receiptId"), r._id))

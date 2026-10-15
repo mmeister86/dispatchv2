@@ -735,7 +735,7 @@ test("empty all-to-selected removal blocks late discovery, fresh explicit resync
     parseEvent("installation", { action: "unsuspend", installation }),
   ).toBe(null);
 });
-test("retention sweep deletes old processed receipts and GUIDs, keeps fresh/pending and signals", async () => {
+test("retention sweep deletes only unreferenced old processed receipts and GUIDs", async () => {
   vi.useFakeTimers();
   const f = await sourceFixture();
   const oldGuid = crypto.randomUUID();
@@ -746,19 +746,40 @@ test("retention sweep deletes old processed receipts and GUIDs, keeps fresh/pend
       .status,
   ).toBe(202);
   await processAll(f);
+  // A blocked receipt processes without producing any signal.
+  await f.t.run((ctx) =>
+    ctx.db.patch(f.repositories[0], { monitoring: false, content: false }),
+  );
+  const unreferencedGuid = crypto.randomUUID();
+  expect(
+    (
+      await send(
+        f,
+        { ...push, after: "5".repeat(40) },
+        "push",
+        unreferencedGuid,
+      )
+    ).status,
+  ).toBe(202);
+  await processAll(f);
   const receipts = await f.t.run((ctx) =>
     ctx.db.query("githubWebhookReceipts").collect(),
   );
-  expect(receipts).toHaveLength(2);
+  expect(receipts).toHaveLength(3);
   expect(
     await f.t.run((ctx) => ctx.db.query("githubSignals").collect()),
   ).toHaveLength(2);
   const old = receipts.find((r) => r.guid === oldGuid)!;
   const fresh = receipts.find((r) => r.guid === freshGuid)!;
+  const unreferenced = receipts.find((r) => r.guid === unreferencedGuid)!;
   expect(old.state).toBe("processed");
-  await f.t.run((ctx) =>
-    ctx.db.patch(old._id, { latestReceivedAt: Date.now() - 31 * 86400000 }),
-  );
+  expect(unreferenced.state).toBe("processed");
+  // Age both processed receipts past retention; only the signal-referenced
+  // one must survive.
+  await f.t.run(async (ctx) => {
+    for (const id of [old._id, unreferenced._id])
+      await ctx.db.patch(id, { latestReceivedAt: Date.now() - 31 * 86400000 });
+  });
   // An old but still-pending receipt is never swept.
   const pendingGuid = crypto.randomUUID();
   expect(
@@ -777,7 +798,9 @@ test("retention sweep deletes old processed receipts and GUIDs, keeps fresh/pend
   await f.t.mutation(internal.integrations.github.deliveries.sweep, {
     cursor: null,
   });
-  expect(await f.t.run((ctx) => ctx.db.get(old._id))).toBeNull();
+  // Referenced old receipt and its GUID survive; unreferenced one is gone.
+  expect(await f.t.run((ctx) => ctx.db.get(old._id))).not.toBeNull();
+  expect(await f.t.run((ctx) => ctx.db.get(unreferenced._id))).toBeNull();
   const guidRow = (guid: string) =>
     f.t.run((ctx) =>
       ctx.db
@@ -785,7 +808,8 @@ test("retention sweep deletes old processed receipts and GUIDs, keeps fresh/pend
         .withIndex("by_guid", (q) => q.eq("guid", guid))
         .unique(),
     );
-  expect(await guidRow(oldGuid)).toBeNull();
+  expect(await guidRow(oldGuid)).not.toBeNull();
+  expect(await guidRow(unreferencedGuid)).toBeNull();
   expect(await guidRow(freshGuid)).not.toBeNull();
   expect(await guidRow(pendingGuid)).not.toBeNull();
   expect(await f.t.run((ctx) => ctx.db.get(fresh._id))).not.toBeNull();
