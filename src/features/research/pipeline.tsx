@@ -7,6 +7,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Section } from "@/components/shared";
+import { safeHref } from "@/lib/navigation";
 import { useGithubSourceProofClock } from "@/lib/github-source-proof";
 import { useStore } from "@/lib/store";
 type Operation = Doc<"researchSourcePolicies">["operation"];
@@ -464,7 +465,7 @@ function InboxItem({
         Beleg {e.evidenceId} · Auftrag {e.orderId}: {e.runState}/
         {e.runOutcome ?? "kein Workflow"} · Inbox {e.inboxDisposition}
       </p>
-      <a href={source.url ?? undefined} target="_blank" rel="noreferrer">
+      <a href={safeHref(source.url)} target="_blank" rel="noreferrer">
         {source.title}
       </a>
       <p>Aussage der Quelle / ungeprüft: {p.annotation.claim}</p>

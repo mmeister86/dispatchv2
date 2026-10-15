@@ -92,11 +92,27 @@ import {
 } from "@/lib/store";
 import { AccountIcon, Status, EmptyState } from "@/components/shared";
 import { cn } from "cn";
-import { OverviewPage } from "@/pages/Overview";
-import { DraftsPage, ComposerPage } from "@/pages/Drafts";
-import { CalendarPage } from "@/pages/Calendar";
-import { IdeasPage, SignalsPage } from "@/pages/Ideas";
-import { PlansPage } from "@/pages/Plans";
+const OverviewPage = lazy(() =>
+  import("@/pages/Overview").then((m) => ({ default: m.OverviewPage })),
+);
+const DraftsPage = lazy(() =>
+  import("@/pages/Drafts").then((m) => ({ default: m.DraftsPage })),
+);
+const ComposerPage = lazy(() =>
+  import("@/pages/Drafts").then((m) => ({ default: m.ComposerPage })),
+);
+const CalendarPage = lazy(() =>
+  import("@/pages/Calendar").then((m) => ({ default: m.CalendarPage })),
+);
+const IdeasPage = lazy(() =>
+  import("@/pages/Ideas").then((m) => ({ default: m.IdeasPage })),
+);
+const SignalsPage = lazy(() =>
+  import("@/pages/Ideas").then((m) => ({ default: m.SignalsPage })),
+);
+const PlansPage = lazy(() =>
+  import("@/pages/Plans").then((m) => ({ default: m.PlansPage })),
+);
 const ResearchPage = lazy(() =>
   import("@/pages/Research").then((m) => ({ default: m.ResearchPage })),
 );

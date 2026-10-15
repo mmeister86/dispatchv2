@@ -25,6 +25,7 @@ import {
   formatDate,
 } from "@/components/shared";
 import { useStore, useWorkspaceLocalState } from "@/lib/store";
+import { safeHref } from "@/lib/navigation";
 import { canEdit, uid, now } from "@/lib/model";
 
 type ResearchItem = {
@@ -424,7 +425,7 @@ function DemoResearch() {
                 </div>
                 <a
                   className="flex items-center gap-2 text-sm font-semibold hover:text-primary"
-                  href={detail.url}
+                  href={safeHref(detail.url)}
                   target="_blank"
                   rel="noreferrer"
                 >

@@ -6,6 +6,7 @@ import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Section } from "@/components/shared";
+import { safeHref } from "@/lib/navigation";
 import { useGithubSourceProofClock } from "@/lib/github-source-proof";
 type Operation = Doc<"researchSourcePolicies">["operation"];
 type Command = (
@@ -227,9 +228,9 @@ export function SourceSearch({
                     </p>
                   ) : (
                     <div key={s.sourceId} className="my-3">
-                      {s.url ? (
+                      {safeHref(s.url) ? (
                         <a
-                          href={s.url}
+                          href={safeHref(s.url)}
                           target="_blank"
                           rel="noreferrer"
                           className="underline"

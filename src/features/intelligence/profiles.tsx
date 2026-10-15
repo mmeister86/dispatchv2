@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Section } from "@/components/shared";
+import { safeHref } from "@/lib/navigation";
 type Action = FunctionArgs<typeof api.intelligence.profiles.change>["action"];
 type Attempt = {
   execute: () => Promise<unknown>;
@@ -342,7 +343,11 @@ function ProfileAccount({
                       <ul>
                         {p.payload.evidence.map((e) => (
                           <li key={e.path}>
-                            <a href={e.url} target="_blank" rel="noreferrer">
+                            <a
+                              href={safeHref(e.url)}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
                               {e.path}
                             </a>{" "}
                             · SHA-256 {e.sha256}
@@ -703,7 +708,7 @@ function SourceUpdates({
                 nutzbare Profilfrist.
               </p>
               <a
-                href={c.observation.compareUrl}
+                href={safeHref(c.observation.compareUrl)}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -717,7 +722,11 @@ function SourceUpdates({
                 <ul>
                   {c.observation.evidence.map((e) => (
                     <li className="break-all" key={e.path}>
-                      <a href={e.url} target="_blank" rel="noreferrer">
+                      <a
+                        href={safeHref(e.url)}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
                         {e.path}
                       </a>{" "}
                       · SHA-256 {e.sha256}
@@ -785,7 +794,7 @@ function SourceUpdates({
             unveränderliche betriebliche Sieben-Tage-Annahme.
           </p>
           <a
-            href={proposal.observation.compareUrl}
+            href={safeHref(proposal.observation.compareUrl)}
             target="_blank"
             rel="noreferrer"
           >
@@ -796,7 +805,7 @@ function SourceUpdates({
             <ul>
               {proposal.observation.evidence.map((e) => (
                 <li className="break-all" key={e.path}>
-                  <a href={e.url} target="_blank" rel="noreferrer">
+                  <a href={safeHref(e.url)} target="_blank" rel="noreferrer">
                     {e.path}
                   </a>{" "}
                   · SHA-256 {e.sha256} · vorher{" "}
@@ -810,7 +819,7 @@ function SourceUpdates({
             <summary>Alle geänderten Pfade und begrenzte Ausschnitte</summary>
             {proposal.observation.changes.map((c) => (
               <div key={c.path} className="border-b py-2">
-                <a href={c.url} target="_blank" rel="noreferrer">
+                <a href={safeHref(c.url)} target="_blank" rel="noreferrer">
                   {c.path}
                 </a>{" "}
                 · {c.status} · Ausschnitt{" "}

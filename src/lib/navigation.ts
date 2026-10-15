@@ -18,3 +18,9 @@ export function authPath(
 ) {
   return `${path}?${new URLSearchParams({ returnTo: returnPath(destination) })}`;
 }
+// Allowlist for rendering data-driven URLs into anchors: http(s) only.
+export function safeHref(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : undefined;
+}
