@@ -233,3 +233,41 @@ Run: `rm -rf /tmp/dispatch-*-browser-* && timeout 1200 pnpm test:browser` — ex
 Run: `git status --short` — expected clean. No commit in this task.
 
 ---
+
+### Task 7: Synchronize the role-epoch buffer test with the Viewer commit (agent-chat)
+
+**Files:**
+- Modify: `tests/agent-chat.browser.mjs` only (fixture entry/store mock + the role-flip sequence at :370-382). No product code, no other files.
+
+**Interfaces:**
+- Consumes: product epoch semantics — `command()` (src/features/agent/chat.tsx:218-248) runs its `done` callback (here: `setTopic("")`) only if `latest.current.epoch` is unchanged since command start; epoch increments during a render pass whose `editable` differs from the previous one (chat.tsx:144-150). The test at :370-382 fills the topic, starts research (commands[3] pending), flips role Owner→Viewer→Owner via `window.render()` evaluates, resolves commands[3], and expects the buffer preserved (`toHaveValue("Role epoch buffer")`). Nothing currently proves the Viewer render committed before the flip back: `:376`'s `toBeDisabled` also passes while `pending`. Task 5 established the committed-state marker pattern for exactly this class (github-context `window.committed` via useEffect; research-profile `committedRole`).
+- Produces: the role-epoch sequence deterministic on slow runners: the Viewer commit is proven before the role flips back, so the epoch has advanced when commands[3] resolves.
+
+- [ ] **Step 1: Reproduce (best effort) and baseline**
+
+Run: `rm -rf /tmp/dispatch-*-browser-*; timeout 240 node tests/agent-chat.browser.mjs` — expected PASS locally (fast machine; the failure is CI-timing-specific and was observed deterministically in both PR #4 CI runs at :382 with topic `""`). Record this local baseline; the fix is justified by the ordering analysis, not by a local red run.
+
+- [ ] **Step 2: Add a committed-role marker to the fixture**
+
+In the generated entry (the `entry` string in tests/agent-chat.browser.mjs), record the role of each COMMITTED render: a small marker component that reads the role via the store (`useStore` from the fixture's `@/lib/store`, state.role) and writes `window.committedRole = <that render's role>` from a `useEffect` (passive effects run post-commit and never for discarded renders — the github-context Task-5 pattern). Render the marker inside the existing tree in `window.render()` (e.g. alongside `RouterProvider` within `TooltipProvider`). Initialize `window.committedRole` in the entry's window setup (e.g. to the initial role). Do not change any mock's returned values or behavior besides adding this recording.
+
+- [ ] **Step 3: Wait for the Viewer commit in the role-epoch sequence**
+
+In the test flow at :372-376, after the evaluate that sets `window.role = "Viewer"` and calls `window.render()`, insert `await page.waitForFunction(() => window.committedRole === "Viewer");` BEFORE the flip back to Owner. Keep `:376`'s `toBeDisabled` assertion and every other existing assertion unchanged, including `:382`'s `toHaveValue("Role epoch buffer")`.
+
+- [ ] **Step 4: Audit for sibling sites (report-only)**
+
+Grep the file for other `window.role` flips followed by command resolves/assertions that depend on epoch or editable state (earlier sequences around :219-264). If you find another sequence whose correctness depends on an unproven intermediate commit, do NOT change it — list it in your report with line numbers and your analysis. (Known: those sequences passed deterministically in CI; only :382 failed.)
+
+- [ ] **Step 5: Verify**
+
+Run from a clean evidence state: `timeout 240 node tests/agent-chat.browser.mjs` twice. Expected: exit 0 both times. Also run `pnpm exec prettier --check tests/agent-chat.browser.mjs` (the lint gate caught formatting last time). Clean artifacts (`git checkout -- .docs/ 2>/dev/null; rm -rf test-results playwright-report`).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add tests/agent-chat.browser.mjs
+git commit -m "fix(tests): synchronize role-epoch buffer test with viewer commit"
+```
+
+---
