@@ -132,7 +132,83 @@ git commit -m "fix(tests): complete stale browser fixture mocks for current impo
 
 ---
 
-### Task 4: Full CI battery re-verification (supersedes Task 2)
+### Task 4: Stale copy and geometry sync in planning / calibration-references / intelligence-profiles
+
+**Files:**
+- Modify: `tests/planning.browser.mjs` (assertions at :423 and :515-533), `tests/calibration-references.browser.mjs` (:104, :106-108, geometry loop :548-562), `tests/intelligence-profiles.browser.mjs` (:91). No other files. No product code.
+
+**Interfaces:**
+- Consumes: current product state — plans state label `Historisch angenommen · im Kalender` (src/features/plans/plans.tsx:43, renamed intentionally in f364e72); real routes for `/team` and `/experiments` (App.tsx allow-regex grew in 08094a8/cce8d98; their pages are covered by tests/team-invitations.browser.mjs and tests/experiments.browser.mjs); NativeHealth loading state `Betriebsbelege werden geladen …` and NativePilot loading state `Messwerte werden geladen …` (src/features/operations/health.tsx; TASK-31/35 placeholders removed in e5bae9c; same loading assertions already used by passing tests/operations.browser.mjs:1029). Product is correct everywhere here.
+- Produces: the three files passing individually from a clean evidence state.
+
+- [ ] **Step 1: Reproduce**
+
+Run: `rm -rf /tmp/dispatch-*-browser-*` then `timeout 240 node tests/planning.browser.mjs`, `timeout 240 node tests/calibration-references.browser.mjs`, `timeout 240 node tests/intelligence-profiles.browser.mjs` (clean artifacts between runs: `git checkout -- .docs/ 2>/dev/null; rm -rf test-results playwright-report`).
+Expected: planning fails at :423 (then would fail at :515-533); calibration-references fails at :104; intelligence-profiles fails at :91.
+
+- [ ] **Step 2: planning — update the state label and the route-gate list**
+
+At :423 change the regex to `/Historisch angenommen · im Kalender/`. In the route-gate loop (:515-533), remove `"/team"` and `"/experiments"` from the list of paths expected to render the not-yet-connected EmptyState (both have real pages now, covered by their own browser tests). Change nothing else in the file.
+
+- [ ] **Step 3: calibration-references + intelligence-profiles — assert the real loading states**
+
+In calibration-references at :104, replace the TASK-31 placeholder expectation with an assertion that the status text `Betriebsbelege werden geladen …` is visible (mirror the form used at tests/operations.browser.mjs:1029); at :106-108 do the same for the TASK-35 pilot placeholder with `Messwerte werden geladen …`. In intelligence-profiles at :91, replace the TASK-31 placeholder expectation with the same `Betriebsbelege werden geladen …` assertion. The assertion intent is preserved: the tab shows a defined, non-fake state in this fixture.
+
+- [ ] **Step 4: calibration-references — synchronize the geometry measurement**
+
+In the mobile overflow loop (:548-562), before measuring the `Betriebspolitik und Kontrollplan unveränderlich binden` button's widths, call `await button.scrollIntoViewIfNeeded()` (the first geometry query after a viewport change reads clientWidth 0 in Chrome; after scrolling into view the measurement is real). Do not change the overflow criterion itself (scrollWidth vs viewport width) or any other measurement in the loop.
+
+- [ ] **Step 5: Verify the three files**
+
+Run: `rm -rf /tmp/dispatch-*-browser-*` then each file with `timeout 240 node tests/<name>.browser.mjs`.
+Expected: all three exit 0. Clean artifacts (`git checkout -- .docs/ 2>/dev/null; rm -rf test-results playwright-report`).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add tests/planning.browser.mjs tests/calibration-references.browser.mjs tests/intelligence-profiles.browser.mjs
+git commit -m "fix(tests): update browser expectations for renamed labels and native operations UI"
+```
+
+---
+
+### Task 5: Fix async-commit races in agent-chat and github-context browser tests
+
+**Files:**
+- Modify: `tests/agent-chat.browser.mjs` (assertions around :502-507), `tests/github-context.browser.mjs` (flows at :85-90 and :154-159). No other files — in particular do NOT touch the benign same-pattern flow at github-context :228 (it converges via workspace-keyed remount; changing passing code is out of scope). No product code.
+
+**Interfaces:**
+- Consumes: React concurrent-root commit timing. In agent-chat, :502-505 mutates `window.state.accounts = []` and calls `window.render()` in one evaluate; :506 passes against the stale DOM and synchronizes nothing; :507 then polls the pre-commit DOM and Playwright throws a strict-mode violation immediately (3 options) even though the DOM converges to one option. In github-context, :85-89 (and :154-159) set a flag + `window.render()` + resolve a pending command in ONE synchronous evaluate, so the product's eligibility gate (ref updated only at commit, src/features/signals/context.tsx) still sees the old value — under the real transport these arrive in separate tasks and the gate holds; the product is correct.
+- Produces: both files passing individually (twice each, deterministic) from a clean evidence state.
+
+- [ ] **Step 1: Reproduce**
+
+Run: `rm -rf /tmp/dispatch-*-browser-*` then `timeout 240 node tests/agent-chat.browser.mjs` and `timeout 240 node tests/github-context.browser.mjs`.
+Expected: agent-chat fails at :507 (strict mode violation, 3 options found); github-context fails at :90 (`role="status"` count 1 instead of 0).
+
+- [ ] **Step 2: agent-chat — wait for the commit before asserting options**
+
+Immediately before the :507 assertion, insert a commit wait in repo idiom: `await page.waitForFunction(() => document.querySelectorAll("select[aria-label='Aktiver Account'] option").length === 1);` (waitForFunction precedent: tests/github-app.browser.mjs, tests/research-profile.browser.mjs). Keep the existing `toHaveText("Kein Account verbunden")` assertion unchanged.
+
+- [ ] **Step 3: github-context — split the evaluates at both race sites**
+
+At :85-90 and :154-159, split the single evaluate into: (a) one evaluate that sets the flag (`window.allowed = false` / `window.account = "account-two"`) and calls `window.render()`; (b) wait for commit evidence — for (A) the not-allowed paragraph `Aktuelle separate Patch-Lese-Freigabe, gültiger Repository-Nachweis und Editor-Rechte nötig.` becoming visible or the input becoming disabled (whichever the surrounding code already exposes; src/features/signals/context.tsx:118), for (B) a `waitForFunction` on a committed-state signal following the committed-flag pattern of tests/research-profile.browser.mjs:236; (c) only then, in a separate evaluate, resolve the pending command. Keep every existing assertion (including `toHaveCount(0)` on the status role) unchanged.
+
+- [ ] **Step 4: Verify both files twice**
+
+Run (clean evidence state first): `timeout 240 node tests/agent-chat.browser.mjs` ×2 and `timeout 240 node tests/github-context.browser.mjs` ×2.
+Expected: exit 0 all four runs. Clean artifacts (`git checkout -- .docs/ 2>/dev/null; rm -rf test-results playwright-report`).
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add tests/agent-chat.browser.mjs tests/github-context.browser.mjs
+git commit -m "fix(tests): synchronize browser assertions with react commit"
+```
+
+---
+
+### Task 6: Full CI battery re-verification (supersedes Task 2)
 
 **Files:**
 - Modify: none. Verification only, exactly as Task 2 specified: if a step fails, do NOT fix it — report BLOCKED with step, failing tests/files, and first error verbatim. No commit in this task.
