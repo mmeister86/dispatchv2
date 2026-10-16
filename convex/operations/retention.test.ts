@@ -20,6 +20,7 @@ afterEach(() => {
 });
 
 test("30-day maximum uses original creation and earlier source deadlines win", () => {
+  expect(OPERATIONAL_RETENTION_MS).toBe(30 * 86400000);
   expect(operationalUntil(100, 200)).toBe(200);
   expect(operationalUntil(100, null)).toBe(100 + OPERATIONAL_RETENTION_MS);
   expect(operationalUntil(100, Number.MAX_SAFE_INTEGER)).toBe(

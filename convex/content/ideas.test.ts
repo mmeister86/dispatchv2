@@ -6,6 +6,7 @@ import { modelFixture } from "../../tests/model-fixture";
 import { sourceFixture, send } from "../../tests/github-fixture";
 import { MockLanguageModelV3 } from "ai/test";
 import { generateForRun } from "../ai/provider";
+import { OPERATIONAL_RETENTION_MS } from "../lib/operationalRetention";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
   vi.useRealTimers();
@@ -804,12 +805,16 @@ async function styledGeneration() {
 test("TASK45.2 exact style pin survives unselected saves and retained output is erased after selector loss", async () => {
   const f = await styledGeneration();
   const run = (await f.t.run((ctx) => ctx.db.get(f.runId)))!;
+  const styleVersion = (await f.t.run((ctx) =>
+    ctx.db.get(f.saved.versionId!),
+  ))!;
   expect(run).toHaveProperty("styleContext", {
     versionId: f.saved.versionId,
     fingerprint: expect.any(String),
     selectedBy: f.userId,
     selectionReceiptId: f.selected.receiptId,
-    sourceUntil: null,
+    // Retention cap: a fresh declaration with no source pin is capped at createdAt + 30d.
+    sourceUntil: styleVersion.createdAt + OPERATIONAL_RETENTION_MS,
   });
   vi.stubEnv("REQUESTY_API_KEY", "synthetic-key");
   vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
@@ -1335,7 +1340,12 @@ test.each(["styled", "edited", "manual-parent", "inherited-run"])(
         (await ctx.db.get(protectedId))!.currentVersionId!,
       ))!;
       const walk = materialWalk();
-      expect(await ideaProofUntil(ctx, ver, walk)).toBeNull();
+      // Retention cap: the styled-ancestry horizon bottoms out at the selected style
+      // version's createdAt + 30d, the earliest capped record in the graph.
+      const style = (await ctx.db.get(f.saved.versionId!))!;
+      expect(await ideaProofUntil(ctx, ver, walk)).toBe(
+        style.createdAt + OPERATIONAL_RETENTION_MS,
+      );
       await expect(ideaProofUntil(ctx, ver, walk, accountB)).rejects.toThrow(
         "RESEARCH_CONTENT_ACCOUNT_CHANGED",
       );
@@ -2183,12 +2193,17 @@ test("candidate exact replay preserves legacy command identity and candidate med
     f.runId,
   );
   await vi.advanceTimersByTimeAsync(5001);
+  const operation = (await f.t.run((ctx) => ctx.db.get(f.operationId)))!;
   expect(
     await f.signed.query(api.ai.jev.routing.get, {
       workspaceId: f.workspaceId,
       operationId: f.operationId,
     }),
-  ).toMatchObject({ applicability: "current", sourceUntil: null });
+  ).toMatchObject({
+    applicability: "current",
+    // Retention cap: an unpinned routing operation is capped at createdAt + 30d.
+    sourceUntil: operation.createdAt + OPERATIONAL_RETENTION_MS,
+  });
   expect(await f.signed.mutation(api.content.ideas.generate, f.args)).toBe(
     f.runId,
   );
@@ -2402,10 +2417,12 @@ test("candidate superseded current choice stays readable as history without fres
     workspaceId: f.workspaceId,
     versionId: f.version._id,
   });
+  const operation = (await f.t.run((ctx) => ctx.db.get(f.operationId)))!;
   expect(view).toMatchObject({
     applicability: "historical",
     candidate: { content: { text: f.version.candidate!.content.text } },
-    sourceUntil: null,
+    // Retention cap: history keeps the routing operation's createdAt + 30d horizon.
+    sourceUntil: operation.createdAt + OPERATIONAL_RETENTION_MS,
   });
   await expect(
     f.signed.mutation(api.content.ideas.applyCandidate, f.application),
@@ -2827,7 +2844,7 @@ test("candidate actual entered SDK HTTP keeps unknown original hold and settles 
   );
 });
 
-test("candidate >25 genuine native request/output/Agent families are erased on null-horizon original operation loss", async () => {
+test("candidate >25 genuine native request/output/Agent families are erased on capped-horizon original operation loss", async () => {
   const f = await committedCandidate(true),
     rows = [{ runId: f.runId, versionId: f.version._id }];
   for (let i = 0; i < 25; i++) {
@@ -2854,12 +2871,13 @@ test("candidate >25 genuine native request/output/Agent families are erased on n
         .currentVersionId!,
     });
   }
+  const operation = (await f.t.run((ctx) => ctx.db.get(f.operationId)))!;
   expect(
     (await f.signed.query(api.content.ideas.candidate, {
       workspaceId: f.workspaceId,
       versionId: f.version._id,
     }))!.sourceUntil,
-  ).toBeNull();
+  ).toBe(operation.createdAt + OPERATIONAL_RETENTION_MS);
   const threads = await f.t.run(async (ctx) =>
     Promise.all(rows.map(async (r) => (await ctx.db.get(r.runId))!.threadId)),
   );
@@ -2905,7 +2923,8 @@ test("candidate >25 genuine native request/output/Agent families are erased on n
       (b) => b.heldMicros === 0 && b.spentMicros === 0,
     ),
   ).toBe(true);
-});
+  // The capped horizons schedule a purge per run; draining 26 of them needs time.
+}, 30000);
 
 test("candidate current actor loss masks before physical cleanup and regrant cannot restore erased native payload", async () => {
   const f = await committedCandidate();

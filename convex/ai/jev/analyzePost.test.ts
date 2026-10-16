@@ -173,7 +173,16 @@ test("new profile candidates retain old API meaning and require explicit review/
   expect(
     await f.signed.mutation(api.intelligence.algorithmProfiles.create, input),
   ).toEqual(first);
-  const alg = await f.t.run((ctx) => ctx.db.get(first.algorithmId!));
+  const alg = await f.t.run(async (ctx) => {
+    const id = first.algorithmId!;
+    await ctx.db.patch(id, {
+      payload: {
+        ...(await ctx.db.get(id))!.payload,
+        reviewDueAt: Date.now() + 86400000,
+      },
+    });
+    return ctx.db.get(id);
+  });
   expect(alg).toMatchObject({
     status: "draft",
     payload: {

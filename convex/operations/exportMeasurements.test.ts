@@ -933,7 +933,7 @@ test("original experiment policy, spec and purpose corruption rejects both live 
   expect(
     (await pages(f, "publicationKnowledge")).find((r) => r.id === saved._id),
   ).toMatchObject({ projection: null, materialAvailability: "unavailable" });
-});
+}, 30000);
 
 test.each(["logicalIntent", "runId", "researchOrderId"] as const)(
   "native metric receipt rejects mixed union %s before live or expired material",

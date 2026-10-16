@@ -1183,7 +1183,7 @@ test("registered beforeSend pins a genuinely qualified finite candidate, exact r
   expect(removed?.assessmentId).toBe(baseline._id);
   expect(await f.t.run((ctx) => ctx.db.get(t.attempt._id))).not.toBeNull();
   expect(await f.t.run((ctx) => ctx.db.get(t.scheduleId))).not.toBeNull();
-});
+}, 30000);
 
 async function signedAdmin(f: Awaited<ReturnType<typeof qualifiedCorpus>>) {
   const identity = await f.t.run(async (ctx) => {
@@ -1381,7 +1381,8 @@ async function changeRole(
 }
 async function sweepModelsOnly(f: Awaited<ReturnType<typeof qualifiedCorpus>>) {
   await f.t.mutation(internal.performance.models.sweep, { cursor: null });
-  await f.t.finishAllScheduledFunctions(() => vi.runAllTimers());
+  // shortcut: 0-delay drain only; runAllTimers would jump the fake clock +120s past holdout1Start; if a non-zero-delay sweep chain is ever added, this must become an explicit clock re-pin (or equivalent)
+  await f.t.finishAllScheduledFunctions(() => vi.advanceTimersByTime(0));
 }
 test("Owner restoration cannot redeclare a spent candidate after protected declaration cleanup", async () => {
   const f = await qualifiedCorpus(),

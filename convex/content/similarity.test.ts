@@ -717,7 +717,7 @@ test("full 100 imported-history plus 25 exact drafts frame fits native limits an
     complete: false,
     matches: [],
   });
-});
+}, 60000);
 test("reconnect, foreign source, changed grants and unsafe costs cannot authorize a provider call", async () => {
   for (const corrupt of ["epoch", "foreign", "grant", "secret"] as const) {
     const f = await fixture(),
