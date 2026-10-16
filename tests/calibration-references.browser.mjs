@@ -6,8 +6,8 @@ const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const evidence = "/tmp/dispatch-task43.3-evidence/browser";
 mkdirSync(evidence, { recursive: true });
 const mocks = {
-  "convex/react": `import {useSyncExternalStore} from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});return useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>args==='skip'?undefined:(args.accountId==='account2'&&name==='performance/models:get'?window.modelEmpty:args.accountId==='account2'&&name==='performance/models:control'?window.controlEmpty:window.results[name]));};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});`,
-  "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';export const backendConfigured=true;export const AuthBoundary=({children})=>children;export const authClient={signOut:async()=>({})};export {authPath,returnPath} from '/src/lib/navigation.ts';`,
+  "convex/react": `import {useSyncExternalStore} from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useConvex=()=>({});export const useQuery=(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});return useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>args==='skip'?undefined:(args.accountId==='account2'&&name==='performance/models:get'?window.modelEmpty:args.accountId==='account2'&&name==='performance/models:control'?window.controlEmpty:window.results[name]));};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
+  "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';export const backendConfigured=true;export const AuthBoundary=({children})=>children;export const authClient={useSession:()=>({data:window.session,isPending:false}),signOut:async()=>({})};export {authPath,returnPath} from '/src/lib/navigation.ts';`,
   "@/lib/store": `import {useState,useSyncExternalStore} from 'react';import {demoMode} from '@/lib/auth-client';export const WorkspaceStoreProvider=({children})=>children;export const useLocalState=(k,i)=>useState(i);export const useWorkspaceLocalState=(k,i)=>{if(!demoMode&&k!=='notification-read')throw Error('Demo hook reached real Operations: '+k);return useState(i);};export const useStore=()=>({state:useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>window.store),setState:()=>{},selectWorkspace:async()=>true,selectAccount:()=>{},createDraft:()=>{throw Error('Demo draft');},mutate:()=>{throw Error('Demo mutation');}});`,
 };
 const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter,Routes,Route} from 'react-router-dom';import {AppShell} from '/src/App.tsx';import {OperationsPage} from '/src/pages/Operations.tsx';import {TooltipProvider} from '/src/components/ui/tooltip.tsx';import '/src/index.css';
@@ -98,13 +98,11 @@ try {
   ).toBeDisabled();
   await page.getByRole("tab", { name: "Systemzustand" }).click();
   await expect(
-    page.getByText(
-      "Echte Systemzustandsprüfung noch nicht verfügbar (TASK-31).",
-    ),
+    page.getByText("Betriebsbelege werden geladen …", { exact: true }),
   ).toBeVisible();
   await page.getByRole("tab", { name: "Pilot-Auswertung" }).click();
   await expect(
-    page.getByText("Echte Pilot-Auswertung noch nicht verfügbar (TASK-35)."),
+    page.getByText("Messwerte werden geladen …", { exact: true }),
   ).toBeVisible();
   await page.getByRole("tab", { name: "Algorithmusprofile" }).click();
   await expect(
@@ -554,6 +552,7 @@ try {
   const actionButtons = await page.locator("main section button").all();
   expect(actionButtons.length).toBeGreaterThanOrEqual(4);
   for (const button of actionButtons) {
+    await button.scrollIntoViewIfNeeded();
     const size = await button.evaluate((el) => ({
       client: el.clientWidth,
       scroll: el.scrollWidth,

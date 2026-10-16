@@ -4,8 +4,8 @@ import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='intelligence/profiles:get')return window.profile;if(name==='intelligence/profiles:history')return window.historyRows;if(name==='intelligence/profileUpdates:list')return window.sourceRows;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const useAction=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));`,
-  "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';`,
+  "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useConvex=()=>({});export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='intelligence/profiles:get')return window.profile;if(name==='intelligence/profiles:history')return window.historyRows;if(name==='intelligence/profileUpdates:list')return window.sourceRows;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const useAction=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
+  "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';export const authClient={useSession:()=>({data:window.session,isPending:false}),signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
   "@/lib/store": `import {useState,useEffect} from 'react';export const useWorkspaceLocalState=(key,initial)=>useState(initial);export const useStore=()=>{const role=window.role;useEffect(()=>{window.committedRole=role;},[role]);return {state:{activeWorkspaceId:window.workspace,activeAccountId:window.account,role,accounts:[{id:window.account,workspaceId:window.workspace,name:'Synthetic',channel:'X'}],drafts:[],ideas:[],schedules:[],preferences:{audience:'Personal preference'}},mutate:()=>{}};};`,
 };
 const entry = `import "/src/index.css";import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter} from 'react-router-dom';import {OperationsPage} from '/src/pages/Operations.tsx';import {IntelligenceProfiles} from '/src/features/intelligence/profiles.tsx';window.workspace='workspace-one';window.account='account-one';window.role='Owner';window.queries=[];window.commands=[];window.profile=undefined;window.historyRows={page:[],isDone:true,continueCursor:''};window.sourceRows=[];window.view='operations';const root=ReactDOM.createRoot(document.getElementById('root'));window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,window.view==='operations'?React.createElement(OperationsPage):React.createElement(IntelligenceProfiles,{readOnly:window.view==='readonly',audienceOnly:window.view==='audience'}))));window.render();`;
@@ -85,9 +85,7 @@ try {
   await expect(page.getByText("Lokale Demo", { exact: true })).toHaveCount(0);
   await page.getByRole("tab", { name: "Systemzustand" }).click();
   await expect(
-    page.getByText(
-      "Echte Systemzustandsprüfung noch nicht verfügbar (TASK-31).",
-    ),
+    page.getByText("Betriebsbelege werden geladen …", { exact: true }),
   ).toBeVisible();
   await page.getByRole("tab", { name: "Algorithmusprofile" }).click();
   await expect(
