@@ -99,3 +99,61 @@ Run: `git status --short`
 Expected: clean (verification changed nothing; run artifacts removed). No commit in this task.
 
 ---
+
+### Task 3: Complete stale per-file browser mocks (tests/*.browser.mjs)
+
+**Files:**
+- Modify: the affected `tests/*.browser.mjs` files — from the per-file catalog: `agent-chat`, `calibration-references`, `experiments`, `finite-series`, `github-app`, `github-context`, `intelligence-profiles`, `jev-assessments`, `own-metrics`, `performance-baselines`, `planning`, `research-content`, `semantic-retrieval`, `style-profiles`, `team-invitations` (15 files; a file drops off this list only if it passes unmodified in Step 1). No other files. No product code.
+
+**Interfaces:**
+- Consumes: each file's own mock table for `fixture:convex/react` and `fixture:@/lib/auth-client`, and the precedent stub semantics already in passing files: `useConvex=()=>({})` (tests/x-thread.browser.mjs), `usePaginatedQuery=()=>({results:[],status:"Exhausted",loadMore:()=>{}})` and `useAction=()=>()=>Promise.reject(new Error("No provider"))` (tests/agent-chat.browser.mjs), and the auth-client stub shape in the passing real-app tests (tests/operations.browser.mjs / tests/review-queue.browser.mjs, which include `authClient` with `useSession`). Product imports are legitimate (`convex@1.46` exports `useConvex`) — product code stays untouched.
+- Produces: every `tests/*.browser.mjs` file passing individually, so `pnpm test:browser` can run end-to-end (Task 4 proves the loop).
+
+- [ ] **Step 1: Establish the per-file baseline**
+
+First remove stale local evidence dirs (local-only artifact; CI runs fresh): `rm -rf /tmp/dispatch-*-browser-*`. Then for each file on the list, run `timeout 240 node tests/<name>.browser.mjs` and record pass/fail + first error. (Already-known catalog: 10 files pass unmodified — experiments/finite-series/planning fail on `authClient.useSession is not a function`, five files miss the `authClient` export, the rest miss convex/react exports; github-context shows a TimeoutError. Your runs confirm or correct this per file.)
+
+- [ ] **Step 2: Complete each failing file's mocks, precedent-shaped, iterating**
+
+For each failing file: add exactly the missing exports to that file's existing mock strings, using the precedent semantics above (for auth-client: mirror the passing files' stub, including `authClient.useSession` returning the same session shape those stubs use). Re-run the file after each completion round; module errors surface one layer at a time, so iterate until the file passes or you have evidence of a different defect class. Do not change what any stub *returns* beyond adding the missing exports/methods with precedent semantics; do not edit test assertions, flows, or timeouts in these files. Special case: if `github-context` still fails with TimeoutError after its mocks are complete (missing: useConvex, useAction, usePaginatedQuery), stop on that file and report it as a concern with the new error output — do not improvise a fix.
+
+- [ ] **Step 3: Verify the affected set**
+
+Run each modified file once more from a clean evidence state (`rm -rf /tmp/dispatch-*-browser-*` first): `timeout 240 node tests/<name>.browser.mjs` per file.
+Expected: every file exits 0. Also confirm the previously passing files you did not touch are not in your diff. Clean artifacts: `git checkout -- .docs/ 2>/dev/null; rm -rf test-results playwright-report`.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add tests/*.browser.mjs
+git commit -m "fix(tests): complete stale browser fixture mocks for current imports"
+```
+(Only actually-modified files will be staged by the pathspec if unchanged ones are untouched — verify `git status` shows exactly the files you edited.)
+
+---
+
+### Task 4: Full CI battery re-verification (supersedes Task 2)
+
+**Files:**
+- Modify: none. Verification only, exactly as Task 2 specified: if a step fails, do NOT fix it — report BLOCKED with step, failing tests/files, and first error verbatim. No commit in this task.
+
+- [ ] **Step 1: Static + unit + evals + build**
+
+Run: `pnpm lint && pnpm typecheck && pnpm test:bundle` — expected all exit 0.
+Run: `timeout 900 pnpm vitest run --maxWorkers=4` — expected 78/78 files pass (if only heavy-file 5s timeouts appear, re-run that file sequentially to distinguish flake from real failure and report both).
+Run: `timeout 900 pnpm test:evals` — expected exit 0.
+Run: `pnpm build` — expected exit 0.
+
+- [ ] **Step 2: Playwright e2e, full**
+
+Run: `timeout 900 pnpm test:e2e` — expected 34 passed, exit 0. Clean artifacts afterwards.
+
+- [ ] **Step 3: Browser loop end-to-end**
+
+Run: `rm -rf /tmp/dispatch-*-browser-* && timeout 1200 pnpm test:browser` — expected exit 0 (all 26 files in sequence).
+
+- [ ] **Step 4: Confirm clean tree and report**
+
+Run: `git status --short` — expected clean. No commit in this task.
+
+---
