@@ -160,7 +160,9 @@ try {
     window.account = "account-two";
     window.render();
   });
-  await page.waitForFunction(() => window.committed.accountId === "account-two");
+  await page.waitForFunction(
+    () => window.committed.accountId === "account-two",
+  );
   await page.evaluate(() => window.commands[5].resolve("actual-run"));
   await expect(page.getByRole("status")).toHaveCount(0);
   await page.evaluate(() => {

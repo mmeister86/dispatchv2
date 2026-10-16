@@ -4,7 +4,8 @@ import { existsSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
-  "@/lib/auth-client": "export const demoMode=false;export const authClient={useSession:()=>({data:window.session,isPending:false}),signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};",
+  "@/lib/auth-client":
+    "export const demoMode=false;export const authClient={useSession:()=>({data:window.session,isPending:false}),signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};",
   "@/lib/store":
     "export const useStore=()=>({state:window.store});export const useWorkspaceLocalState=()=>{throw Error('Demo invoked');};",
   "convex/react": `import {useSyncExternalStore} from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useConvex=()=>({});export const useQuery=(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});return useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>args==='skip'?undefined:window.results[name]);};export const useMutation=ref=>async args=>{window.mutations.push({name:getFunctionName(ref),args});if(window.failNext){window.failNext=false;return new Promise((_,reject)=>window.rejectConsent=reject);}};export const useAction=useMutation;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
