@@ -12,6 +12,8 @@ jobs:
           node-version: "22"
       - run: npm install --global pnpm@12.8.1
       - run: pnpm install --frozen-lockfile
+      # Tests write fixed /tmp paths; persistent runner must start clean (shortcut: fails if another local user left such files, fix tests to use mkdtemp then)
+      - run: rm -rf /tmp/dispatch-* /tmp/dispatch*.json /tmp/task*.png /tmp/task42-evidence
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm exec vitest run --maxWorkers=4 --testTimeout=15000
