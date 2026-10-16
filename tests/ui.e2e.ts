@@ -105,7 +105,7 @@ test("composer editing invalidates approval while scheduled snapshot remains unt
     .fill("Ein neuer Gedanke. Die alte geplante Version bleibt bestehen.");
   await page.getByRole("button", { name: "Speichern", exact: true }).click();
   await expect(
-    page.getByText("Diese Arbeitsversion ist noch nicht freigegeben"),
+    page.getByText(/Diese Arbeitsversion für .+ ist noch nicht freigegeben/),
   ).toBeVisible();
   await expect(page.getByText(/Geplant: v1/)).toBeVisible();
   const data = await page.evaluate(() =>
@@ -133,7 +133,7 @@ test("analysis stays bound to identity and recommendations create an unapproved 
   await page.getByRole("button", { name: "Änderung prüfen" }).first().click();
   await page.getByRole("button", { name: "Bewusst übernehmen" }).click();
   await expect(
-    page.getByText("Diese Arbeitsversion ist noch nicht freigegeben"),
+    page.getByText(/Diese Arbeitsversion für .+ ist noch nicht freigegeben/),
   ).toBeVisible();
   await expect(page.getByText(/Ergebnis ist veraltet/)).toBeVisible();
   await page.goto("/drafts/draft-4");
@@ -156,7 +156,7 @@ test("multi-channel variants retain thread structure and use independent approva
     .click();
   await expect(page.getByLabel("Text Beitrag 4")).toBeVisible();
   await expect(
-    page.getByText("Diese Arbeitsversion ist noch nicht freigegeben"),
+    page.getByText(/Diese Arbeitsversion für .+ ist noch nicht freigegeben/),
   ).toBeVisible();
   const data = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("dispatch-demo-v1")!),
@@ -377,7 +377,9 @@ test("a scheduled X snapshot cannot be replaced after switching its working draf
     page.getByRole("button", { name: "Geplante Version ersetzen" }),
   ).toBeDisabled();
   await expect(
-    page.getByText(/Account geändert: Den bisherigen Slot/),
+    page.getByText(
+      /Wechsel von @matthiasbuilds zu Matthias · Founder: Der alte Snapshot kann weiterhin/,
+    ),
   ).toBeVisible();
   const slot = await page.evaluate(() =>
     JSON.parse(localStorage.getItem("dispatch-demo-v1")!).schedules.find(
