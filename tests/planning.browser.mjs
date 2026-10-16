@@ -420,7 +420,9 @@ try {
     window.render();
   });
   await expect(page.getByText(/schedule-reviewed/)).toBeVisible();
-  await expect(page.getByText(/Angenommen · im Kalender/)).toBeVisible();
+  await expect(
+    page.getByText(/Historisch angenommen · im Kalender/),
+  ).toBeVisible();
   await page.evaluate(() => {
     const now = Date.now();
     window.detail.items[0] = {
@@ -513,9 +515,7 @@ try {
     await expect(page.getByTestId("route-marker")).toBeVisible();
   }
   for (const path of [
-    "/team",
     "/operations-invented",
-    "/experiments",
     "/repurpose",
     "/trends",
     "/plans-invented",

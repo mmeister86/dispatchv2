@@ -98,13 +98,11 @@ try {
   ).toBeDisabled();
   await page.getByRole("tab", { name: "Systemzustand" }).click();
   await expect(
-    page.getByText(
-      "Echte Systemzustandsprüfung noch nicht verfügbar (TASK-31).",
-    ),
+    page.getByText("Betriebsbelege werden geladen …", { exact: true }),
   ).toBeVisible();
   await page.getByRole("tab", { name: "Pilot-Auswertung" }).click();
   await expect(
-    page.getByText("Echte Pilot-Auswertung noch nicht verfügbar (TASK-35)."),
+    page.getByText("Messwerte werden geladen …", { exact: true }),
   ).toBeVisible();
   await page.getByRole("tab", { name: "Algorithmusprofile" }).click();
   await expect(
@@ -554,6 +552,7 @@ try {
   const actionButtons = await page.locator("main section button").all();
   expect(actionButtons.length).toBeGreaterThanOrEqual(4);
   for (const button of actionButtons) {
+    await button.scrollIntoViewIfNeeded();
     const size = await button.evaluate((el) => ({
       client: el.clientWidth,
       scroll: el.scrollWidth,

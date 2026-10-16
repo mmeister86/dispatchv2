@@ -85,9 +85,7 @@ try {
   await expect(page.getByText("Lokale Demo", { exact: true })).toHaveCount(0);
   await page.getByRole("tab", { name: "Systemzustand" }).click();
   await expect(
-    page.getByText(
-      "Echte Systemzustandsprüfung noch nicht verfügbar (TASK-31).",
-    ),
+    page.getByText("Betriebsbelege werden geladen …", { exact: true }),
   ).toBeVisible();
   await page.getByRole("tab", { name: "Algorithmusprofile" }).click();
   await expect(
