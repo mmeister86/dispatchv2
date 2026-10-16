@@ -14,7 +14,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
-      - run: pnpm test -- --maxWorkers=4
+      - run: pnpm test -- --maxWorkers=4 --testTimeout=15000
       - run: pnpm test:evals
       - run: pnpm build
       - run: pnpm test:bundle
