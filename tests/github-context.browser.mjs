@@ -8,7 +8,7 @@ const mocks = {
   "@/lib/auth-client": `export const demoMode=false;export const authClient={useSession:()=>({data:window.session,isPending:false}),signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
   "@/lib/store": `export const useStore=()=>({state:{}});`,
 };
-const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter,useLocation} from 'react-router-dom';import {SignalContext} from '/src/features/signals/context.tsx';window.workspace='workspace-one';window.account='account-one';window.allowed=true;window.generation=2;window.rows=[];window.commands=[];const root=ReactDOM.createRoot(document.getElementById('root'));function Route(){return React.createElement('p',{'data-testid':'route'},useLocation().pathname);}window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,{key:window.workspace},React.createElement(Route),React.createElement(SignalContext,{key:window.workspace,workspaceId:window.workspace,signalId:'actual-signal',generation:window.generation,allowed:window.allowed,accountId:window.account}))));window.render();`;
+const entry = `import React from 'react';import ReactDOM from 'react-dom/client';import {MemoryRouter,useLocation} from 'react-router-dom';import {SignalContext} from '/src/features/signals/context.tsx';window.workspace='workspace-one';window.account='account-one';window.allowed=true;window.generation=2;window.rows=[];window.commands=[];const root=ReactDOM.createRoot(document.getElementById('root'));function Route(){return React.createElement('p',{'data-testid':'route'},useLocation().pathname);}function Scene(){const p={workspaceId:window.workspace,signalId:'actual-signal',generation:window.generation,allowed:window.allowed,accountId:window.account};React.useEffect(()=>{window.committed=p;});return React.createElement(React.Fragment,null,React.createElement(Route),React.createElement(SignalContext,{key:window.workspace,...p}));}window.render=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,{key:window.workspace},React.createElement(Scene))));window.render();`;
 const server = await createServer({
   root,
   configFile: `${root}/vite.config.ts`,
@@ -85,8 +85,13 @@ try {
   await page.evaluate(() => {
     window.allowed = false;
     window.render();
-    window.commands[1].resolve("actual-context");
   });
+  await expect(
+    page.getByText(
+      "Aktuelle separate Patch-Lese-Freigabe, gültiger Repository-Nachweis und Editor-Rechte nötig.",
+    ),
+  ).toBeVisible();
+  await page.evaluate(() => window.commands[1].resolve("actual-context"));
   await expect(page.getByRole("status")).toHaveCount(0);
   await expect(input).toHaveValue("src/example.ts");
   await page.evaluate(() => {
@@ -154,8 +159,9 @@ try {
   await page.evaluate(() => {
     window.account = "account-two";
     window.render();
-    window.commands[5].resolve("actual-run");
   });
+  await page.waitForFunction(() => window.committed.accountId === "account-two");
+  await page.evaluate(() => window.commands[5].resolve("actual-run"));
   await expect(page.getByRole("status")).toHaveCount(0);
   await page.evaluate(() => {
     window.rows[0].runId = "actual-run";

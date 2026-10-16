@@ -504,6 +504,11 @@ try {
     window.render();
   });
   await expect(page.getByLabel("Aktiver Account")).toHaveValue("");
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll("select[aria-label='Aktiver Account'] option")
+        .length === 1,
+  );
   await expect(page.getByLabel("Aktiver Account").locator("option")).toHaveText(
     "Kein Account verbunden",
   );
