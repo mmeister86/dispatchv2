@@ -1,9 +1,12 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const evidence =
   process.env.DISPATCH_ROUTING_EVIDENCE_DIR ??
-  "/tmp/dispatch-67.2-browser-ideas";
+  `${artifactDir}/dispatch-67.2-browser-ideas`;
 mkdirSync(evidence, { recursive: true });
 import { fileURLToPath } from "node:url";
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");

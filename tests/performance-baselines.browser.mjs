@@ -1,7 +1,10 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, writeFileSync } from "node:fs";
+import { mkdtempSync, existsSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "@/lib/auth-client":
@@ -131,7 +134,7 @@ try {
     page.getByText("Inhaltsbewertung damals: 42 / 100", { exact: false }),
   ).toBeVisible();
   await page.screenshot({
-    path: "/tmp/task42-evidence/analytics-desktop.png",
+    path: `${artifactDir}/task42-evidence/analytics-desktop.png`,
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -144,7 +147,7 @@ try {
     analyticsMobileWidth.client,
   );
   await page.screenshot({
-    path: "/tmp/task42-evidence/analytics-mobile.png",
+    path: `${artifactDir}/task42-evidence/analytics-mobile.png`,
     fullPage: true,
   });
   await page.goto("http://127.0.0.1:5174/task42-content");
@@ -188,7 +191,7 @@ try {
   ).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 1000 });
   await page.screenshot({
-    path: "/tmp/task42-evidence/content-context.png",
+    path: `${artifactDir}/task42-evidence/content-context.png`,
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -200,7 +203,7 @@ try {
     contentMobileWidth.client,
   );
   await page.screenshot({
-    path: "/tmp/task42-evidence/content-mobile.png",
+    path: `${artifactDir}/task42-evidence/content-mobile.png`,
     fullPage: true,
   });
   await page.evaluate(() => (window.failNext = true));
@@ -246,7 +249,7 @@ try {
   ).toBeVisible();
   expect(errors).toEqual([]);
   writeFileSync(
-    "/tmp/task42-evidence/browser.receipt.json",
+    `${artifactDir}/task42-evidence/browser.receipt.json`,
     JSON.stringify(
       {
         qualified:

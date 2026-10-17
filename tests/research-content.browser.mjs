@@ -1,7 +1,10 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { mkdtempSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "@/lib/auth-client":
@@ -90,7 +93,7 @@ try {
     page.getByRole("alert").filter({ hasText: "Quellenfreigabe" }),
   ).toBeVisible();
   await page.screenshot({
-    path: "/tmp/task231-content-expiry-browser.png",
+    path: `${artifactDir}/task231-content-expiry-browser.png`,
     fullPage: true,
   });
   await page.goto("http://127.0.0.1:5174/content-fixture");

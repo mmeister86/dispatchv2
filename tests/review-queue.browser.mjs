@@ -1,10 +1,13 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const evidence =
   process.env.DISPATCH_CANDIDATE_COMPOSER_EVIDENCE_DIR ??
-  "/tmp/dispatch-68.1-browser-composer";
+  `${artifactDir}/dispatch-68.1-browser-composer`;
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import React from 'react';import {ConvexError} from 'convex/values';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';window.NativeConvexError=ConvexError;

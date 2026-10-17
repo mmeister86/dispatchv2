@@ -1,5 +1,8 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test, expect } from "vitest";
 import { evaluationReport } from "../../../convex/research/evaluate";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 test("unexecuted probes have no fabricated passing rate or provider price", () => {
   const report = evaluationReport([]);
   expect(report.executedProbes).toBe(0);
@@ -21,7 +24,7 @@ test("unknown cost receipts are not a zero measured estimate", () => {
   expect(report.heldMicros).toBe(100);
 });
 import { vi, afterEach } from "vitest";
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { pipelineFixture, streamResponse } from "../../research-fixture";
 import { api, internal, components } from "../../../convex/_generated/api";
@@ -991,7 +994,7 @@ test("frozen cases exercise registered workflow, actual funded adapter/generatio
   };
   writeFileSync(
     process.env.RESEARCH_EVAL_REPORT ??
-      "/tmp/dispatch-research-evaluation-report.json",
+      `${artifactDir}/dispatch-research-evaluation-report.json`,
     JSON.stringify(report, null, 2) + "\n",
   );
   expect(report.executedCases).toBe(12);

@@ -1,10 +1,13 @@
-import { writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { afterEach, expect, test, vi } from "vitest";
 import { api, internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { mediaFixture } from "../../tests/media-fixture";
 import { draftResearchProof } from "../research/contentProof";
 import { materialWalk } from "../research/pipelineAccess";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllEnvs();
@@ -628,7 +631,7 @@ test("actual 32-unit mixed ancestry start/detail/sweep retains original 32-node 
     metrics: await ctx.meta.getTransactionMetrics(),
   }));
   writeFileSync(
-    "/tmp/dispatch-47.1-native-budget.json",
+    `${artifactDir}/dispatch-47.1-native-budget.json`,
     JSON.stringify(
       {
         qualification:
@@ -2015,7 +2018,7 @@ test("TASK47.2 actual 32-unit mixed ancestry and exact retained measurement stay
     missing: 30,
   });
   writeFileSync(
-    "/tmp/dispatch-47.2-native-budget.json",
+    `${artifactDir}/dispatch-47.2-native-budget.json`,
     JSON.stringify(
       {
         fixture:

@@ -1,9 +1,12 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
-const evidence = "/tmp/dispatch-task43.3-evidence/browser";
+const evidence = `${artifactDir}/dispatch-task43.3-evidence/browser`;
 mkdirSync(evidence, { recursive: true });
 const mocks = {
   "convex/react": `import {useSyncExternalStore} from 'react';import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useConvex=()=>({});export const useQuery=(ref,args)=>{const name=getFunctionName(ref);window.queries.push({name,args});return useSyncExternalStore(cb=>{window.listeners.add(cb);return()=>window.listeners.delete(cb);},()=>args==='skip'?undefined:(args.accountId==='account2'&&name==='performance/models:get'?window.modelEmpty:args.accountId==='account2'&&name==='performance/models:control'?window.controlEmpty:window.results[name]));};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,

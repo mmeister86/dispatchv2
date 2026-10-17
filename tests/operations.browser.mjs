@@ -1,10 +1,19 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import {
+  mkdtempSync,
+  existsSync,
+  mkdirSync,
+  writeFileSync,
+  readFileSync,
+} from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const evidence =
   process.env.DISPATCH_HEALTH_EVIDENCE_DIR ??
-  "/tmp/dispatch-31.1-browser-operations";
+  `${artifactDir}/dispatch-31.1-browser-operations`;
 mkdirSync(evidence, { recursive: true });
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
