@@ -10,14 +10,15 @@ const status=async()=>({configured:window.configured,redirectUri:'https://dispat
 const disconnect=args=>new Promise((resolve,reject)=>window.commands.push({resolve,reject,args}));
 export const useAction=ref=>getFunctionName(ref).endsWith(':callback')?callback:getFunctionName(ref).endsWith(':status')?status:disconnect;
 export const useMutation=()=>disconnect;`,
-  "@/lib/store": `export const useStore=()=>({state:{activeWorkspaceId:window.workspace,role:window.role,accounts:window.accounts}});`,
+  "@/lib/store": `export const useStore=()=>({nativeScope:window.sessionScope+':'+window.workspace+':'+window.role,state:{activeWorkspaceId:window.workspace,role:window.role,accounts:window.accounts}});`,
 };
 const entry = `
 import React from 'react'; import ReactDOM from 'react-dom/client'; import {MemoryRouter} from 'react-router-dom';
 import {XOAuthCallback,SocialAccounts} from '/src/features/settings/social-accounts.tsx';
-window.pending=[];window.commands=[];window.workspace='workspace-one';window.role='Owner';window.accounts=[];window.configured=false;
+import {OAuthCallbackProvider} from '/src/lib/oauth-callback.tsx';
+window.pending=[];window.commands=[];window.sessionScope='session-one';window.workspace='workspace-one';window.role='Owner';window.accounts=[];window.configured=false;
 const root=ReactDOM.createRoot(document.getElementById('root'));
-window.renderCallback=(workspace,key='callback')=>{window.workspace=workspace;root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(XOAuthCallback,{key}))));};
+window.renderCallback=(workspace,key='callback',mount=key)=>{window.workspace=workspace;root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(OAuthCallbackProvider,{key},React.createElement(XOAuthCallback,{key:mount})))));};
 window.renderAccounts=()=>root.render(React.createElement(React.StrictMode,null,React.createElement(SocialAccounts,{key:window.workspace})));
 window.unmount=()=>root.render(null);window.renderCallback(window.workspace);
 `;
@@ -75,8 +76,30 @@ try {
   expect(await page.evaluate(() => window.pending[0].args.code)).toBe(
     "synthetic-code",
   );
+  // An auth refresh remounts the callback after its URL has been scrubbed.
+  const oldCallbackStatus = await page.getByRole("status").elementHandle();
+  await page.evaluate(() =>
+    window.renderCallback("workspace-one", "callback", "auth-refreshed"),
+  );
+  await oldCallbackStatus.waitForElementState("hidden");
+  await expect(page.getByRole("status")).toContainText(
+    "X-Autorisierung wird geprüft",
+  );
+  expect(await page.evaluate(() => window.pending.length)).toBe(1);
   await page.evaluate(() => window.pending[0].resolve("account"));
   await expect(page.getByRole("status")).toContainText("X-Identität verbunden");
+  expect(await page.evaluate(() => window.pending.length)).toBe(1);
+  await page.evaluate(() =>
+    window.renderCallback("workspace-one", "callback", "settled-remount"),
+  );
+  await expect(page.getByRole("status")).toContainText("X-Identität verbunden");
+  expect(await page.evaluate(() => window.pending.length)).toBe(1);
+  // A different session cannot inherit the completed exchange or submit it again.
+  await page.evaluate(() => {
+    window.sessionScope = "session-two";
+    window.renderCallback("workspace-one", "callback", "session-changed");
+  });
+  await expect(page.getByRole("alert")).toContainText("Sitzung");
   expect(await page.evaluate(() => window.pending.length)).toBe(1);
   // Denied OAuth stays denied and settles under StrictMode, without a second exchange.
   await page.evaluate(() => {
@@ -89,6 +112,11 @@ try {
     window.pending[1].reject(new Error("X_OAUTH_DENIED")),
   );
   await expect(page.getByRole("alert")).toContainText("abgelehnt");
+  await page.evaluate(() =>
+    window.renderCallback("workspace-one", "denied", "denied-remount"),
+  );
+  await expect(page.getByRole("alert")).toContainText("abgelehnt");
+  expect(await page.evaluate(() => window.pending.length)).toBe(2);
   // Workspace switch suppresses the old completion and doesn't exchange against the new selection.
   await page.evaluate(() => {
     window.history.replaceState(null, "", "?state=third&code=third");
@@ -103,6 +131,10 @@ try {
   await expect(page.getByRole("alert")).toContainText(
     "Workspace hat sich geändert",
   );
+  await page.evaluate(() =>
+    window.renderCallback("workspace-two", "switch", "workspace-remount"),
+  );
+  await expect(page.getByRole("alert")).toContainText("Workspace");
   expect(await page.evaluate(() => window.pending.length)).toBe(3);
   // True unmount: stale success never appears in replacement Settings.
   await page.evaluate(() => {
