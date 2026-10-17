@@ -1,7 +1,10 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { mkdtempSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "@/lib/auth-client": "export const demoMode=false;",
@@ -197,7 +200,7 @@ try {
   await expect(page.getByText("gemessen", { exact: true })).toBeVisible();
   await expect(page.getByText("fehlt", { exact: true })).toBeVisible();
   await page.screenshot({
-    path: "/tmp/task41-analytics-values.png",
+    path: `${artifactDir}/task41-analytics-values.png`,
     fullPage: true,
   });
   await expect(
@@ -212,7 +215,7 @@ try {
     page.getByText("private Abfragefenster abgelaufen", { exact: false }),
   ).toBeVisible();
   await page.screenshot({
-    path: "/tmp/task41-history-values.png",
+    path: `${artifactDir}/task41-history-values.png`,
     fullPage: true,
   });
   await page.clock.fastForward(1100);
@@ -233,7 +236,7 @@ try {
   ).toBeVisible();
   await expect(page.locator("dd").first()).toContainText("0");
   await page.screenshot({
-    path: "/tmp/task41-analytics-expired.png",
+    path: `${artifactDir}/task41-analytics-expired.png`,
     fullPage: true,
   });
   await page.getByRole("button", { name: "Redaktionell ablehnen" }).click();
@@ -328,7 +331,10 @@ try {
     ]),
   );
   expect(errors).toEqual([]);
-  await page.screenshot({ path: "/tmp/task41-analytics.png", fullPage: true });
+  await page.screenshot({
+    path: `${artifactDir}/task41-analytics.png`,
+    fullPage: true,
+  });
   console.log(
     "PASS TASK41 actual styled Analytics + own-history lifecycle/context/expiry with explicit mocked transport/auth/store: default-off configuration, own0/missing, nearest source expiry, independent feedback, pause/delete routing. Mocked transport/auth/store; no real provider/manual acceptance.",
   );

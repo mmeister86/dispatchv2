@@ -1,7 +1,10 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "@/lib/auth-client": `export const demoMode=false;export const authClient={useSession:()=>({data:window.session,isPending:false}),signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
@@ -200,7 +203,7 @@ try {
       .filter({ hasText: "Profil-, Eingabe- und Aufrufnachweis" }),
   ).not.toContainText(/abgerechnet|bezahlt|Rechnung/i);
   await page.screenshot({
-    path: "/tmp/task28.3-composer-result.png",
+    path: `${artifactDir}/task28.3-composer-result.png`,
     fullPage: true,
   });
   await page.locator("textarea").first().fill("Unsaved new text");
@@ -299,7 +302,10 @@ try {
     ),
   ).toBeVisible();
   await expect(page.getByText("65 / 100", { exact: true })).toHaveCount(0);
-  await page.screenshot({ path: "/tmp/task28.3-composer.png", fullPage: true });
+  await page.screenshot({
+    path: `${artifactDir}/task28.3-composer.png`,
+    fullPage: true,
+  });
   await page.reload();
   await page.getByRole("tab", { name: "Intelligence", exact: true }).click();
   // Real recommendation component and actual registered API names; deterministic transport fixture only.
@@ -512,7 +518,7 @@ try {
   ).toBeVisible();
   await expect(accept).toBeDisabled();
   await page.screenshot({
-    path: "/tmp/task29-composer-frozen-diff.png",
+    path: `${artifactDir}/task29-composer-frozen-diff.png`,
     animations: "disabled",
     fullPage: true,
   });
@@ -607,7 +613,7 @@ try {
   ).toBeVisible();
   await expect(page.getByText("— / 100", { exact: true })).toBeVisible();
   await page.screenshot({
-    path: "/tmp/task29-composer-incomplete.png",
+    path: `${artifactDir}/task29-composer-incomplete.png`,
     animations: "disabled",
     fullPage: true,
   });
@@ -653,7 +659,9 @@ try {
     ).toHaveCount(0);
     await expect(page.getByText("65 / 100", { exact: true })).toHaveCount(0);
   }
-  mkdirSync("/tmp/dispatch-task43.3-evidence/browser", { recursive: true });
+  mkdirSync(`${artifactDir}/dispatch-task43.3-evidence/browser`, {
+    recursive: true,
+  });
   await page.clock.install();
   await page.evaluate((r) => {
     window.historyRows = { page: [], isDone: true, continueCursor: "" };
@@ -694,7 +702,7 @@ try {
   ).toBeVisible();
   await page.setViewportSize({ width: 1280, height: 1000 });
   await page.screenshot({
-    path: "/tmp/dispatch-task43.3-evidence/browser/assessment-desktop.png",
+    path: `${artifactDir}/dispatch-task43.3-evidence/browser/assessment-desktop.png`,
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -704,7 +712,7 @@ try {
     await page.evaluate(() => document.documentElement.clientWidth),
   );
   await page.screenshot({
-    path: "/tmp/dispatch-task43.3-evidence/browser/assessment-mobile.png",
+    path: `${artifactDir}/dispatch-task43.3-evidence/browser/assessment-mobile.png`,
     fullPage: true,
   });
   await page.clock.runFor(10001);

@@ -1,7 +1,10 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});export const useConvex=()=>({});export const useAction=()=>()=>Promise.reject(new Error("No provider"));export const usePaginatedQuery=()=>({results:[],status:"Exhausted",loadMore:()=>{}});export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='ai/conversations:list')return window.list;if(name==='ai/conversations:status')return window.runs;if(name==='ai/conversations:researchStatus')return window.researchOrders;if(name==='research/profiles:get')return window.researchProfile;if(name==='research/profiles:configuration')return {currency:null,downstreamAvailable:false};if(name==='research/runs:history')return {page:[],isDone:true,continueCursor:''};if(name==='research/evidence:inbox')return {page:[],isDone:true,continueCursor:''};if(name==='planning/plans:context')return {preferenceId:'preference-one',timezone:'UTC'};if(name==='planning/plans:list')return [];if(name==='ai/jev/access:availability')return {status:'disabled',guidance:'No live model'};if(name==='ai/conversations:projection')return window.projection;if(name==='content/ideas:list')return {page:[],isDone:true,continueCursor:''};if(name==='ai/runs:recent')return [];if(name==='ai/runs:availability')return {processingApproved:false,pricingApproved:false};};const mutations=new Map();export const useMutation=ref=>{const name=getFunctionName(ref);if(!mutations.has(name))mutations.set(name,args=>name==='ai/conversations:cleanupUnavailable'?(window.cleanupRequests.push(args),Promise.resolve(null)):new Promise((resolve,reject)=>window.commands.push({name,args,resolve,reject})));return mutations.get(name);};`,
@@ -595,14 +598,16 @@ try {
     name: "save",
     args: { accountId: "account-two" },
   });
-  mkdirSync("/tmp/dispatch-task48-evidence/browser", { recursive: true });
+  mkdirSync(`${artifactDir}/dispatch-task48-evidence/browser`, {
+    recursive: true,
+  });
   await page.screenshot({
-    path: "/tmp/dispatch-task48-evidence/browser/composer-desktop.png",
+    path: `${artifactDir}/dispatch-task48-evidence/browser/composer-desktop.png`,
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
-    path: "/tmp/dispatch-task48-evidence/browser/composer-390.png",
+    path: `${artifactDir}/dispatch-task48-evidence/browser/composer-390.png`,
     fullPage: true,
   });
   // Use a fresh route mount so the unsaved composer navigation blocker remains effective.
@@ -645,14 +650,14 @@ try {
     accountId: "account-one",
   });
   await page.screenshot({
-    path: "/tmp/dispatch-task48-evidence/browser/schedule-390.png",
+    path: `${artifactDir}/dispatch-task48-evidence/browser/schedule-390.png`,
     fullPage: true,
   });
   await page.goto("http://127.0.0.1:5174/chat-fixture?demo=1");
   await expect(page.getByText("Mock-Modus", { exact: true })).toHaveCount(1);
   await expect(page.getByText(/Lokal gespeicherte Demo/)).toBeVisible();
   await page.screenshot({
-    path: "/tmp/dispatch-task48-evidence/browser/demo-390.png",
+    path: `${artifactDir}/dispatch-task48-evidence/browser/demo-390.png`,
     fullPage: true,
   });
   expect(errors).toEqual([]);

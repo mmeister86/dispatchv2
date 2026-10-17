@@ -1,9 +1,14 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
-mkdirSync("/tmp/dispatch-task25-evidence/browser-pixels", { recursive: true });
+mkdirSync(`${artifactDir}/dispatch-task25-evidence/browser-pixels`, {
+  recursive: true,
+});
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const n=getFunctionName(ref);window.queries.push({n,args});if(n==='planning/plans:context')return window.context;if(n==='planning/plans:list')return window.plans;if(n==='planning/plans:get')return window.detail;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({n:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});`,
   "@/lib/auth-client": `export const demoMode=false;export const backendConfigured=true;export const AuthBoundary=({children})=>children;export const authClient={useSession:()=>({data:window.session,isPending:false}),signOut:async()=>({})};export {authPath,returnPath} from '/src/lib/navigation.ts';`,
@@ -60,7 +65,7 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
   await page.goto("http://127.0.0.1:5174/planning-fixture");
   await page.screenshot({
-    path: "/tmp/dispatch-task25-evidence/browser-pixels/plans-shell-pre.png",
+    path: `${artifactDir}/dispatch-task25-evidence/browser-pixels/plans-shell-pre.png`,
     fullPage: true,
   });
   await expect(
@@ -170,7 +175,7 @@ try {
   await expect(page.getByText("Pinned actual draft")).toBeVisible();
   await expect(page.getByText(/Gültigkeitsgrenze bis/)).toBeVisible();
   await page.screenshot({
-    path: "/tmp/dispatch-task25-evidence/browser-pixels/plans-shell-desktop.png",
+    path: `${artifactDir}/dispatch-task25-evidence/browser-pixels/plans-shell-desktop.png`,
     fullPage: true,
   });
   await page.getByRole("button", { name: "Ablehnen", exact: true }).click();
@@ -244,7 +249,7 @@ try {
     );
   });
   await page.screenshot({
-    path: "/tmp/dispatch-task25-evidence/browser-pixels/plans-mobile.png",
+    path: `${artifactDir}/dispatch-task25-evidence/browser-pixels/plans-mobile.png`,
     fullPage: true,
   });
   expect(
@@ -482,13 +487,13 @@ try {
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.getByText("Combined reviewed draft").scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: "/tmp/dispatch-task25-evidence/browser-pixels/plans-accepted-desktop.png",
+    path: `${artifactDir}/dispatch-task25-evidence/browser-pixels/plans-accepted-desktop.png`,
     animations: "disabled",
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByText("Combined reviewed draft").scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: "/tmp/dispatch-task25-evidence/browser-pixels/plans-accepted-mobile.png",
+    path: `${artifactDir}/dispatch-task25-evidence/browser-pixels/plans-accepted-mobile.png`,
     animations: "disabled",
   });
   console.log(

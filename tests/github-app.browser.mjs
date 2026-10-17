@@ -11,13 +11,14 @@ const mocks = {
  export const useAction=ref=>getFunctionName(ref).endsWith(':callback')?callback:getFunctionName(ref).endsWith(':status')?status:command;
  export const useMutation=()=>command; export const useConvex=()=>({}); export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);if(name==='integrations/github/context:latest')return [];if(name==='content/signals:list')return args.paginationOpts.cursor?window.olderSignals:window.signals;if(name==='content/signals:recoveries')return window.recoveries;if(name.endsWith(':scanStatus'))return window.scan;return window.sources;};export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
   "@/lib/auth-client": `export const demoMode=new URLSearchParams(location.search).get('demo')==='1';export const authClient={useSession:()=>({data:window.session,isPending:false}),signOut:async()=>{},signIn:{email:async()=>({})},signUp:{email:async()=>({})},sendVerificationEmail:async()=>({})};`,
-  "@/lib/store": `import {useState} from 'react'; export const useStore=()=>({state:{activeWorkspaceId:window.workspace,role:window.role,accounts:[],ideas:[]},setState:()=>false}); export const useWorkspaceLocalState=(key,initial)=>useState(initial);`,
+  "@/lib/store": `import {useState} from 'react'; export const useStore=()=>({nativeScope:'session-one:'+window.workspace+':'+window.role,state:{activeWorkspaceId:window.workspace,role:window.role,accounts:[],ideas:[]},setState:()=>false}); export const useWorkspaceLocalState=(key,initial)=>useState(initial);`,
 };
 const entry = `import React from 'react'; import ReactDOM from 'react-dom/client'; import {MemoryRouter} from 'react-router-dom';
 import {GithubSources,GithubOAuthCallback} from '/src/features/settings/github.tsx';import {SignalsPage} from '/src/pages/Ideas.tsx';
+import {OAuthCallbackProvider} from '/src/lib/oauth-callback.tsx';
 window.pending=[];window.commands=[];window.workspace='workspace-one';window.role='Owner';window.configured=false;window.sources={connection:null,repositories:[]};window.signals={page:[],isDone:true,continueCursor:''};window.olderSignals={page:[],isDone:true,continueCursor:''};window.recoveries={page:[],isDone:true,continueCursor:''};window.scan=null;
 const root=ReactDOM.createRoot(document.getElementById('root'));
-window.renderCallback=(workspace,key='callback')=>{window.workspace=workspace;root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(GithubOAuthCallback,{key}))));};
+window.renderCallback=(workspace,key='callback',mount=key)=>{window.workspace=workspace;root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(OAuthCallbackProvider,{key},React.createElement(GithubOAuthCallback,{key:mount})))));};
 window.renderSettings=(key=window.workspace)=>root.render(React.createElement(React.StrictMode,null,React.createElement(MemoryRouter,null,React.createElement(GithubSources,{key}))));
 window.renderSignals=()=>root.render(React.createElement(MemoryRouter,null,React.createElement(SignalsPage)));
 window.unmount=()=>root.render(null);if(new URLSearchParams(location.search).has('signals'))window.renderSignals();else window.renderCallback(window.workspace);`;
@@ -93,7 +94,23 @@ try {
   expect(await page.evaluate(() => window.pending[0].args)).not.toHaveProperty(
     "installation_id",
   );
+  const oldCallbackStatus = await page.getByRole("status").elementHandle();
+  await page.evaluate(() =>
+    window.renderCallback("workspace-one", "callback", "auth-refreshed"),
+  );
+  await oldCallbackStatus.waitForElementState("hidden");
+  await expect(page.getByRole("status")).toContainText(
+    "GitHub-App-Autorisierung wird geprüft",
+  );
+  expect(await page.evaluate(() => window.pending.length)).toBe(1);
   await page.evaluate(() => window.pending[0].resolve(null));
+  await expect(page.getByRole("status")).toContainText(
+    "GitHub-App-Zugang geprüft",
+  );
+  expect(await page.evaluate(() => window.pending.length)).toBe(1);
+  await page.evaluate(() =>
+    window.renderCallback("workspace-one", "callback", "settled-remount"),
+  );
   await expect(page.getByRole("status")).toContainText(
     "GitHub-App-Zugang geprüft",
   );

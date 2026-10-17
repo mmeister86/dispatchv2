@@ -1,5 +1,7 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { fixture } from "../../tests/planning-series-fixture";
-import { writeFileSync } from "node:fs";
+import { mkdtempSync, writeFileSync } from "node:fs";
 import { afterEach, expect, test, vi } from "vitest";
 import { api, internal, components } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -7,6 +9,7 @@ import { sourceFixture, send } from "../../tests/github-fixture";
 import { finiteSequence } from "./strategy";
 import { vectorFingerprint } from "../content/similarity";
 import { sha256 } from "../lib/crypto";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllEnvs();
@@ -787,7 +790,7 @@ test("maximum complete manifest 100 history plus 25 drafts and 4096-dimensional 
     }),
   );
   writeFileSync(
-    "/tmp/dispatch-46.2-native-frame-metrics.json",
+    `${artifactDir}/dispatch-46.2-native-frame-metrics.json`,
     JSON.stringify(
       {
         configure: configure.metrics,
@@ -867,8 +870,8 @@ test.each([7, 25])(
     );
     writeFileSync(
       count === 7
-        ? "/tmp/dispatch-46.2-native-accept-metrics.json"
-        : "/tmp/dispatch-46.2-native-accept-125-metrics.json",
+        ? `${artifactDir}/dispatch-46.2-native-accept-metrics.json`
+        : `${artifactDir}/dispatch-46.2-native-accept-125-metrics.json`,
       JSON.stringify(checked.metrics, null, 2),
     );
   },
@@ -1975,7 +1978,7 @@ test("experiment actual 32 units reuse one complete 125-vector native frame insi
   });
   expect(detail.value.enrollmentCapped).toBe(true);
   writeFileSync(
-    "/tmp/dispatch-47.1-native-frame-budget.json",
+    `${artifactDir}/dispatch-47.1-native-frame-budget.json`,
     JSON.stringify(
       {
         qualification:

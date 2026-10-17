@@ -9,6 +9,7 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useStore } from "@/lib/store";
+import { useOAuthCallback } from "@/lib/oauth-callback";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -22,6 +23,8 @@ export function githubError(error: unknown) {
         : "";
   if (code.includes("WORKSPACE_CHANGED"))
     return "Der Workspace hat sich geändert. Starte die Verbindung dort erneut.";
+  if (code.includes("OAUTH_SCOPE_CHANGED"))
+    return "Sitzung, Workspace oder Berechtigungen haben sich geändert. Starte die Verbindung erneut.";
   if (code.includes("OAUTH_DENIED"))
     return "Die GitHub-App-Autorisierung wurde abgelehnt.";
   if (code.includes("OAUTH_STATE_INVALID"))
@@ -527,37 +530,25 @@ export function GithubSources() {
 }
 
 export function GithubOAuthCallback() {
-  const { state } = useStore(),
+  const { state, nativeScope } = useStore(),
     complete = useAction(api.integrations.github.app.callback);
-  const [buffer] = useState(() => {
-    const p = new URLSearchParams(window.location.search);
-    return {
-      state: p.get("state") ?? "",
-      code: p.get("code") ?? undefined,
-      denied: p.has("error"),
-    };
-  });
+  const exchange = useOAuthCallback();
   const initialWorkspace = useRef(state.activeWorkspaceId),
-    pending = useRef<Promise<unknown> | null>(null),
     [result, setResult] = useState<"pending" | "success" | "failed">("pending"),
     [error, setError] = useState("");
   useEffect(() => {
     let mounted = true;
-    window.history.replaceState(
-      window.history.state,
-      "",
-      window.location.pathname,
-    );
     if (state.activeWorkspaceId !== initialWorkspace.current) {
       setResult("failed");
       setError(githubError("GITHUB_WORKSPACE_CHANGED"));
       return;
     }
-    pending.current ??= complete({
-      workspaceId: initialWorkspace.current as Id<"workspaces">,
-      ...buffer,
-    });
-    pending.current
+    exchange(nativeScope, (buffer) =>
+      complete({
+        workspaceId: initialWorkspace.current as Id<"workspaces">,
+        ...buffer,
+      }),
+    )
       .then(() => {
         if (mounted) setResult("success");
       })
@@ -570,7 +561,7 @@ export function GithubOAuthCallback() {
     return () => {
       mounted = false;
     };
-  }, [buffer, complete, state.activeWorkspaceId]);
+  }, [exchange, complete, nativeScope, state.activeWorkspaceId]);
   return (
     <div className="p-12 stack">
       <h1 className="text-2xl font-semibold">GitHub-App-Verbindung</h1>

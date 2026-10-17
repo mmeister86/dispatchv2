@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { useStore } from "@/lib/store";
+import { useOAuthCallback } from "@/lib/oauth-callback";
 import { Button } from "@/components/ui/button";
 import { Section, Status } from "@/components/shared";
 
@@ -30,6 +31,8 @@ export function xError(error: unknown) {
       "Dieser Account ist bereits vorhanden. Bitte dessen „Neu verbinden“-Aktion verwenden.",
     X_WORKSPACE_CHANGED:
       "Der aktive Workspace hat sich geändert. Bitte die Autorisierung im gewünschten Workspace neu starten.",
+    OAUTH_SCOPE_CHANGED:
+      "Sitzung, Workspace oder Berechtigungen haben sich geändert. Bitte die Autorisierung neu starten.",
     ACCOUNT_CONNECTION_CHANGED:
       "Der Account wurde nach dieser Planung neu verbunden. Bitte die exakte freigegebene Version ausdrücklich neu planen.",
     X_CONNECTION_CHANGED:
@@ -290,41 +293,27 @@ export function SocialAccounts() {
   );
 }
 export function XOAuthCallback() {
-  const { state } = useStore();
+  const { state, nativeScope } = useStore();
   const complete = useAction(api.integrations.x.client.callback);
-  const [buffer] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return {
-      state: params.get("state") ?? "",
-      code: params.get("code") ?? undefined,
-      denied: params.has("error"),
-    };
-  });
+  const exchange = useOAuthCallback();
   const initialWorkspace = useRef(state.activeWorkspaceId);
-  const pending = useRef<Promise<unknown> | null>(null);
   const [result, setResult] = useState<"pending" | "success" | "failed">(
     "pending",
   );
   const [error, setError] = useState("");
   useEffect(() => {
     let mounted = true;
-    // Buffer once in memory; remove the sensitive callback query before any effect completion.
-    window.history.replaceState(
-      window.history.state,
-      "",
-      window.location.pathname,
-    );
     if (state.activeWorkspaceId !== initialWorkspace.current) {
       setResult("failed");
       setError(xError("X_WORKSPACE_CHANGED"));
       return;
     }
-    // StrictMode's second setup observes the SAME promise; it never exchanges the code twice.
-    pending.current ??= complete({
-      workspaceId: initialWorkspace.current as Id<"workspaces">,
-      ...buffer,
-    });
-    pending.current
+    exchange(nativeScope, (buffer) =>
+      complete({
+        workspaceId: initialWorkspace.current as Id<"workspaces">,
+        ...buffer,
+      }),
+    )
       .then(() => {
         if (mounted) setResult("success");
       })
@@ -337,7 +326,7 @@ export function XOAuthCallback() {
     return () => {
       mounted = false;
     };
-  }, [buffer, complete, state.activeWorkspaceId]);
+  }, [exchange, complete, nativeScope, state.activeWorkspaceId]);
   return (
     <div className="p-12 stack">
       <h1 className="text-2xl font-semibold">X-Verbindung</h1>
