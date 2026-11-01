@@ -1,7 +1,10 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';
@@ -30,7 +33,7 @@ if(location.hash==='#deletion')window.deletionJobs=[{id:'delete-job',scope:'acco
 window.fixtureRoot=createRoot(document.getElementById('root'));window.fixtureRoot.render(React.createElement(MemoryRouter,{initialEntries:['/overview']},React.createElement(WorkspaceStoreProvider,null,React.createElement(Probe))));`;
 const server = await createServer({
   root,
-  cacheDir: "/tmp/dispatch-49.1-recovery-vite",
+  cacheDir: `${artifactDir}/dispatch-49.1-recovery-vite`,
   configFile: `${root}/vite.config.ts`,
   server: { host: "127.0.0.1", port: 5182, strictPort: true },
   plugins: [
@@ -218,9 +221,9 @@ try {
   ).toBeVisible();
   expect(await page.evaluate(() => window.protected)).toEqual([]);
   await page.setViewportSize({ width: 390, height: 844 });
-  mkdirSync("/tmp/dispatch-49.1-browser-pixels", { recursive: true });
+  mkdirSync(`${artifactDir}/dispatch-49.1-browser-pixels`, { recursive: true });
   await page.screenshot({
-    path: "/tmp/dispatch-49.1-browser-pixels/recovery-mobile.png",
+    path: `${artifactDir}/dispatch-49.1-browser-pixels/recovery-mobile.png`,
     fullPage: true,
   });
   expect(
@@ -270,14 +273,14 @@ try {
   await expect(createButton).toBeDisabled();
   expect(await page.evaluate(() => window.pending.length)).toBe(2);
   await page.screenshot({
-    path: "/tmp/dispatch-49.1-browser-pixels/create-current-pending.png",
+    path: `${artifactDir}/dispatch-49.1-browser-pixels/create-current-pending.png`,
     fullPage: true,
   });
   await page.evaluate(() => window.pending[0].resolve("old-created-workspace"));
   await page.waitForTimeout(100);
   await expect(createButton).toBeDisabled();
   await page.screenshot({
-    path: "/tmp/dispatch-49.1-browser-pixels/create-old-completed.png",
+    path: `${artifactDir}/dispatch-49.1-browser-pixels/create-old-completed.png`,
     fullPage: true,
   });
   await page.evaluate(() => window.updateSnapshot({ ...window.snapshot }));
@@ -330,7 +333,7 @@ try {
     ),
   ).toBe(4);
   await page.screenshot({
-    path: "/tmp/dispatch-49.1-browser-pixels/current-recovery-error.png",
+    path: `${artifactDir}/dispatch-49.1-browser-pixels/current-recovery-error.png`,
     fullPage: true,
   });
 

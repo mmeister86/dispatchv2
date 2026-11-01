@@ -1,9 +1,12 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
-const evidence = "/tmp/dispatch-task45.1-evidence";
+const evidence = `${artifactDir}/dispatch-task45.1-evidence`;
 mkdirSync(evidence, { recursive: true });
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useConvex=()=>({});export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='ai/styleProfiles:get')return {...window.profile,versions:window.profile.versions.map(({_id,_creationTime,status,declaredBy,declaredAt,createdBy,createdAt})=>({_id,_creationTime,status,declaredBy,declaredAt,createdBy,createdAt})),proposals:window.profile.proposals.map(({_id,state})=>({_id,state}))};if(name==='ai/styleProfiles:version')return window.detailLoading?undefined:window.profile.versions.find(v=>v._id===args.versionId);if(name==='ai/styleProfiles:receipt')return window.detailLoading?undefined:window.styleHistory.page.find(r=>r._id===args.receiptId);if(name==='ai/styleProfiles:history')return {...window.styleHistory,page:window.styleHistory.page.map(({_id,_creationTime,revision,action,versionId,proposalId,createdAt})=>({_id,_creationTime,revision,action,versionId,proposalId,createdAt}))};if(name==='ai/styleProfiles:inspect')return window.inspection;if(name==='content/feedback:list')return window.feedback;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
@@ -14,7 +17,7 @@ const entry = `import '/src/index.css';import React from 'react';import ReactDOM
 const server = await createServer({
   root,
   configFile: root + "/vite.config.ts",
-  cacheDir: "/tmp/dispatch-task45.1-vite",
+  cacheDir: `${artifactDir}/dispatch-task45.1-vite`,
   server: { host: "127.0.0.1", port: 5178, strictPort: true },
   plugins: [
     {

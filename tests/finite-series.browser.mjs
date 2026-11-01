@@ -1,9 +1,12 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
-mkdirSync("/tmp/dispatch-task46.2-evidence/browser-pixels", {
+mkdirSync(`${artifactDir}/dispatch-task46.2-evidence/browser-pixels`, {
   recursive: true,
 });
 const mocks = {
@@ -223,7 +226,7 @@ try {
     .getByText("Wiederkehrende Serien", { exact: true })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: "/tmp/dispatch-task46.2-evidence/browser-pixels/series-desktop.png",
+    path: `${artifactDir}/dispatch-task46.2-evidence/browser-pixels/series-desktop.png`,
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -231,7 +234,7 @@ try {
     .getByText("Wiederkehrende Serien", { exact: true })
     .scrollIntoViewIfNeeded();
   await page.screenshot({
-    path: "/tmp/dispatch-task46.2-evidence/browser-pixels/series-mobile.png",
+    path: `${artifactDir}/dispatch-task46.2-evidence/browser-pixels/series-mobile.png`,
     fullPage: true,
   });
   expect(

@@ -1,3 +1,6 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { makeFunctionReference } from "convex/server";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -6,6 +9,7 @@ import {
   orderingLoss,
   chooseTransfer,
 } from "../../../convex/performance/models";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllEnvs();
@@ -1067,7 +1071,7 @@ test("registered beforeSend pins a genuinely qualified finite candidate, exact r
   expect(metrics.databaseQueries.used).toBeLessThan(4096);
   await import("node:fs").then(({ writeFileSync }) =>
     writeFileSync(
-      "/tmp/dispatch43.3-native-beforeSend.json",
+      `${artifactDir}/dispatch43.3-native-beforeSend.json`,
       JSON.stringify(
         {
           qualification:

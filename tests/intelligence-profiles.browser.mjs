@@ -1,7 +1,10 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync } from "node:fs";
+import { mkdtempSync, existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useConvex=()=>({});export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='intelligence/profiles:get')return window.profile;if(name==='intelligence/profiles:history')return window.historyRows;if(name==='intelligence/profileUpdates:list')return window.sourceRows;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const useAction=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
@@ -226,7 +229,7 @@ try {
   });
   await expect(page.getByLabel("Profil-Kandidat")).toBeEnabled();
   await page.screenshot({
-    path: "/tmp/task28.2-profile-candidate.png",
+    path: `${artifactDir}/task28.2-profile-candidate.png`,
     fullPage: true,
   });
   await page.evaluate(() => {
@@ -517,7 +520,7 @@ try {
     }),
   );
   await page.screenshot({
-    path: "/tmp/task44-sources-desktop.png",
+    path: `${artifactDir}/task44-sources-desktop.png`,
     fullPage: true,
   });
   await page.setViewportSize({ width: 390, height: 844 });
@@ -543,7 +546,7 @@ try {
     page.getByLabel("Menschliche Quelleninterpretation"),
   ).toHaveValue("Explicit human source interpretation");
   await page.screenshot({
-    path: "/tmp/task44-sources-390.png",
+    path: `${artifactDir}/task44-sources-390.png`,
     fullPage: true,
   });
   await page.evaluate(() => {

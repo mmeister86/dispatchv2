@@ -1,7 +1,10 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
 const mocks = {
   "convex/react": `import React from 'react';import {ConvexError} from 'convex/values';window.TeamConvexError=ConvexError;import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';
@@ -18,7 +21,7 @@ export const authClient={useSession:()=>{React.useSyncExternalStore(cb=>{window.
 };
 const server = await createServer({
   root,
-  cacheDir: "/tmp/dispatch-49.2-team-vite",
+  cacheDir: `${artifactDir}/dispatch-49.2-team-vite`,
   configFile: `${root}/vite.config.ts`,
   define: {
     "import.meta.env.VITE_SITE_URL": JSON.stringify("http://127.0.0.1:5183"),
@@ -408,7 +411,8 @@ try {
   }
   if (!only) {
     const screenshots =
-      process.env.TEAM_SCREENSHOT_DIR ?? "/tmp/dispatch-49.2-team-pixels";
+      process.env.TEAM_SCREENSHOT_DIR ??
+      `${artifactDir}/dispatch-49.2-team-pixels`;
     mkdirSync(screenshots, { recursive: true });
     await page.goto("http://127.0.0.1:5183/team");
     await expect(

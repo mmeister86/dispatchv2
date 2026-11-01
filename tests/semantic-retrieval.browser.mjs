@@ -1,9 +1,12 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, ""),
-  evidence = "/tmp/dispatch-task46.1-evidence";
+  evidence = `${artifactDir}/dispatch-task46.1-evidence`;
 mkdirSync(evidence, { recursive: true });
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useConvex=()=>({});export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const name=getFunctionName(ref);window.queries.push({name,args});if(name==='content/similarity:availability')return window.availability;if(name==='content/similarity:frame')return window.frame;if(name==='performance/history:overview')return {posts:[],jobs:[],policy:null,reason:null,maxResults:null};};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({name:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});`,
@@ -14,7 +17,7 @@ const entry = `import '/src/index.css';import React from 'react';import ReactDOM
 const server = await createServer({
   root,
   configFile: root + "/vite.config.ts",
-  cacheDir: "/tmp/dispatch-semantic-vite",
+  cacheDir: `${artifactDir}/dispatch-semantic-vite`,
   server: { host: "127.0.0.1", port: 5180, strictPort: true },
   plugins: [
     {

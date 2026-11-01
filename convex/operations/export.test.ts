@@ -1,7 +1,11 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { afterEach, expect, test, vi } from "vitest";
 import { makeFunctionReference } from "convex/server";
 import { mediaFixture } from "../../tests/media-fixture";
 import { components } from "../_generated/api";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const self = makeFunctionReference<"query">("operations/export:self");
 afterEach(() => {
   vi.restoreAllMocks();
@@ -799,7 +803,7 @@ test("registered shared export measures twelve retained run-input edges through 
   expect(measured.metrics.functionsScheduled.used).toBe(0);
   const { writeFileSync } = await import("node:fs");
   writeFileSync(
-    "/tmp/dispatch-33.1.3-native-graph-cost.json",
+    `${artifactDir}/dispatch-33.1.3-native-graph-cost.json`,
     JSON.stringify(
       {
         fixture:
@@ -964,7 +968,7 @@ test("actual native Idea generation commit and handoff produce twelve legal run-
   );
   const { writeFileSync } = await import("node:fs");
   writeFileSync(
-    "/tmp/dispatch-33.1.3-native-producer-cost.json",
+    `${artifactDir}/dispatch-33.1.3-native-producer-cost.json`,
     JSON.stringify(
       {
         fixture:
@@ -1023,7 +1027,7 @@ test("registered version role and identity gates perform only native auth worksp
   expect(proof).not.toHaveBeenCalled();
   const { writeFileSync } = await import("node:fs");
   writeFileSync(
-    "/tmp/dispatch-33.1.3-native-denial-cost.json",
+    `${artifactDir}/dispatch-33.1.3-native-denial-cost.json`,
     JSON.stringify({ baseline, outcomes }, null, 2),
   );
 });

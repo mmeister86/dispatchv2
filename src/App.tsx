@@ -91,6 +91,7 @@ import {
   useWorkspaceLocalState,
 } from "@/lib/store";
 import { AccountIcon, Status, EmptyState } from "@/components/shared";
+import { OAuthCallbackProvider } from "@/lib/oauth-callback";
 import { cn } from "cn";
 const OverviewPage = lazy(() =>
   import("@/pages/Overview").then((m) => ({ default: m.OverviewPage })),
@@ -895,31 +896,35 @@ export function App() {
         <Route
           path="/integrations/x/callback"
           element={
-            <ProtectedRoute>
-              {demoMode ? (
-                <EmptyState
-                  title="OAuth benötigt den echten Workspace"
-                  description="Im Demo-Modus werden keine X-Accounts autorisiert."
-                />
-              ) : (
-                <XOAuthCallback />
-              )}
-            </ProtectedRoute>
+            <OAuthCallbackProvider key="x">
+              <ProtectedRoute>
+                {demoMode ? (
+                  <EmptyState
+                    title="OAuth benötigt den echten Workspace"
+                    description="Im Demo-Modus werden keine X-Accounts autorisiert."
+                  />
+                ) : (
+                  <XOAuthCallback />
+                )}
+              </ProtectedRoute>
+            </OAuthCallbackProvider>
           }
         />
         <Route
           path="/integrations/github/callback"
           element={
-            <ProtectedRoute>
-              {demoMode ? (
-                <EmptyState
-                  title="OAuth benötigt den echten Workspace"
-                  description="Im Demo-Modus werden keine GitHub-App-Quellen autorisiert."
-                />
-              ) : (
-                <GithubOAuthCallback />
-              )}
-            </ProtectedRoute>
+            <OAuthCallbackProvider key="github">
+              <ProtectedRoute>
+                {demoMode ? (
+                  <EmptyState
+                    title="OAuth benötigt den echten Workspace"
+                    description="Im Demo-Modus werden keine GitHub-App-Quellen autorisiert."
+                  />
+                ) : (
+                  <GithubOAuthCallback />
+                )}
+              </ProtectedRoute>
+            </OAuthCallbackProvider>
           }
         />
         <Route path="/help" element={<HelpPage />} />

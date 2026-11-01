@@ -1,9 +1,12 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createServer } from "vite";
 import { chromium, expect } from "@playwright/test";
-import { existsSync, mkdirSync } from "node:fs";
+import { mkdtempSync, existsSync, mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+const artifactDir = mkdtempSync(join(tmpdir(), "dispatch-tests-"));
 const root = fileURLToPath(new URL("..", import.meta.url)).replace(/\/$/, "");
-const output = "/tmp/dispatch-task47.2-evidence/browser-pixels";
+const output = `${artifactDir}/dispatch-task47.2-evidence/browser-pixels`;
 mkdirSync(output, { recursive: true });
 const mocks = {
   "convex/react": `import {getFunctionName} from '/node_modules/convex/dist/esm/server/index.js';export const useQuery=(ref,args)=>{if(args==='skip')return undefined;const n=getFunctionName(ref);window.queries.push({n,args});if(n==='performance/experiments:list')return window.catalog;if(n==='performance/experiments:get')return window.detail;};export const useMutation=ref=>args=>new Promise((resolve,reject)=>window.commands.push({n:getFunctionName(ref),args,resolve,reject}));export const useAction=useMutation;export const usePaginatedQuery=()=>({results:[],status:'Exhausted',loadMore:()=>{}});export const useConvexAuth=()=>({isAuthenticated:true,isLoading:false});`,
